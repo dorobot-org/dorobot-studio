@@ -1,0 +1,23 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dataset files (large binary data)
+/dataset/
+
+# Debug logs
+*.log
+/tmp/
+
+# Cargo lock for libraries (optional, keep for binaries)
+# Cargo.lock

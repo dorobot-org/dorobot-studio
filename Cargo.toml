@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/dorobot-types",
+    "crates/dorobot-dora-bridge",
+    "crates/dorobot-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["dorobot team"]
+
+[workspace.dependencies]
+# Internal crates
+dorobot-types = { path = "crates/dorobot-types" }
+dorobot-dora-bridge = { path = "crates/dorobot-dora-bridge" }
+
+# Makepad
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+
+# Rerun visualization (local development version)
+rerun = { path = "../rerun/crates/top/rerun", default-features = false, features = ["sdk"] }
+
+# Dora
+dora-node-api = "0.3"
+
+# Async & threading
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
+crossbeam-channel = "0.5"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Data loading
+parquet = { version = "56.1", default-features = false, features = ["arrow", "snap"] }
+
+# Video decoding
+ffmpeg-next = "7"
+
+# Utilities
+parking_lot = "0.12"
+log = "0.4"
+env_logger = "0.11"
+anyhow = "1"
+thiserror = "1"

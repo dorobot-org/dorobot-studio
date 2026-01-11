@@ -1,0 +1,15 @@
+[package]
+name = "dorobot-dora-bridge"
+version.workspace = true
+edition = "2021"
+
+[features]
+default = ["rerun"]
+rerun = ["dep:rerun"]
+
+[dependencies]
+dorobot-types = { workspace = true }
+rerun = { workspace = true, optional = true }
+parking_lot = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }

@@ -1,0 +1,88 @@
+# Dorobot Example Dataflow
+#
+# This dataflow demonstrates integration between Dora sensors and the Makepad UI.
+# Run with: dora start dataflows/robot_viz.yaml
+#
+# Nodes:
+# - lidar_driver: Simulated LiDAR sensor producing point clouds
+# - camera_driver: Simulated camera producing RGB images
+# - pose_estimator: Simulated odometry/localization
+# - object_detector: Simulated object detection
+# - dorobot_bridge: Bridge to Makepad UI via SharedRobotState
+
+nodes:
+  # Simulated LiDAR sensor
+  - id: lidar_driver
+    operator:
+      python: nodes/lidar_driver.py
+    outputs:
+      - point_cloud
+      - scan_2d
+    env:
+      SCAN_RATE_HZ: "10"
+      NUM_POINTS: "1000"
+
+  # Simulated camera
+  - id: camera_driver
+    operator:
+      python: nodes/camera_driver.py
+    outputs:
+      - rgb_image
+      - depth_image
+    env:
+      FRAME_RATE_HZ: "30"
+      WIDTH: "640"
+      HEIGHT: "480"
+
+  # Simulated pose estimator / odometry
+  - id: pose_estimator
+    operator:
+      python: nodes/pose_estimator.py
+    outputs:
+      - robot_pose
+      - trajectory
+    env:
+      UPDATE_RATE_HZ: "20"
+
+  # Simulated object detector
+  - id: object_detector
+    operator:
+      python: nodes/object_detector.py
+    inputs:
+      rgb_image: camera_driver/rgb_image
+      point_cloud: lidar_driver/point_cloud
+    outputs:
+      - detections
+    env:
+      MODEL: "yolo_v8"
+
+  # Bridge to Makepad UI
+  # This node receives all sensor data and pushes to SharedRobotState
+  - id: dorobot_bridge
+    operator:
+      python: nodes/dorobot_bridge.py
+    inputs:
+      point_cloud: lidar_driver/point_cloud
+      scan_2d: lidar_driver/scan_2d
+      rgb_image: camera_driver/rgb_image
+      depth_image: camera_driver/depth_image
+      robot_pose: pose_estimator/robot_pose
+      trajectory: pose_estimator/trajectory
+      detections: object_detector/detections
+    env:
+      SHARED_STATE_PATH: "/tmp/dorobot_state"
+      ENABLE_RERUN: "true"
+      RERUN_APP_ID: "dorobot"
+
+  # Optional: Direct Rerun logging (alternative to bridge)
+  - id: rerun_logger
+    operator:
+      python: nodes/rerun_logger.py
+    inputs:
+      point_cloud: lidar_driver/point_cloud
+      rgb_image: camera_driver/rgb_image
+      robot_pose: pose_estimator/robot_pose
+      detections: object_detector/detections
+    env:
+      RERUN_APP_ID: "dorobot_direct"
+      SPAWN_VIEWER: "true"
