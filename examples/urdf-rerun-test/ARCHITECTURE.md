@@ -245,92 +245,170 @@ fn draw_walk(&mut self, cx: &mut Cx2d, ...) {
 
 ---
 
-## Refactoring Checklist
+## Development Plan
 
-### Phase 1: Code Organization (No API Changes)
+### Priority Levels
+- **P0**: Blocker - Must resolve before other work (needs external help)
+- **P1**: High - Required for integration with other Makepad apps
+- **P2**: Medium - Important improvements
+- **P3**: Low - Nice to have / Future work
 
-- [ ] **1.1** Extract `Robot`, `RobotLink`, `RobotJoint` to `src/robot.rs`
-- [ ] **1.2** Extract URDF/STL loading to `src/urdf_loader.rs`
-- [ ] **1.3** Move `MeshData` to `src/mesh_data.rs`
-- [ ] **1.4** Move `GeometryMesh3D`, `DrawMesh` to `src/draw_mesh.rs`
-- [ ] **1.5** Keep `URDFViewer` in `src/main.rs` but import from modules
+---
 
-### Phase 2: Make Robot Model Reusable
+### P0: Blockers (Needs Makepad Team Input)
 
-- [ ] **2.1** Make `Robot` struct public with builder pattern:
+- [ ] **P0.1** Investigate Mat4 as shader instance data
+  - Try `#[live] transform: Mat4` in DrawMesh
+  - Document exact compiler error message
+  - **Owner**: Need Rik's guidance
+
+- [ ] **P0.2** Try Vec4×4 workaround for matrix passing
   ```rust
-  let robot = Robot::from_urdf(path, assets)?;
+  #[live] transform_col0: Vec4,
+  #[live] transform_col1: Vec4,
+  #[live] transform_col2: Vec4,
+  #[live] transform_col3: Vec4,
   ```
-- [ ] **2.2** Add public API for joint control:
+  - Test if shader can reconstruct mat4 from 4 vec4s
+  - **Depends on**: P0.1 findings
+
+- [ ] **P0.3** Try uniform-based approach (if instance data fails)
+  - Set matrix uniform before each draw call
+  - Loses instancing benefits but still avoids CPU transform
+  - **Depends on**: P0.2 outcome
+
+---
+
+### P1: Integration Requirements (High Priority)
+
+#### P1.1: Code Organization
+- [ ] **P1.1.1** Extract `Robot`, `RobotLink`, `RobotJoint` to `src/robot.rs`
+- [ ] **P1.1.2** Extract URDF/STL loading to `src/urdf_loader.rs`
+- [ ] **P1.1.3** Move `MeshData` to `src/mesh_data.rs`
+- [ ] **P1.1.4** Move `GeometryMesh3D`, `DrawMesh` to `src/draw_mesh.rs`
+- [ ] **P1.1.5** Create `src/lib.rs` with public exports
+
+#### P1.2: Reusable Robot Model
+- [ ] **P1.2.1** Make `Robot` struct public
+- [ ] **P1.2.2** Public API for joint control:
   ```rust
-  robot.set_joint_angles(&[0.0, 0.5, -0.3, ...]);
-  robot.get_joint_angles() -> &[f32];
+  robot.set_joint_angles(&[f32]);
+  robot.get_joint_angles() -> Vec<f32>;
+  robot.num_joints() -> usize;
   robot.joint_limits(idx) -> (f32, f32);
   ```
-- [ ] **2.3** Make FK computation public:
+- [ ] **P1.2.3** Public FK API:
   ```rust
   robot.update_forward_kinematics();
-  robot.link_transform(idx) -> Mat4;
+  robot.link_transform(idx) -> glam::Mat4;
   ```
 
-### Phase 3: Configurable Widget
-
-- [ ] **3.1** Add `#[live]` properties for URDF path:
+#### P1.3: Configurable Widget
+- [ ] **P1.3.1** Add `#[live]` path properties:
   ```rust
   #[live] urdf_path: String,
   #[live] assets_dir: String,
   ```
-- [ ] **3.2** Add `#[live]` properties for appearance:
+- [ ] **P1.3.2** Add `#[live]` appearance properties:
   ```rust
   #[live] robot_color: Vec4,
-  #[live] background_color: Vec4,
   #[live] scale: f32,
   ```
-- [ ] **3.3** Allow setting robot from code:
+- [ ] **P1.3.3** Method to load robot programmatically:
   ```rust
-  viewer.load_robot(cx, &robot);
+  fn load_robot(&mut self, cx: &mut Cx, urdf: &Path, assets: &Path);
   ```
 
-### Phase 4: GPU-side Transforms (Pending Makepad Support)
-
-- [ ] **4.1** Try Vec4×4 approach for transform matrix
-- [ ] **4.2** If that fails, try uniform-based approach
-- [ ] **4.3** Remove CPU transform code path once GPU works
-- [ ] **4.4** Benchmark: measure frame time before/after
-
-### Phase 5: Proper 3D Camera
-
-- [ ] **5.1** Create `Camera3D` struct:
+#### P1.4: Embeddable Widget
+- [ ] **P1.4.1** Create `RobotView` widget (separate from App)
+- [ ] **P1.4.2** External joint control API:
   ```rust
-  pub struct Camera3D {
-      position: Vec3,
-      target: Vec3,
-      fov: f32,
-      near: f32,
-      far: f32,
+  fn set_joint_angle(&mut self, idx: usize, angle: f32);
+  ```
+- [ ] **P1.4.3** External camera control API:
+  ```rust
+  fn set_camera(&mut self, yaw: f32, pitch: f32, distance: f32);
+  ```
+- [ ] **P1.4.4** Widget actions for state changes:
+  ```rust
+  enum RobotViewAction {
+      JointChanged { index: usize, angle: f32 },
+      CameraChanged { yaw: f32, pitch: f32 },
   }
   ```
-- [ ] **5.2** Compute view/projection matrices
-- [ ] **5.3** Pass matrices to shader (same Mat4 issue applies)
-- [ ] **5.4** Add camera controls (orbit, pan, zoom)
 
-### Phase 6: Integration-Ready Widget
+---
 
-- [ ] **6.1** Create `RobotView` as embeddable widget (no window/app)
-- [ ] **6.2** Expose actions for joint changes:
-  ```rust
-  RobotViewAction::JointChanged { index, angle }
+### P2: Important Improvements (Medium Priority)
+
+#### P2.1: GPU Performance (After P0 resolved)
+- [ ] **P2.1.1** Implement GPU-side vertex transformation
+- [ ] **P2.1.2** Upload mesh geometry only once at load time
+- [ ] **P2.1.3** Remove CPU transform + re-upload code path
+- [ ] **P2.1.4** Benchmark: target <5ms frame time (currently ~16ms)
+
+#### P2.2: Proper 3D Camera
+- [ ] **P2.2.1** Create `Camera3D` struct with position/target/fov
+- [ ] **P2.2.2** Compute proper view matrix
+- [ ] **P2.2.3** Compute proper projection matrix
+- [ ] **P2.2.4** Handle aspect ratio from viewport size
+
+#### P2.3: Better Shader
+- [ ] **P2.3.1** Use proper MVP matrix pipeline:
   ```
-- [ ] **6.3** Support external camera control
-- [ ] **6.4** Document integration example in README
+  clip_pos = projection × view × model × vertex
+  ```
+- [ ] **P2.3.2** Proper depth buffer range [0, 1]
+- [ ] **P2.3.3** Add specular lighting component
+- [ ] **P2.3.4** Support per-link colors
 
-### Phase 7: Polish
+---
 
-- [ ] **7.1** Async URDF/mesh loading (don't block first frame)
-- [ ] **7.2** Error handling with user-visible messages
-- [ ] **7.3** Support collision meshes (not just visual)
-- [ ] **7.4** Add grid/ground plane option
-- [ ] **7.5** Add joint visualization (axes, limits)
+### P3: Nice to Have (Low Priority)
+
+#### P3.1: Loading & Error Handling
+- [ ] **P3.1.1** Async URDF/mesh loading (don't block first frame)
+- [ ] **P3.1.2** Progress indicator while loading
+- [ ] **P3.1.3** User-visible error messages for missing files
+- [ ] **P3.1.4** Fallback geometry for missing meshes
+
+#### P3.2: Additional Features
+- [ ] **P3.2.1** Support OBJ mesh format
+- [ ] **P3.2.2** Support GLTF/GLB mesh format
+- [ ] **P3.2.3** Support collision meshes (not just visual)
+- [ ] **P3.2.4** Add grid/ground plane option
+- [ ] **P3.2.5** Joint axis visualization
+- [ ] **P3.2.6** Joint limit visualization
+- [ ] **P3.2.7** Link frame axes visualization
+
+#### P3.3: Documentation
+- [ ] **P3.3.1** Integration example in README
+- [ ] **P3.3.2** API documentation
+- [ ] **P3.3.3** URDF format requirements doc
+
+---
+
+## Task Dependencies
+
+```
+P0.1 ──▶ P0.2 ──▶ P0.3 ──▶ P2.1 (GPU transforms)
+                              │
+P1.1 (code org) ─────────────┼──▶ P1.4 (embeddable widget)
+         │                    │
+         ▼                    │
+P1.2 (robot model) ──────────┘
+         │
+         ▼
+P1.3 (configurable) ──▶ P2.2 (camera) ──▶ P2.3 (shader)
+```
+
+---
+
+## Immediate Next Steps
+
+1. **Ask Rik about P0.1-P0.3** - GPU matrix transform support
+2. **Start P1.1** - Code organization (can proceed in parallel)
+3. **Start P1.2** - Robot model API (can proceed in parallel)
 
 ---
 

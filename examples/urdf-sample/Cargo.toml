@@ -1,0 +1,25 @@
+[package]
+name = "urdf-sample"
+version = "0.1.0"
+edition = "2021"
+description = "Sample app to visualize SO-ARM100 URDF using kiss3d"
+
+# Keep this as a standalone project (not part of parent workspace)
+[workspace]
+
+[dependencies]
+# URDF parsing
+urdf-rs = "0.8"
+
+# 3D visualization (kiss3d re-exports nalgebra 0.30)
+kiss3d = "0.35"
+
+# For mesh loading
+mesh-loader = "0.1"
+
+# Logging
+env_logger = "0.11"
+log = "0.4"
+
+# CLI args
+clap = { version = "4", features = ["derive"] }

@@ -1,0 +1,15 @@
+[package]
+name = "urdf-makepad-test"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[[bin]]
+name = "urdf-makepad-test"
+path = "src/main.rs"
+
+[dependencies]
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "main" }
+stl_io = "0.7"
+urdf-rs = "0.8"
