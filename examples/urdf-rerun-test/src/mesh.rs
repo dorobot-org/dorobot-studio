@@ -236,11 +236,10 @@ impl MeshData {
             match MeshData::from_stl(&path) {
                 Ok(mesh) => {
                     total_vertices += mesh.vertices.len() / FLOATS_PER_VERTEX;
-                    eprintln!("Loaded {}: {} vertices", file, mesh.vertices.len() / FLOATS_PER_VERTEX);
                     meshes.push(mesh);
                 }
-                Err(e) => {
-                    eprintln!("Warning: Failed to load {}: {}", file, e);
+                Err(_e) => {
+                    // Skip missing files silently
                 }
             }
         }
@@ -249,11 +248,10 @@ impl MeshData {
             return Err("No meshes loaded".to_string());
         }
 
-        eprintln!("Total: {} meshes, {} vertices", meshes.len(), total_vertices);
+        let _ = total_vertices;  // unused
         let mut combined = MeshData::combine(meshes);
         combined.normalize();
         combined.make_double_sided();
-        eprintln!("After double-sided: {} vertices", combined.vertices.len() / FLOATS_PER_VERTEX);
         Ok(combined)
     }
 
@@ -472,7 +470,6 @@ impl LiveHook for GeometryMesh3D {
         // Initialize with a default cube geometry for shader compilation
         // This geometry will be replaced when load_stl or load_test_cube is called
         if self.geometry_ref.is_none() {
-            eprintln!("GeometryMesh3D::after_apply[{}] - initializing default geometry", self.instance_id);
             let mesh = MeshData::test_cube(1.0);
 
             // Use instance_id in fingerprint for unique geometry per instance
@@ -483,7 +480,6 @@ impl LiveHook for GeometryMesh3D {
 
             if let Some(ref gr) = self.geometry_ref {
                 gr.0.update(cx, mesh.indices.clone(), mesh.vertices.clone());
-                eprintln!("GeometryMesh3D::after_apply - geometry id: {:?}", gr.0.geometry_id());
             }
 
             self.mesh_data = Some(mesh);
@@ -549,16 +545,6 @@ impl GeometryMesh3D {
     /// Upload mesh data to GPU
     /// Uses unique fingerprint per instance to allow multiple geometries
     fn upload_mesh(&mut self, cx: &mut Cx, mesh: MeshData) {
-        eprintln!("upload_mesh[{}]: {} vertices, {} indices",
-            self.instance_id,
-            mesh.vertices.len() / 9,
-            mesh.indices.len()
-        );
-        if mesh.vertices.len() >= 9 {
-            eprintln!("  first vertex pos: ({}, {}, {})",
-                mesh.vertices[0], mesh.vertices[1], mesh.vertices[2]);
-        }
-
         // If we don't have a geometry reference yet, create one with unique fingerprint
         if self.geometry_ref.is_none() {
             let mut fp = GeometryFingerprint::new(LiveType::of::<Self>());
@@ -570,7 +556,6 @@ impl GeometryMesh3D {
         // Upload new geometry data to the existing geometry buffer
         if let Some(ref gr) = self.geometry_ref {
             gr.0.update(cx, mesh.indices.clone(), mesh.vertices.clone());
-            eprintln!("  geometry uploaded, id: {:?}", gr.0.geometry_id());
         }
 
         self.mesh_data = Some(mesh);
@@ -592,13 +577,10 @@ pub struct DrawMesh {
 
 impl LiveHook for DrawMesh {
     fn before_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
-        eprintln!("DrawMesh::before_apply - geom_id: {:?}", self.geometry.geometry_ref.as_ref().map(|gr| gr.0.geometry_id()));
-        // Match DrawCube pattern: init shader in before_apply
         self.draw_vars.before_apply_init_shader(cx, apply, index, nodes, &self.geometry);
     }
 
     fn after_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
-        eprintln!("DrawMesh::after_apply - geom_id: {:?}", self.geometry.geometry_ref.as_ref().map(|gr| gr.0.geometry_id()));
         self.draw_vars.after_apply_update_self(cx, apply, index, nodes, &self.geometry);
     }
 }
@@ -646,7 +628,6 @@ impl DrawMesh {
             self.geometry.upload_mesh_data(cx, mesh_data);
         }
         // Update draw_vars to use our geometry via the LiveHook pattern
-        // Call after_apply to update geometry_id
         self.draw_vars.after_apply_update_self(
             cx,
             &mut Apply::from(ApplyFrom::UpdateFromDoc { file_id: Default::default() }),
@@ -654,7 +635,6 @@ impl DrawMesh {
             &[],
             &self.geometry
         );
-        eprintln!("init_link_geometry: can_instance={}", self.draw_vars.can_instance());
     }
 
     pub fn draw(&mut self, cx: &mut Cx2d) {

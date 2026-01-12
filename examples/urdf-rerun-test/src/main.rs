@@ -174,7 +174,6 @@ impl Robot {
                         .unwrap_or(filename);
 
                     let mesh_path = format!("{}/{}", assets_base, mesh_filename);
-                    eprintln!("Loading mesh for {}: {}", link.name, mesh_path);
 
                     match MeshData::from_stl(&mesh_path) {
                         Ok(mut mesh) => {
@@ -200,7 +199,6 @@ impl Robot {
                                 let cols = vis_transform.to_cols_array();
                                 let makepad_transform = Mat4 { v: cols };
                                 mesh.apply_transform(&makepad_transform);
-                                eprintln!("  Applied visual origin: xyz={:?} rpy={:?}", vis_xyz, vis_rpy);
                             }
 
                             for i in 0..3 {
@@ -232,10 +230,9 @@ impl Robot {
         let center = (bounds_min + bounds_max) * 0.5;
         let extent = bounds_max - bounds_min;
         let max_extent = extent.x.max(extent.y).max(extent.z).max(0.001);
+        let _ = max_extent;  // unused but kept for reference
         robot.scale = 1.0;  // Don't scale meshes - keep in meters
         robot.center = center;
-
-        eprintln!("Normalization: center={:?}, max_extent={:.4}", robot.center, max_extent);
 
         // DON'T apply scale to meshes - keep them in original meters
         // The shader will handle view scaling
@@ -289,9 +286,6 @@ impl Robot {
 
         // Initialize transforms
         robot.link_transforms = vec![glam::Mat4::IDENTITY; robot.links.len()];
-
-        eprintln!("Loaded robot '{}' with {} links, {} joints, root: '{}'",
-            robot.name, robot.links.len(), robot.joints.len(), robot.root_link);
 
         Ok(robot)
     }
@@ -556,16 +550,12 @@ impl Widget for URDFViewer {
 
             match Robot::from_urdf(urdf_path, assets_dir) {
                 Ok(mut robot) => {
-                    eprintln!("Loaded robot: {} with {} links, {} joints",
-                        robot.name, robot.links.len(), robot.joints.len());
-
                     // Create DrawMesh for each link
-                    for (idx, link) in robot.links.iter().enumerate() {
+                    for (_idx, link) in robot.links.iter().enumerate() {
                         if let Some(ref mesh_data) = link.mesh_data {
                             self.original_meshes.push(mesh_data.clone());
                             let mut draw = DrawMesh::new_for_link(cx.cx, mesh_data.clone(), &self.draw_mesh);
                             draw.init_link_geometry(cx.cx);
-                            eprintln!("  Link {}: {} - {} vertices", idx, link.name, mesh_data.vertices.len() / 9);
                             self.link_drawers.push(draw);
                         }
                     }
