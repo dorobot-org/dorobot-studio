@@ -590,6 +590,10 @@ pub struct HomeScreen {
     // Playback timer
     #[rust]
     playback_timer: Timer,
+
+    // Episode frame data for robot pose updates
+    #[rust]
+    episode_frames: Vec<crate::data::EpisodeFrame>,
 }
 
 impl Widget for HomeScreen {
@@ -885,12 +889,25 @@ impl HomeScreen {
     }
 
     /// Update robot pose (called on time change)
-    fn update_robot_pose(&mut self, _cx: &mut Cx) {
-        // In a full implementation:
-        // 1. Query observation.state at current_time
-        // 2. Update robot viewer joint angles
-        // self.view.robot_viewer(id!(content_area.main_content.top_panel.robot_panel.robot_viewer))
-        //     .set_joint_angles(cx, &joint_angles);
+    fn update_robot_pose(&mut self, cx: &mut Cx) {
+        if self.episode_frames.is_empty() {
+            return;
+        }
+
+        // Find the frame closest to current_time
+        let frame_idx = self.episode_frames
+            .iter()
+            .position(|f| f.timestamp >= self.current_time)
+            .unwrap_or(self.episode_frames.len() - 1);
+
+        // Get joint angles from the state data
+        if let Some(frame) = self.episode_frames.get(frame_idx) {
+            // Convert state to f64 slice for the robot viewer
+            let joint_angles: Vec<f64> = frame.state.iter().map(|&v| v as f64).collect();
+
+            self.view.robot_viewer(id!(content_area.main_content.top_panel.robot_panel.robot_viewer))
+                .set_joint_angles(cx, &joint_angles);
+        }
     }
 
     /// Set dataset info
@@ -949,6 +966,9 @@ impl HomeScreen {
         if frames.is_empty() {
             return;
         }
+
+        // Store frames for robot pose updates
+        self.episode_frames = frames.to_vec();
 
         // Get number of state and action channels
         let state_channels = frames.first().map(|f| f.state.len()).unwrap_or(0);

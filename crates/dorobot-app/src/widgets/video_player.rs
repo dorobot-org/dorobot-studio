@@ -204,6 +204,16 @@ impl VideoPlayer {
 
     /// Set frame from RGB24 data
     pub fn set_frame(&mut self, cx: &mut Cx, width: usize, height: usize, data: &[u8]) {
+        // Debug: log frame setting (occasional)
+        static FRAME_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let count = FRAME_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if count % 100 == 0 {
+            use std::io::Write;
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
+                let _ = writeln!(f, "[VideoPlayer] set_frame called: {}x{}, data_len={}, count={}", width, height, data.len(), count);
+            }
+        }
+
         // Convert RGB24 to the format expected by the Image widget
         let bgra_data = Self::rgb_to_bgra_u32(data);
 
@@ -268,7 +278,11 @@ impl VideoPlayer {
                     return;
                 }
                 Err(e) => {
-                    ::log::warn!("Failed to decode frame at time {} (absolute: {}): {}", time, absolute_time, e);
+                    // Debug: log decoder errors to file
+                    use std::io::Write;
+                    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
+                        let _ = writeln!(f, "[VideoPlayer] ERROR decoding frame at time {} (absolute: {}): {}", time, absolute_time, e);
+                    }
                 }
             }
         }

@@ -1,6 +1,16 @@
 //! 3D Robot Arm Viewer Widget
+//!
+//! Displays URDF robot models using kiss3d for rendering.
+//! The kiss3d renderer runs in a background thread and streams
+//! rendered frames as textures to this Makepad widget.
 
 use makepad_widgets::*;
+use crate::data::urdf_renderer::{
+    CameraCommand, SharedRendererState, create_shared_state,
+};
+
+#[cfg(feature = "urdf")]
+use crate::data::urdf_renderer::start_renderer_thread;
 
 live_design! {
     use link::theme::*;
@@ -8,7 +18,7 @@ live_design! {
     use link::widgets::*;
     use crate::shared::styles::*;
 
-    // Individual joint angle display - MUST be defined before RobotViewer
+    // Individual joint angle display
     JointDisplay = <View> {
         width: 60
         height: Fit
@@ -62,30 +72,8 @@ live_design! {
 
             // View controls
             reset_view_btn = <SecondaryButton> {
-                text: "Reset View"
-                width: 70
-                height: 20
-                padding: { left: 8, right: 8 }
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_PRIMARY)
-                }
-            }
-
-            show_trajectory_btn = <SecondaryButton> {
-                text: "Trail"
-                width: 40
-                height: 20
-                padding: { left: 6, right: 6 }
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_PRIMARY)
-                }
-            }
-
-            show_axes_btn = <SecondaryButton> {
-                text: "Axes"
-                width: 40
+                text: "Reset"
+                width: 50
                 height: 20
                 padding: { left: 6, right: 6 }
                 draw_text: {
@@ -95,7 +83,7 @@ live_design! {
             }
         }
 
-        // 3D viewport
+        // 3D viewport - displays kiss3d rendered texture
         viewport = <View> {
             width: Fill
             height: Fill
@@ -104,20 +92,20 @@ live_design! {
             show_bg: true
             draw_bg: { color: #1a1a22 }
 
-            // Grid floor placeholder
-            grid_floor = <View> {
+            flow: Overlay
+
+            // Rendered frame from kiss3d
+            frame_image = <Image> {
                 width: Fill
                 height: Fill
+                fit: Smallest
+                visible: false
             }
 
-            // Robot arm rendering would go here
-            // In a full implementation, this would use DrawCube instances
-            // for each robot link, transformed by forward kinematics
-
-            // Placeholder message when no robot loaded
+            // Placeholder when no robot loaded
             placeholder = <View> {
-                width: Fit
-                height: Fit
+                width: Fill
+                height: Fill
                 align: { x: 0.5, y: 0.5 }
 
                 placeholder_label = <Label> {
@@ -129,90 +117,59 @@ live_design! {
                     text: "Load URDF to visualize robot"
                 }
             }
+
+            // Loading indicator
+            loading = <View> {
+                width: Fill
+                height: Fill
+                align: { x: 0.5, y: 0.5 }
+                visible: false
+
+                loading_label = <Label> {
+                    draw_text: {
+                        text_style: <TEXT_BODY> {}
+                        color: (COLOR_TEXT_SECONDARY)
+                    }
+                    text: "Loading URDF..."
+                }
+            }
+
+            // Error display
+            error_view = <View> {
+                width: Fill
+                height: Fill
+                align: { x: 0.5, y: 0.5 }
+                visible: false
+
+                error_label = <Label> {
+                    draw_text: {
+                        text_style: <TEXT_BODY> {}
+                        color: #ff6666
+                        wrap: Word
+                    }
+                    text: ""
+                }
+            }
         }
 
         // Joint angles display (bottom overlay)
         joint_info = <View> {
             width: Fill
-            height: 60
-            padding: 8
+            height: 50
+            padding: 6
             flow: Right
-            spacing: 16
+            spacing: 8
 
             show_bg: true
             draw_bg: { color: (COLOR_BG_PANEL) }
 
-            // Joint angle readouts - names are set programmatically
             joint_0 = <JointDisplay> {}
             joint_1 = <JointDisplay> {}
             joint_2 = <JointDisplay> {}
             joint_3 = <JointDisplay> {}
             joint_4 = <JointDisplay> {}
             joint_5 = <JointDisplay> {}
-            joint_6 = <JointDisplay> {}
         }
-    }
-}
-
-/// Orbit camera state
-#[derive(Clone, Debug)]
-pub struct OrbitCamera {
-    pub target: DVec3,    // Look-at point
-    pub distance: f64,    // Distance from target
-    pub yaw: f64,         // Horizontal angle (radians)
-    pub pitch: f64,       // Vertical angle (radians)
-    pub fov: f64,         // Field of view (radians)
-}
-
-impl Default for OrbitCamera {
-    fn default() -> Self {
-        Self {
-            target: DVec3 { x: 0.0, y: 0.0, z: 0.0 },
-            distance: 2.0,
-            yaw: 0.5,
-            pitch: 0.4,
-            fov: std::f64::consts::PI / 4.0,
-        }
-    }
-}
-
-impl OrbitCamera {
-    /// Compute camera position from orbit parameters
-    pub fn position(&self) -> DVec3 {
-        let x = self.distance * self.pitch.cos() * self.yaw.sin();
-        let y = self.distance * self.pitch.sin();
-        let z = self.distance * self.pitch.cos() * self.yaw.cos();
-        DVec3 {
-            x: self.target.x + x,
-            y: self.target.y + y,
-            z: self.target.z + z,
-        }
-    }
-
-    /// Rotate camera around target
-    pub fn rotate(&mut self, delta_yaw: f64, delta_pitch: f64) {
-        self.yaw += delta_yaw;
-        self.pitch = (self.pitch + delta_pitch).clamp(-1.5, 1.5);
-    }
-
-    /// Zoom in/out
-    pub fn zoom(&mut self, delta: f64) {
-        self.distance = (self.distance * (1.0 - delta * 0.1)).clamp(0.5, 10.0);
-    }
-
-    /// Pan camera (move target)
-    pub fn pan(&mut self, delta_x: f64, delta_y: f64) {
-        // Pan in screen space
-        let right_x = self.yaw.cos();
-        let right_z = -self.yaw.sin();
-        self.target.x += right_x * delta_x * self.distance * 0.01;
-        self.target.z += right_z * delta_x * self.distance * 0.01;
-        self.target.y += delta_y * self.distance * 0.01;
-    }
-
-    /// Reset to default view
-    pub fn reset(&mut self) {
-        *self = Self::default();
     }
 }
 
@@ -221,33 +178,43 @@ pub struct RobotViewer {
     #[deref]
     view: View,
 
-    // Camera
+    // Renderer state (shared with background thread)
     #[rust]
-    camera: OrbitCamera,
+    renderer_state: Option<SharedRendererState>,
 
-    // Robot state
+    // Renderer thread handle
+    #[rust]
+    renderer_thread: Option<std::thread::JoinHandle<()>>,
+
+    // Current URDF path
+    #[rust]
+    urdf_path: Option<String>,
+
+    // Joint angles from dataset
     #[rust]
     joint_angles: Vec<f64>,
+
+    // Texture for displaying rendered frame
+    #[rust]
+    frame_texture: Option<Texture>,
+
+    // UI state
     #[rust]
     has_robot: bool,
-
-    // Display options
     #[rust]
-    show_trajectory: bool,
-    #[rust]
-    show_axes: bool,
-
-    // Trajectory history
-    #[rust]
-    end_effector_trail: Vec<DVec3>,
+    is_loading: bool,
 
     // Interaction state
     #[rust]
-    is_rotating: bool,
+    is_dragging: bool,
     #[rust]
-    is_panning: bool,
+    drag_button: usize, // 0 = left (orbit), 1 = right (pan)
     #[rust]
     last_mouse_pos: DVec2,
+
+    // Timer for checking new frames
+    #[rust]
+    refresh_timer: Timer,
 
     // Initialization flag
     #[rust]
@@ -258,79 +225,71 @@ impl LiveHook for RobotViewer {
     fn after_apply(&mut self, cx: &mut Cx, _apply: &mut Apply, _index: usize, _nodes: &[LiveNode]) {
         if !self.initialized {
             self.initialized = true;
-            // Set joint names
-            let joint_names = ["J0", "J1", "J2", "J3", "J4", "J5", "Grip"];
-            let name_ids = [
-                id!(joint_info.joint_0.name),
-                id!(joint_info.joint_1.name),
-                id!(joint_info.joint_2.name),
-                id!(joint_info.joint_3.name),
-                id!(joint_info.joint_4.name),
-                id!(joint_info.joint_5.name),
-                id!(joint_info.joint_6.name),
-            ];
-            for (i, &name_id) in name_ids.iter().enumerate() {
-                self.view.label(name_id).set_text(cx, joint_names[i]);
-            }
+            // Don't auto-start renderer - kiss3d requires main thread on macOS
+            // Renderer will be started when load_urdf is called
+
+            // Start refresh timer (30 fps)
+            self.refresh_timer = cx.start_interval(0.033);
         }
     }
 }
 
 impl Widget for RobotViewer {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
+        // Handle timer - check for new rendered frames
+        if self.refresh_timer.is_event(event).is_some() {
+            self.check_for_new_frame(cx);
+        }
 
-        // Capture actions from this event cycle
+        // Handle signal from renderer thread
+        if let Event::Signal = event {
+            self.check_for_new_frame(cx);
+        }
+
+        // Capture button actions (this also handles view events)
         let actions = cx.capture_actions(|cx| {
             self.view.handle_event(cx, event, scope);
         });
 
-        // Handle button clicks
+        // Handle reset view button
         if self.view.button(id!(reset_view_btn)).clicked(&actions) {
-            self.camera.reset();
-            self.view.redraw(cx);
+            self.send_camera_command(CameraCommand::Reset);
         }
 
-        if self.view.button(id!(show_trajectory_btn)).clicked(&actions) {
-            self.show_trajectory = !self.show_trajectory;
-            self.view.redraw(cx);
-        }
-
-        if self.view.button(id!(show_axes_btn)).clicked(&actions) {
-            self.show_axes = !self.show_axes;
-            self.view.redraw(cx);
-        }
-
-        // Handle viewport interaction
+        // Handle viewport mouse interaction
         let viewport_area = self.view.view(id!(viewport)).area();
         match event.hits(cx, viewport_area) {
             Hit::FingerDown(fe) => {
                 self.last_mouse_pos = fe.abs;
-                if fe.modifiers.control {
-                    self.is_panning = true;
-                } else {
-                    self.is_rotating = true;
-                }
+                self.is_dragging = true;
+                // Right click or ctrl+click for pan, left click for orbit
+                self.drag_button = if fe.modifiers.control { 1 } else { 0 };
             }
-            Hit::FingerMove(fe) => {
+            Hit::FingerMove(fe) if self.is_dragging => {
                 let delta = fe.abs - self.last_mouse_pos;
                 self.last_mouse_pos = fe.abs;
 
-                if self.is_rotating {
-                    self.camera.rotate(delta.x * 0.01, -delta.y * 0.01);
-                    self.view.redraw(cx);
-                } else if self.is_panning {
-                    self.camera.pan(-delta.x, delta.y);
-                    self.view.redraw(cx);
+                if self.drag_button == 0 {
+                    // Orbit
+                    self.send_camera_command(CameraCommand::Orbit {
+                        dx: delta.x as f32,
+                        dy: delta.y as f32,
+                    });
+                } else {
+                    // Pan
+                    self.send_camera_command(CameraCommand::Pan {
+                        dx: delta.x as f32,
+                        dy: delta.y as f32,
+                    });
                 }
             }
             Hit::FingerUp(_) => {
-                self.is_rotating = false;
-                self.is_panning = false;
+                self.is_dragging = false;
             }
             Hit::FingerScroll(se) => {
-                self.camera.zoom(se.scroll.y * 0.01);
-                self.view.redraw(cx);
+                self.send_camera_command(CameraCommand::Zoom {
+                    delta: se.scroll.y as f32 * 0.01,
+                });
             }
             _ => {}
         }
@@ -338,54 +297,208 @@ impl Widget for RobotViewer {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
-        // Note: Full 3D rendering would be done here using DrawCube instances
-        // with computed transforms from forward kinematics
     }
 }
 
 impl RobotViewer {
+    /// Initialize the renderer thread
+    fn init_renderer(&mut self) {
+        let state = create_shared_state();
+        self.renderer_state = Some(state.clone());
+
+        #[cfg(feature = "urdf")]
+        {
+            self.renderer_thread = Some(start_renderer_thread(state));
+        }
+    }
+
+    /// Send camera command to renderer
+    fn send_camera_command(&self, cmd: CameraCommand) {
+        if let Some(state) = &self.renderer_state {
+            if let Ok(mut state) = state.lock() {
+                state.camera_commands.push(cmd);
+            }
+        }
+    }
+
+    /// Check for new rendered frame from background thread
+    fn check_for_new_frame(&mut self, cx: &mut Cx) {
+        let (frame, is_ready, error, joint_names) = {
+            if let Some(state) = &self.renderer_state {
+                if let Ok(mut state) = state.lock() {
+                    let frame = state.rendered_frame.take();
+                    let is_ready = state.is_ready;
+                    let error = state.error.clone();
+                    let joint_names = state.joint_names.clone();
+                    (frame, is_ready, error, joint_names)
+                } else {
+                    (None, false, None, Vec::new())
+                }
+            } else {
+                (None, false, None, Vec::new())
+            }
+        };
+
+        // Update UI based on state
+        if let Some(err) = error {
+            self.show_error(cx, &err);
+            self.is_loading = false;
+        } else if is_ready && self.is_loading {
+            self.is_loading = false;
+            self.has_robot = true;
+
+            // Update joint names
+            self.update_joint_names(cx, &joint_names);
+
+            // Hide loading, show viewport
+            self.view.view(id!(viewport.loading)).set_visible(cx, false);
+            self.view.view(id!(viewport.placeholder)).set_visible(cx, false);
+            self.view.view(id!(viewport.error_view)).set_visible(cx, false);
+        }
+
+        // Update texture if we have a new frame
+        if let Some(frame) = frame {
+            self.update_frame_texture(cx, &frame);
+        }
+    }
+
+    /// Update the displayed frame texture
+    fn update_frame_texture(&mut self, cx: &mut Cx, frame: &crate::data::urdf_renderer::RenderedFrame) {
+        // Convert RGBA to BGRA u32 for Makepad texture
+        let bgra_data: Vec<u32> = frame.data.chunks(4)
+            .map(|rgba| {
+                let r = rgba[0] as u32;
+                let g = rgba[1] as u32;
+                let b = rgba[2] as u32;
+                let a = rgba[3] as u32;
+                (a << 24) | (r << 16) | (g << 8) | b
+            })
+            .collect();
+
+        let texture = Texture::new_with_format(cx, TextureFormat::VecBGRAu8_32 {
+            data: Some(bgra_data),
+            width: frame.width,
+            height: frame.height,
+            updated: TextureUpdated::Full,
+        });
+
+        // Set texture on image widget
+        let image = self.view.image(id!(viewport.frame_image));
+        image.set_texture(cx, Some(texture));
+
+        // Make image visible
+        self.view.image(id!(viewport.frame_image)).apply_over(cx, live! {
+            visible: true
+        });
+
+        self.view.redraw(cx);
+    }
+
+    /// Update joint name labels
+    fn update_joint_names(&mut self, cx: &mut Cx, names: &[String]) {
+        let name_ids = [
+            id!(joint_info.joint_0.name),
+            id!(joint_info.joint_1.name),
+            id!(joint_info.joint_2.name),
+            id!(joint_info.joint_3.name),
+            id!(joint_info.joint_4.name),
+            id!(joint_info.joint_5.name),
+        ];
+
+        for (i, name_id) in name_ids.iter().enumerate() {
+            let name = names.get(i).map(|s| s.as_str()).unwrap_or("");
+            // Shorten long names
+            let short_name = if name.len() > 8 {
+                &name[..8]
+            } else {
+                name
+            };
+            self.view.label(*name_id).set_text(cx, short_name);
+        }
+    }
+
+    /// Show error message
+    fn show_error(&mut self, cx: &mut Cx, error: &str) {
+        self.view.label(id!(viewport.error_view.error_label)).set_text(cx, error);
+        self.view.view(id!(viewport.error_view)).set_visible(cx, true);
+        self.view.view(id!(viewport.loading)).set_visible(cx, false);
+        self.view.view(id!(viewport.placeholder)).set_visible(cx, false);
+        self.view.redraw(cx);
+    }
+
+    /// Load URDF file
+    pub fn load_urdf(&mut self, cx: &mut Cx, path: &str) {
+        self.urdf_path = Some(path.to_string());
+        self.is_loading = true;
+        self.has_robot = false;
+
+        // Show loading indicator
+        self.view.view(id!(viewport.loading)).set_visible(cx, true);
+        self.view.view(id!(viewport.placeholder)).set_visible(cx, false);
+        self.view.view(id!(viewport.error_view)).set_visible(cx, false);
+        self.view.image(id!(viewport.frame_image)).apply_over(cx, live! {
+            visible: false
+        });
+
+        // Initialize renderer if not already done
+        if self.renderer_state.is_none() {
+            self.init_renderer();
+        }
+
+        // Tell renderer to load URDF
+        if let Some(state) = &self.renderer_state {
+            if let Ok(mut state) = state.lock() {
+                state.urdf_path = Some(path.to_string());
+                state.is_ready = false;
+                state.error = None;
+            }
+        }
+
+        self.view.redraw(cx);
+    }
+
     /// Set joint angles and update display
     pub fn set_joint_angles(&mut self, cx: &mut Cx, angles: &[f64]) {
         self.joint_angles = angles.to_vec();
-        self.has_robot = true;
 
-        // Update joint displays
-        let joint_ids = [
+        // Update renderer state
+        if let Some(state) = &self.renderer_state {
+            if let Ok(mut state) = state.lock() {
+                state.joint_positions = angles.to_vec();
+            }
+        }
+
+        // Update joint value displays
+        let value_ids = [
             id!(joint_info.joint_0.value),
             id!(joint_info.joint_1.value),
             id!(joint_info.joint_2.value),
             id!(joint_info.joint_3.value),
             id!(joint_info.joint_4.value),
             id!(joint_info.joint_5.value),
-            id!(joint_info.joint_6.value),
         ];
 
-        for (i, &joint_id) in joint_ids.iter().enumerate() {
+        for (i, &value_id) in value_ids.iter().enumerate() {
             let value = angles.get(i).copied().unwrap_or(0.0);
-            let text = format!("{:.2}", value.to_degrees());
-            self.view.label(joint_id).set_text(cx, &text);
+            let text = format!("{:.1}°", value.to_degrees());
+            self.view.label(value_id).set_text(cx, &text);
         }
-
-        // Update trajectory trail
-        // In a full implementation, compute end-effector position via FK
-        // and add to trail
-
-        self.view.view(id!(viewport.placeholder)).set_visible(cx, false);
-        self.view.redraw(cx);
     }
 
     /// Clear robot visualization
     pub fn clear(&mut self, cx: &mut Cx) {
         self.joint_angles.clear();
         self.has_robot = false;
-        self.end_effector_trail.clear();
-        self.view.view(id!(viewport.placeholder)).set_visible(cx, true);
-        self.view.redraw(cx);
-    }
+        self.urdf_path = None;
 
-    /// Clear trajectory trail
-    pub fn clear_trail(&mut self) {
-        self.end_effector_trail.clear();
+        self.view.view(id!(viewport.placeholder)).set_visible(cx, true);
+        self.view.view(id!(viewport.loading)).set_visible(cx, false);
+        self.view.view(id!(viewport.error_view)).set_visible(cx, false);
+        self.view.image(id!(viewport.frame_image)).apply_over(cx, live! {
+            visible: false
+        });
+
+        self.view.redraw(cx);
     }
 
     /// Set placeholder text
@@ -395,6 +508,12 @@ impl RobotViewer {
 }
 
 impl RobotViewerRef {
+    pub fn load_urdf(&self, cx: &mut Cx, path: &str) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.load_urdf(cx, path);
+        }
+    }
+
     pub fn set_joint_angles(&self, cx: &mut Cx, angles: &[f64]) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_joint_angles(cx, angles);

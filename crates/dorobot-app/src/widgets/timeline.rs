@@ -142,9 +142,7 @@ pub struct Timeline {
 
 impl Widget for Timeline {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
-
-        // Capture actions from this event cycle
+        // Capture actions from this event cycle (this also handles view events)
         let actions = cx.capture_actions(|cx| {
             self.view.handle_event(cx, event, scope);
         });

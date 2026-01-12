@@ -65,8 +65,35 @@ impl MatchEvent for LeRobotApp {
         // Start update timer for animations
         self.update_timer = cx.start_interval(1.0 / 60.0);
 
-        // Try to load real dataset, fall back to demo data
-        self.open_dataset_dialog(cx);
+        // Try to load dataset from command line arg or known paths
+        // NOTE: We cannot open file dialog here because it's a blocking modal dialog
+        // that conflicts with Makepad's event loop (causes RefCell already borrowed panic)
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() > 1 {
+            // Load from command line argument
+            self.load_dataset(cx, &args[1]);
+        } else {
+            // Try known dataset paths
+            let known_paths = [
+                "dataset/aloha_mobile_cabinet",
+                "dataset/xvla-soft-fold",
+                "../dataset/aloha_mobile_cabinet",
+            ];
+
+            let mut loaded = false;
+            for path in &known_paths {
+                if std::path::Path::new(path).join("meta").exists() {
+                    ::log::info!("Found dataset at {}", path);
+                    self.load_dataset(cx, path);
+                    loaded = true;
+                    break;
+                }
+            }
+
+            if !loaded {
+                self.load_demo_dataset(cx);
+            }
+        }
     }
 
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
@@ -116,27 +143,33 @@ impl LeRobotApp {
             let _ = writeln!(f, "[LeRobotApp] open_dataset_dialog called");
         }
 
-        // Try common dataset locations
-        let possible_paths = [
-            "/Users/yuechen/home/dorobot/dataset/aloha_mobile_cabinet",
-            "./data/lerobot_dataset",
-            "../lerobot_dataset",
-        ];
+        // Open native folder picker dialog
+        // LeRobot datasets are directories containing meta/, data/, and videos/ subdirectories
+        let dialog = rfd::FileDialog::new()
+            .set_title("Select LeRobot Dataset Folder")
+            .set_directory(std::env::current_dir().unwrap_or_default());
 
-        for path in possible_paths {
-            let exists = std::path::Path::new(path).exists();
+        if let Some(folder_path) = dialog.pick_folder() {
             if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-                let _ = writeln!(f, "[LeRobotApp] Checking path {}: exists={}", path, exists);
+                let _ = writeln!(f, "[LeRobotApp] User selected folder: {:?}", folder_path);
             }
-            if exists {
-                self.load_dataset(cx, path);
+
+            // Convert PathBuf to string and load the dataset
+            if let Some(path_str) = folder_path.to_str() {
+                self.load_dataset(cx, path_str);
                 return;
+            } else {
+                ::log::error!("Invalid path encoding: {:?}", folder_path);
+            }
+        } else {
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
+                let _ = writeln!(f, "[LeRobotApp] User cancelled folder picker dialog");
             }
         }
 
-        // Fall back to demo data
+        // Fall back to demo data if dialog cancelled or path invalid
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-            let _ = writeln!(f, "[LeRobotApp] No dataset found, using demo data");
+            let _ = writeln!(f, "[LeRobotApp] Loading demo data");
         }
         self.load_demo_dataset(cx);
     }
