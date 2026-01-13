@@ -370,6 +370,27 @@ impl RobotView {
         self.redraw(cx);
     }
 
+    /// Reload robot with new URDF - clears current state and reinitializes
+    pub fn reload_robot(&mut self, cx: &mut Cx, urdf_path: &str, assets_dir: &str) {
+        // Clear current robot state
+        self.robot = None;
+        self.link_drawers.clear();
+        self.original_meshes.clear();
+        self.selected_joint = 0;
+
+        // Stop animation if running
+        self.animating = false;
+        self.anim_timer = Timer::default();
+        self.anim_step = 0;
+
+        // Set new paths and trigger reload
+        self.urdf_path = urdf_path.to_string();
+        self.assets_dir = assets_dir.to_string();
+        self.initialized = false;
+
+        self.redraw(cx);
+    }
+
     pub fn set_joint_angle(&mut self, cx: &mut Cx, idx: usize, angle: f32) {
         if let Some(ref mut robot) = self.robot {
             robot.set_joint_angle(idx, angle);
@@ -403,7 +424,7 @@ impl RobotView {
     }
 
     pub fn reset_view(&mut self, cx: &mut Cx) {
-        self.camera_distance = 1.0;
+        self.camera_distance = 3.0;  // Zoomed out to show entire robot
         self.camera_yaw = 0.5;
         self.camera_pitch = 0.3;
         if let Some(ref mut robot) = self.robot {
@@ -550,9 +571,9 @@ impl Widget for RobotView {
 
         if !self.initialized {
             self.initialized = true;
-            self.camera_distance = 1.0;
+            self.camera_distance = 3.0;  // Zoomed out to show entire robot
             self.camera_yaw = 0.5;
-            self.camera_pitch = 0.2;
+            self.camera_pitch = 0.3;
             self.init_robot(cx.cx);
         }
 
@@ -658,6 +679,12 @@ impl RobotViewRef {
     pub fn load_robot(&self, cx: &mut Cx, urdf_path: &str, assets_dir: &str) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.load_robot(cx, urdf_path, assets_dir);
+        }
+    }
+
+    pub fn reload_robot(&self, cx: &mut Cx, urdf_path: &str, assets_dir: &str) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.reload_robot(cx, urdf_path, assets_dir);
         }
     }
 

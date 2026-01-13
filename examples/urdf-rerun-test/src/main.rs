@@ -32,16 +32,34 @@ live_design! {
             height: 40
             padding: 8
             spacing: 16
+            flow: Right
             align: { y: 0.5 }
             show_bg: true
             draw_bg: { color: #2a2a35 }
 
-            <Label> {
+            open_btn = <Button> {
+                text: "Open Robot..."
+                draw_text: { color: #fff }
+            }
+
+            <View> { width: 16 }
+
+            robot_name_label = <Label> {
                 draw_text: {
                     text_style: { font_size: 14.0 }
-                    color: #fff
+                    color: #4080c0
                 }
-                text: "VX300s (ALOHA) - Arrows=joints, +/-=zoom, A=animate, R=reset"
+                text: "VX300s (ALOHA)"
+            }
+
+            <View> { width: 16 }
+
+            <Label> {
+                draw_text: {
+                    text_style: { font_size: 12.0 }
+                    color: #888
+                }
+                text: "Arrows=joints, +/-=zoom, A=animate, R=reset"
             }
 
             <View> { width: Fill }
@@ -75,6 +93,71 @@ live_design! {
                     color: #888
                 }
                 text: "Joint 0: 0.00 rad"
+            }
+        }
+
+        // Robot selection modal
+        robot_modal = <Modal> {
+            content: <View> {
+                width: 400
+                height: 300
+                padding: 20
+                spacing: 16
+                flow: Down
+                show_bg: true
+                draw_bg: { color: #2a2a35 }
+
+                <Label> {
+                    draw_text: {
+                        text_style: { font_size: 18.0 }
+                        color: #fff
+                    }
+                    text: "Select Robot Model"
+                }
+
+                // Robot selection buttons
+                <View> {
+                    width: Fill
+                    height: Fit
+                    flow: Down
+                    spacing: 4
+
+                    vx300s_btn = <Button> {
+                        width: Fill
+                        text: "VX300s (ALOHA) - ViperX 300 6DOF"
+                        draw_text: { color: #fff }
+                        draw_bg: { color: #4080c0 }
+                    }
+
+                    so100_btn = <Button> {
+                        width: Fill
+                        text: "SO100 - SO-ARM100 Robot"
+                        draw_text: { color: #ccc }
+                    }
+                }
+
+                robot_info = <Label> {
+                    width: Fill
+                    margin: { top: 12 }
+                    draw_text: {
+                        text_style: { font_size: 12.0 }
+                        color: #888
+                    }
+                    text: "Click a robot above to load it"
+                }
+
+                <View> { height: Fill }
+
+                <View> {
+                    width: Fill
+                    height: Fit
+                    flow: Right
+                    align: { x: 1.0 }
+
+                    cancel_btn = <Button> {
+                        text: "Cancel"
+                    }
+                }
             }
         }
     }
@@ -174,6 +257,45 @@ impl Widget for URDFViewer {
             let robot_view = self.view.robot_view(id!(viewport.robot_view));
             robot_view.reset_view(cx);
             self.update_status(cx);
+        }
+
+        // Open robot selection modal
+        if self.view.button(id!(header.open_btn)).clicked(&actions) {
+            println!("Opening modal...");
+            self.view.view(id!(viewport)).set_visible(cx, false);
+            self.view.modal(id!(robot_modal)).open(cx);
+        }
+
+        // Robot selection buttons in modal - click to load directly
+        if self.view.button(id!(robot_modal.vx300s_btn)).clicked(&actions) {
+            let robot_view = self.view.robot_view(id!(viewport.robot_view));
+            robot_view.reload_robot(cx, "data/vx300s/vx300s.urdf", "data/vx300s");
+            self.view.label(id!(header.robot_name_label)).set_text(cx, "VX300s (ALOHA)");
+            self.view.modal(id!(robot_modal)).close(cx);
+            self.view.view(id!(viewport)).set_visible(cx, true);
+            self.update_status(cx);
+        }
+
+        if self.view.button(id!(robot_modal.so100_btn)).clicked(&actions) {
+            let robot_view = self.view.robot_view(id!(viewport.robot_view));
+            robot_view.reload_robot(cx, "data/so100.urdf", "data/assets");
+            self.view.label(id!(header.robot_name_label)).set_text(cx, "SO100");
+            self.view.modal(id!(robot_modal)).close(cx);
+            self.view.view(id!(viewport)).set_visible(cx, true);
+            self.update_status(cx);
+        }
+
+        // Cancel button in modal
+        if self.view.button(id!(robot_modal.cancel_btn)).clicked(&actions) {
+            self.view.modal(id!(robot_modal)).close(cx);
+            self.view.view(id!(viewport)).set_visible(cx, true);
+        }
+
+        // Load button removed - clicking robot buttons loads directly
+
+        // Modal dismissed (click outside or Escape)
+        if self.view.modal(id!(robot_modal)).dismissed(&actions) {
+            self.view.view(id!(viewport)).set_visible(cx, true);
         }
     }
 
