@@ -229,17 +229,14 @@ impl MeshData {
         ];
 
         let mut meshes = Vec::new();
-        let mut total_vertices = 0;
-
         for file in &stl_files {
             let path = format!("{}/{}", assets_dir, file);
             match MeshData::from_stl(&path) {
                 Ok(mesh) => {
-                    total_vertices += mesh.vertices.len() / FLOATS_PER_VERTEX;
                     meshes.push(mesh);
                 }
-                Err(_e) => {
-                    // Skip missing files silently
+                Err(e) => {
+                    eprintln!("Warning: Failed to load {}: {}", file, e);
                 }
             }
         }
@@ -248,7 +245,6 @@ impl MeshData {
             return Err("No meshes loaded".to_string());
         }
 
-        let _ = total_vertices;  // unused
         let mut combined = MeshData::combine(meshes);
         combined.normalize();
         combined.make_double_sided();
@@ -398,15 +394,81 @@ live_design! {
 
     pub GeometryMesh3D = {{GeometryMesh3D}} {}
 
+    pub DrawGrid = {{DrawGrid}} {
+        geometry: <GeometryMesh3D> {}
+
+        varying line_color: vec4;
+        varying world_pos: vec3;
+
+        fn vertex(self) -> vec4 {
+            let pos = self.geom_pos;
+
+            // Pass world position for grid pattern calculation in fragment shader
+            self.world_pos = pos;
+
+            // Scale grid to view
+            let scaled = pos * 4.0;
+
+            // Depth calculation matching DrawMesh
+            let raw_depth = (pos.z + 2.0) * 0.2;
+            let depth = clamp(raw_depth, 0.1, 0.9);
+
+            // Color from uniform
+            self.line_color = self.color;
+
+            return vec4(scaled.x, scaled.y, depth, 1.0);
+        }
+
+        fn pixel(self) -> vec4 {
+            // Light green background for earth
+            let bg_color = vec4(0.7, 0.9, 0.7, 1.0);
+
+            // After rotation, grid is in XY plane, so use x and y for grid lines
+            let x_norm = self.world_pos.x / self.grid_spacing + 0.5;
+            let y_norm = self.world_pos.y / self.grid_spacing + 0.5;
+            let x_frac = x_norm - floor(x_norm);
+            let y_frac = y_norm - floor(y_norm);
+            let x_dist = abs(x_frac - 0.5) * self.grid_spacing;
+            let y_dist = abs(y_frac - 0.5) * self.grid_spacing;
+
+            // X axis (red) - runs along X, so y near 0
+            if abs(self.world_pos.y) < self.line_width * 5.0 {
+                return self.x_axis_color;
+            }
+
+            // Y axis (blue) - runs along Y, so x near 0
+            if abs(self.world_pos.x) < self.line_width * 5.0 {
+                return self.z_axis_color;
+            }
+
+            // Regular grid lines - darker green
+            if x_dist < self.line_width || y_dist < self.line_width {
+                return self.line_color;
+            }
+
+            // Light green background
+            return bg_color;
+        }
+
+        fn fragment(self) -> vec4 {
+            return self.pixel();
+        }
+    }
+
     pub DrawMesh = {{DrawMesh}} {
         geometry: <GeometryMesh3D> {}
 
         varying lit_color: vec4;
-        varying world: vec4;
+        varying world_pos: vec3;
+        varying uv: vec2;
 
         fn vertex(self) -> vec4 {
             let pos = self.geom_pos;
             let normal = self.geom_normal;
+
+            // Pass world position and UV for grid calculation
+            self.world_pos = pos;
+            self.uv = self.geom_uv;
 
             // Simple diffuse lighting
             let light_dir = normalize(vec3(0.3, 0.8, 0.5));
@@ -414,29 +476,55 @@ live_design! {
             let diff = max(0.0, dot(n, light_dir));
             let ambient = 0.4;
             let brightness = ambient + diff * 0.6;
-            self.lit_color = vec4(self.color.xyz * brightness, 1.0);
-            self.world = vec4(pos, 1.0);
+
+            // Mix between top color and bottom color based on normal Y direction
+            // normal.y < 0 means facing down (bottom)
+            let bottom_blend = max(0.0, -n.y);  // 1.0 when facing straight down, 0.0 when facing up
+            let base_color = mix(self.color.xyz, self.bottom_color.xyz, bottom_blend);
+
+            self.lit_color = vec4(base_color * brightness, 1.0);
 
             // Scale to fill view
             let scaled = pos * 4.0;
-            // Use proper Z for depth testing
-            let depth = 0.5 - scaled.z * 0.1;
+
+            // Use compressed depth range to avoid near/far clipping (black fog)
+            // Map depth to 0.1-0.9 range, clamped to stay safe
+            let raw_depth = (pos.z + 2.0) * 0.2;  // Compress range
+            let depth = clamp(raw_depth, 0.1, 0.9);
+
             return vec4(scaled.x, scaled.y, depth, 1.0);
         }
 
-        fn get_color(self, dp: float) -> vec4 {
-            let ambient = vec3(0.2, 0.2, 0.2);
-            let color = self.color.xyz * dp * self.color.w + ambient;
-            return vec4(color, self.color.w);
-        }
-
         fn pixel(self) -> vec4 {
+            // Check if this is a grid plane (draw_grid_lines > 0)
+            if self.draw_grid_lines > 0.5 {
+                // Light yellow earth color (direct, not affected by lighting)
+                let earth_color = vec4(0.96, 0.96, 0.88, 1.0);
+
+                // Use UV coordinates for grid (preserves original world space for perspective)
+                // UV is 0-1 across the grid, centered at 0.5
+                let grid_lines = 10.0;  // Sparse grid - 10 lines across
+                let u = self.uv.x - 0.5;  // Center at 0
+                let v = self.uv.y - 0.5;  // Center at 0
+
+                let u_scaled = u * grid_lines;
+                let v_scaled = v * grid_lines;
+
+                let u_frac = abs(u_scaled - floor(u_scaled + 0.5));
+                let v_frac = abs(v_scaled - floor(v_scaled + 0.5));
+
+                // Grid lines only (no separate axis lines) - very thin
+                if u_frac < 0.0024 || v_frac < 0.0024 {
+                    return vec4(0.82, 0.84, 0.72, 1.0);  // Slightly darker for grid lines
+                }
+                // Earth background - light yellow
+                return earth_color;
+            }
             return self.lit_color;
         }
 
         fn fragment(self) -> vec4 {
-            // Just return the lit color directly, no depth clipping effects
-            return self.lit_color;
+            return self.pixel();
         }
     }
 }
@@ -545,6 +633,7 @@ impl GeometryMesh3D {
     /// Upload mesh data to GPU
     /// Uses unique fingerprint per instance to allow multiple geometries
     fn upload_mesh(&mut self, cx: &mut Cx, mesh: MeshData) {
+
         // If we don't have a geometry reference yet, create one with unique fingerprint
         if self.geometry_ref.is_none() {
             let mut fp = GeometryFingerprint::new(LiveType::of::<Self>());
@@ -570,9 +659,11 @@ pub struct DrawMesh {
     #[live] pub geometry: GeometryMesh3D,
     #[deref] pub draw_vars: DrawVars,
     #[live] pub color: Vec4,
+    #[live] pub bottom_color: Vec4,  // Color for bottom-facing surfaces
     #[live(vec3(0.0, 0.0, 0.0))] pub mesh_pos: Vec3,
     #[live(vec3(1.0, 1.0, 1.0))] pub mesh_scale: Vec3,
     #[live(1.0)] pub depth_clip: f32,
+    #[live(0.0)] pub draw_grid_lines: f32,  // Set to 1.0 to draw grid lines
 }
 
 impl LiveHook for DrawMesh {
@@ -582,6 +673,80 @@ impl LiveHook for DrawMesh {
 
     fn after_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
         self.draw_vars.after_apply_update_self(cx, apply, index, nodes, &self.geometry);
+    }
+}
+
+/// Draw shader for grid rendering
+#[derive(Live, LiveRegister)]
+#[repr(C)]
+pub struct DrawGrid {
+    #[rust] pub many_instances: Option<ManyInstances>,
+    #[live] pub geometry: GeometryMesh3D,
+    #[deref] pub draw_vars: DrawVars,
+    #[live] pub color: Vec4,
+    #[live] pub x_axis_color: Vec4,
+    #[live] pub z_axis_color: Vec4,
+    #[live(0.05)] pub grid_spacing: f32,
+    #[live(0.002)] pub line_width: f32,
+}
+
+impl LiveHook for DrawGrid {
+    fn before_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+        self.draw_vars.before_apply_init_shader(cx, apply, index, nodes, &self.geometry);
+    }
+
+    fn after_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+        self.draw_vars.after_apply_update_self(cx, apply, index, nodes, &self.geometry);
+    }
+}
+
+impl DrawGrid {
+    /// Create a ground plane grid at specified Y position
+    pub fn create_ground_plane(&mut self, cx: &mut Cx, size: f32, y_pos: f32) {
+        let mesh = MeshData::ground_plane(size, y_pos);
+        self.geometry.upload_mesh_data(cx, mesh);
+        // Re-bind draw_vars to geometry after upload
+        self.draw_vars.after_apply_update_self(
+            cx,
+            &mut Apply::from(ApplyFrom::UpdateFromDoc { file_id: Default::default() }),
+            0,
+            &[],
+            &self.geometry
+        );
+    }
+
+    /// Update geometry with transformed vertices
+    pub fn update_transformed_geometry(&mut self, cx: &mut Cx, original_mesh: &MeshData, transform: &Mat4) {
+        let mut transformed = original_mesh.clone();
+        transformed.apply_transform(transform);
+        self.geometry.upload_mesh_data(cx, transformed);
+        self.draw_vars.after_apply_update_self(
+            cx,
+            &mut Apply::from(ApplyFrom::UpdateFromDoc { file_id: Default::default() }),
+            0,
+            &[],
+            &self.geometry
+        );
+    }
+
+    pub fn draw(&mut self, cx: &mut Cx2d) {
+        if let Some(mi) = &mut self.many_instances {
+            mi.instances.extend_from_slice(self.draw_vars.as_slice());
+        } else if self.draw_vars.can_instance() {
+            let new_area = cx.add_instance(&self.draw_vars);
+            self.draw_vars.area = cx.update_area_refs(self.draw_vars.area, new_area);
+        }
+    }
+
+    pub fn begin_many_instances(&mut self, cx: &mut Cx2d) {
+        self.many_instances = cx.begin_many_instances(&self.draw_vars);
+    }
+
+    pub fn end_many_instances(&mut self, cx: &mut Cx2d) {
+        if let Some(mi) = self.many_instances.take() {
+            let new_area = cx.end_many_instances(mi);
+            self.draw_vars.area = cx.update_area_refs(self.draw_vars.area, new_area);
+        }
     }
 }
 
@@ -601,9 +766,11 @@ impl DrawMesh {
             geometry: geom,
             draw_vars,
             color: vec4(1.0, 0.65, 0.1, 1.0), // default orange
+            bottom_color: vec4(0.2, 0.2, 0.25, 1.0), // default dark gray for bottom
             mesh_pos: vec3(0.0, 0.0, 0.0),
             mesh_scale: vec3(1.0, 1.0, 1.0),
             depth_clip: 1.0,
+            draw_grid_lines: 0.0,
         }
     }
 
