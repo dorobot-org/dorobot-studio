@@ -6,15 +6,17 @@
 //! - Layout persistence (Save/Reset)
 //! - Dark/light theme support
 
+use std::time::Instant;
 use makepad_widgets::*;
 use makepad_app_shell::grid::panel_grid::PanelGridWidgetRefExt;
 use makepad_app_shell::grid::footer_grid::FooterGridWidgetRefExt;
 use makepad_app_shell::grid::{LayoutState, FooterLayoutState, FooterSlotState};
+use makepad_app_shell::theme::get_global_dark_mode;
 use crate::app_data::AppData;
 use crate::data::LeRobotDataset;
 use crate::sidebar_content::SidebarAction;
 use crate::playback_controls::PlaybackAction;
-use crate::widgets::timeline::TimelineAction;
+use crate::widgets::timeline::{TimelineAction, TimelineWidgetRefExt};
 use crate::widgets::time_series_plot::TimeSeriesPlotAction;
 use crate::widgets::video_player::VideoPlayerWidgetRefExt;
 use crate::widgets::robot_viewer::RobotViewerWidgetRefExt;
@@ -51,33 +53,95 @@ live_design! {
                 }
 
                 body = <ShellLayout> {
-                    // Override the header title
+                    // Override the header with logo and title
                     main_container = {
                         header = {
+                            // Robot logo icon (Hugging Face style R)
+                            logo_container = <View> {
+                                width: 28
+                                height: 28
+                                show_bg: true
+                                draw_bg: {
+                                    instance dark_mode: 0.0
+                                    fn pixel(self) -> vec4 {
+                                        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+                                        // Scale SVG (24x24) to fit in 28x28 with padding
+                                        let scale = self.rect_size.x / 24.0 * 0.9;
+                                        let ox = self.rect_size.x * 0.05;  // offset for centering
+                                        let oy = self.rect_size.y * 0.05;
+
+                                        // Small circle at top left (dot)
+                                        sdf.circle(ox + 5.4 * scale, oy + 3.67 * scale, 3.0 * scale);
+
+                                        // Main "R" shape - vertical stem
+                                        sdf.box(ox + 9.0 * scale, oy + 5.5 * scale, 4.5 * scale, 18.0 * scale, 1.0);
+
+                                        // "R" bowl at top (approximated as circle + box)
+                                        sdf.box(ox + 9.0 * scale, oy + 0.9 * scale, 8.0 * scale, 5.0 * scale, 1.0);
+                                        sdf.circle(ox + 15.5 * scale, oy + 5.5 * scale, 4.5 * scale);
+
+                                        // "R" diagonal leg going down-right
+                                        sdf.rotate(0.6, ox + 13.5 * scale, oy + 10.0 * scale);
+                                        sdf.box(ox + 13.5 * scale, oy + 10.0 * scale, 4.5 * scale, 14.0 * scale, 1.0);
+                                        sdf.rotate(-0.6, ox + 13.5 * scale, oy + 10.0 * scale);
+
+                                        // Bottom left tail (the "L" part going to bottom-left)
+                                        sdf.rotate(-0.15, ox + 4.0 * scale, oy + 17.5 * scale);
+                                        sdf.box(ox + 0.0 * scale, oy + 17.5 * scale, 9.0 * scale, 5.8 * scale, 1.0);
+
+                                        // Monochrome color based on theme
+                                        let light_color = vec4(0.2, 0.2, 0.22, 1.0);
+                                        let dark_color = vec4(0.85, 0.85, 0.88, 1.0);
+                                        let color = mix(light_color, dark_color, self.dark_mode);
+
+                                        return sdf.fill(color);
+                                    }
+                                }
+                            }
                             title_label = { text: "DoRobot Studio" }
                         }
 
                         dock_wrapper = {
                             dock = {
-                                // Override left sidebar content - Dataset (plain View to fill entire space)
+                                // Override left sidebar content - Dataset (themed, dark_mode responsive)
                                 left_sidebar_content = <View> {
                                     width: Fill, height: Fill
                                     flow: Down
 
                                     show_bg: true
-                                    draw_bg: { color: (COLOR_BG_SIDEBAR) }
+                                    draw_bg: {
+                                        instance dark_mode: 0.0
+                                        fn pixel(self) -> vec4 {
+                                            let light = vec4(0.973, 0.980, 0.988, 1.0);
+                                            let dark = vec4(0.082, 0.082, 0.094, 1.0);
+                                            return mix(light, dark, self.dark_mode);
+                                        }
+                                    }
 
                                     // Header
-                                    <View> {
+                                    left_sidebar_header = <View> {
                                         width: Fill, height: 40
                                         padding: { left: 16 }
                                         align: { y: 0.5 }
                                         show_bg: true
-                                        draw_bg: { color: (COLOR_BG_HEADER) }
-                                        <Label> {
+                                        draw_bg: {
+                                            instance dark_mode: 0.0
+                                            fn pixel(self) -> vec4 {
+                                                let light = vec4(0.945, 0.961, 0.976, 1.0);
+                                                let dark = vec4(0.133, 0.133, 0.157, 1.0);
+                                                return mix(light, dark, self.dark_mode);
+                                            }
+                                        }
+                                        left_sidebar_title = <Label> {
                                             draw_text: {
                                                 text_style: <FONT_SEMIBOLD> { font_size: 12.0 }
-                                                color: (COLOR_TEXT_PRIMARY)
+                                                instance dark_mode: 0.0
+                                                fn get_color(self) -> vec4 {
+                                                    let light_text = vec4(0.1, 0.1, 0.12, 1.0);
+                                                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
+                                                    return mix(light_text, dark_text, self.dark_mode);
+                                                }
                                             }
                                             text: "Dataset"
                                         }
@@ -94,13 +158,13 @@ live_design! {
                                     window_container = {
                                         row1 = {
                                             s1_1 = {
-                                                title_bar = { title = { text: "cam_high" } }
+                                                title: "cam_high"
                                                 content = {
                                                     video_main = <VideoPlayer> {}
                                                 }
                                             }
                                             s1_2 = {
-                                                title_bar = { title = { text: "3D Robot Viewer" } }
+                                                title: "3D View"
                                                 content = {
                                                     robot_viewer = <RobotViewer> {}
                                                 }
@@ -116,13 +180,13 @@ live_design! {
                                         }
                                         row2 = {
                                             s2_1 = {
-                                                title_bar = { title = { text: "cam_left_wrist" } }
+                                                title: "cam_left_wrist"
                                                 content = {
                                                     video_cam1 = <VideoPlayer> {}
                                                 }
                                             }
                                             s2_2 = {
-                                                title_bar = { title = { text: "cam_right_wrist" } }
+                                                title: "cam_right_wrist"
                                                 content = {
                                                     video_cam2 = <VideoPlayer> {}
                                                 }
@@ -141,25 +205,44 @@ live_design! {
                                     }
                                 }
 
-                                // Override right sidebar content - Episode Info (plain View to fill entire space)
+                                // Override right sidebar content - Episode Info (themed, dark_mode responsive)
                                 right_sidebar_content = <View> {
                                     width: Fill, height: Fill
                                     flow: Down
 
                                     show_bg: true
-                                    draw_bg: { color: (COLOR_BG_SIDEBAR) }
+                                    draw_bg: {
+                                        instance dark_mode: 0.0
+                                        fn pixel(self) -> vec4 {
+                                            let light = vec4(0.973, 0.980, 0.988, 1.0);
+                                            let dark = vec4(0.082, 0.082, 0.094, 1.0);
+                                            return mix(light, dark, self.dark_mode);
+                                        }
+                                    }
 
                                     // Header
-                                    <View> {
+                                    right_sidebar_header = <View> {
                                         width: Fill, height: 40
                                         padding: { left: 16 }
                                         align: { y: 0.5 }
                                         show_bg: true
-                                        draw_bg: { color: (COLOR_BG_HEADER) }
-                                        <Label> {
+                                        draw_bg: {
+                                            instance dark_mode: 0.0
+                                            fn pixel(self) -> vec4 {
+                                                let light = vec4(0.945, 0.961, 0.976, 1.0);
+                                                let dark = vec4(0.133, 0.133, 0.157, 1.0);
+                                                return mix(light, dark, self.dark_mode);
+                                            }
+                                        }
+                                        right_sidebar_title = <Label> {
                                             draw_text: {
                                                 text_style: <FONT_SEMIBOLD> { font_size: 12.0 }
-                                                color: (COLOR_TEXT_PRIMARY)
+                                                instance dark_mode: 0.0
+                                                fn get_color(self) -> vec4 {
+                                                    let light_text = vec4(0.1, 0.1, 0.12, 1.0);
+                                                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
+                                                    return mix(light_text, dark_text, self.dark_mode);
+                                                }
                                             }
                                             text: "Episode Info"
                                         }
@@ -177,25 +260,44 @@ live_design! {
                                     initial_panels: 3
 
                                     dock = {
-                                        // Left controller sidebar - Playback controls (plain View to fill entire space)
+                                        // Left controller sidebar - Playback controls (themed, dark_mode responsive)
                                         controller_content = <View> {
                                             width: Fill, height: Fill
                                             flow: Down
 
                                             show_bg: true
-                                            draw_bg: { color: (COLOR_BG_SIDEBAR) }
+                                            draw_bg: {
+                                                instance dark_mode: 0.0
+                                                fn pixel(self) -> vec4 {
+                                                    let light = vec4(0.973, 0.980, 0.988, 1.0);
+                                                    let dark = vec4(0.082, 0.082, 0.094, 1.0);
+                                                    return mix(light, dark, self.dark_mode);
+                                                }
+                                            }
 
                                             // Header
-                                            <View> {
+                                            footer_sidebar_header = <View> {
                                                 width: Fill, height: 40
                                                 padding: { left: 16 }
                                                 align: { y: 0.5 }
                                                 show_bg: true
-                                                draw_bg: { color: (COLOR_BG_HEADER) }
-                                                <Label> {
+                                                draw_bg: {
+                                                    instance dark_mode: 0.0
+                                                    fn pixel(self) -> vec4 {
+                                                        let light = vec4(0.945, 0.961, 0.976, 1.0);
+                                                        let dark = vec4(0.133, 0.133, 0.157, 1.0);
+                                                        return mix(light, dark, self.dark_mode);
+                                                    }
+                                                }
+                                                footer_sidebar_title = <Label> {
                                                     draw_text: {
                                                         text_style: <FONT_SEMIBOLD> { font_size: 12.0 }
-                                                        color: (COLOR_TEXT_PRIMARY)
+                                                        instance dark_mode: 0.0
+                                                        fn get_color(self) -> vec4 {
+                                                            let light_text = vec4(0.1, 0.1, 0.12, 1.0);
+                                                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
+                                                            return mix(light_text, dark_text, self.dark_mode);
+                                                        }
                                                     }
                                                     text: "Playback"
                                                 }
@@ -212,7 +314,7 @@ live_design! {
                                             flow: Down
                                             f1_0 = {
                                                 p0 = {
-                                                    title_bar = { title = { text: "State Plot" } }
+                                                    title: "State Plot"
                                                     content = {
                                                         state_plot = <TimeSeriesPlot> {}
                                                     }
@@ -220,7 +322,7 @@ live_design! {
                                             }
                                             f1_1 = {
                                                 p0 = {
-                                                    title_bar = { title = { text: "Action Plot" } }
+                                                    title: "Action Plot"
                                                     content = {
                                                         action_plot = <TimeSeriesPlot> {}
                                                     }
@@ -228,7 +330,7 @@ live_design! {
                                             }
                                             f1_2 = {
                                                 p0 = {
-                                                    title_bar = { title = { text: "Timeline" } }
+                                                    title: "Timeline"
                                                     content = {
                                                         timeline = <Timeline> {}
                                                     }
@@ -271,6 +373,22 @@ pub struct DoRobotApp {
     /// Track current episode to detect changes
     #[rust]
     last_episode: Option<u64>,
+
+    /// Track last video update time to avoid redundant decoding
+    #[rust]
+    last_video_time: f64,
+
+    /// Track last video decode instant for rate-limiting
+    #[rust]
+    last_video_decode_instant: Option<Instant>,
+
+    /// Whether user is currently scrubbing the timeline
+    #[rust]
+    is_scrubbing: bool,
+
+    /// Pending video update (deferred during fast scrubbing)
+    #[rust]
+    pending_video_update: bool,
 }
 
 impl LiveRegister for DoRobotApp {
@@ -297,10 +415,17 @@ impl MatchEvent for DoRobotApp {
         self.playback_timer = cx.start_interval(1.0 / 60.0);
 
         // Configure PanelGrid to show only 4 panels (2x2 grid)
-        // panel_0 = cam_high, panel_1 = robot_viewer
+        // panel_0 = cam_high, panel_1 = 3D View
         // panel_2 = cam_left_wrist, panel_3 = cam_right_wrist
         let panel_grid = self.ui.panel_grid(id!(center_content));
         panel_grid.set_layout_state(cx, LayoutState::with_panel_count(4));
+        // Set panel titles (these persist across layout state changes)
+        panel_grid.set_panel_titles(&[
+            ("panel_0", "cam_high"),
+            ("panel_1", "3D View"),
+            ("panel_2", "cam_left_wrist"),
+            ("panel_3", "cam_right_wrist"),
+        ]);
 
         // Configure FooterGrid to show 3 panels (State Plot, Action Plot, Timeline)
         let footer_grid = self.ui.footer_grid(id!(footer_content));
@@ -314,6 +439,11 @@ impl MatchEvent for DoRobotApp {
         };
         footer_grid.set_layout_state(cx, footer_state);
 
+        // Set footer panel titles explicitly via FooterGrid API
+        footer_grid.set_panel_title(cx, 0, 0, "State Plot");
+        footer_grid.set_panel_title(cx, 1, 0, "Action Plot");
+        footer_grid.set_panel_title(cx, 2, 0, "Timeline");
+
         // Try to load dataset from command line or default paths
         let args: Vec<String> = std::env::args().collect();
         if args.len() > 1 {
@@ -324,19 +454,22 @@ impl MatchEvent for DoRobotApp {
     }
 
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
-        for action in actions.iter() {
-            if let Some(widget_action) = action.as_widget_action() {
-                // Handle sidebar actions (load dataset, episode selection)
-                match widget_action.cast::<SidebarAction>() {
-                    SidebarAction::LoadDataset => {
-                        self.open_dataset_dialog(cx);
-                    }
-                    SidebarAction::EpisodeSelected(idx) => {
-                        self.load_episode(cx, idx);
-                    }
-                    SidebarAction::None => {}
-                }
+        use crate::widgets::episode_list::EpisodeListAction;
 
+        for action in actions {
+            // Handle EpisodeListAction (emitted via cx.action() from EpisodeListItem)
+            if let Some(EpisodeListAction::EpisodeSelected(idx)) = action.downcast_ref::<EpisodeListAction>() {
+                log!("App: EpisodeListAction::EpisodeSelected({})", *idx);
+                self.load_episode(cx, *idx);
+            }
+
+            // Handle SidebarAction (emitted via cx.action() from SidebarContent)
+            if let Some(SidebarAction::LoadDataset) = action.downcast_ref::<SidebarAction>() {
+                self.open_dataset_dialog(cx);
+            }
+
+            // Handle widget actions (emitted via cx.widget_action())
+            if let Some(widget_action) = action.as_widget_action() {
                 // Handle playback actions
                 match widget_action.cast::<PlaybackAction>() {
                     PlaybackAction::Play => {
@@ -357,13 +490,29 @@ impl MatchEvent for DoRobotApp {
                 // Handle timeline actions
                 match widget_action.cast::<TimelineAction>() {
                     TimelineAction::Seek(time) => {
+                        self.is_scrubbing = true;
                         self.seek_to(cx, time);
+                        // Rate-limit video updates during scrubbing for responsiveness
+                        self.update_videos_rate_limited(cx);
+                    }
+                    TimelineAction::ScrubEnd => {
+                        self.is_scrubbing = false;
+                        self.pending_video_update = false;
+                        // Show final frame immediately when scrubbing ends
+                        self.update_videos_now(cx);
                     }
                     TimelineAction::Play => {
+                        self.is_scrubbing = false;
                         self.data.is_playing = true;
                     }
                     TimelineAction::Pause => {
+                        self.is_scrubbing = false;
                         self.data.is_playing = false;
+                        // Show final frame when pausing
+                        self.update_videos_now(cx);
+                    }
+                    TimelineAction::StepForward | TimelineAction::StepBackward => {
+                        self.is_scrubbing = false;
                     }
                     _ => {}
                 }
@@ -371,7 +520,10 @@ impl MatchEvent for DoRobotApp {
                 // Handle plot cursor actions
                 match widget_action.cast::<TimeSeriesPlotAction>() {
                     TimeSeriesPlotAction::CursorMoved(time) => {
+                        self.is_scrubbing = true;
                         self.seek_to(cx, time);
+                        // Rate-limit video updates during scrubbing
+                        self.update_videos_rate_limited(cx);
                     }
                     _ => {}
                 }
@@ -379,16 +531,25 @@ impl MatchEvent for DoRobotApp {
         }
     }
 
-    fn handle_timer(&mut self, cx: &mut Cx, _event: &TimerEvent) {
-        if self.data.is_playing {
-            self.advance_time(cx, 1.0 / 60.0);
+    fn handle_timer(&mut self, cx: &mut Cx, event: &TimerEvent) {
+        if self.playback_timer.is_timer(event).is_some() {
+            if self.data.is_playing {
+                self.advance_time(cx, 1.0 / 60.0);
+                // Update videos at rate-limited pace during playback
+                self.update_videos_rate_limited(cx);
+            } else if self.pending_video_update {
+                // Process any pending scrub update when not playing
+                self.pending_video_update = false;
+                self.update_videos_now(cx);
+            }
         }
     }
 }
 
 impl AppMain for DoRobotApp {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        self.match_event(cx, event);
+        // Apply theme to custom elements
+        self.apply_custom_theme(cx);
 
         // Check if episode changed - need to reinitialize videos
         if self.data.current_episode != self.last_episode {
@@ -396,20 +557,23 @@ impl AppMain for DoRobotApp {
             self.videos_initialized = false;
         }
 
-        // Initialize/update videos
+        // Initialize videos once when episode loads
         if !self.videos_initialized && self.data.current_episode.is_some() {
             self.init_videos(cx);
             self.videos_initialized = true;
+            // Show first frame immediately
+            self.update_videos_now(cx);
         }
 
-        // Update video frames
-        self.update_videos(cx);
-
-        // Update robot viewer
+        // Update robot viewer (lightweight - no video decoding)
         self.update_robot_viewer(cx);
 
-        // Pass app data through scope to all widgets
+        // IMPORTANT: Let UI handle events first so widgets can emit actions,
+        // then process those actions in match_event/handle_actions
         self.ui.handle_event(cx, event, &mut Scope::with_data(&mut self.data));
+
+        // Now process any actions that were emitted during ui.handle_event
+        self.match_event(cx, event);
     }
 }
 
@@ -554,6 +718,8 @@ impl DoRobotApp {
         let frame_duration = 1.0 / self.data.episode_fps;
         let new_time = self.data.current_time + (frames as f64) * frame_duration;
         self.seek_to(cx, new_time);
+        // Single frame step - update immediately
+        self.update_videos_now(cx);
     }
 
     fn init_videos(&mut self, cx: &mut Cx) {
@@ -590,24 +756,66 @@ impl DoRobotApp {
         }
     }
 
-    fn update_videos(&mut self, cx: &mut Cx) {
-        let frame_idx = self.data.current_frame_index();
-        let total = self.data.total_frames();
+    /// Rate-limited video update - for scrubbing and playback
+    /// During scrubbing: update at ~10fps to keep UI responsive
+    /// During playback: update at video fps to match content
+    fn update_videos_rate_limited(&mut self, cx: &mut Cx) {
+        // Calculate minimum interval between video decodes
+        // Scrubbing: 100ms (10fps) for UI responsiveness
+        // Playback: match video fps (e.g., 33ms for 30fps)
+        let min_interval_ms = if self.is_scrubbing {
+            100 // 10 fps during scrubbing for fast response
+        } else {
+            (1000.0 / self.data.episode_fps.max(1.0)) as u64
+        };
 
-        // Update main video
-        let video_main = self.ui.video_player(id!(video_main));
-        video_main.show_frame_at_time(cx, self.data.current_time);
-        video_main.set_frame_info(cx, frame_idx, total);
+        let now = Instant::now();
+        let should_decode = match self.last_video_decode_instant {
+            Some(last) => now.duration_since(last).as_millis() as u64 >= min_interval_ms,
+            None => true,
+        };
 
-        // Update cam1
-        let video_cam1 = self.ui.video_player(id!(video_cam1));
-        video_cam1.show_frame_at_time(cx, self.data.current_time);
-        video_cam1.set_frame_info(cx, frame_idx, total);
+        if should_decode {
+            self.update_videos_now(cx);
+        } else {
+            // Mark that we have a pending update for when scrubbing stops
+            self.pending_video_update = true;
+        }
+    }
 
-        // Update cam2
-        let video_cam2 = self.ui.video_player(id!(video_cam2));
-        video_cam2.show_frame_at_time(cx, self.data.current_time);
-        video_cam2.set_frame_info(cx, frame_idx, total);
+    /// Immediate video update - bypasses rate limiting
+    fn update_videos_now(&mut self, cx: &mut Cx) {
+        // Only decode if time has changed
+        let time_changed = (self.data.current_time - self.last_video_time).abs() > 0.001;
+
+        if time_changed {
+            self.last_video_time = self.data.current_time;
+            self.last_video_decode_instant = Some(Instant::now());
+
+            let frame_idx = self.data.current_frame_index();
+            let total = self.data.total_frames();
+
+            // Update main video
+            let video_main = self.ui.video_player(id!(video_main));
+            video_main.show_frame_at_time(cx, self.data.current_time);
+            video_main.set_frame_info(cx, frame_idx, total);
+
+            // Update cam1
+            let video_cam1 = self.ui.video_player(id!(video_cam1));
+            video_cam1.show_frame_at_time(cx, self.data.current_time);
+            video_cam1.set_frame_info(cx, frame_idx, total);
+
+            // Update cam2
+            let video_cam2 = self.ui.video_player(id!(video_cam2));
+            video_cam2.show_frame_at_time(cx, self.data.current_time);
+            video_cam2.set_frame_info(cx, frame_idx, total);
+        }
+
+        // Always update timeline (lightweight)
+        let timeline = self.ui.timeline(id!(timeline));
+        timeline.set_duration(cx, self.data.episode_duration, self.data.episode_fps);
+        timeline.set_current_time(cx, self.data.current_time);
+        timeline.set_playing(cx, self.data.is_playing);
     }
 
     fn update_robot_viewer(&mut self, cx: &mut Cx) {
@@ -616,6 +824,49 @@ impl DoRobotApp {
             let robot_viewer = self.ui.robot_viewer(id!(robot_viewer));
             robot_viewer.set_joint_angles(cx, &joint_angles);
         }
+    }
+
+    /// Apply theme to custom sidebar and header elements
+    fn apply_custom_theme(&mut self, cx: &mut Cx) {
+        let dm = get_global_dark_mode();
+
+        // Robot logo in header
+        self.ui.view(id!(logo_container)).apply_over(cx, live! {
+            draw_bg: { dark_mode: (dm) }
+        });
+
+        // Left sidebar (Dataset) header and background
+        self.ui.view(id!(left_sidebar_content)).apply_over(cx, live! {
+            draw_bg: { dark_mode: (dm) }
+        });
+        self.ui.view(id!(left_sidebar_header)).apply_over(cx, live! {
+            draw_bg: { dark_mode: (dm) }
+        });
+        self.ui.label(id!(left_sidebar_title)).apply_over(cx, live! {
+            draw_text: { dark_mode: (dm) }
+        });
+
+        // Right sidebar (Episode Info) header and background
+        self.ui.view(id!(right_sidebar_content)).apply_over(cx, live! {
+            draw_bg: { dark_mode: (dm) }
+        });
+        self.ui.view(id!(right_sidebar_header)).apply_over(cx, live! {
+            draw_bg: { dark_mode: (dm) }
+        });
+        self.ui.label(id!(right_sidebar_title)).apply_over(cx, live! {
+            draw_text: { dark_mode: (dm) }
+        });
+
+        // Footer sidebar (Playback) header and background
+        self.ui.view(id!(footer_sidebar_content)).apply_over(cx, live! {
+            draw_bg: { dark_mode: (dm) }
+        });
+        self.ui.view(id!(footer_sidebar_header)).apply_over(cx, live! {
+            draw_bg: { dark_mode: (dm) }
+        });
+        self.ui.label(id!(footer_sidebar_title)).apply_over(cx, live! {
+            draw_text: { dark_mode: (dm) }
+        });
     }
 }
 

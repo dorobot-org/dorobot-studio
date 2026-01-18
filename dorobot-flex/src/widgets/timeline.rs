@@ -1,6 +1,7 @@
 //! Timeline Widget with playback controls and scrubbing
 
 use makepad_widgets::*;
+use makepad_app_shell::theme::get_global_dark_mode;
 
 live_design! {
     use link::theme::*;
@@ -25,7 +26,12 @@ live_design! {
         draw_tick: {}
         draw_text: {
             text_style: <THEME_FONT_REGULAR>{ font_size: 9.0 }
-            color: #888888
+            instance dark_mode: 0.0
+            fn get_color(self) -> vec4 {
+                let light_text = vec4(0.33, 0.33, 0.36, 1.0);
+                let dark_text = vec4(0.55, 0.55, 0.58, 1.0);
+                return mix(light_text, dark_text, self.dark_mode);
+            }
         }
 
         // Playback controls bar - hidden since we use FooterTimeline's controls
@@ -42,7 +48,14 @@ live_design! {
             padding: { left: 4, right: 4 }
 
             show_bg: true
-            draw_bg: { color: #1e1e24 }
+            draw_bg: {
+                instance dark_mode: 0.0
+                fn pixel(self) -> vec4 {
+                    let light_bg = vec4(0.91, 0.91, 0.93, 1.0);
+                    let dark_bg = vec4(0.12, 0.12, 0.14, 1.0);
+                    return mix(light_bg, dark_bg, self.dark_mode);
+                }
+            }
 
             // Labels will be drawn dynamically
         }
@@ -55,7 +68,14 @@ live_design! {
             flow: Overlay
 
             show_bg: true
-            draw_bg: { color: #282830 }
+            draw_bg: {
+                instance dark_mode: 0.0
+                fn pixel(self) -> vec4 {
+                    let light_bg = vec4(0.94, 0.94, 0.96, 1.0);
+                    let dark_bg = vec4(0.16, 0.16, 0.19, 1.0);
+                    return mix(light_bg, dark_bg, self.dark_mode);
+                }
+            }
 
             // Playhead indicator (positioned via margin)
             playhead = <View> {
@@ -90,6 +110,7 @@ pub enum TimelineAction {
     Play,
     Pause,
     Seek(f64),         // Seek to time in seconds
+    ScrubEnd,          // User finished scrubbing (finger up)
     StepForward,
     StepBackward,
     SpeedChanged(f64),
@@ -168,24 +189,41 @@ impl Widget for Timeline {
             cx.widget_action(self.widget_uid(), &scope.path, TimelineAction::StepForward);
         }
 
-        // Handle track scrubbing
-        let track_area = self.view.view(id!(track_area)).area();
-        match event.hits(cx, track_area) {
+        // Handle track scrubbing - direct hit detection on the track area view
+        let track_view = self.view.view(id!(track_area));
+        let track_area = track_view.area();
+        let track_rect = track_area.rect(cx);
+
+
+        // Store scope path for scrubbing actions
+        let scope_path = scope.path.clone();
+
+        match event.hits_with_capture_overload(cx, track_area, self.is_scrubbing) {
             Hit::FingerDown(fe) => {
+                cx.set_key_focus(track_area);  // Grab focus for continued tracking
                 self.is_scrubbing = true;
-                self.scrub_to_position(cx, scope, fe.abs.x, track_area.rect(cx));
+                self.scrub_to_position_with_path(cx, &scope_path, fe.abs.x, track_rect);
             }
             Hit::FingerMove(fe) if self.is_scrubbing => {
-                self.scrub_to_position(cx, scope, fe.abs.x, track_area.rect(cx));
+                self.scrub_to_position_with_path(cx, &scope_path, fe.abs.x, track_rect);
             }
             Hit::FingerUp(_) => {
-                self.is_scrubbing = false;
+                if self.is_scrubbing {
+                    self.is_scrubbing = false;
+                    // Emit ScrubEnd so app can do final video update
+                    cx.widget_action(self.widget_uid(), &scope_path, TimelineAction::ScrubEnd);
+                }
             }
             _ => {}
         }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Apply theme
+        let dm = get_global_dark_mode();
+        self.view.view(id!(ruler_area)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
+        self.view.view(id!(track_area)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
+
         // First draw the view structure
         let _ = self.view.draw_walk(cx, scope, walk);
 
@@ -262,12 +300,11 @@ impl Timeline {
         }
     }
 
-    fn scrub_to_position(&mut self, cx: &mut Cx, scope: &mut Scope, abs_x: f64, rect: Rect) {
+    fn scrub_to_position_with_path(&mut self, cx: &mut Cx, scope_path: &HeapLiveIdPath, abs_x: f64, rect: Rect) {
         let rel_x = ((abs_x - rect.pos.x) / rect.size.x).clamp(0.0, 1.0);
         let time = rel_x * self.duration;
-
         self.set_current_time(cx, time);
-        cx.widget_action(self.widget_uid(), &scope.path, TimelineAction::Seek(time));
+        cx.widget_action(self.widget_uid(), scope_path, TimelineAction::Seek(time));
     }
 
     /// Set the total duration
