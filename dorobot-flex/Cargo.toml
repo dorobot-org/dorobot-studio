@@ -1,0 +1,40 @@
+[package]
+name = "dorobot-flex"
+version.workspace = true
+edition = "2021"
+description = "DoRobot Studio with Flex Layout Shell"
+
+[[bin]]
+name = "dorobot-flex"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+dorobot-types = { workspace = true }
+
+# Makepad
+makepad-widgets = { workspace = true }
+makepad-app-shell = { workspace = true }
+
+# Logging
+log = { workspace = true }
+env_logger = { workspace = true }
+
+# Data loading
+parquet = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# File dialogs
+rfd = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Video decoding (optional)
+ffmpeg-next = { workspace = true, optional = true }
+
+[features]
+default = []
+video = ["ffmpeg-next"]
