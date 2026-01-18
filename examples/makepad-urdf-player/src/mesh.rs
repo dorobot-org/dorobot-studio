@@ -130,6 +130,93 @@ impl MeshData {
         mesh
     }
 
+    /// Create a cylinder mesh for axis visualization
+    pub fn cylinder(radius: f32, height: f32, segments: usize) -> Self {
+        let mut mesh = MeshData::default();
+        mesh.bounds_min = [-radius, 0.0, -radius];
+        mesh.bounds_max = [radius, height, radius];
+
+        let half_height = height / 2.0;
+
+        // Generate vertices around the cylinder
+        for i in 0..segments {
+            let angle0 = (i as f32 / segments as f32) * std::f32::consts::TAU;
+            let angle1 = ((i + 1) as f32 / segments as f32) * std::f32::consts::TAU;
+
+            let x0 = radius * angle0.cos();
+            let z0 = radius * angle0.sin();
+            let x1 = radius * angle1.cos();
+            let z1 = radius * angle1.sin();
+
+            // Side face (2 triangles forming a quad)
+            let normal0 = [angle0.cos(), 0.0, angle0.sin()];
+            let normal1 = [angle1.cos(), 0.0, angle1.sin()];
+
+            // Triangle 1: bottom-left, top-left, top-right
+            let verts = [
+                ([x0, -half_height, z0], normal0),
+                ([x0, half_height, z0], normal0),
+                ([x1, half_height, z1], normal1),
+            ];
+            for (pos, norm) in &verts {
+                mesh.vertices.extend_from_slice(pos);
+                mesh.vertices.push(i as f32);
+                mesh.vertices.extend_from_slice(norm);
+                mesh.vertices.push(0.0);
+                mesh.vertices.push(0.0);
+            }
+
+            // Triangle 2: bottom-left, top-right, bottom-right
+            let verts = [
+                ([x0, -half_height, z0], normal0),
+                ([x1, half_height, z1], normal1),
+                ([x1, -half_height, z1], normal1),
+            ];
+            for (pos, norm) in &verts {
+                mesh.vertices.extend_from_slice(pos);
+                mesh.vertices.push(i as f32);
+                mesh.vertices.extend_from_slice(norm);
+                mesh.vertices.push(0.0);
+                mesh.vertices.push(0.0);
+            }
+
+            // Top cap
+            let top_normal = [0.0, 1.0, 0.0];
+            let top_verts = [
+                [0.0, half_height, 0.0],
+                [x0, half_height, z0],
+                [x1, half_height, z1],
+            ];
+            for pos in &top_verts {
+                mesh.vertices.extend_from_slice(pos);
+                mesh.vertices.push(i as f32);
+                mesh.vertices.extend_from_slice(&top_normal);
+                mesh.vertices.push(0.0);
+                mesh.vertices.push(0.0);
+            }
+
+            // Bottom cap
+            let bottom_normal = [0.0, -1.0, 0.0];
+            let bottom_verts = [
+                [0.0, -half_height, 0.0],
+                [x1, -half_height, z1],
+                [x0, -half_height, z0],
+            ];
+            for pos in &bottom_verts {
+                mesh.vertices.extend_from_slice(pos);
+                mesh.vertices.push(i as f32);
+                mesh.vertices.extend_from_slice(&bottom_normal);
+                mesh.vertices.push(0.0);
+                mesh.vertices.push(0.0);
+            }
+        }
+
+        let num_vertices = mesh.vertices.len() / FLOATS_PER_VERTEX;
+        mesh.indices = (0..num_vertices as u32).collect();
+
+        mesh
+    }
+
     /// Create a simple test cube mesh
     pub fn test_cube(size: f32) -> Self {
         let mut mesh = MeshData::default();
@@ -460,36 +547,56 @@ live_design! {
 
         varying lit_color: vec4;
         varying world_pos: vec3;
+        varying world_normal: vec3;
         varying uv: vec2;
 
         fn vertex(self) -> vec4 {
-            let pos = self.geom_pos;
-            let normal = self.geom_normal;
+            // Reconstruct transform matrix from 4 column vectors (combined model-view-scale)
+            let col0 = self.transform_col0;
+            let col1 = self.transform_col1;
+            let col2 = self.transform_col2;
+            let col3 = self.transform_col3;
 
-            // Pass world position and UV for grid calculation
+            // Apply transform to position: transform * vec4(pos, 1.0)
+            let pos_in = self.geom_pos;
+            let pos = vec3(
+                col0.x * pos_in.x + col1.x * pos_in.y + col2.x * pos_in.z + col3.x,
+                col0.y * pos_in.x + col1.y * pos_in.y + col2.y * pos_in.z + col3.y,
+                col0.z * pos_in.x + col1.z * pos_in.y + col2.z * pos_in.z + col3.z
+            );
+
+            // Transform normal (rotation only, no translation)
+            let normal_in = self.geom_normal;
+            let normal = vec3(
+                col0.x * normal_in.x + col1.x * normal_in.y + col2.x * normal_in.z,
+                col0.y * normal_in.x + col1.y * normal_in.y + col2.y * normal_in.z,
+                col0.z * normal_in.x + col1.z * normal_in.y + col2.z * normal_in.z
+            );
+
+            // Pass data to fragment shader
             self.world_pos = pos;
+            self.world_normal = normalize(normal);
             self.uv = self.geom_uv;
 
-            // Simple diffuse lighting
+            // Calculate diffuse lighting (in world space)
             let light_dir = normalize(vec3(0.3, 0.8, 0.5));
             let n = normalize(normal);
             let diff = max(0.0, dot(n, light_dir));
             let ambient = 0.4;
-            let brightness = ambient + diff * 0.6;
+            let diffuse_brightness = ambient + diff * 0.6;
 
             // Mix between top color and bottom color based on normal Y direction
-            // normal.y < 0 means facing down (bottom)
-            let bottom_blend = max(0.0, -n.y);  // 1.0 when facing straight down, 0.0 when facing up
+            let bottom_blend = max(0.0, -n.y);
             let base_color = mix(self.color.xyz, self.bottom_color.xyz, bottom_blend);
 
-            self.lit_color = vec4(base_color * brightness, 1.0);
+            // Store diffuse color (specular will be added in fragment shader)
+            self.lit_color = vec4(base_color * diffuse_brightness, 1.0);
 
-            // Scale to fill view
+            // Scale to fill view (Makepad-compatible output)
             let scaled = pos * 4.0;
 
-            // Use compressed depth range to avoid near/far clipping (black fog)
-            // Map depth to 0.1-0.9 range, clamped to stay safe
-            let raw_depth = (pos.z + 2.0) * 0.2;  // Compress range
+            // Depth calculation for proper z-ordering
+            let raw_depth = (pos.z + 2.0) * 0.2;
             let depth = clamp(raw_depth, 0.1, 0.9);
 
             return vec4(scaled.x, scaled.y, depth, 1.0);
@@ -520,7 +627,21 @@ live_design! {
                 // Earth background - light yellow
                 return earth_color;
             }
-            return self.lit_color;
+
+            // Calculate specular lighting
+            let light_dir = normalize(vec3(0.3, 0.8, 0.5));
+            let view_dir = normalize(self.camera_pos - self.world_pos);
+            let normal = normalize(self.world_normal);
+
+            // Blinn-Phong specular (halfway vector method - more efficient)
+            let halfway = normalize(light_dir + view_dir);
+            let spec_angle = max(dot(normal, halfway), 0.0);
+            let specular = pow(spec_angle, self.shininess) * self.specular_strength;
+
+            // Add white specular highlight to diffuse color
+            let final_color = self.lit_color.xyz + vec3(specular, specular, specular);
+
+            return vec4(final_color, 1.0);
         }
 
         fn fragment(self) -> vec4 {
@@ -664,6 +785,26 @@ pub struct DrawMesh {
     #[live(vec3(1.0, 1.0, 1.0))] pub mesh_scale: Vec3,
     #[live(1.0)] pub depth_clip: f32,
     #[live(0.0)] pub draw_grid_lines: f32,  // Set to 1.0 to draw grid lines
+    // GPU-side model transform matrix (4 columns of Vec4)
+    #[live(vec4(1.0, 0.0, 0.0, 0.0))] pub transform_col0: Vec4,
+    #[live(vec4(0.0, 1.0, 0.0, 0.0))] pub transform_col1: Vec4,
+    #[live(vec4(0.0, 0.0, 1.0, 0.0))] pub transform_col2: Vec4,
+    #[live(vec4(0.0, 0.0, 0.0, 1.0))] pub transform_col3: Vec4,
+    // View matrix (camera position/orientation) - 4 columns
+    #[live(vec4(1.0, 0.0, 0.0, 0.0))] pub view_col0: Vec4,
+    #[live(vec4(0.0, 1.0, 0.0, 0.0))] pub view_col1: Vec4,
+    #[live(vec4(0.0, 0.0, 1.0, 0.0))] pub view_col2: Vec4,
+    #[live(vec4(0.0, 0.0, 0.0, 1.0))] pub view_col3: Vec4,
+    // Projection matrix (perspective or orthographic) - 4 columns
+    #[live(vec4(1.0, 0.0, 0.0, 0.0))] pub proj_col0: Vec4,
+    #[live(vec4(0.0, 1.0, 0.0, 0.0))] pub proj_col1: Vec4,
+    #[live(vec4(0.0, 0.0, 1.0, 0.0))] pub proj_col2: Vec4,
+    #[live(vec4(0.0, 0.0, 0.0, 1.0))] pub proj_col3: Vec4,
+    // Camera position for specular lighting
+    #[live(vec3(0.0, 0.5, 3.0))] pub camera_pos: Vec3,
+    // Specular parameters
+    #[live(0.5)] pub specular_strength: f32,
+    #[live(32.0)] pub shininess: f32,
 }
 
 impl LiveHook for DrawMesh {
@@ -771,7 +912,70 @@ impl DrawMesh {
             mesh_scale: vec3(1.0, 1.0, 1.0),
             depth_clip: 1.0,
             draw_grid_lines: 0.0,
+            // Identity model transform
+            transform_col0: vec4(1.0, 0.0, 0.0, 0.0),
+            transform_col1: vec4(0.0, 1.0, 0.0, 0.0),
+            transform_col2: vec4(0.0, 0.0, 1.0, 0.0),
+            transform_col3: vec4(0.0, 0.0, 0.0, 1.0),
+            // Identity view matrix
+            view_col0: vec4(1.0, 0.0, 0.0, 0.0),
+            view_col1: vec4(0.0, 1.0, 0.0, 0.0),
+            view_col2: vec4(0.0, 0.0, 1.0, 0.0),
+            view_col3: vec4(0.0, 0.0, 0.0, 1.0),
+            // Identity projection matrix
+            proj_col0: vec4(1.0, 0.0, 0.0, 0.0),
+            proj_col1: vec4(0.0, 1.0, 0.0, 0.0),
+            proj_col2: vec4(0.0, 0.0, 1.0, 0.0),
+            proj_col3: vec4(0.0, 0.0, 0.0, 1.0),
+            // Camera position and specular parameters
+            camera_pos: vec3(0.0, 0.5, 3.0),
+            specular_strength: 0.5,
+            shininess: 32.0,
         }
+    }
+
+    /// Set the GPU-side model transform matrix (64 bytes instead of 13MB mesh re-upload)
+    /// This is the optimized path - geometry stays on GPU, only transform changes
+    pub fn set_transform(&mut self, m: &Mat4) {
+        // Mat4 is column-major: v[0..4] = col0, v[4..8] = col1, etc.
+        self.transform_col0 = vec4(m.v[0], m.v[1], m.v[2], m.v[3]);
+        self.transform_col1 = vec4(m.v[4], m.v[5], m.v[6], m.v[7]);
+        self.transform_col2 = vec4(m.v[8], m.v[9], m.v[10], m.v[11]);
+        self.transform_col3 = vec4(m.v[12], m.v[13], m.v[14], m.v[15]);
+    }
+
+    /// Set the view matrix (camera position/orientation)
+    pub fn set_view_matrix(&mut self, m: &Mat4) {
+        self.view_col0 = vec4(m.v[0], m.v[1], m.v[2], m.v[3]);
+        self.view_col1 = vec4(m.v[4], m.v[5], m.v[6], m.v[7]);
+        self.view_col2 = vec4(m.v[8], m.v[9], m.v[10], m.v[11]);
+        self.view_col3 = vec4(m.v[12], m.v[13], m.v[14], m.v[15]);
+    }
+
+    /// Set the projection matrix (perspective or orthographic)
+    pub fn set_projection_matrix(&mut self, m: &Mat4) {
+        self.proj_col0 = vec4(m.v[0], m.v[1], m.v[2], m.v[3]);
+        self.proj_col1 = vec4(m.v[4], m.v[5], m.v[6], m.v[7]);
+        self.proj_col2 = vec4(m.v[8], m.v[9], m.v[10], m.v[11]);
+        self.proj_col3 = vec4(m.v[12], m.v[13], m.v[14], m.v[15]);
+    }
+
+    /// Set camera position for specular lighting
+    pub fn set_camera_position(&mut self, pos: Vec3) {
+        self.camera_pos = pos;
+    }
+
+    /// Set specular strength (0.0 = off, 0.5 = default)
+    pub fn set_specular_strength(&mut self, strength: f32) {
+        self.specular_strength = strength;
+    }
+
+    /// Reset transform to identity matrix
+    pub fn reset_transform(&mut self) {
+        self.transform_col0 = vec4(1.0, 0.0, 0.0, 0.0);
+        self.transform_col1 = vec4(0.0, 1.0, 0.0, 0.0);
+        self.transform_col2 = vec4(0.0, 0.0, 1.0, 0.0);
+        self.transform_col3 = vec4(0.0, 0.0, 0.0, 1.0);
     }
 
     /// Update geometry with transformed vertices

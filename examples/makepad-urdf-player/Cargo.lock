@@ -410,6 +410,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "makepad-urdf-player"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "makepad-widgets",
+ "stl_io",
+ "urdf-rs",
+]
+
+[[package]]
 name = "makepad-vector"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#f27e2062bfdca5ddda8ba759d465cb5c2f5cd99e"
@@ -900,16 +910,6 @@ name = "unicode-segmentation"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
-
-[[package]]
-name = "urdf-rerun-test"
-version = "0.1.0"
-dependencies = [
- "glam",
- "makepad-widgets",
- "stl_io",
- "urdf-rs",
-]
 
 [[package]]
 name = "urdf-rs"

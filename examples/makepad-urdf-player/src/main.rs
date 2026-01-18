@@ -1,6 +1,6 @@
-//! 3D Robot Viewer - Rerun-style animation
+//! Makepad URDF Player - 3D Robot Viewer
 //!
-//! Uses glam quaternions like the rerun example for exact same behavior.
+//! A Makepad-based URDF robot visualization application.
 //!
 //! Controls:
 //!   - Mouse drag: Orbit camera
@@ -12,7 +12,7 @@
 use makepad_widgets::*;
 
 // Import from the library crate
-use urdf_rerun_test::robot_view::{RobotViewAction, RobotViewWidgetExt};
+use makepad_urdf_player::robot_view::{RobotViewAction, RobotViewWidgetExt};
 
 live_design! {
     use link::theme::*;
@@ -20,7 +20,7 @@ live_design! {
     use link::widgets::*;
 
     // Import RobotView from library crate
-    use urdf_rerun_test::robot_view::RobotView;
+    use makepad_urdf_player::robot_view::RobotView;
 
     URDFViewer = {{URDFViewer}} {
         width: Fill
@@ -64,6 +64,27 @@ live_design! {
 
             <View> { width: Fill }
 
+            light_btn = <Button> {
+                text: "Light: ON"
+                draw_text: { color: #ff0 }
+            }
+
+            <View> { width: 8 }
+
+            axes_btn = <Button> {
+                text: "Axes: OFF"
+                draw_text: { color: #888 }
+            }
+
+            <View> { width: 8 }
+
+            xyz_btn = <Button> {
+                text: "XYZ: OFF"
+                draw_text: { color: #888 }
+            }
+
+            <View> { width: 8 }
+
             reset_btn = <Button> {
                 text: "Reset"
                 draw_text: { color: #fff }
@@ -74,25 +95,30 @@ live_design! {
             width: Fill
             height: Fill
             show_bg: true
-            draw_bg: { color: #f5f5dc }
+            draw_bg: { color: #f0ddd4 }  // Fallback background
 
-            robot_view = <RobotView> {}
-        }
+            robot_view = <RobotView> {
+                width: Fill
+                height: Fill
+            }
 
-        status_bar = <View> {
-            width: Fill
-            height: 36
-            padding: 8
-            align: { y: 0.5 }
-            show_bg: true
-            draw_bg: { color: #2a2a35 }
+            // Status overlay positioned at bottom of viewport
+            status_overlay = <View> {
+                width: Fill
+                height: 36
+                abs_pos: vec2(0.0, 0.0)  // Will be positioned in draw
+                margin: { left: 8 }
+                align: { y: 0.5 }
+                show_bg: true
+                draw_bg: { color: #2a2a3580 }  // Semi-transparent
 
-            joint_label = <Label> {
-                draw_text: {
-                    text_style: { font_size: 12.0 }
-                    color: #888
+                joint_label = <Label> {
+                    draw_text: {
+                        text_style: { font_size: 12.0 }
+                        color: #ccc
+                    }
+                    text: "Joint 0: 0.00 rad"
                 }
-                text: "Joint 0: 0.00 rad"
             }
         }
 
@@ -166,7 +192,7 @@ live_design! {
         ui: <Window> {
             window: { title: "VX300s (ALOHA) Robot Viewer" }
             show_bg: true
-            draw_bg: { color: #1a1a1f }
+            draw_bg: { color: #f0ddd4 }  // Warm peachy to match gradient
             body = <URDFViewer> {}
         }
     }
@@ -178,6 +204,7 @@ pub struct URDFViewer {
     #[rust] animating: bool,
     #[rust] anim_timer: Timer,
     #[rust] anim_step: u64,
+    #[rust] auto_started: bool,
 }
 
 impl URDFViewer {
@@ -194,7 +221,7 @@ impl URDFViewer {
         } else {
             "Loading robot...".to_string()
         };
-        self.view.label(id!(status_bar.joint_label)).set_text(cx, &text);
+        self.view.label(id!(viewport.status_overlay.joint_label)).set_text(cx, &text);
     }
 }
 
@@ -259,6 +286,30 @@ impl Widget for URDFViewer {
             self.update_status(cx);
         }
 
+        // Light toggle button
+        if self.view.button(id!(header.light_btn)).clicked(&actions) {
+            let robot_view = self.view.robot_view(id!(viewport.robot_view));
+            let enabled = robot_view.toggle_specular(cx);
+            let text = if enabled { "Light: ON" } else { "Light: OFF" };
+            self.view.button(id!(header.light_btn)).set_text(cx, text);
+        }
+
+        // Joint axes toggle button
+        if self.view.button(id!(header.axes_btn)).clicked(&actions) {
+            let robot_view = self.view.robot_view(id!(viewport.robot_view));
+            let enabled = robot_view.toggle_joint_axes(cx);
+            let text = if enabled { "Axes: ON" } else { "Axes: OFF" };
+            self.view.button(id!(header.axes_btn)).set_text(cx, text);
+        }
+
+        // World XYZ axes toggle button
+        if self.view.button(id!(header.xyz_btn)).clicked(&actions) {
+            let robot_view = self.view.robot_view(id!(viewport.robot_view));
+            let enabled = robot_view.toggle_world_axes(cx);
+            let text = if enabled { "XYZ: ON" } else { "XYZ: OFF" };
+            self.view.button(id!(header.xyz_btn)).set_text(cx, text);
+        }
+
         // Open robot selection modal
         if self.view.button(id!(header.open_btn)).clicked(&actions) {
             println!("Opening modal...");
@@ -300,6 +351,13 @@ impl Widget for URDFViewer {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Auto-start animation for profiling (after first frame)
+        if !self.auto_started {
+            self.auto_started = true;
+            self.animating = true;
+            self.anim_timer = cx.cx.start_interval(0.033);
+            eprintln!("=== Auto-starting animation for profiling ===");
+        }
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -313,7 +371,7 @@ impl LiveRegister for App {
     fn live_register(cx: &mut Cx) {
         // Order matters: dependencies first!
         makepad_widgets::live_design(cx);
-        urdf_rerun_test::live_design(cx);  // Register library's live_design
+        makepad_urdf_player::live_design(cx);  // Register library's live_design
     }
 }
 

@@ -5,8 +5,139 @@
 use makepad_widgets::*;
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::Instant;
 
 use crate::mesh::{DrawMesh, DrawGrid, MeshData};
+
+/// 3D Camera with perspective projection
+#[derive(Clone, Debug)]
+pub struct Camera3D {
+    /// Camera position in world space
+    pub position: glam::Vec3,
+    /// Point the camera is looking at
+    pub target: glam::Vec3,
+    /// Up vector (usually Y-up)
+    pub up: glam::Vec3,
+    /// Vertical field of view in radians
+    pub fov: f32,
+    /// Near clipping plane distance
+    pub near: f32,
+    /// Far clipping plane distance
+    pub far: f32,
+}
+
+impl Default for Camera3D {
+    fn default() -> Self {
+        Self {
+            position: glam::Vec3::new(0.0, 0.5, 3.0),
+            target: glam::Vec3::ZERO,
+            up: glam::Vec3::Y,
+            fov: std::f32::consts::FRAC_PI_4, // 45 degrees
+            near: 0.01,
+            far: 100.0,
+        }
+    }
+}
+
+impl Camera3D {
+    /// Create a new camera with orbital parameters
+    pub fn from_orbital(distance: f32, yaw: f32, pitch: f32, target: glam::Vec3) -> Self {
+        // Convert orbital angles to position
+        // yaw rotates around Y axis, pitch rotates around X axis
+        let x = distance * pitch.cos() * yaw.sin();
+        let y = distance * pitch.sin();
+        let z = distance * pitch.cos() * yaw.cos();
+
+        Self {
+            position: target + glam::Vec3::new(x, y, z),
+            target,
+            up: glam::Vec3::Y,
+            fov: std::f32::consts::FRAC_PI_4,
+            near: 0.01,
+            far: 100.0,
+        }
+    }
+
+    /// Compute the view matrix (world to camera space)
+    pub fn view_matrix(&self) -> glam::Mat4 {
+        glam::Mat4::look_at_rh(self.position, self.target, self.up)
+    }
+
+    /// Compute the perspective projection matrix
+    pub fn projection_matrix(&self, aspect_ratio: f32) -> glam::Mat4 {
+        glam::Mat4::perspective_rh(self.fov, aspect_ratio, self.near, self.far)
+    }
+
+    /// Convert glam Mat4 to Makepad Mat4
+    pub fn glam_to_makepad(m: glam::Mat4) -> Mat4 {
+        Mat4 { v: m.to_cols_array() }
+    }
+}
+
+/// Simple profiling stats for performance measurement
+#[derive(Default, Clone)]
+pub struct ProfilingStats {
+    pub frame_times: Vec<f64>,      // Last N frame times in ms
+    pub transform_times: Vec<f64>,  // Time spent on transforms in ms
+    pub draw_times: Vec<f64>,       // Time spent on draw calls in ms
+    pub frame_count: u64,
+    max_samples: usize,
+}
+
+impl ProfilingStats {
+    pub fn new(max_samples: usize) -> Self {
+        Self {
+            frame_times: Vec::with_capacity(max_samples),
+            transform_times: Vec::with_capacity(max_samples),
+            draw_times: Vec::with_capacity(max_samples),
+            frame_count: 0,
+            max_samples,
+        }
+    }
+
+    pub fn record_frame(&mut self, frame_ms: f64, transform_ms: f64, draw_ms: f64) {
+        self.frame_count += 1;
+
+        if self.frame_times.len() >= self.max_samples {
+            self.frame_times.remove(0);
+            self.transform_times.remove(0);
+            self.draw_times.remove(0);
+        }
+
+        self.frame_times.push(frame_ms);
+        self.transform_times.push(transform_ms);
+        self.draw_times.push(draw_ms);
+    }
+
+    pub fn avg_frame_time(&self) -> f64 {
+        if self.frame_times.is_empty() { return 0.0; }
+        self.frame_times.iter().sum::<f64>() / self.frame_times.len() as f64
+    }
+
+    pub fn avg_transform_time(&self) -> f64 {
+        if self.transform_times.is_empty() { return 0.0; }
+        self.transform_times.iter().sum::<f64>() / self.transform_times.len() as f64
+    }
+
+    pub fn avg_draw_time(&self) -> f64 {
+        if self.draw_times.is_empty() { return 0.0; }
+        self.draw_times.iter().sum::<f64>() / self.draw_times.len() as f64
+    }
+
+    pub fn print_stats(&self) {
+        // Print every 30 frames (0.5 seconds at 60fps)
+        if self.frame_count % 30 == 0 && self.frame_count > 0 {
+            eprintln!(
+                "[Frame {:>5}] Avg: {:>6.2}ms total | {:>6.3}ms transform | {:>6.2}ms draw | {:>5.1} FPS",
+                self.frame_count,
+                self.avg_frame_time(),
+                self.avg_transform_time(),
+                self.avg_draw_time(),
+                1000.0 / self.avg_frame_time().max(0.001)
+            );
+        }
+    }
+}
 
 live_design! {
     use link::theme::*;
@@ -345,6 +476,14 @@ pub struct RobotView {
     #[rust] urdf_path: String,
     #[rust] assets_dir: String,
     #[rust] area: Area,
+    #[rust] profiling: ProfilingStats,
+    #[rust] specular_enabled: bool,
+    #[rust] show_joint_axes: bool,
+    #[rust] axis_drawers: Vec<DrawMesh>,
+    #[rust] axis_mesh: Option<MeshData>,
+    #[rust] show_world_axes: bool,
+    #[rust] world_axis_drawers: Vec<DrawMesh>,  // X, Y, Z axis cylinders
+    #[rust] world_axes_initialized: bool,
 }
 
 impl RobotView {
@@ -376,6 +515,8 @@ impl RobotView {
         self.robot = None;
         self.link_drawers.clear();
         self.original_meshes.clear();
+        self.axis_drawers.clear();
+        self.axis_mesh = None;
         self.selected_joint = 0;
 
         // Stop animation if running
@@ -435,6 +576,42 @@ impl RobotView {
         self.redraw(cx);
     }
 
+    /// Toggle specular lighting on/off
+    pub fn toggle_specular(&mut self, cx: &mut Cx) -> bool {
+        self.specular_enabled = !self.specular_enabled;
+        self.redraw(cx);
+        self.specular_enabled
+    }
+
+    /// Check if specular lighting is enabled
+    pub fn is_specular_enabled(&self) -> bool {
+        self.specular_enabled
+    }
+
+    /// Toggle joint axis visualization
+    pub fn toggle_joint_axes(&mut self, cx: &mut Cx) -> bool {
+        self.show_joint_axes = !self.show_joint_axes;
+        self.redraw(cx);
+        self.show_joint_axes
+    }
+
+    /// Check if joint axes are shown
+    pub fn is_joint_axes_shown(&self) -> bool {
+        self.show_joint_axes
+    }
+
+    /// Toggle world XYZ axis visualization
+    pub fn toggle_world_axes(&mut self, cx: &mut Cx) -> bool {
+        self.show_world_axes = !self.show_world_axes;
+        self.redraw(cx);
+        self.show_world_axes
+    }
+
+    /// Check if world axes are shown
+    pub fn is_world_axes_shown(&self) -> bool {
+        self.show_world_axes
+    }
+
     fn init_robot(&mut self, cx: &mut Cx) {
         if self.urdf_path.is_empty() {
             // Default to VX300s (ALOHA arm)
@@ -444,6 +621,7 @@ impl RobotView {
 
         match Robot::from_urdf(&self.urdf_path, &self.assets_dir) {
             Ok(mut robot) => {
+                // Create link drawers
                 for link in robot.links.iter() {
                     if let Some(ref mesh_data) = link.mesh_data {
                         self.original_meshes.push(mesh_data.clone());
@@ -452,6 +630,19 @@ impl RobotView {
                         self.link_drawers.push(draw);
                     }
                 }
+
+                // Create axis mesh (thin cylinder along Y axis)
+                let axis_mesh = MeshData::cylinder(0.005, 0.15, 8); // 5mm radius, 15cm length
+                self.axis_mesh = Some(axis_mesh.clone());
+
+                // Create axis drawer for each joint
+                for _ in 0..robot.joints.len() {
+                    let mut axis_draw = DrawMesh::new_for_link(cx, axis_mesh.clone(), &self.draw_mesh);
+                    axis_draw.init_link_geometry(cx);
+                    axis_draw.color = vec4(1.0, 0.2, 0.2, 1.0); // Red for joint axes
+                    self.axis_drawers.push(axis_draw);
+                }
+
                 robot.update_forward_kinematics();
                 self.robot = Some(robot);
             }
@@ -562,6 +753,8 @@ impl Widget for RobotView {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
+        let frame_start = Instant::now();
+
         cx.begin_turtle(walk, self.layout);
 
         // Draw sky background first
@@ -574,7 +767,10 @@ impl Widget for RobotView {
             self.camera_distance = 3.0;  // Zoomed out to show entire robot
             self.camera_yaw = 0.5;
             self.camera_pitch = 0.3;
+            self.profiling = ProfilingStats::new(120);  // Track last 120 frames (2 seconds at 60fps)
+            self.specular_enabled = true;  // Specular lighting on by default
             self.init_robot(cx.cx);
+            eprintln!("=== URDF Viewer Initialized - GPU Transform Profiling Enabled ===");
         }
 
         // Initialize grid if needed
@@ -598,27 +794,66 @@ impl Widget for RobotView {
             self.grid_drawer = Some(grid_draw);
         }
 
+        // Initialize world XYZ axes if needed (thin black lines on ground)
+        if !self.world_axes_initialized || self.world_axis_drawers.is_empty() {
+            self.world_axes_initialized = true;
+            self.world_axis_drawers.clear();
+            let axis_length = 0.15;  // 15cm axes
+            let axis_radius = 0.001;  // 1mm thin line
+            let axis_mesh = MeshData::cylinder(axis_radius, axis_length, 6);
+
+            // X axis (black thin line)
+            let mut x_axis = DrawMesh::new_for_link(cx.cx, axis_mesh.clone(), &self.draw_mesh);
+            x_axis.init_link_geometry(cx.cx);
+            x_axis.color = vec4(0.1, 0.1, 0.1, 1.0);  // Dark black
+            self.world_axis_drawers.push(x_axis);
+
+            // Y axis (black thin line) - this will be vertical
+            let mut y_axis = DrawMesh::new_for_link(cx.cx, axis_mesh.clone(), &self.draw_mesh);
+            y_axis.init_link_geometry(cx.cx);
+            y_axis.color = vec4(0.1, 0.1, 0.1, 1.0);
+            self.world_axis_drawers.push(y_axis);
+
+            // Z axis (black thin line)
+            let mut z_axis = DrawMesh::new_for_link(cx.cx, axis_mesh, &self.draw_mesh);
+            z_axis.init_link_geometry(cx.cx);
+            z_axis.color = vec4(0.1, 0.1, 0.1, 1.0);
+            self.world_axis_drawers.push(z_axis);
+        }
+
+        let mut transform_time_ms = 0.0;
+        let mut draw_time_ms = 0.0;
+
         if let Some(ref mut robot) = self.robot {
             robot.update_forward_kinematics();
 
-
+            // Camera parameters
             let cam_yaw = self.camera_yaw as f32;
             let cam_pitch = self.camera_pitch as f32;
             let cam_scale = 1.0 / self.camera_distance as f32;  // Closer = larger
 
+            // Build combined transform: scale * orbital_rotation * base_rotation
             let base_rot = glam::Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2);
             let orbital_rot = glam::Mat4::from_euler(glam::EulerRot::YXZ, cam_yaw, cam_pitch, 0.0);
             let scale_mat = glam::Mat4::from_scale(glam::Vec3::splat(cam_scale));
-            let camera_rot = scale_mat * orbital_rot * base_rot;
+            let camera_transform = scale_mat * orbital_rot * base_rot;
 
-            fn glam_to_makepad(m: glam::Mat4) -> Mat4 {
-                Mat4 { v: m.to_cols_array() }
-            }
+            // Camera position for specular lighting (approximate from orbital params)
+            let cam_dist = self.camera_distance as f32;
+            let cam_x = cam_dist * cam_pitch.cos() * cam_yaw.sin();
+            let cam_y = cam_dist * cam_pitch.sin() + 0.3;
+            let cam_z = cam_dist * cam_pitch.cos() * cam_yaw.cos();
+            let camera_pos = vec3(cam_x, cam_y, cam_z);
 
-            // Draw grid first (behind robot) using DrawMesh
-            if let (Some(ref grid_mesh), Some(ref mut grid_drawer)) = (&self.grid_mesh, &mut self.grid_drawer) {
-                let grid_transform = glam_to_makepad(camera_rot);
-                grid_drawer.update_transformed_geometry(cx.cx, grid_mesh, &grid_transform);
+            // Specular strength based on toggle
+            let specular_strength = if self.specular_enabled { 0.5 } else { 0.0 };
+
+            // Draw grid first (behind robot)
+            if let Some(ref mut grid_drawer) = self.grid_drawer {
+                let grid_transform = Camera3D::glam_to_makepad(camera_transform);
+                grid_drawer.set_transform(&grid_transform);
+                grid_drawer.set_camera_position(camera_pos);
+                grid_drawer.set_specular_strength(specular_strength);
                 grid_drawer.begin_many_instances(cx);
                 grid_drawer.draw(cx);
                 grid_drawer.end_many_instances(cx);
@@ -638,16 +873,23 @@ impl Widget for RobotView {
                 vec4(0.6, 0.6, 0.65, 1.0),   // Right finger - gray
             ];
 
+            // ===== PROFILING: Transform phase =====
+            let transform_start = Instant::now();
+
             let mut drawer_idx = 0;
             for (link_idx, link) in robot.links.iter().enumerate() {
                 if link.mesh_data.is_none() { continue; }
                 if drawer_idx >= self.link_drawers.len() { break; }
 
+                // Combined transform = camera_transform * link_transform
                 let link_transform = robot.link_transforms[link_idx];
-                let transform = glam_to_makepad(camera_rot * link_transform);
+                let combined_transform = Camera3D::glam_to_makepad(camera_transform * link_transform);
 
                 let drawer = &mut self.link_drawers[drawer_idx];
-                drawer.update_transformed_geometry(cx.cx, &self.original_meshes[drawer_idx], &transform);
+                // Set combined transform and camera position for specular
+                drawer.set_transform(&combined_transform);
+                drawer.set_camera_position(camera_pos);
+                drawer.set_specular_strength(specular_strength);
 
                 // Use URDF color if available, otherwise fall back to palette
                 drawer.color = if let Some(c) = link.color {
@@ -656,15 +898,128 @@ impl Widget for RobotView {
                     link_colors[drawer_idx % link_colors.len()]
                 };
 
+                drawer_idx += 1;
+            }
+
+            transform_time_ms = transform_start.elapsed().as_secs_f64() * 1000.0;
+
+            // ===== PROFILING: Draw phase =====
+            let draw_start = Instant::now();
+
+            for drawer in &mut self.link_drawers {
                 drawer.begin_many_instances(cx);
                 drawer.draw(cx);
                 drawer.end_many_instances(cx);
-
-                drawer_idx += 1;
             }
+
+            // Draw world XYZ axes if enabled (thin black lines beside robot)
+            if self.show_world_axes && self.world_axis_drawers.len() >= 3 {
+                // Position axes beside robot (right side)
+                let base_x = 0.25;  // Right of robot
+                let base_z = 0.0;   // Aligned with robot
+                let ground_y = 0.01;
+                let half_len = 0.075;  // Half of 15cm axis length
+
+                // X axis - horizontal line along X on ground (rotate Y cylinder to X)
+                let x_rot = glam::Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2);
+                let x_pos = glam::Vec3::new(base_x + half_len, ground_y, base_z);
+                let x_transform = camera_transform * glam::Mat4::from_rotation_translation(x_rot, x_pos);
+                self.world_axis_drawers[0].set_transform(&Camera3D::glam_to_makepad(x_transform));
+                self.world_axis_drawers[0].set_camera_position(camera_pos);
+                self.world_axis_drawers[0].set_specular_strength(0.0);  // No specular for flat look
+                self.world_axis_drawers[0].begin_many_instances(cx);
+                self.world_axis_drawers[0].draw(cx);
+                self.world_axis_drawers[0].end_many_instances(cx);
+
+                // Y axis - vertical line (default cylinder orientation)
+                let y_pos = glam::Vec3::new(base_x, half_len + ground_y, base_z);
+                let y_transform = camera_transform * glam::Mat4::from_translation(y_pos);
+                self.world_axis_drawers[1].set_transform(&Camera3D::glam_to_makepad(y_transform));
+                self.world_axis_drawers[1].set_camera_position(camera_pos);
+                self.world_axis_drawers[1].set_specular_strength(0.0);
+                self.world_axis_drawers[1].begin_many_instances(cx);
+                self.world_axis_drawers[1].draw(cx);
+                self.world_axis_drawers[1].end_many_instances(cx);
+
+                // Z axis - horizontal line along Z on ground (rotate Y cylinder to Z)
+                let z_rot = glam::Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+                let z_pos = glam::Vec3::new(base_x, ground_y, base_z + half_len);
+                let z_transform = camera_transform * glam::Mat4::from_rotation_translation(z_rot, z_pos);
+                self.world_axis_drawers[2].set_transform(&Camera3D::glam_to_makepad(z_transform));
+                self.world_axis_drawers[2].set_camera_position(camera_pos);
+                self.world_axis_drawers[2].set_specular_strength(0.0);
+                self.world_axis_drawers[2].begin_many_instances(cx);
+                self.world_axis_drawers[2].draw(cx);
+                self.world_axis_drawers[2].end_many_instances(cx);
+            }
+
+            // Draw joint axes if enabled
+            if self.show_joint_axes {
+                for (joint_idx, joint) in robot.joints.iter().enumerate() {
+                    if joint_idx >= self.axis_drawers.len() { break; }
+
+                    // Get parent link transform
+                    let parent_transform = if let Some(&parent_idx) = robot.link_map.get(&joint.parent_link) {
+                        robot.link_transforms[parent_idx]
+                    } else {
+                        glam::Mat4::IDENTITY
+                    };
+
+                    // Joint position in parent frame
+                    let joint_pos = joint.origin_xyz;
+
+                    // Create rotation to align Y-axis with joint axis
+                    let axis = joint.axis.normalize();
+                    let up = glam::Vec3::Y;
+                    let axis_rotation = if (axis - up).length() < 0.001 {
+                        glam::Quat::IDENTITY
+                    } else if (axis + up).length() < 0.001 {
+                        glam::Quat::from_rotation_x(std::f32::consts::PI)
+                    } else {
+                        glam::Quat::from_rotation_arc(up, axis)
+                    };
+
+                    // Combine: camera * parent * joint_origin * axis_rotation
+                    let joint_transform = glam::Mat4::from_rotation_translation(
+                        glam::Quat::from_euler(glam::EulerRot::XYZ,
+                            joint.origin_rpy.x, joint.origin_rpy.y, joint.origin_rpy.z) * axis_rotation,
+                        joint_pos
+                    );
+                    let world_transform = camera_transform * parent_transform * joint_transform;
+                    let axis_transform = Camera3D::glam_to_makepad(world_transform);
+
+                    let drawer = &mut self.axis_drawers[joint_idx];
+                    drawer.set_transform(&axis_transform);
+                    drawer.set_camera_position(camera_pos);
+                    drawer.set_specular_strength(0.3);
+
+                    // Color based on joint index (cycle through colors)
+                    let colors = [
+                        vec4(1.0, 0.2, 0.2, 1.0), // Red
+                        vec4(0.2, 1.0, 0.2, 1.0), // Green
+                        vec4(0.2, 0.2, 1.0, 1.0), // Blue
+                        vec4(1.0, 1.0, 0.2, 1.0), // Yellow
+                        vec4(1.0, 0.2, 1.0, 1.0), // Magenta
+                        vec4(0.2, 1.0, 1.0, 1.0), // Cyan
+                    ];
+                    drawer.color = colors[joint_idx % colors.len()];
+
+                    drawer.begin_many_instances(cx);
+                    drawer.draw(cx);
+                    drawer.end_many_instances(cx);
+                }
+            }
+
+            draw_time_ms = draw_start.elapsed().as_secs_f64() * 1000.0;
         }
 
         cx.end_turtle_with_area(&mut self.area);
+
+        // Record profiling stats
+        let frame_time_ms = frame_start.elapsed().as_secs_f64() * 1000.0;
+        self.profiling.record_frame(frame_time_ms, transform_time_ms, draw_time_ms);
+        self.profiling.print_stats();
+
         DrawStep::done()
     }
 }
@@ -737,6 +1092,54 @@ impl RobotViewRef {
                 .map(|(name, angle, lower, upper)| (name.to_string(), angle, lower, upper))
         } else {
             None
+        }
+    }
+
+    pub fn toggle_specular(&self, cx: &mut Cx) -> bool {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.toggle_specular(cx)
+        } else {
+            false
+        }
+    }
+
+    pub fn is_specular_enabled(&self) -> bool {
+        if let Some(inner) = self.borrow() {
+            inner.is_specular_enabled()
+        } else {
+            true
+        }
+    }
+
+    pub fn toggle_joint_axes(&self, cx: &mut Cx) -> bool {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.toggle_joint_axes(cx)
+        } else {
+            false
+        }
+    }
+
+    pub fn is_joint_axes_shown(&self) -> bool {
+        if let Some(inner) = self.borrow() {
+            inner.is_joint_axes_shown()
+        } else {
+            false
+        }
+    }
+
+    pub fn toggle_world_axes(&self, cx: &mut Cx) -> bool {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.toggle_world_axes(cx)
+        } else {
+            false
+        }
+    }
+
+    pub fn is_world_axes_shown(&self) -> bool {
+        if let Some(inner) = self.borrow() {
+            inner.is_world_axes_shown()
+        } else {
+            false
         }
     }
 }

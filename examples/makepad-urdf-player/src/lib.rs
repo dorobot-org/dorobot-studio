@@ -1,6 +1,6 @@
-//! URDF Robot Viewer Library
+//! Makepad URDF Player
 //!
-//! Provides embeddable widgets for viewing URDF robots in Makepad applications.
+//! A Makepad-based URDF robot viewer with embeddable RobotView widget.
 
 use makepad_widgets::*;
 
