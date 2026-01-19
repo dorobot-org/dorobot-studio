@@ -1,6 +1,7 @@
 //! Time Series Plot Widget for observation.state and action visualization
 
 use makepad_widgets::*;
+use makepad_app_shell::theme::get_global_dark_mode;
 
 live_design! {
     use link::theme::*;
@@ -33,13 +34,25 @@ live_design! {
             align: { y: 0.5 }
 
             show_bg: true
-            draw_bg: { color: (COLOR_BG_HEADER) }
+            draw_bg: {
+                instance dark_mode: 0.0
+                fn pixel(self) -> vec4 {
+                    let light_bg = vec4(0.91, 0.91, 0.93, 1.0);
+                    let dark_bg = vec4(0.12, 0.12, 0.14, 1.0);
+                    return mix(light_bg, dark_bg, self.dark_mode);
+                }
+            }
 
             title = <Label> {
                 width: Fit
                 draw_text: {
                     text_style: <TEXT_PANEL_TITLE> {}
-                    color: (COLOR_TEXT_PRIMARY)
+                    instance dark_mode: 0.0
+                    fn get_color(self) -> vec4 {
+                        let light_text = vec4(0.1, 0.1, 0.12, 1.0);
+                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
+                        return mix(light_text, dark_text, self.dark_mode);
+                    }
                 }
                 text: "observation.state"
             }
@@ -60,10 +73,25 @@ live_design! {
                 flow: Down
                 padding: { top: 4, bottom: 4 }
 
+                show_bg: true
+                draw_bg: {
+                    instance dark_mode: 0.0
+                    fn pixel(self) -> vec4 {
+                        let light_bg = vec4(0.94, 0.94, 0.96, 1.0);
+                        let dark_bg = vec4(0.10, 0.10, 0.12, 1.0);
+                        return mix(light_bg, dark_bg, self.dark_mode);
+                    }
+                }
+
                 max_label = <Label> {
                     draw_text: {
                         text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_MUTED)
+                        instance dark_mode: 0.0
+                        fn get_color(self) -> vec4 {
+                            let light_text = vec4(0.45, 0.45, 0.5, 1.0);
+                            let dark_text = vec4(0.55, 0.55, 0.58, 1.0);
+                            return mix(light_text, dark_text, self.dark_mode);
+                        }
                     }
                     text: "1.0"
                 }
@@ -73,7 +101,12 @@ live_design! {
                 min_label = <Label> {
                     draw_text: {
                         text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_MUTED)
+                        instance dark_mode: 0.0
+                        fn get_color(self) -> vec4 {
+                            let light_text = vec4(0.45, 0.45, 0.5, 1.0);
+                            let dark_text = vec4(0.55, 0.55, 0.58, 1.0);
+                            return mix(light_text, dark_text, self.dark_mode);
+                        }
                     }
                     text: "-1.0"
                 }
@@ -86,7 +119,14 @@ live_design! {
                 cursor: Hand
 
                 show_bg: true
-                draw_bg: { color: (COLOR_BG_PANEL) }
+                draw_bg: {
+                    instance dark_mode: 0.0
+                    fn pixel(self) -> vec4 {
+                        let light_bg = vec4(0.97, 0.97, 0.99, 1.0);
+                        let dark_bg = vec4(0.08, 0.08, 0.10, 1.0);
+                        return mix(light_bg, dark_bg, self.dark_mode);
+                    }
+                }
             }
         }
     }
@@ -112,7 +152,12 @@ live_design! {
             width: Fit
             draw_text: {
                 text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_SECONDARY)
+                instance dark_mode: 0.0
+                fn get_color(self) -> vec4 {
+                    let light_text = vec4(0.35, 0.35, 0.4, 1.0);
+                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0);
+                    return mix(light_text, dark_text, self.dark_mode);
+                }
             }
             text: "ch0"
         }
@@ -247,6 +292,15 @@ impl Widget for TimeSeriesPlot {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Apply theme
+        let dm = get_global_dark_mode();
+        self.view.view(id!(header)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
+        self.view.label(id!(header.title)).apply_over(cx, live! { draw_text: { dark_mode: (dm) } });
+        self.view.view(id!(content.y_axis)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
+        self.view.label(id!(content.y_axis.max_label)).apply_over(cx, live! { draw_text: { dark_mode: (dm) } });
+        self.view.label(id!(content.y_axis.min_label)).apply_over(cx, live! { draw_text: { dark_mode: (dm) } });
+        self.view.view(id!(content.plot_area)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
+
         // First draw the view (background, header, etc.)
         let _ = self.view.draw_walk(cx, scope, walk);
 

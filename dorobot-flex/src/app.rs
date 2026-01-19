@@ -17,9 +17,10 @@ use crate::data::LeRobotDataset;
 use crate::sidebar_content::SidebarAction;
 use crate::playback_controls::PlaybackAction;
 use crate::widgets::timeline::{TimelineAction, TimelineWidgetRefExt};
-use crate::widgets::time_series_plot::TimeSeriesPlotAction;
+use crate::widgets::time_series_plot::{TimeSeriesPlotAction, TimeSeriesPlotWidgetRefExt};
 use crate::widgets::video_player::VideoPlayerWidgetRefExt;
 use crate::widgets::robot_viewer::RobotViewerWidgetRefExt;
+use crate::widgets::episode_list::{DataSourceInfo, EpisodeListWidgetRefExt};
 
 live_design! {
     use link::theme::*;
@@ -370,6 +371,10 @@ pub struct DoRobotApp {
     #[rust]
     videos_initialized: bool,
 
+    /// Track if plots need initialization
+    #[rust]
+    plots_initialized: bool,
+
     /// Track current episode to detect changes
     #[rust]
     last_episode: Option<u64>,
@@ -551,10 +556,11 @@ impl AppMain for DoRobotApp {
         // Apply theme to custom elements
         self.apply_custom_theme(cx);
 
-        // Check if episode changed - need to reinitialize videos
+        // Check if episode changed - need to reinitialize videos and plots
         if self.data.current_episode != self.last_episode {
             self.last_episode = self.data.current_episode;
             self.videos_initialized = false;
+            self.plots_initialized = false;
         }
 
         // Initialize videos once when episode loads
@@ -564,6 +570,15 @@ impl AppMain for DoRobotApp {
             // Show first frame immediately
             self.update_videos_now(cx);
         }
+
+        // Initialize plots once when episode loads
+        if !self.plots_initialized && !self.data.episode_frames.is_empty() {
+            self.init_plots(cx);
+            self.plots_initialized = true;
+        }
+
+        // Update plots cursor position
+        self.update_plots_cursor(cx);
 
         // Update robot viewer (lightweight - no video decoding)
         self.update_robot_viewer(cx);
@@ -649,12 +664,30 @@ impl DoRobotApp {
                     })
                     .collect();
 
+                // Extract data sources from dataset features
+                let data_sources: Vec<DataSourceInfo> = dataset.info.features.iter()
+                    .map(|(name, feature)| {
+                        let is_video = name.contains("images") || feature.dtype.contains("video");
+                        DataSourceInfo {
+                            name: name.clone(),
+                            dtype: feature.dtype.clone(),
+                            shape: feature.shape.clone(),
+                            is_video,
+                        }
+                    })
+                    .collect();
+
                 // Update app data
                 self.data.dataset_name = name;
                 self.data.dataset_info = info;
                 self.data.episode_fps = dataset.info.fps;
-                self.data.episodes = episodes;
+                self.data.episodes = episodes.clone();
                 self.data.dataset = Some(dataset);
+
+                // Update episode list UI with data sources
+                let episode_list = self.ui.episode_list(id!(episode_list));
+                episode_list.set_data_sources(cx, data_sources);
+                episode_list.set_episodes(cx, episodes);
 
                 // Auto-select first episode
                 self.load_episode(cx, 0);
@@ -824,6 +857,56 @@ impl DoRobotApp {
             let robot_viewer = self.ui.robot_viewer(id!(robot_viewer));
             robot_viewer.set_joint_angles(cx, &joint_angles);
         }
+    }
+
+    /// Initialize plots with episode data
+    fn init_plots(&mut self, cx: &mut Cx) {
+        let frames = &self.data.episode_frames;
+        if frames.is_empty() {
+            return;
+        }
+
+        let state_channels = frames.first().map(|f| f.state.len()).unwrap_or(0);
+        let action_channels = frames.first().map(|f| f.action.len()).unwrap_or(0);
+
+        // Configure and populate state plot
+        let state_plot = self.ui.time_series_plot(id!(state_plot));
+        state_plot.set_title(cx, "observation.state");
+        state_plot.set_time_range(0.0, self.data.episode_duration);
+        state_plot.set_auto_scale_y(true);
+        state_plot.set_window_size(10.0);  // 10 second sliding window
+
+        for ch in 0..state_channels.min(14) {
+            let plot_data: Vec<(f64, f64)> = frames.iter()
+                .map(|f| (f.timestamp, f.state.get(ch).copied().unwrap_or(0.0) as f64))
+                .collect();
+            state_plot.set_channel_data(ch, &format!("state[{}]", ch), plot_data);
+        }
+        state_plot.recompute_scale(cx);
+
+        // Configure and populate action plot
+        let action_plot = self.ui.time_series_plot(id!(action_plot));
+        action_plot.set_title(cx, "action");
+        action_plot.set_time_range(0.0, self.data.episode_duration);
+        action_plot.set_auto_scale_y(true);
+        action_plot.set_window_size(10.0);  // 10 second sliding window
+
+        for ch in 0..action_channels.min(14) {
+            let plot_data: Vec<(f64, f64)> = frames.iter()
+                .map(|f| (f.timestamp, f.action.get(ch).copied().unwrap_or(0.0) as f64))
+                .collect();
+            action_plot.set_channel_data(ch, &format!("action[{}]", ch), plot_data);
+        }
+        action_plot.recompute_scale(cx);
+    }
+
+    /// Update plot cursor positions (lightweight - just moves cursor)
+    fn update_plots_cursor(&mut self, cx: &mut Cx) {
+        let state_plot = self.ui.time_series_plot(id!(state_plot));
+        state_plot.set_cursor_time(cx, self.data.current_time);
+
+        let action_plot = self.ui.time_series_plot(id!(action_plot));
+        action_plot.set_cursor_time(cx, self.data.current_time);
     }
 
     /// Apply theme to custom sidebar and header elements
