@@ -1,25 +1,47 @@
 //! DoRobot Flex - Main Application with Shell Layout
 //!
 //! Uses makepad-app-shell for a professional IDE-style layout with:
-//! - Draggable panels with drag-and-drop
+//! - Draggable panels with drag-and-drop (content follows panel titles)
 //! - Resizable sidebars
 //! - Layout persistence (Save/Reset)
 //! - Dark/light theme support
+//!
+//! ## Drag-and-Drop Architecture
+//!
+//! Each physical slot contains BOTH VideoPlayer and RobotView widgets.
+//! When panels are dragged, `on_layout_changed()` swaps visibility based
+//! on which panel_id is at each slot. See `DRAG_DROP_FIX.md` for details.
 
 use std::time::Instant;
+
+/// Playback timer frequency (frames per second)
+const PLAYBACK_TIMER_FPS: f64 = 60.0;
+
+/// Minimum interval between video decodes during scrubbing (milliseconds)
+const SCRUB_RATE_LIMIT_MS: u64 = 100;
+
+/// Minimum time change threshold to trigger video update
+const TIME_EPSILON: f64 = 0.001;
+
+/// Sliding window size for time series plots (seconds)
+const PLOT_WINDOW_SIZE: f64 = 10.0;
+
+/// Maximum number of plot channels to display
+const MAX_PLOT_CHANNELS: usize = 14;
 use makepad_widgets::*;
 use makepad_app_shell::grid::panel_grid::PanelGridWidgetRefExt;
 use makepad_app_shell::grid::footer_grid::FooterGridWidgetRefExt;
 use makepad_app_shell::grid::{LayoutState, FooterLayoutState, FooterSlotState};
+use makepad_app_shell::panel::PanelAction;
 use makepad_app_shell::theme::get_global_dark_mode;
-use crate::app_data::AppData;
+use crate::app_data::{AppData, PanelSlot, PanelContent};
 use crate::data::LeRobotDataset;
 use crate::sidebar_content::SidebarAction;
 use crate::playback_controls::PlaybackAction;
 use crate::widgets::timeline::{TimelineAction, TimelineWidgetRefExt};
 use crate::widgets::time_series_plot::{TimeSeriesPlotAction, TimeSeriesPlotWidgetRefExt};
 use crate::widgets::video_player::VideoPlayerWidgetRefExt;
-use crate::widgets::robot_viewer::RobotViewerWidgetRefExt;
+use makepad_urdf_player::robot_view::RobotViewWidgetRefExt;
 use crate::widgets::episode_list::{DataSourceInfo, EpisodeListWidgetRefExt};
 
 live_design! {
@@ -41,7 +63,7 @@ live_design! {
     use crate::playback_controls::PlaybackControls;
     use crate::footer_stack::FooterStack;
     use crate::widgets::video_player::VideoPlayer;
-    use crate::widgets::robot_viewer::RobotViewer;
+    use makepad_urdf_player::robot_view::RobotView;
     use crate::widgets::time_series_plot::TimeSeriesPlot;
     use crate::widgets::timeline::Timeline;
 
@@ -155,19 +177,22 @@ live_design! {
                                 }
 
                                 // Override center content with our panels (2x2 grid)
+                                // Each slot has BOTH video and robot view - we show/hide based on panel_id
                                 center_content = <PanelGrid> {
                                     window_container = {
                                         row1 = {
                                             s1_1 = {
                                                 title: "cam_high"
                                                 content = {
-                                                    video_main = <VideoPlayer> {}
+                                                    video_slot0 = <VideoPlayer> {}
+                                                    robot_slot0 = <RobotView> { visible: false, width: 0, height: 0 }
                                                 }
                                             }
                                             s1_2 = {
                                                 title: "3D View"
                                                 content = {
-                                                    robot_viewer = <RobotViewer> {}
+                                                    video_slot1 = <VideoPlayer> { visible: false, width: 0, height: 0 }
+                                                    robot_slot1 = <RobotView> {}
                                                 }
                                             }
                                             // Hide unused slots in row1
@@ -183,13 +208,15 @@ live_design! {
                                             s2_1 = {
                                                 title: "cam_left_wrist"
                                                 content = {
-                                                    video_cam1 = <VideoPlayer> {}
+                                                    video_slot2 = <VideoPlayer> {}
+                                                    robot_slot2 = <RobotView> { visible: false, width: 0, height: 0 }
                                                 }
                                             }
                                             s2_2 = {
                                                 title: "cam_right_wrist"
                                                 content = {
-                                                    video_cam2 = <VideoPlayer> {}
+                                                    video_slot3 = <VideoPlayer> {}
+                                                    robot_slot3 = <RobotView> { visible: false, width: 0, height: 0 }
                                                 }
                                             }
                                             // Hide unused slots in row2
@@ -375,6 +402,10 @@ pub struct DoRobotApp {
     #[rust]
     plots_initialized: bool,
 
+    /// Pending layout reset flag - layout will be reset on next event when widget is available
+    #[rust]
+    pending_layout_reset: bool,
+
     /// Track current episode to detect changes
     #[rust]
     last_episode: Option<u64>,
@@ -404,6 +435,9 @@ impl LiveRegister for DoRobotApp {
         // Register shell widgets
         makepad_app_shell::live_design(cx);
 
+        // Register URDF player widget
+        makepad_urdf_player::live_design(cx);
+
         // Register our modules
         crate::shared::live_design(cx);
         crate::widgets::live_design(cx);
@@ -417,7 +451,7 @@ impl LiveRegister for DoRobotApp {
 impl MatchEvent for DoRobotApp {
     fn handle_startup(&mut self, cx: &mut Cx) {
         // Start playback timer
-        self.playback_timer = cx.start_interval(1.0 / 60.0);
+        self.playback_timer = cx.start_interval(1.0 / PLAYBACK_TIMER_FPS);
 
         // Configure PanelGrid to show only 4 panels (2x2 grid)
         // panel_0 = cam_high, panel_1 = 3D View
@@ -519,7 +553,10 @@ impl MatchEvent for DoRobotApp {
                     TimelineAction::StepForward | TimelineAction::StepBackward => {
                         self.is_scrubbing = false;
                     }
-                    _ => {}
+                    TimelineAction::SpeedChanged(speed) => {
+                        self.data.playback_speed = speed;
+                    }
+                    TimelineAction::None => {}
                 }
 
                 // Handle plot cursor actions
@@ -530,6 +567,14 @@ impl MatchEvent for DoRobotApp {
                         // Rate-limit video updates during scrubbing
                         self.update_videos_rate_limited(cx);
                     }
+                    TimeSeriesPlotAction::None => {}
+                }
+
+                // Handle panel layout changes (drag-and-drop)
+                match widget_action.cast::<PanelAction>() {
+                    PanelAction::LayoutChanged(new_state) => {
+                        self.on_layout_changed(cx, &new_state);
+                    }
                     _ => {}
                 }
             }
@@ -539,7 +584,7 @@ impl MatchEvent for DoRobotApp {
     fn handle_timer(&mut self, cx: &mut Cx, event: &TimerEvent) {
         if self.playback_timer.is_timer(event).is_some() {
             if self.data.is_playing {
-                self.advance_time(cx, 1.0 / 60.0);
+                self.advance_time(cx, 1.0 / PLAYBACK_TIMER_FPS);
                 // Update videos at rate-limited pace during playback
                 self.update_videos_rate_limited(cx);
             } else if self.pending_video_update {
@@ -555,6 +600,9 @@ impl AppMain for DoRobotApp {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         // Apply theme to custom elements
         self.apply_custom_theme(cx);
+
+        // Apply pending layout reset if widget is now available
+        self.apply_layout_reset(cx);
 
         // Check if episode changed - need to reinitialize videos and plots
         if self.data.current_episode != self.last_episode {
@@ -593,6 +641,99 @@ impl AppMain for DoRobotApp {
 }
 
 impl DoRobotApp {
+    /// Handle panel layout changes from drag-and-drop operations
+    ///
+    /// When panels are dragged, the panel_id moves but content widgets are static.
+    /// This function updates which content is visible at each physical slot.
+    fn on_layout_changed(&mut self, cx: &mut Cx, new_state: &LayoutState) {
+        ::log::debug!("[on_layout_changed] Panel layout changed:");
+        ::log::debug!("  row_assignments: {:?}", new_state.row_assignments);
+
+        // Build new slot-to-panel mapping from row_assignments
+        // Physical slots: 0=s1_1 (row0,col0), 1=s1_2 (row0,col1), 2=s2_1 (row1,col0), 3=s2_2 (row1,col1)
+        let mut new_slot_mapping: [String; 4] = [
+            String::new(), String::new(), String::new(), String::new()
+        ];
+
+        // Extract panel_ids from row_assignments
+        if let Some(row0) = new_state.row_assignments.get(0) {
+            if let Some(p) = row0.get(0) { new_slot_mapping[0] = p.clone(); }
+            if let Some(p) = row0.get(1) { new_slot_mapping[1] = p.clone(); }
+        }
+        if let Some(row1) = new_state.row_assignments.get(1) {
+            if let Some(p) = row1.get(0) { new_slot_mapping[2] = p.clone(); }
+            if let Some(p) = row1.get(1) { new_slot_mapping[3] = p.clone(); }
+        }
+
+        ::log::debug!("  new_slot_mapping: {:?}", new_slot_mapping);
+
+        // Check if mapping actually changed
+        if new_slot_mapping == self.data.slot_to_panel {
+            ::log::debug!("  No change in slot mapping");
+            return;
+        }
+
+        // Update the stored mapping
+        self.data.slot_to_panel = new_slot_mapping.clone();
+
+        // Update visibility and content at each physical slot
+        self.update_slot_content(cx, &new_slot_mapping);
+
+        self.ui.redraw(cx);
+    }
+
+    /// Update content visibility and video sources at each physical slot
+    fn update_slot_content(&mut self, cx: &mut Cx, slot_mapping: &[String; 4]) {
+        // Physical slot widget IDs
+        let video_slots = [
+            id!(video_slot0), id!(video_slot1), id!(video_slot2), id!(video_slot3)
+        ];
+        let robot_slots = [
+            id!(robot_slot0), id!(robot_slot1), id!(robot_slot2), id!(robot_slot3)
+        ];
+
+        for (slot_idx, panel_id) in slot_mapping.iter().enumerate() {
+            if panel_id.is_empty() {
+                continue;
+            }
+
+            // Determine if this panel_id should show video or robot view
+            let panel_slot = PanelSlot::from_panel_id(panel_id);
+            let is_robot = panel_slot == Some(PanelSlot::RobotView);
+
+            ::log::debug!("  Slot {}: panel_id={}, is_robot={}", slot_idx, panel_id, is_robot);
+
+            if is_robot {
+                // Show robot view, hide video player
+                self.ui.view(video_slots[slot_idx]).apply_over(cx, live! {
+                    visible: false, width: 0, height: 0
+                });
+                self.ui.view(robot_slots[slot_idx]).apply_over(cx, live! {
+                    visible: true, width: Fill, height: Fill
+                });
+            } else {
+                // Show video player, hide robot view
+                self.ui.view(video_slots[slot_idx]).apply_over(cx, live! {
+                    visible: true, width: Fill, height: Fill
+                });
+                self.ui.view(robot_slots[slot_idx]).apply_over(cx, live! {
+                    visible: false, width: 0, height: 0
+                });
+
+                // Load the correct video for this panel_id
+                if let Some(ps) = panel_slot {
+                    if let Some(video_key) = self.data.panel_registry.get_video_key(ps) {
+                        if let Some(path) = self.data.video_paths.get(video_key) {
+                            let player = self.ui.video_player(video_slots[slot_idx]);
+                            let _ = player.load_video(cx, &path.to_string_lossy());
+                            ::log::debug!("    Loaded video {} into slot {}", video_key, slot_idx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn try_load_default_dataset(&mut self, cx: &mut Cx) {
         let known_paths = [
             "dataset/aloha_mobile_cabinet",
@@ -625,6 +766,17 @@ impl DoRobotApp {
 
     fn load_dataset(&mut self, cx: &mut Cx, path: &str) {
         ::log::info!("Loading dataset from {}", path);
+
+        // Clear old state before loading new dataset
+        self.clear_videos(cx);
+        self.data.current_episode = None;
+        self.data.episode_frames.clear();
+        self.data.video_paths.clear();
+        self.data.error_message = None;  // Clear any previous error
+        self.data.robot_display_name = None;  // Clear robot name
+        self.data.panel_registry.clear();  // Clear panel content registry
+        self.videos_initialized = false;
+        self.plots_initialized = false;
 
         match LeRobotDataset::open(path) {
             Ok(dataset) => {
@@ -673,6 +825,7 @@ impl DoRobotApp {
                             dtype: feature.dtype.clone(),
                             shape: feature.shape.clone(),
                             is_video,
+                            channel_names: feature.names.clone(),
                         }
                     })
                     .collect();
@@ -680,9 +833,13 @@ impl DoRobotApp {
                 // Update app data
                 self.data.dataset_name = name;
                 self.data.dataset_info = info;
+                self.data.robot_type = dataset.info.robot_type.clone();
                 self.data.episode_fps = dataset.info.fps;
                 self.data.episodes = episodes.clone();
                 self.data.dataset = Some(dataset);
+
+                // Load URDF robot based on robot_type
+                self.load_robot_urdf(cx);
 
                 // Update episode list UI with data sources
                 let episode_list = self.ui.episode_list(id!(episode_list));
@@ -693,22 +850,28 @@ impl DoRobotApp {
                 self.load_episode(cx, 0);
             }
             Err(e) => {
-                ::log::error!("Failed to load dataset from {}: {}", path, e);
+                let error_msg = format!("Failed to load dataset: {}", e);
+                ::log::error!("{}", error_msg);
+                self.data.error_message = Some(error_msg);
+                self.ui.redraw(cx);
             }
         }
     }
 
     fn load_episode(&mut self, cx: &mut Cx, episode_idx: u64) {
+        let t_start = Instant::now();
         ::log::info!("Loading episode {}", episode_idx);
 
         if let Some(dataset) = &self.data.dataset {
             match dataset.load_episode(episode_idx) {
                 Ok(episode_data) => {
+                    let t_data = t_start.elapsed();
                     ::log::info!(
-                        "Episode {} loaded: {} frames, {} video paths",
+                        "Episode {} loaded: {} frames, {} video paths (data load: {:?})",
                         episode_idx,
                         episode_data.frames.len(),
-                        episode_data.video_paths.len()
+                        episode_data.video_paths.len(),
+                        t_data
                     );
 
                     self.data.current_episode = Some(episode_idx);
@@ -718,11 +881,17 @@ impl DoRobotApp {
                     self.data.episode_duration = self.data.episode_frames.len() as f64 / self.data.episode_fps;
                     self.data.current_time = 0.0;
                     self.data.is_playing = false;
+                    self.data.error_message = None;  // Clear error on success
 
                     self.ui.redraw(cx);
+                    let t_total = t_start.elapsed();
+                    ::log::debug!("[Timing] load_episode total: {:?}", t_total);
                 }
                 Err(e) => {
-                    ::log::error!("Failed to load episode {}: {}", episode_idx, e);
+                    let error_msg = format!("Failed to load episode {}: {}", episode_idx, e);
+                    ::log::error!("{}", error_msg);
+                    self.data.error_message = Some(error_msg);
+                    self.ui.redraw(cx);
                 }
             }
         }
@@ -756,37 +925,291 @@ impl DoRobotApp {
     }
 
     fn init_videos(&mut self, cx: &mut Cx) {
+        let t_start = Instant::now();
         let total_frames = self.data.total_frames();
+        let fps = self.data.episode_fps;
+        let frame_offset = self.data.video_frame_offset;
 
-        // Initialize main video
-        let video_main = self.ui.video_player(id!(video_main));
-        video_main.set_camera_name(cx, "cam_high");
-        video_main.set_episode_info(self.data.video_frame_offset, total_frames);
-        if let Some(path) = self.data.video_paths.get("observation.images.cam_high") {
-            let _ = video_main.load_video(cx, &path.to_string_lossy());
+        // Get sorted list of video keys (cloned to avoid borrow issues)
+        let mut video_keys: Vec<String> = self.data.video_paths.keys().cloned().collect();
+        video_keys.sort();
+        let camera_count = video_keys.len();
+
+        // Camera slot candidates (in order of preference)
+        let main_candidates = ["observation.images.cam_high", "observation.images.top", "observation.image"];
+        let cam1_candidates = ["observation.images.cam_left_wrist", "observation.images.wrist"];
+        let cam2_candidates = ["observation.images.cam_right_wrist"];
+
+        // Find video keys for each slot
+        let main_key = Self::find_video_key_owned(&main_candidates, &video_keys)
+            .or_else(|| video_keys.first().cloned());
+        let cam1_key = Self::find_video_key_owned(&cam1_candidates, &video_keys)
+            .or_else(|| video_keys.get(1).cloned());
+        let cam2_key = Self::find_video_key_owned(&cam2_candidates, &video_keys)
+            .or_else(|| video_keys.get(2).cloned());
+
+        ::log::debug!("[init_videos] camera_count={}, fps={}, video_keys={:?}", camera_count, fps, video_keys);
+        ::log::debug!("[init_videos] main_key={:?}, cam1_key={:?}, cam2_key={:?}", main_key, cam1_key, cam2_key);
+
+        // Reset slot-to-panel mapping to default
+        self.data.slot_to_panel = [
+            "panel_0".to_string(),  // slot 0 (s1_1) -> video main
+            "panel_1".to_string(),  // slot 1 (s1_2) -> robot view
+            "panel_2".to_string(),  // slot 2 (s2_1) -> video cam1
+            "panel_3".to_string(),  // slot 3 (s2_2) -> video cam2
+        ];
+
+        // Initialize video players at each slot based on default mapping
+        // Slot 0: panel_0 (VideoMain) - show video
+        let video_slot0 = self.ui.video_player(id!(video_slot0));
+        Self::init_video_player_owned(cx, video_slot0, main_key.as_ref(), &self.data.video_paths, frame_offset, total_frames, fps);
+        self.ui.view(id!(video_slot0)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
+        self.ui.view(id!(robot_slot0)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
+        let t_v1 = t_start.elapsed();
+
+        // Slot 1: panel_1 (RobotView) - show robot, hide video
+        let video_slot1 = self.ui.video_player(id!(video_slot1));
+        video_slot1.clear(cx);
+        self.ui.view(id!(video_slot1)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
+        self.ui.view(id!(robot_slot1)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
+        let t_v2 = t_start.elapsed();
+
+        // Slot 2: panel_2 (VideoCam1) - show video
+        let video_slot2 = self.ui.video_player(id!(video_slot2));
+        Self::init_video_player_owned(cx, video_slot2, cam1_key.as_ref(), &self.data.video_paths, frame_offset, total_frames, fps);
+        self.ui.view(id!(video_slot2)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
+        self.ui.view(id!(robot_slot2)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
+
+        // Slot 3: panel_3 (VideoCam2) - show video
+        let video_slot3 = self.ui.video_player(id!(video_slot3));
+        Self::init_video_player_owned(cx, video_slot3, cam2_key.as_ref(), &self.data.video_paths, frame_offset, total_frames, fps);
+        self.ui.view(id!(video_slot3)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
+        self.ui.view(id!(robot_slot3)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
+        let t_v3 = t_start.elapsed();
+
+        // ========================================
+        // PHASE 1 FIX: Populate panel registry
+        // ========================================
+        self.data.panel_registry.clear();
+
+        // Register video content for each slot
+        if let Some(key) = &main_key {
+            let display_name = Self::extract_camera_name(key);
+            self.data.panel_registry.set_content(
+                PanelSlot::VideoMain,
+                PanelContent::Video { key: key.clone(), display_name }
+            );
         } else {
-            video_main.init_placeholder(640, 480, self.data.episode_fps, total_frames);
+            self.data.panel_registry.set_content(PanelSlot::VideoMain, PanelContent::Empty);
         }
 
-        // Initialize cam1
-        let video_cam1 = self.ui.video_player(id!(video_cam1));
-        video_cam1.set_camera_name(cx, "cam_left_wrist");
-        video_cam1.set_episode_info(self.data.video_frame_offset, total_frames);
-        if let Some(path) = self.data.video_paths.get("observation.images.cam_left_wrist") {
-            let _ = video_cam1.load_video(cx, &path.to_string_lossy());
+        if let Some(key) = &cam1_key {
+            let display_name = Self::extract_camera_name(key);
+            self.data.panel_registry.set_content(
+                PanelSlot::VideoCam1,
+                PanelContent::Video { key: key.clone(), display_name }
+            );
         } else {
-            video_cam1.init_placeholder(640, 480, self.data.episode_fps, total_frames);
+            self.data.panel_registry.set_content(PanelSlot::VideoCam1, PanelContent::Empty);
         }
 
-        // Initialize cam2
-        let video_cam2 = self.ui.video_player(id!(video_cam2));
-        video_cam2.set_camera_name(cx, "cam_right_wrist");
-        video_cam2.set_episode_info(self.data.video_frame_offset, total_frames);
-        if let Some(path) = self.data.video_paths.get("observation.images.cam_right_wrist") {
-            let _ = video_cam2.load_video(cx, &path.to_string_lossy());
+        if let Some(key) = &cam2_key {
+            let display_name = Self::extract_camera_name(key);
+            self.data.panel_registry.set_content(
+                PanelSlot::VideoCam2,
+                PanelContent::Video { key: key.clone(), display_name }
+            );
         } else {
-            video_cam2.init_placeholder(640, 480, self.data.episode_fps, total_frames);
+            self.data.panel_registry.set_content(PanelSlot::VideoCam2, PanelContent::Empty);
         }
+
+        // Register robot view content
+        let robot_title = self.get_robot_panel_title();
+        self.data.panel_registry.set_content(
+            PanelSlot::RobotView,
+            PanelContent::RobotView { display_name: robot_title }
+        );
+
+        ::log::debug!("[init_videos] Panel registry populated: main={:?}, cam1={:?}, cam2={:?}",
+            self.data.panel_registry.get_video_key(PanelSlot::VideoMain),
+            self.data.panel_registry.get_video_key(PanelSlot::VideoCam1),
+            self.data.panel_registry.get_video_key(PanelSlot::VideoCam2));
+
+        // Configure panel layout using registry
+        self.configure_panel_layout_from_registry(cx, camera_count);
+
+        ::log::debug!("[Timing] init_videos: v1={:?}, v2={:?}, v3={:?}, panel_count={}",
+            t_v1, t_v2, t_v3, camera_count.min(4));
+    }
+
+    /// Extract camera display name from video key
+    fn extract_camera_name(key: &str) -> String {
+        key.split('.').last().unwrap_or(key).to_string()
+    }
+
+    /// Get the robot panel title (uses robot_display_name if set)
+    fn get_robot_panel_title(&self) -> String {
+        self.data.robot_display_name
+            .as_ref()
+            .map(|n| format!("{} 3D View", n))
+            .unwrap_or_else(|| "3D View".to_string())
+    }
+
+    /// Configure panel layout using the registry for titles
+    ///
+    /// PHASE 2 FIX: Titles are now included in LayoutState, eliminating the
+    /// need for separate set_panel_titles() calls and the race condition workaround.
+    fn configure_panel_layout_from_registry(&mut self, cx: &mut Cx, camera_count: usize) {
+        let panel_grid = self.ui.panel_grid(id!(center_content));
+
+        // Get display names from registry
+        let main_name = self.data.panel_registry.get_display_name(PanelSlot::VideoMain);
+        let robot_name = self.data.panel_registry.get_display_name(PanelSlot::RobotView);
+        let cam1_name = self.data.panel_registry.get_display_name(PanelSlot::VideoCam1);
+        let cam2_name = self.data.panel_registry.get_display_name(PanelSlot::VideoCam2);
+
+        // Build layout state with titles included
+        let layout_state = match camera_count {
+            0 => {
+                let mut state = LayoutState::with_panel_count(1);
+                state.row_assignments = vec![vec!["panel_0".into()], vec![], vec![]];
+                state.visible_panels = ["panel_0"].iter().map(|s| s.to_string()).collect();
+                state.panel_titles.insert("panel_0".into(), robot_name.to_string());
+                state
+            }
+            1 => {
+                let mut state = LayoutState::with_panel_count(2);
+                state.row_assignments = vec![vec!["panel_0".into(), "panel_1".into()], vec![], vec![]];
+                state.visible_panels = ["panel_0", "panel_1"].iter().map(|s| s.to_string()).collect();
+                state.panel_titles.insert("panel_0".into(), main_name.to_string());
+                state.panel_titles.insert("panel_1".into(), robot_name.to_string());
+                state
+            }
+            2 => {
+                let mut state = LayoutState::with_panel_count(3);
+                state.row_assignments = vec![vec!["panel_0".into(), "panel_1".into()], vec!["panel_2".into()], vec![]];
+                state.visible_panels = ["panel_0", "panel_1", "panel_2"].iter().map(|s| s.to_string()).collect();
+                state.panel_titles.insert("panel_0".into(), main_name.to_string());
+                state.panel_titles.insert("panel_1".into(), robot_name.to_string());
+                state.panel_titles.insert("panel_2".into(), cam1_name.to_string());
+                state
+            }
+            _ => {
+                let mut state = LayoutState::with_panel_count(4);
+                state.row_assignments = vec![vec!["panel_0".into(), "panel_1".into()], vec!["panel_2".into(), "panel_3".into()], vec![]];
+                state.visible_panels = ["panel_0", "panel_1", "panel_2", "panel_3"].iter().map(|s| s.to_string()).collect();
+                state.panel_titles.insert("panel_0".into(), main_name.to_string());
+                state.panel_titles.insert("panel_1".into(), robot_name.to_string());
+                state.panel_titles.insert("panel_2".into(), cam1_name.to_string());
+                state.panel_titles.insert("panel_3".into(), cam2_name.to_string());
+                state
+            }
+        };
+
+        ::log::debug!("[configure_panel_layout] Setting layout with titles: visible={:?}, titles={:?}",
+            layout_state.visible_panels, layout_state.panel_titles);
+
+        // Single atomic call - titles included in LayoutState
+        panel_grid.set_layout_state(cx, layout_state);
+    }
+
+    /// Find a video key from candidates list (returns owned String)
+    fn find_video_key_owned(candidates: &[&str], available: &[String]) -> Option<String> {
+        for candidate in candidates {
+            if let Some(key) = available.iter().find(|k| k.as_str() == *candidate) {
+                return Some(key.clone());
+            }
+        }
+        None
+    }
+
+    /// Initialize a single video player with the given video key (owned version)
+    fn init_video_player_owned(
+        cx: &mut Cx,
+        player: crate::widgets::video_player::VideoPlayerRef,
+        video_key: Option<&String>,
+        video_paths: &std::collections::HashMap<String, std::path::PathBuf>,
+        frame_offset: u64,
+        total_frames: u64,
+        dataset_fps: f64,
+    ) {
+        player.clear(cx);
+        ::log::trace!("[init_videos] player exists: {}", player.borrow().is_some());
+
+        if let Some(key) = video_key {
+            ::log::debug!("[init_video_player] Setting up video: key={}, fps={}", key, dataset_fps);
+            player.set_episode_info(frame_offset, total_frames);
+
+            // Set FPS display from dataset (video decoder may override with actual fps)
+            player.set_fps_display(cx, dataset_fps);
+            ::log::debug!("[init_video_player] Called set_fps_display({})", dataset_fps);
+
+            if let Some(path) = video_paths.get(key.as_str()) {
+                ::log::debug!("[init_video_player] Loading video from: {}", path.display());
+                match player.load_video(cx, &path.to_string_lossy()) {
+                    Ok(_) => ::log::debug!("[init_video_player] Video loaded successfully"),
+                    Err(e) => ::log::error!("[init_video_player] Failed to load video: {}", e),
+                }
+            } else {
+                ::log::warn!("[init_video_player] No video path found for key: {}", key);
+            }
+        } else {
+            ::log::debug!("[init_video_player] No video key, setting placeholder");
+            player.set_placeholder_text(cx, "No camera");
+        }
+    }
+
+
+    /// Clear all video players and mark layout for reset
+    fn clear_videos(&mut self, cx: &mut Cx) {
+        // Clear video players at all slots
+        self.ui.video_player(id!(video_slot0)).clear(cx);
+        self.ui.video_player(id!(video_slot1)).clear(cx);
+        self.ui.video_player(id!(video_slot2)).clear(cx);
+        self.ui.video_player(id!(video_slot3)).clear(cx);
+
+        // Mark layout for reset - will be applied when widget is available
+        self.pending_layout_reset = true;
+        ::log::debug!("[clear_videos] Marked layout for reset");
+    }
+
+    /// Apply pending layout reset (called when widget is available)
+    fn apply_layout_reset(&mut self, cx: &mut Cx) {
+        if !self.pending_layout_reset {
+            return;
+        }
+
+        let panel_grid = self.ui.panel_grid(id!(center_content));
+
+        // Try to get current state to verify widget is available
+        if panel_grid.layout_state().is_none() {
+            ::log::warn!("[apply_layout_reset] Widget not yet available, will retry");
+            return;
+        }
+
+        // Create reset state with 4 panels in 2x2 layout
+        let mut reset_state = LayoutState::with_panel_count(4);
+        reset_state.row_assignments = vec![
+            vec!["panel_0".into(), "panel_1".into()],
+            vec!["panel_2".into(), "panel_3".into()],
+            vec![],
+        ];
+        reset_state.visible_panels = ["panel_0", "panel_1", "panel_2", "panel_3"]
+            .iter().map(|s| s.to_string()).collect();
+
+        ::log::debug!("[apply_layout_reset] Applying reset layout: visible={:?}", reset_state.visible_panels);
+        panel_grid.set_layout_state(cx, reset_state);
+
+        // Clear panel titles
+        panel_grid.set_panel_titles(&[
+            ("panel_0", "Loading..."),
+            ("panel_1", "Loading..."),
+            ("panel_2", "Loading..."),
+            ("panel_3", "Loading..."),
+        ]);
+
+        self.pending_layout_reset = false;
+        ::log::debug!("[apply_layout_reset] Layout reset complete");
     }
 
     /// Rate-limited video update - for scrubbing and playback
@@ -797,7 +1220,7 @@ impl DoRobotApp {
         // Scrubbing: 100ms (10fps) for UI responsiveness
         // Playback: match video fps (e.g., 33ms for 30fps)
         let min_interval_ms = if self.is_scrubbing {
-            100 // 10 fps during scrubbing for fast response
+            SCRUB_RATE_LIMIT_MS
         } else {
             (1000.0 / self.data.episode_fps.max(1.0)) as u64
         };
@@ -817,9 +1240,12 @@ impl DoRobotApp {
     }
 
     /// Immediate video update - bypasses rate limiting
+    ///
+    /// Updates video players at each physical slot based on the current
+    /// slot-to-panel mapping. This handles drag-and-drop correctly.
     fn update_videos_now(&mut self, cx: &mut Cx) {
         // Only decode if time has changed
-        let time_changed = (self.data.current_time - self.last_video_time).abs() > 0.001;
+        let time_changed = (self.data.current_time - self.last_video_time).abs() > TIME_EPSILON;
 
         if time_changed {
             self.last_video_time = self.data.current_time;
@@ -827,21 +1253,38 @@ impl DoRobotApp {
 
             let frame_idx = self.data.current_frame_index();
             let total = self.data.total_frames();
+            let current_time = self.data.current_time;
 
-            // Update main video
-            let video_main = self.ui.video_player(id!(video_main));
-            video_main.show_frame_at_time(cx, self.data.current_time);
-            video_main.set_frame_info(cx, frame_idx, total);
+            // Get panel visibility state
+            let panel_grid = self.ui.panel_grid(id!(center_content));
+            let layout_state = panel_grid.layout_state();
 
-            // Update cam1
-            let video_cam1 = self.ui.video_player(id!(video_cam1));
-            video_cam1.show_frame_at_time(cx, self.data.current_time);
-            video_cam1.set_frame_info(cx, frame_idx, total);
+            // Video player widget IDs for each physical slot
+            let video_slots = [
+                id!(video_slot0), id!(video_slot1), id!(video_slot2), id!(video_slot3)
+            ];
 
-            // Update cam2
-            let video_cam2 = self.ui.video_player(id!(video_cam2));
-            video_cam2.show_frame_at_time(cx, self.data.current_time);
-            video_cam2.set_frame_info(cx, frame_idx, total);
+            // Update each physical slot's video player
+            for (slot_idx, panel_id) in self.data.slot_to_panel.iter().enumerate() {
+                // Check if panel is visible
+                let is_visible = layout_state.as_ref()
+                    .map(|s| s.visible_panels.contains(panel_id))
+                    .unwrap_or(true);
+
+                if !is_visible {
+                    continue;
+                }
+
+                // Check if this slot shows video (not robot view)
+                let panel_slot = PanelSlot::from_panel_id(panel_id);
+                let is_video = panel_slot.map(|ps| ps != PanelSlot::RobotView).unwrap_or(false);
+
+                if is_video {
+                    let player = self.ui.video_player(video_slots[slot_idx]);
+                    player.show_frame_at_time(cx, current_time);
+                    player.set_frame_info(cx, frame_idx, total);
+                }
+            }
         }
 
         // Always update timeline (lightweight)
@@ -853,10 +1296,106 @@ impl DoRobotApp {
 
     fn update_robot_viewer(&mut self, cx: &mut Cx) {
         if let Some(frame) = self.data.current_frame() {
-            let joint_angles: Vec<f64> = frame.state.iter().map(|&v| v as f64).collect();
-            let robot_viewer = self.ui.robot_viewer(id!(robot_viewer));
-            robot_viewer.set_joint_angles(cx, &joint_angles);
+            let joint_angles: Vec<f32> = frame.state.to_vec();
+
+            // Update all robot view slots (only the visible one matters)
+            let robot_slots = [
+                id!(robot_slot0), id!(robot_slot1), id!(robot_slot2), id!(robot_slot3)
+            ];
+            for slot_id in &robot_slots {
+                let robot_view = self.ui.robot_view(*slot_id);
+                robot_view.set_joint_angles(cx, &joint_angles);
+            }
         }
+    }
+
+    /// Load URDF robot based on robot_type from dataset
+    fn load_robot_urdf(&mut self, cx: &mut Cx) {
+        // Robot view slots
+        let robot_slots = [
+            id!(robot_slot0), id!(robot_slot1), id!(robot_slot2), id!(robot_slot3)
+        ];
+
+        if let Some((urdf_path, assets_dir, display_name)) = Self::get_urdf_path(&self.data.robot_type) {
+            ::log::info!("Loading URDF for robot_type '{}': {}", self.data.robot_type, urdf_path);
+
+            // Store robot display name for use in panel titles
+            self.data.robot_display_name = Some(display_name.clone());
+
+            // Load the robot model into ALL robot view slots
+            for slot_id in &robot_slots {
+                let robot_view = self.ui.robot_view(*slot_id);
+                robot_view.load_robot(cx, &urdf_path, &assets_dir);
+            }
+
+            // Update registry with robot name
+            let title = format!("{} 3D View", display_name);
+            self.data.panel_registry.set_content(
+                PanelSlot::RobotView,
+                PanelContent::RobotView { display_name: title.clone() }
+            );
+
+            // Update panel title
+            let panel_grid = self.ui.panel_grid(id!(center_content));
+            panel_grid.set_panel_titles(&[("panel_1", &title)]);
+        } else {
+            ::log::warn!("No URDF mapping found for robot_type: {}", self.data.robot_type);
+            self.data.robot_display_name = None;
+
+            // Update registry with default name
+            self.data.panel_registry.set_content(
+                PanelSlot::RobotView,
+                PanelContent::RobotView { display_name: "3D View".to_string() }
+            );
+
+            // Reset to default title
+            let panel_grid = self.ui.panel_grid(id!(center_content));
+            panel_grid.set_panel_titles(&[("panel_1", "3D View")]);
+        }
+    }
+
+    /// Map robot_type to URDF file path, assets directory, and display name
+    /// Only returns a path if the URDF file actually exists
+    fn get_urdf_path(robot_type: &str) -> Option<(String, String, String)> {
+        // Known robot type mappings: (pattern, urdf_path, assets_dir, display_name)
+        let mappings: &[(&str, &str, &str, &str)] = &[
+            ("so101", "data/so100/so100.urdf", "data/so100", "SO-100"),
+            ("so100", "data/so100/so100.urdf", "data/so100", "SO-100"),
+            ("aimee", "data/so100/so100.urdf", "data/so100", "SO-100"),
+            ("lekiwi", "data/lekiwi/lekiwi.urdf", "data/lekiwi", "LeKiwi"),
+            ("moss", "data/moss/moss.urdf", "data/moss", "Moss"),
+            ("koch", "data/koch/koch.urdf", "data/koch", "Koch"),
+            ("vx300s", "data/vx300s/vx300s.urdf", "data/vx300s", "ViperX 300s"),
+        ];
+
+        let robot_lower = robot_type.to_lowercase();
+
+        // Check known mappings - only return if file exists
+        for (pattern, urdf, assets, display_name) in mappings {
+            if robot_lower.contains(pattern) {
+                if std::path::Path::new(urdf).exists() {
+                    ::log::info!("Found URDF for '{}': {} ({})", robot_type, urdf, display_name);
+                    return Some((urdf.to_string(), assets.to_string(), display_name.to_string()));
+                }
+            }
+        }
+
+        // Try robot_type as folder name: data/{robot_type}/{robot_type}.urdf
+        let folder_urdf = format!("data/{}/{}.urdf", robot_lower, robot_lower);
+        if std::path::Path::new(&folder_urdf).exists() {
+            ::log::info!("Found URDF at: {}", folder_urdf);
+            return Some((folder_urdf, format!("data/{}", robot_lower), robot_type.to_string()));
+        }
+
+        // Try robot_type as direct file: data/{robot_type}.urdf
+        let direct_urdf = format!("data/{}.urdf", robot_lower);
+        if std::path::Path::new(&direct_urdf).exists() {
+            ::log::info!("Found URDF at: {}", direct_urdf);
+            return Some((direct_urdf, "data".to_string(), robot_type.to_string()));
+        }
+
+        ::log::info!("No URDF file found for robot_type: {}", robot_type);
+        None
     }
 
     /// Initialize plots with episode data
@@ -874,9 +1413,9 @@ impl DoRobotApp {
         state_plot.set_title(cx, "observation.state");
         state_plot.set_time_range(0.0, self.data.episode_duration);
         state_plot.set_auto_scale_y(true);
-        state_plot.set_window_size(10.0);  // 10 second sliding window
+        state_plot.set_window_size(PLOT_WINDOW_SIZE);
 
-        for ch in 0..state_channels.min(14) {
+        for ch in 0..state_channels.min(MAX_PLOT_CHANNELS) {
             let plot_data: Vec<(f64, f64)> = frames.iter()
                 .map(|f| (f.timestamp, f.state.get(ch).copied().unwrap_or(0.0) as f64))
                 .collect();
@@ -889,9 +1428,9 @@ impl DoRobotApp {
         action_plot.set_title(cx, "action");
         action_plot.set_time_range(0.0, self.data.episode_duration);
         action_plot.set_auto_scale_y(true);
-        action_plot.set_window_size(10.0);  // 10 second sliding window
+        action_plot.set_window_size(PLOT_WINDOW_SIZE);
 
-        for ch in 0..action_channels.min(14) {
+        for ch in 0..action_channels.min(MAX_PLOT_CHANNELS) {
             let plot_data: Vec<(f64, f64)> = frames.iter()
                 .map(|f| (f.timestamp, f.action.get(ch).copied().unwrap_or(0.0) as f64))
                 .collect();
