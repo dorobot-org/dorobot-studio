@@ -72,11 +72,17 @@ GOLDEN_GATE = 0.990
 GOLDEN_MAD_GATE = 0.0003   # mean abs channel delta vs golden
 
 
+# Window captures vary by a pixel or two between runs; high-frequency
+# procedural content (the 3D grids) then aliases differently and tanks the
+# edge correlation. Normalise every image to one size before comparing.
+CANON = (1536, 1024)
+
+
 def load(path: str, crop_titlebar: bool) -> Image.Image:
     im = Image.open(path).convert("RGB")
     if crop_titlebar:
         im = im.crop((0, round(im.height * TITLEBAR_FRAC), im.width, im.height))
-    return im
+    return im.resize(CANON, Image.LANCZOS)
 
 
 def cells(im: Image.Image, edges: bool) -> list[float]:

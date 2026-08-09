@@ -59,7 +59,9 @@ tell application "System Events"
   set size of w to {1536, 1024}
 end tell
 APPLESCRIPT
-sleep 1.2
+# Let hover/focus animators finish: the pointer sits wherever the user left it,
+# so a mid-animation capture differs from the settled one.
+sleep 3.0
 
 # Capture by window rect rather than window id: the id lookup races with
 # window creation and has been seen to return another app's window.

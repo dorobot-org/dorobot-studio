@@ -7,6 +7,8 @@
 use makepad_widgets::*;
 
 use crate::api::{PlaybackState, Tag};
+use makepad_app_shell::grid::panel_grid::PanelGridWidgetExt;
+use makepad_app_shell::grid::LayoutState;
 use crate::ui::frame::{apply_light, apply_light_in, theme_chip, theme_panel_head, Themed};
 
 script_mod! {
@@ -135,6 +137,63 @@ script_mod! {
         }
     }
 
+    // Panel *contents* only — no title bar, no border: the app-shell Panel
+    // wraps these and provides drag handle, maximise and close.
+    let StagePane = View{
+        width: Fill height: Fill
+        show_bg: true
+        draw_bg +: {
+            light: instance(0.0)
+            pixel: fn() {
+                let d = length(self.pos - vec2(0.5, 0.45))
+                return mix(mix(#x141A24, #x090C12, clamp(d, 0.0, 1.0)),
+                           mix(#xE9EDF4, #xD9DFE9, clamp(d, 0.0, 1.0)), self.light)
+            }
+        }
+    }
+
+    let ViewportPane = View{
+        width: Fill height: Fill
+        align: Align{x: 0.5 y: 0.5}
+        show_bg: true
+        draw_bg +: {
+            light: instance(0.0)
+            pixel: fn() {
+                let p = self.pos * self.rect_size
+                let horizon = self.rect_size.y * 0.42
+                let below = step(horizon, p.y)
+                let ny = (p.y - horizon) / max(self.rect_size.y - horizon, 1.0)
+                let hline = (1.0 - step(0.05, fract(pow(max(ny, 0.0), 0.55) * 6.0))) * below
+                let dx = (p.x - self.rect_size.x * 0.5) / max(p.y - horizon, 1.0)
+                let vline = (1.0 - step(0.02, fract(dx * 2.5 + 0.5))) * below
+                let g = clamp(hline + vline, 0.0, 1.0) * 0.45
+                let base = mix(#x0C0F16, #xEDF0F6, self.light)
+                return mix(base, mix(#x38425C, #xC6CDDA, self.light), g)
+            }
+        }
+    }
+
+    let PlotPane = View{
+        width: Fill height: Fill
+        show_bg: true
+        draw_bg +: {
+            light: instance(0.0)
+            pixel: fn() {
+                let x = self.pos.x
+                let bg = mix(#x141922, #xFAFBFD, self.light)
+                let gy = 1.0 - step(0.012, fract(self.pos.y * 4.0))
+                let grid = mix(bg, mix(#x232B3A, #xE8ECF3, self.light), gy)
+                let ys = 0.5 + 0.30 * sin(x * 7.4) + 0.09 * sin(x * 19.0)
+                let ya = ys + 0.05 + 0.03 * sin(x * 11.0)
+                let ls = 1.0 - smoothstep(0.0, 0.012, abs(self.pos.y - ys))
+                let dash = step(0.5, fract(x * 60.0))
+                let la = (1.0 - smoothstep(0.0, 0.012, abs(self.pos.y - ya))) * dash
+                let c1 = mix(grid, #x5B9BF0, ls)
+                return mix(c1, #xD9A24E, la)
+            }
+        }
+    }
+
     mod.widgets.PlayScreenBase = #(PlayScreen::register_widget(vm))
     mod.widgets.PlayScreen = set_type_default() do mod.widgets.PlayScreenBase{
         width: Fill height: Fill
@@ -180,130 +239,47 @@ script_mod! {
                 }
             }
 
-            // ---- 2x2 panel grid ----
-            grid := View{
+            // ---- real drag-and-drop panel grid (makepad-app-shell) ----
+            // Panels here are draggable, maximisable and closable for real;
+            // the grid owns layout state and emits PanelAction::LayoutChanged.
+            grid := PanelGrid{
                 width: Fill height: Fill
-                flow: Down
-                spacing: 12.0
-                grid_a := View{
-                    width: Fill height: Fill flow: Right spacing: 12.0
-                    pane_cam0 := mod.widgets.ux.Card{
-                        width: Fill height: Fill flow: Down
-                        h0 := mod.widgets.ux.PanelHead{ title +: { text: "cam_high" } }
-                        s0 := View{
-                            width: Fill height: Fill show_bg: true
-                            draw_bg +: {
-                                light: instance(0.0)
-                                pixel: fn() {
-                                    let d = length(self.pos - vec2(0.5, 0.45))
-                                    return mix(mix(#x141A24, #x090C12, clamp(d, 0.0, 1.0)),
-                                               mix(#xE9EDF4, #xD9DFE9, clamp(d, 0.0, 1.0)), self.light)
-                                }
-                            }
+                window_container +: {
+                    row1 +: {
+                        s1_1 +: {
+                            title: "cam_high"
+                            content +: { stage_a := StagePane{} }
                         }
+                        s1_2 +: {
+                            title: "3D View"
+                            content +: { stage_3d := ViewportPane{} }
+                        }
+                        s1_3 +: { visible: false }
+                        s1_4 +: { visible: false }
+                        s1_5 +: { visible: false }
+                        s1_6 +: { visible: false }
+                        s1_7 +: { visible: false }
+                        s1_8 +: { visible: false }
+                        s1_9 +: { visible: false }
                     }
-                    pane_3d := mod.widgets.ux.Card{
-                        width: Fill height: Fill flow: Down
-                        h1 := mod.widgets.ux.PanelHead{ title +: { text: "3D View" } }
-                        s1 := View{
-                            width: Fill height: Fill
-                            align: Align{x: 0.5 y: 0.5}
-                            show_bg: true
-                            draw_bg +: {
-                                light: instance(0.0)
-                                pixel: fn() {
-                                    let p = self.pos * self.rect_size
-                                    let horizon = self.rect_size.y * 0.42
-                                    let below = step(horizon, p.y)
-                                    let ny = (p.y - horizon) / max(self.rect_size.y - horizon, 1.0)
-                                    let hline = (1.0 - step(0.05, fract(pow(max(ny, 0.0), 0.55) * 6.0))) * below
-                                    let dx = (p.x - self.rect_size.x * 0.5) / max(p.y - horizon, 1.0)
-                                    let vline = (1.0 - step(0.02, fract(dx * 2.5 + 0.5))) * below
-                                    let g = clamp(hline + vline, 0.0, 1.0) * 0.45
-                                    let base = mix(#x0C0F16, #xEDF0F6, self.light)
-                                    return mix(base, mix(#x38425C, #xC6CDDA, self.light), g)
-                                }
-                            }
+                    row2 +: {
+                        s2_1 +: {
+                            title: "cam_wrist"
+                            content +: { stage_b := StagePane{} }
                         }
+                        s2_2 +: {
+                            title: "action vs state"
+                            content +: { stage_plot := PlotPane{} }
+                        }
+                        s2_3 +: { visible: false }
+                        s2_4 +: { visible: false }
+                        s2_5 +: { visible: false }
+                        s2_6 +: { visible: false }
+                        s2_7 +: { visible: false }
+                        s2_8 +: { visible: false }
+                        s2_9 +: { visible: false }
                     }
-                }
-                grid_b := View{
-                    width: Fill height: Fill flow: Right spacing: 12.0
-                    pane_cam1 := mod.widgets.ux.Card{
-                        width: Fill height: Fill flow: Down
-                        h2 := mod.widgets.ux.PanelHead{ title +: { text: "cam_wrist" } }
-                        s2 := View{
-                            width: Fill height: Fill show_bg: true
-                            draw_bg +: {
-                                light: instance(0.0)
-                                pixel: fn() {
-                                    let d = length(self.pos - vec2(0.5, 0.5))
-                                    return mix(mix(#x141A24, #x090C12, clamp(d, 0.0, 1.0)),
-                                               mix(#xE9EDF4, #xD9DFE9, clamp(d, 0.0, 1.0)), self.light)
-                                }
-                            }
-                        }
-                    }
-                    pane_plot := mod.widgets.ux.Card{
-                        width: Fill height: Fill flow: Down
-                        h3 := mod.widgets.ux.PanelHead{ title +: { text: "action vs state" } }
-                        legend := View{
-                            width: Fill height: Fit
-                            flow: Right
-                            spacing: 14.0
-                            padding: Inset{left: 14. right: 14. top: 8.}
-                            lg_state := Label{
-                                text: "— STATE"
-                                draw_text +: {
-                                    light: instance(0.0)
-                                    text_style: mod.widgets.ux.TEXT_CHIP{}
-                                    get_color: fn() { return mix(#x5B9BF0, #x2159C4, self.light) }
-                                }
-                            }
-                            lg_action := Label{
-                                text: "-- ACTION"
-                                draw_text +: {
-                                    light: instance(0.0)
-                                    text_style: mod.widgets.ux.TEXT_CHIP{}
-                                    get_color: fn() { return mix(#xD9A24E, #x8A6414, self.light) }
-                                }
-                            }
-                            Filler{}
-                            lg_joint := Label{
-                                text: "elbow_flex"
-                                draw_text +: {
-                                    light: instance(0.0)
-                                    text_style: mod.widgets.ux.TEXT_CHIP{}
-                                    get_color: fn() { return mix(#xA8B1C4, #x4A5266, self.light) }
-                                }
-                            }
-                        }
-                        plot := View{
-                            width: Fill height: Fill
-                            margin: Inset{left: 12. right: 12. top: 6. bottom: 12.}
-                            show_bg: true
-                            draw_bg +: {
-                                light: instance(0.0)
-                                pixel: fn() {
-                                    let x = self.pos.x
-                                    let bg = mix(#x141922, #xFAFBFD, self.light)
-                                    // faint gridlines
-                                    let gy = 1.0 - step(0.012, fract(self.pos.y * 4.0))
-                                    let grid = mix(bg, mix(#x232B3A, #xE8ECF3, self.light), gy)
-                                    // measured (solid) and commanded (dashed) traces
-                                    let ys = 0.5 + 0.30 * sin(x * 7.4) + 0.09 * sin(x * 19.0)
-                                    let ya = ys + 0.05 + 0.03 * sin(x * 11.0)
-                                    let ds = abs(self.pos.y - ys)
-                                    let da = abs(self.pos.y - ya)
-                                    let ls = 1.0 - smoothstep(0.0, 0.012, ds)
-                                    let dash = step(0.5, fract(x * 60.0))
-                                    let la = (1.0 - smoothstep(0.0, 0.012, da)) * dash
-                                    let c1 = mix(grid, #x5B9BF0, ls)
-                                    return mix(c1, #xD9A24E, la)
-                                }
-                            }
-                        }
-                    }
+                    row3 +: { visible: false height: 0 }
                 }
             }
 
@@ -432,6 +408,10 @@ script_mod! {
 pub struct PlayScreen {
     #[deref]
     view: View,
+    /// The grid initialises its own layout, so `layout_state().is_none()` is
+    /// never true — seed ours exactly once instead, and let user drags stand.
+    #[rust(false)]
+    layout_seeded: bool,
 }
 
 impl Widget for PlayScreen {
@@ -462,22 +442,17 @@ impl PlayScreenRef {
     pub fn sync(&self, cx: &mut Cx, st: &PlaybackState) {
         let light = crate::ui::frame::light_mode();
         let Some(mut inner) = self.borrow_mut() else { return };
+        let need_seed = !inner.layout_seeded;
+        inner.layout_seeded = true;
         let root = &mut inner.view;
 
         script_apply_eval!(cx, root, { draw_bg +: { light: #(light) } });
         apply_light_in(cx, root, &[
             (ids!(upper.tree), Themed::Bg),
-            (ids!(upper.grid.grid_a.pane_cam0), Themed::Bg),
-            (ids!(upper.grid.grid_a.pane_cam0.s0), Themed::Bg),
-            (ids!(upper.grid.grid_a.pane_3d), Themed::Bg),
-            (ids!(upper.grid.grid_a.pane_3d.s1), Themed::Bg),
-            (ids!(upper.grid.grid_b.pane_cam1), Themed::Bg),
-            (ids!(upper.grid.grid_b.pane_cam1.s2), Themed::Bg),
-            (ids!(upper.grid.grid_b.pane_plot), Themed::Bg),
-            (ids!(upper.grid.grid_b.pane_plot.plot), Themed::Bg),
-            (ids!(upper.grid.grid_b.pane_plot.legend.lg_state), Themed::Text),
-            (ids!(upper.grid.grid_b.pane_plot.legend.lg_action), Themed::Text),
-            (ids!(upper.grid.grid_b.pane_plot.legend.lg_joint), Themed::Text),
+            (ids!(stage_a), Themed::Bg),
+            (ids!(stage_b), Themed::Bg),
+            (ids!(stage_3d), Themed::Bg),
+            (ids!(stage_plot), Themed::Bg),
             (ids!(upper.side), Themed::Bg),
             (ids!(upper.side.side_body.task_h), Themed::Text),
             (ids!(upper.side.side_body.task_t), Themed::Text),
@@ -494,10 +469,6 @@ impl PlayScreenRef {
         ], light);
         for p in [
             ids!(upper.tree.tree_head) as &[LiveId],
-            ids!(upper.grid.grid_a.pane_cam0.h0),
-            ids!(upper.grid.grid_a.pane_3d.h1),
-            ids!(upper.grid.grid_b.pane_cam1.h2),
-            ids!(upper.grid.grid_b.pane_plot.h3),
             ids!(upper.side.side_head),
             ids!(timeline.tl_head),
         ] {
@@ -507,6 +478,39 @@ impl PlayScreenRef {
 
         root.label(cx, ids!(upper.tree.tree_head.title))
             .set_text(cx, &st.dataset_name);
+
+        // The app-shell panels theme through their own dark_mode instance;
+        // drive it from the same value so both systems stay in step.
+        let dark_mode = 1.0 - light;
+        makepad_app_shell::theme::set_global_dark_mode(dark_mode);
+        let grid = root.panel_grid(cx, ids!(upper.grid));
+        if !grid.is_empty() {
+            grid.apply_dark_mode(cx, dark_mode);
+            // Seed once; after that the grid owns layout so a user's drag
+            // survives the next repaint.
+            if need_seed {
+                let mut layout = LayoutState::with_panel_count(4);
+                // with_panel_count packs three to a row; this screen wants 2x2.
+                layout.row_assignments = vec![
+                    vec!["panel_0".into(), "panel_1".into()],
+                    vec!["panel_2".into(), "panel_3".into()],
+                    vec![],
+                ];
+                layout.visible_panels = ["panel_0", "panel_1", "panel_2", "panel_3"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
+                for (id, title) in [
+                    ("panel_0", "cam_high"),
+                    ("panel_1", "3D View"),
+                    ("panel_2", "cam_wrist"),
+                    ("panel_3", "action vs state"),
+                ] {
+                    layout.panel_titles.insert(id.into(), title.into());
+                }
+                grid.set_layout_state(cx, layout);
+            }
+        }
 
         // ---- episode tree: group headers interleaved with rows ------------
         let mut groups: Vec<&str> = Vec::new();
