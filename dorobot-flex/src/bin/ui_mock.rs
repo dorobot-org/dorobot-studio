@@ -1,0 +1,202 @@
+//! Design-validation harness for the LeRobot UX.
+//!
+//! Renders the new screens against [`MockBackend`] so they can be diffed
+//! against `docs/ux/*.png` by `tools/vqa/`. Not the shipping app — the player
+//! still lives in the `dorobot-flex` binary until each screen is signed off.
+//!
+//! `--screen <library|record|play|hardware|eval>` opens directly on a screen,
+//! which is what the visual-diff runner uses.
+
+use dorobot_flex::api::{mock::MockBackend, Backend, Intent, Screen};
+use dorobot_flex::ui::{frame, hardware::HardwareScreenWidgetRefExt, library::LibraryScreenWidgetRefExt, record::RecordScreenWidgetRefExt, play::PlayScreenWidgetRefExt, eval::EvalScreenWidgetRefExt};
+use makepad_widgets::*;
+
+app_main!(App);
+
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
+    use mod.widgets.ux.*
+
+    startup() do #(App::script_component(vm)){
+        ui: Root{
+            main_window := Window{
+                window.title: "DoRobot Studio"
+                window.inner_size: vec2(1536, 1024)
+                pass.clear_color: #x12151C
+
+                body +: {
+                    width: Fill
+                    height: Fill
+                    flow: Down
+
+                    app_bar := mod.widgets.ux.AppBar{}
+
+                    work := View{
+                        width: Fill
+                        height: Fill
+                        flow: Right
+
+                        nav := mod.widgets.ux.NavRail{}
+
+                        pages := View{
+                            width: Fill
+                            height: Fill
+                            flow: Overlay
+                            page_library := LibraryScreen{}
+                            page_hardware := HardwareScreen{ visible: false }
+                            page_record := RecordScreen{ visible: false }
+                            page_play := PlayScreen{ visible: false }
+                            page_eval := EvalScreen{ visible: false }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Script, ScriptHook)]
+pub struct App {
+    #[live]
+    ui: WidgetRef,
+    #[rust(MockBackend::new())]
+    backend: MockBackend,
+    #[rust(false)]
+    started: bool,
+}
+
+impl App {
+    /// Repaint every screen from the current backend snapshot.
+    fn sync(&mut self, cx: &mut Cx) {
+        let light = frame::light_mode();
+        frame::theme_chrome(cx, &self.ui, light);
+
+        let nav = self.ui.widget(cx, ids!(nav));
+        frame::sync_nav(cx, &nav, self.backend.screen());
+
+        self.ui
+            .library_screen(cx, ids!(page_library))
+            .sync(cx, self.backend.library());
+        self.ui
+            .hardware_screen(cx, ids!(page_hardware))
+            .sync(cx, self.backend.hardware());
+        self.ui
+            .record_screen(cx, ids!(page_record))
+            .sync(cx, self.backend.record());
+        self.ui
+            .play_screen(cx, ids!(page_play))
+            .sync(cx, self.backend.playback());
+        self.ui
+            .eval_screen(cx, ids!(page_eval))
+            .sync(cx, self.backend.eval());
+
+        // Overlay flow: exactly one page is visible at a time.
+        let screen = self.backend.screen();
+        for (path, s) in [
+            (ids!(page_library) as &[LiveId], Screen::Library),
+            (ids!(page_hardware), Screen::Hardware),
+            (ids!(page_record), Screen::Record),
+            (ids!(page_play), Screen::Play),
+            (ids!(page_eval), Screen::Eval),
+        ] {
+            self.ui.widget(cx, path).set_visible(cx, s == screen);
+        }
+    }
+}
+
+impl MatchEvent for App {
+    fn handle_startup(&mut self, cx: &mut Cx) {
+        // Optional deep-link so the diff runner can shoot one screen per launch.
+        let args: Vec<String> = std::env::args().collect();
+        if let Some(i) = args.iter().position(|a| a == "--screen") {
+            if let Some(name) = args.get(i + 1) {
+                let target = match name.as_str() {
+                    "record" => Some(Screen::Record),
+                    "play" => Some(Screen::Play),
+                    "hardware" => Some(Screen::Hardware),
+                    "eval" => Some(Screen::Eval),
+                    "library" => Some(Screen::Library),
+                    _ => None,
+                };
+                if let Some(t) = target {
+                    self.backend.dispatch(Intent::Navigate(t));
+                }
+            }
+        }
+        // --light lets the visual-diff runner shoot both themes.
+        if args.iter().any(|a| a == "--light") {
+            frame::set_light_mode(1.0);
+        }
+        self.sync(cx);
+        self.started = true;
+    }
+
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        let mut dirty = false;
+
+        let nav = self.ui.widget(cx, ids!(nav));
+        for (path, screen) in frame::NAV_ITEMS {
+            let item = nav.widget(cx, path);
+            if item.is_empty() {
+                continue;
+            }
+            if let Some(a) = actions.find_widget_action(item.widget_uid()) {
+                if let ViewAction::FingerUp(fe) = a.cast() {
+                    if fe.is_over {
+                        self.backend.dispatch(Intent::Navigate(screen));
+                        dirty = true;
+                    }
+                }
+            }
+        }
+
+        // Gear in the app bar toggles dark/light.
+        let gear = self.ui.widget(cx, ids!(app_bar.actions.gear));
+        if !gear.is_empty() {
+            if let Some(a) = actions.find_widget_action(gear.widget_uid()) {
+                if let ViewAction::FingerUp(fe) = a.cast() {
+                    if fe.is_over {
+                        frame::toggle_light_mode();
+                        dirty = true;
+                    }
+                }
+            }
+        }
+
+        if self
+            .ui
+            .button(cx, ids!(page_library.left_col.header.btn_new))
+            .clicked(actions)
+        {
+            self.backend.dispatch(Intent::NewRecordingSession);
+            dirty = true;
+        }
+        if self
+            .ui
+            .button(cx, ids!(page_library.left_col.header.btn_pull))
+            .clicked(actions)
+        {
+            self.backend.dispatch(Intent::PullFromHub);
+            dirty = true;
+        }
+
+        if dirty {
+            self.sync(cx);
+            self.ui.redraw(cx);
+        }
+    }
+}
+
+impl AppMain for App {
+    fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
+        makepad_widgets::script_mod(vm);
+        dorobot_flex::ui::script_mod(vm);
+        self::script_mod(vm)
+    }
+
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        self.match_event(cx, event);
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}

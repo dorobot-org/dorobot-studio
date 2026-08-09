@@ -8,6 +8,7 @@
 //! - videos/chunk-*/*.mp4 - video files
 
 pub mod lerobot_dataset;
+pub mod lerobot_writer;
 pub mod video_decoder;
 pub mod urdf_renderer;
 

@@ -14,7 +14,9 @@
 Thumbs.db
 
 # Dataset files (large binary data)
-/dataset/
+/dataset/*
+# Allow specific datasets as submodules
+!/dataset/aloha_mobile_cabinet
 
 # Debug logs
 *.log
@@ -22,3 +24,6 @@ Thumbs.db
 
 # Cargo lock for libraries (optional, keep for binaries)
 # Cargo.lock
+
+# VQA capture output (goldens are tracked, transient shots are not)
+tools/vqa/out/
