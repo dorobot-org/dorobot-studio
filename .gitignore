@@ -27,3 +27,4 @@ Thumbs.db
 
 # VQA capture output (goldens are tracked, transient shots are not)
 tools/vqa/out/
+dataset/
