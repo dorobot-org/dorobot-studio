@@ -49,12 +49,21 @@ fn urdf_for(robot_type: &str) -> Option<(PathBuf, PathBuf)> {
 /// - `norm` (default) — LeRobot's normalized units, +/-100 across each joint's
 ///   range and 0..100 for the gripper. The recorded spans match that shape:
 ///   every joint lands inside +/-102 while the gripper alone stays in 0..29.
+///
+/// Direction is a separate question, and the data cannot answer it: shoulder
+/// pan's limit is symmetric, so a mirrored sweep satisfies every bound the
+/// model declares. It took the video to catch that pan runs the other way —
+/// the arm swung right as the recording panned left. Pan sits at 0.35 (dead
+/// centre) on frame 0, so inverting it moves the rest pose by under a degree
+/// and reverses the whole sweep, which is exactly what was observed.
 fn to_urdf_pose(robot: &str, state: &[f32], limits: &[(f32, f32)]) -> Vec<f32> {
     if !(robot.contains("so100") || robot.contains("so101") || robot.contains("aimee")) {
         return state.to_vec();
     }
     let signflip = std::env::var("DOROBOT_JOINT_MAP").as_deref() == Ok("signflip");
     const SIGN: [f32; 6] = [-1.0, -1.0, -1.0, -1.0, 1.0, 1.0];
+    // Which normalized channels run opposite to the URDF's axis.
+    const FLIP: [bool; 6] = [true, false, false, false, false, false];
     state
         .iter()
         .enumerate()
@@ -63,6 +72,7 @@ fn to_urdf_pose(robot: &str, state: &[f32], limits: &[(f32, f32)]) -> Vec<f32> {
                 v.to_radians() * SIGN.get(i).copied().unwrap_or(1.0)
             } else {
                 let (lo, hi) = limits.get(i).copied().unwrap_or((-3.15, 3.15));
+                let v = if FLIP.get(i).copied().unwrap_or(false) { -v } else { *v };
                 // The gripper is the one channel LeRobot normalizes 0..100.
                 let t = if i == 5 { v / 100.0 } else { (v + 100.0) / 200.0 };
                 lo + t * (hi - lo)
