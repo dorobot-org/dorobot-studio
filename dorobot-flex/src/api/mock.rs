@@ -373,6 +373,9 @@ fn playback_fixture() -> PlaybackState {
         // measurement — the shape the design render shows.
         state_series: plot_fixture(0.0),
         action_series: plot_fixture(0.06),
+        // ^ lead is a phase, not an offset: a constant gap would make
+        //   action-minus-state a flat line and the tracking-error view
+        //   degenerate.
         // The design fixtures have no media behind them; the transport is
         // parked so the mock screens render a still, defined frame.
         current_time: 0.0,
@@ -385,7 +388,8 @@ fn playback_fixture() -> PlaybackState {
     }
 }
 
-/// Six phase-shifted traces over the fixture's 16.1s, offset by `lead`.
+/// Six phase-shifted traces over the fixture's 16.1s. `lead` advances the
+/// command ahead of the measurement in phase, the way a controller runs.
 fn plot_fixture(lead: f64) -> Vec<PlotChannel> {
     const JOINTS: [&str; 6] = [
         "shoulder_pan",
@@ -404,8 +408,8 @@ fn plot_fixture(lead: f64) -> Vec<PlotChannel> {
                 .map(|i| {
                     let t = i as f64 / 10.0;
                     let ph = c as f64 * 0.6;
-                    let v = 0.8 * (t * 0.39 + ph).sin() * (1.0 - 0.08 * c as f64);
-                    (t, v + lead)
+                    let v = 0.8 * (t * 0.39 + ph + lead).sin() * (1.0 - 0.08 * c as f64);
+                    (t, v)
                 })
                 .collect(),
         })

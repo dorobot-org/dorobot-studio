@@ -262,7 +262,7 @@ script_mod! {
                             content +: { stage_b := VideoPlayer{} }
                         }
                         s2_2 +: {
-                            title: "action vs state"
+                            title: "tracking error"
                             content +: { stage_plot := PlotPane{} }
                         }
                         s2_3 +: { visible: false }
@@ -328,27 +328,23 @@ script_mod! {
 
         // ---- timeline ----
         timeline := mod.widgets.ux.Card{
-            width: Fill height: 128
+            width: Fill height: 372
             flow: Down
-            tl_head := mod.widgets.ux.PanelHead{ title +: { text: "Timeline" } }
+            tl_head := mod.widgets.ux.PanelHead{ title +: { text: "Playback" } }
             tl_body := View{
                 width: Fill height: Fill flow: Down
-                padding: Inset{left: 14. right: 14. top: 10. bottom: 10.}
-                spacing: 8.0
-                // The real transport: scrub, play/pause and step, emitting
-                // TimelineAction. The bar this replaced drew a playhead from a
-                // constant and could not be moved.
-                tl := Timeline{ width: Fill height: Fill }
+                padding: Inset{left: 14. right: 14. top: 8. bottom: 10.}
+                spacing: 6.0
+
                 controls := View{
                     width: Fill height: Fit
                     flow: Right
                     align: Align{y: 0.5}
                     spacing: 12.0
-                    // Play / step, from the shipping player's own control bar
                     transport := PlaybackControls{
                         width: 160 height: Fit
                         show_bg: false
-                        // Time and speed live on the Timeline and the frame
+                        // Time and speed live on the scrubber and the frame
                         // counter already; two clocks would disagree.
                         time_row +: { visible: false }
                         speed_row +: { visible: false }
@@ -368,6 +364,106 @@ script_mod! {
                             light: instance(0.0)
                             text_style: mod.widgets.ux.TEXT_CHIP{}
                             get_color: fn() { return mix(#xD9A24E, #x8A6414, self.light) }
+                        }
+                    }
+                }
+
+                tl := Timeline{ width: Fill height: 52 }
+
+                // One lane per joint, each on its own scale, with the command
+                // drawn over the measurement. Twelve traces sharing one axis
+                // told you nothing: the joints overlap, and a joint that moves
+                // a little is flattened by one that moves a lot.
+                lanes := View{
+                    width: Fill height: Fill flow: Down spacing: 1.0
+                    lane_0 := View{
+                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        name_0 := Label{
+                            width: 104
+                            draw_text +: {
+                                light: instance(0.0)
+                                text_style: mod.widgets.ux.TEXT_CHIP{}
+                                get_color: fn() { return mix(#x8B94AA, #x6A7286, self.light) }
+                            }
+                        }
+                        plot_0 := TimeSeriesPlot{
+                            width: Fill height: Fill
+                            header +: { visible: false }
+                        }
+                    }
+                    lane_1 := View{
+                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        name_1 := Label{
+                            width: 104
+                            draw_text +: {
+                                light: instance(0.0)
+                                text_style: mod.widgets.ux.TEXT_CHIP{}
+                                get_color: fn() { return mix(#x8B94AA, #x6A7286, self.light) }
+                            }
+                        }
+                        plot_1 := TimeSeriesPlot{
+                            width: Fill height: Fill
+                            header +: { visible: false }
+                        }
+                    }
+                    lane_2 := View{
+                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        name_2 := Label{
+                            width: 104
+                            draw_text +: {
+                                light: instance(0.0)
+                                text_style: mod.widgets.ux.TEXT_CHIP{}
+                                get_color: fn() { return mix(#x8B94AA, #x6A7286, self.light) }
+                            }
+                        }
+                        plot_2 := TimeSeriesPlot{
+                            width: Fill height: Fill
+                            header +: { visible: false }
+                        }
+                    }
+                    lane_3 := View{
+                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        name_3 := Label{
+                            width: 104
+                            draw_text +: {
+                                light: instance(0.0)
+                                text_style: mod.widgets.ux.TEXT_CHIP{}
+                                get_color: fn() { return mix(#x8B94AA, #x6A7286, self.light) }
+                            }
+                        }
+                        plot_3 := TimeSeriesPlot{
+                            width: Fill height: Fill
+                            header +: { visible: false }
+                        }
+                    }
+                    lane_4 := View{
+                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        name_4 := Label{
+                            width: 104
+                            draw_text +: {
+                                light: instance(0.0)
+                                text_style: mod.widgets.ux.TEXT_CHIP{}
+                                get_color: fn() { return mix(#x8B94AA, #x6A7286, self.light) }
+                            }
+                        }
+                        plot_4 := TimeSeriesPlot{
+                            width: Fill height: Fill
+                            header +: { visible: false }
+                        }
+                    }
+                    lane_5 := View{
+                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        name_5 := Label{
+                            width: 104
+                            draw_text +: {
+                                light: instance(0.0)
+                                text_style: mod.widgets.ux.TEXT_CHIP{}
+                                get_color: fn() { return mix(#x8B94AA, #x6A7286, self.light) }
+                            }
+                        }
+                        plot_5 := TimeSeriesPlot{
+                            width: Fill height: Fill
+                            header +: { visible: false }
                         }
                     }
                 }
@@ -437,6 +533,16 @@ impl Widget for PlayScreen {
 /// Seconds of trace kept either side of the playhead, so the plot scrolls with
 /// playback instead of standing still.
 const PLOT_WINDOW_S: f64 = 10.0;
+
+/// Footer lanes, one per joint.
+const LANE_IDS: [(&[LiveId], &[LiveId]); 6] = [
+    (ids!(timeline.tl_body.lanes.lane_0.plot_0), ids!(timeline.tl_body.lanes.lane_0.name_0)),
+    (ids!(timeline.tl_body.lanes.lane_1.plot_1), ids!(timeline.tl_body.lanes.lane_1.name_1)),
+    (ids!(timeline.tl_body.lanes.lane_2.plot_2), ids!(timeline.tl_body.lanes.lane_2.name_2)),
+    (ids!(timeline.tl_body.lanes.lane_3.plot_3), ids!(timeline.tl_body.lanes.lane_3.name_3)),
+    (ids!(timeline.tl_body.lanes.lane_4.plot_4), ids!(timeline.tl_body.lanes.lane_4.name_4)),
+    (ids!(timeline.tl_body.lanes.lane_5.plot_5), ids!(timeline.tl_body.lanes.lane_5.name_5)),
+];
 
 /// Must track `EpisodeRow`'s height, so a wheel notch advances whole rows.
 const ROW_H: f64 = 26.0;
@@ -548,7 +654,7 @@ impl PlayScreenRef {
                     ("panel_0", "cam_high"),
                     ("panel_1", "3D View"),
                     ("panel_2", "cam_wrist"),
-                    ("panel_3", "action vs state"),
+                    ("panel_3", "tracking error"),
                 ] {
                     layout.panel_titles.insert(id.into(), title.into());
                 }
@@ -653,26 +759,48 @@ impl PlayScreenRef {
         // instance, so the two are kept in step here.
         makepad_app_shell::theme::set_global_dark_mode(1.0 - light);
 
-        // Channels are interleaved state-then-action per joint so a joint and
-        // its command sit next to each other in the widget's colour order.
-        // Rebuilt only when the episode changes: this copies every sample, and
-        // sync runs on every transport tick.
+        // One lane per joint: measurement and command together, each lane on
+        // its own scale. Rebuilt only when the episode changes, since this
+        // copies every sample and sync runs on each transport tick.
         let plot = root.time_series_plot(cx, ids!(stage_plot));
         if need_media {
-            plot.clear();
-            let mut ch = 0;
-            for (i, series) in st.state_series.iter().enumerate() {
-                plot.set_channel_data(ch, &series.name, series.points.clone());
-                ch += 1;
-                if let Some(a) = st.action_series.get(i) {
-                    plot.set_channel_data(ch, &format!("{} cmd", a.name), a.points.clone());
-                    ch += 1;
+            for (i, (plot_id, name_id)) in LANE_IDS.iter().enumerate() {
+                let lane = root.time_series_plot(cx, plot_id);
+                lane.clear();
+                let label = st
+                    .state_series
+                    .get(i)
+                    .map(|c| c.name.trim_start_matches("main_").to_string())
+                    .unwrap_or_default();
+                root.label(cx, name_id).set_text(cx, &label);
+                if let Some(c) = st.state_series.get(i) {
+                    lane.set_channel_data(0, &c.name, c.points.clone());
                 }
+                if let Some(c) = st.action_series.get(i) {
+                    lane.set_channel_data(1, &format!("{} cmd", c.name), c.points.clone());
+                }
+                lane.set_time_range(0.0, st.stats.duration_s);
+                lane.set_auto_scale_y(true);
+                lane.set_window_size(PLOT_WINDOW_S);
+                lane.recompute_scale(cx);
+            }
+
+            // The grid pane keeps a view the lanes cannot give: how far the
+            // arm was from what it was told, all joints against one zero.
+            plot.clear();
+            for (i, st_c) in st.state_series.iter().enumerate() {
+                let Some(act) = st.action_series.get(i) else { continue };
+                let err: Vec<(f64, f64)> = st_c
+                    .points
+                    .iter()
+                    .zip(act.points.iter())
+                    .map(|((t, s), (_, a))| (*t, a - s))
+                    .collect();
+                let name = st_c.name.trim_start_matches("main_");
+                plot.set_channel_data(i, &format!("{name} err"), err);
             }
             plot.set_time_range(0.0, st.stats.duration_s);
             plot.set_auto_scale_y(true);
-            // A sliding window is what makes the trace move under the playhead;
-            // without it the plot is a static picture of the whole episode.
             plot.set_window_size(PLOT_WINDOW_S);
             plot.recompute_scale(cx);
         }
@@ -716,6 +844,10 @@ impl PlayScreenRef {
 
         root.time_series_plot(cx, ids!(stage_plot))
             .set_cursor_time(cx, st.current_time);
+        for (plot_id, _) in LANE_IDS.iter() {
+            root.time_series_plot(cx, plot_id)
+                .set_cursor_time(cx, st.current_time);
+        }
 
         let tl = root.timeline(cx, ids!(timeline.tl_body.tl));
         tl.set_duration(cx, st.stats.duration_s, st.stats.fps);
