@@ -18,7 +18,28 @@ Exit code is non-zero on any failure, so this can gate a PR.
 |---|---|
 | **dsl** | Any `[E]` from the script VM means the screen did not render as authored. This caught every real bug so far: unmerged `+:` overrides, immutable shader `let`, one-arg `atan`. A screen can look plausible while logging 270 errors. |
 | **tokens** | Semantic-colour coverage. An unstyled widget — the classic dev-system failure where `draw_bg:` replaced instead of merged — shows up as a token collapsing toward zero. |
-| **golden** | Grid correlation + mean pixel delta against the last accepted render of the same screen. Renders are deterministic (identical input → `1.000/1.000`, mad `0.0000`), so any drift is a real change. |
+| **golden** | Grid correlation plus `solid`, the fraction of 16×16 blocks whose mean colour moved, against the last accepted render of the same screen. |
+
+### Why `solid` and not mean pixel delta
+
+Renders are deterministic *within* a session — reshooting the same binary gives
+mad `0.00000`. Across sessions they are not: the window comes back one or two
+logical pixels shorter, every glyph lands on a different subpixel phase, and mad
+rises to ~0.005 with the UI provably unchanged. A mad gate tight enough to catch
+a regression then fails all five screens on antialiasing alone, which is how it
+was found — the harness was red across the board with nothing broken.
+
+`solid` compares coarse block means instead, because that is the invariant that
+separates the two cases: an edge landing half a pixel over barely moves a block
+mean, while an element that lost its tint, moved, or vanished shifts whole
+blocks at once. Measured antialiasing noise is 0.000%; a real injected
+regression (the Play "Tag good" button losing its green tone) scores 0.521%.
+
+Per-pixel erosion was tried first and rejected. It rejects antialiasing fine,
+but it misses that exact regression: a ~20-level fill delta never clears a
+per-pixel threshold set high enough to ignore glyph halos, so the button silently
+went grey with the harness green. `mad` is still reported — it is a useful hint
+that *something* moved — but it does not gate.
 
 ## What does not gate
 

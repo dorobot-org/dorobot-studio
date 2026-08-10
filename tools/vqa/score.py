@@ -25,7 +25,7 @@ import os
 import shutil
 import sys
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageChops, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT = os.environ.get("VQA_OUT", os.path.join(ROOT, "tools", "vqa", "out"))
@@ -69,7 +69,23 @@ REQUIRED = {
 TITLEBAR_FRAC = 28.0 / 1024.0   # macOS window capture includes the title bar
 GRID_W, GRID_H = 32, 22
 GOLDEN_GATE = 0.990
-GOLDEN_MAD_GATE = 0.0003   # mean abs channel delta vs golden
+
+# Raw mean-abs-delta cannot gate on its own: it scores "a button turned red" and
+# "every glyph antialiased a hair differently" the same way. A window two logical
+# pixels shorter than the one the golden was shot in shifts subpixel coverage
+# across the whole image and pushes mad to ~0.005 with the UI provably unchanged.
+# So mad is reported, and SOLID_GATE does the gating.
+GOLDEN_MAD_REPORT = 0.0030
+# Content change is measured on a coarse block average, which is the invariant
+# that separates the two. A glyph edge landing half a pixel over changes a few
+# boundary samples and averages back to nearly the same block mean; a button
+# that lost its tint, moved, or disappeared shifts whole block means at once.
+# Erosion was tried first and rejected: it misses exactly the subtle wide-area
+# tint changes this catches (a 20-level fill delta never clears a per-pixel
+# threshold set high enough to reject antialiasing).
+SOLID_GRID = (96, 64)      # 16x16 canonical px per block
+SOLID_DELTA = 12           # block-mean channel delta that counts as changed
+SOLID_GATE = 5e-4          # 3 of 6144 blocks; measured antialiasing noise is 0
 
 
 # Window captures vary by a pixel or two between runs; high-frequency
@@ -152,6 +168,14 @@ def mad(a: Image.Image, b: Image.Image) -> float:
     return sum(abs(x - y) for x, y in zip(ra, rb)) / (len(ra) * 255.0)
 
 
+def solid_change(a: Image.Image, b: Image.Image) -> float:
+    """Fraction of blocks whose mean colour differs — real change, not AA."""
+    d = ImageChops.difference(a.resize(SOLID_GRID, Image.BOX),
+                              b.resize(SOLID_GRID, Image.BOX))
+    changed = sum(1 for px in d.get_flattened_data() if max(px) > SOLID_DELTA)
+    return changed / float(SOLID_GRID[0] * SOLID_GRID[1])
+
+
 def dsl_errors(screen: str) -> int:
     log = os.path.join(OUT, f"{screen}.log")
     if not os.path.exists(log):
@@ -191,14 +215,20 @@ def score(screen: str, accept: bool) -> dict:
         res["golden_layout"] = round(pearson(cells(gold, False), cells(app, False)), 4)
         res["golden_edges"] = round(pearson(cells(gold, True), cells(app, True)), 4)
         res["golden_mad"] = round(mad(gold, app), 5)
+        res["golden_solid"] = round(solid_change(gold, app), 6)
         if min(res["golden_layout"], res["golden_edges"]) < GOLDEN_GATE:
             fails.append(f"structure drift vs golden ({res['golden_layout']:.3f}/{res['golden_edges']:.3f})")
-        if res["golden_mad"] > GOLDEN_MAD_GATE:
-            fails.append(f"pixel drift vs golden (mad {res['golden_mad']:.5f})")
+        if res["golden_solid"] > SOLID_GATE:
+            fails.append(
+                f"content changed vs golden ({res['golden_solid'] * 100:.3f}% of pixels)")
+        elif res["golden_mad"] > GOLDEN_MAD_REPORT:
+            res["note"] = (f"mad {res['golden_mad']:.5f} but no solid change — "
+                           "antialiasing only, not gated")
     else:
         res["golden_layout"] = None
         res["golden_edges"] = None
         res["golden_mad"] = None
+        res["golden_solid"] = None
 
     # ---- similarity to design intent (informational) -----------------------
     ref_path = os.path.join(DESIGN, REFS[screen])
@@ -229,22 +259,28 @@ def main() -> int:
         print(json.dumps(results, indent=2))
         return 0 if all(r["verdict"] == "PASS" for r in results) else 1
 
-    print(f"{'screen':<10} {'dsl':>4} {'golden L/E + mad':>22} {'design L/E':>12}  verdict")
+    print(f"{'screen':<10} {'dsl':>4} {'golden L/E':>12} {'solid':>9} "
+          f"{'design L/E':>12}  verdict")
     print("-" * 68)
     for r in results:
         if "error" in r:
             print(f"{r['screen']:<10} {r['error']}")
             continue
         g = ("  —" if r["golden_layout"] is None
-             else f"{r['golden_layout']:.3f}/{r['golden_edges']:.3f} m{r['golden_mad']:.4f}")
+             else f"{r['golden_layout']:.3f}/{r['golden_edges']:.3f}")
+        sc = "  —" if r.get("golden_solid") is None else f"{r['golden_solid'] * 100:.3f}%"
         d = f"{r.get('design_layout', 0):.2f}/{r.get('design_edges', 0):.2f}"
-        print(f"{r['screen']:<10} {r['dsl_errors']:>4} {g:>22} {d:>12}  {r['verdict']}")
+        print(f"{r['screen']:<10} {r['dsl_errors']:>4} {g:>12} {sc:>9} "
+              f"{d:>12}  {r['verdict']}")
         for f in r.get("fails", []):
             print(f"           ! {f}")
+        if r.get("note"):
+            print(f"           · {r['note']}")
     if accept:
         print("\ngolden updated for:", ", ".join(r["screen"] for r in results))
     print("\ndesign L/E is informational — design renders contain photographic")
-    print("content the app renders as placeholders. Gates are dsl + tokens + golden.")
+    print("content the app renders as placeholders. Gates are dsl + tokens +")
+    print("golden structure + solid change; mad is reported, not gated.")
     return 0 if all(r["verdict"] == "PASS" for r in results) else 1
 
 
