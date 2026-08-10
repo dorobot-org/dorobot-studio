@@ -7,11 +7,31 @@
 //! `--screen <library|record|play|hardware|eval>` opens directly on a screen,
 //! which is what the visual-diff runner uses.
 
-use dorobot_flex::api::{mock::MockBackend, Backend, Intent, Screen};
+use dorobot_flex::api::{files::FileBackend, mock::MockBackend, Backend, Intent, Screen};
 use dorobot_flex::ui::{frame, hardware::HardwareScreenWidgetRefExt, library::LibraryScreenWidgetRefExt, record::RecordScreenWidgetRefExt, play::PlayScreenWidgetRefExt, eval::EvalScreenWidgetRefExt};
 use makepad_widgets::*;
 
 app_main!(App);
+
+/// `--dataset <dir>` scans that directory for LeRobot datasets; without it the
+/// app runs on the design fixtures.
+fn make_backend() -> Box<dyn Backend> {
+    let args: Vec<String> = std::env::args().collect();
+    match args.iter().position(|a| a == "--dataset") {
+        Some(i) => match args.get(i + 1) {
+            Some(root) => {
+                let prefer = args
+                    .iter()
+                    .position(|a| a == "--open")
+                    .and_then(|j| args.get(j + 1))
+                    .map(String::as_str);
+                Box::new(FileBackend::with_open(root, prefer))
+            }
+            None => Box::new(MockBackend::new()),
+        },
+        None => Box::new(MockBackend::new()),
+    }
+}
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -60,8 +80,9 @@ script_mod! {
 pub struct App {
     #[live]
     ui: WidgetRef,
-    #[rust(MockBackend::new())]
-    backend: MockBackend,
+    /// Real datasets when a root is supplied, mock fixtures otherwise.
+    #[rust(make_backend())]
+    backend: Box<dyn Backend>,
     #[rust(false)]
     started: bool,
 }
@@ -191,6 +212,8 @@ impl MatchEvent for App {
 impl AppMain for App {
     fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
         makepad_widgets::script_mod(vm);
+        // app-shell supplies the real draggable PanelGrid used by the Play screen
+        dorobot_flex::makepad_app_shell::script_mod(vm);
         dorobot_flex::ui::script_mod(vm);
         self::script_mod(vm)
     }

@@ -15,6 +15,7 @@
 //!
 //! Real backends replace mock ones one screen at a time; the UI does not change.
 
+pub mod files;
 pub mod mock;
 
 use std::path::PathBuf;
