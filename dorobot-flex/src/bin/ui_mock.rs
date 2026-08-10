@@ -162,26 +162,18 @@ impl MatchEvent for App {
             if item.is_empty() {
                 continue;
             }
-            if let Some(a) = actions.find_widget_action(item.widget_uid()) {
-                if let ViewAction::FingerUp(fe) = a.cast() {
-                    if fe.is_over {
-                        self.backend.dispatch(Intent::Navigate(screen));
-                        dirty = true;
-                    }
-                }
+            if frame::view_clicked(actions, item.widget_uid()) {
+                self.backend.dispatch(Intent::Navigate(screen));
+                dirty = true;
             }
         }
 
         // Gear in the app bar toggles dark/light.
         let gear = self.ui.widget(cx, ids!(app_bar.actions.gear));
         if !gear.is_empty() {
-            if let Some(a) = actions.find_widget_action(gear.widget_uid()) {
-                if let ViewAction::FingerUp(fe) = a.cast() {
-                    if fe.is_over {
-                        frame::toggle_light_mode();
-                        dirty = true;
-                    }
-                }
+            if frame::view_clicked(actions, gear.widget_uid()) {
+                frame::toggle_light_mode();
+                dirty = true;
             }
         }
 
@@ -200,6 +192,26 @@ impl MatchEvent for App {
         {
             self.backend.dispatch(Intent::PullFromHub);
             dirty = true;
+        }
+
+        // Library: open the clicked dataset.
+        let lib = self.ui.library_screen(cx, ids!(page_library));
+        if let Some(id) = lib.clicked_dataset(cx, actions, self.backend.library()) {
+            self.backend.dispatch(Intent::OpenDataset(id));
+            dirty = true;
+        }
+
+        // Play: episode selection and curation.
+        let play = self.ui.play_screen(cx, ids!(page_play));
+        if let Some(ep) = play.clicked_episode(cx, actions) {
+            self.backend.dispatch(Intent::SelectEpisode(ep));
+            dirty = true;
+        }
+        if let Some(sel) = self.backend.playback().selected {
+            if let Some(intent) = play.curation_intent(cx, actions, sel) {
+                self.backend.dispatch(intent);
+                dirty = true;
+            }
         }
 
         if dirty {

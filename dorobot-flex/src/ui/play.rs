@@ -6,7 +6,7 @@
 
 use makepad_widgets::*;
 
-use crate::api::{PlaybackState, Tag};
+use crate::api::{Intent, PlaybackState, Tag};
 use makepad_app_shell::grid::panel_grid::PanelGridWidgetExt;
 use makepad_app_shell::grid::LayoutState;
 use crate::ui::frame::{apply_light, apply_light_in, theme_chip, theme_panel_head, Themed};
@@ -23,6 +23,9 @@ script_mod! {
         align: Align{y: 0.5}
         spacing: 8.0
         padding: Inset{left: 18. right: 10.}
+        // A dev View only hit-tests when it declares a cursor; without this the
+        // row renders but never emits a ViewAction.
+        cursor: MouseCursor.Hand
         show_bg: true
         draw_bg +: {
             sel: instance(0.0)
@@ -412,6 +415,9 @@ pub struct PlayScreen {
     /// never true — seed ours exactly once instead, and let user drags stand.
     #[rust(false)]
     layout_seeded: bool,
+    /// Episode index displayed by each row, in row order.
+    #[rust]
+    row_episode: Vec<u64>,
 }
 
 impl Widget for PlayScreen {
@@ -539,6 +545,7 @@ impl PlayScreenRef {
             .iter()
             .flat_map(|g| st.episodes.iter().filter(move |e| &e.task_group == g))
             .collect();
+        let row_map: Vec<u64> = ordered.iter().map(|e| e.index).collect();
         for (i, p) in ROW_IDS.iter().enumerate() {
             let row = root.widget(cx, p);
             if row.is_empty() {
@@ -606,5 +613,44 @@ impl PlayScreenRef {
             .set_text(cx, &format!("DRIFT {:+.1} f", s.drift_frames));
         let mut ruler = root.widget(cx, ids!(timeline.tl_body.ruler));
         script_apply_eval!(cx, ruler, { draw_bg +: { head: #(head) light: #(light) } });
+
+        inner.row_episode = row_map;
+    }
+
+    /// Episode whose row was released under the pointer, if any.
+    pub fn clicked_episode(&self, cx: &mut Cx, actions: &Actions) -> Option<u64> {
+        let mut inner = self.borrow_mut()?;
+        let map = inner.row_episode.clone();
+        for (i, path) in ROW_IDS.iter().enumerate() {
+            let Some(&index) = map.get(i) else { continue };
+            let row = inner.view.widget(cx, path);
+            if row.is_empty() {
+                continue;
+            }
+            if crate::ui::frame::view_clicked(actions, row.widget_uid()) {
+                return Some(index);
+            }
+        }
+        None
+    }
+
+    /// Curation button presses, as intents the caller can dispatch.
+    pub fn curation_intent(&self, cx: &mut Cx, actions: &Actions, episode: u64) -> Option<Intent> {
+        let mut inner = self.borrow_mut()?;
+        let v = &mut inner.view;
+        let hit = |v: &mut View, cx: &mut Cx, p: &[LiveId]| v.button(cx, p).clicked(actions);
+        if hit(v, cx, ids!(upper.side.side_body.btn_good)) {
+            return Some(Intent::TagEpisode { episode, tag: Some(Tag::Good) });
+        }
+        if hit(v, cx, ids!(upper.side.side_body.btn_bad)) {
+            return Some(Intent::TagEpisode { episode, tag: Some(Tag::Bad) });
+        }
+        if hit(v, cx, ids!(upper.side.side_body.btn_del)) {
+            return Some(Intent::DeleteEpisode(episode));
+        }
+        if hit(v, cx, ids!(upper.side.side_body.btn_push)) {
+            return Some(Intent::PushToHub);
+        }
+        None
     }
 }

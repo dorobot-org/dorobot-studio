@@ -18,6 +18,7 @@ script_mod! {
         width: Fill
         height: Fit
         flow: Down
+        cursor: MouseCursor.Hand
 
         head := mod.widgets.ux.PanelHead{ title +: { text: "dataset" } }
 
@@ -406,6 +407,22 @@ const DEVICE_IDS: [&[LiveId]; 2] = [
 ];
 
 impl LibraryScreenRef {
+    /// Dataset id whose card was clicked, if any.
+    pub fn clicked_dataset(&self, cx: &mut Cx, actions: &Actions, state: &LibraryState) -> Option<String> {
+        let mut inner = self.borrow_mut()?;
+        for (slot, path) in CARD_IDS.iter().enumerate() {
+            let d = state.datasets.get(slot)?;
+            let card = inner.view.widget(cx, path);
+            if card.is_empty() {
+                continue;
+            }
+            if crate::ui::frame::view_clicked(actions, card.widget_uid()) {
+                return Some(d.id.clone());
+            }
+        }
+        None
+    }
+
     /// Push a state snapshot into the view.
     pub fn sync(&self, cx: &mut Cx, state: &LibraryState) {
         let light = crate::ui::frame::light_mode();

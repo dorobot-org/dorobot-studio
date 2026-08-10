@@ -547,6 +547,17 @@ pub fn toggle_light_mode() -> f64 {
     next
 }
 
+/// True when a View-like widget was released under the pointer.
+///
+/// `find_widget_action` returns only the *first* action for a uid, and one
+/// press delivers FingerDown and FingerUp in the same batch — so matching on
+/// that first action never sees the release. Scan them all instead.
+pub fn view_clicked(actions: &Actions, uid: WidgetUid) -> bool {
+    actions.filter_widget_actions(uid).any(|a| {
+        matches!(a.cast::<ViewAction>(), ViewAction::FingerUp(fe) if fe.is_over)
+    })
+}
+
 /// Which draws on a widget carry the `light` instance.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Themed {
