@@ -2,81 +2,79 @@
 
 use makepad_widgets::*;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
     // Episode list item - a clickable view with episode info
-    pub EpisodeListItem = {{EpisodeListItem}} {
+    mod.widgets.EpisodeListItemBase = #(EpisodeListItem::register_widget(vm))
+    mod.widgets.EpisodeListItem = set_type_default() do mod.widgets.EpisodeListItemBase{
         width: Fill
         height: 56
-        padding: { left: 12, right: 12, top: 8, bottom: 8 }
+        padding: Inset{left: 12.0 right: 12.0 top: 8.0 bottom: 8.0}
         flow: Down
         spacing: 4
 
         // Must have visible background for hit detection
         show_bg: true
-        draw_bg: {
-            color: #1a1a26
-        }
+        draw_bg.color: #x1a1a26
 
         // Top row with episode number, duration, frame count
-        top_row = <View> {
+        top_row := View{
             width: Fill
             height: Fit
             flow: Right
             spacing: 8
 
-            episode_label = <Label> {
+            episode_label := Label{
                 width: Fit
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: #ffffff
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SMALL{}
+                    color: #xffffff
                 }
                 text: "Episode 0"
             }
 
-            duration_label = <Label> {
+            duration_label := Label{
                 width: Fit
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: #888888
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SMALL{}
+                    color: #x888888
                 }
                 text: "0:00"
             }
 
-            frame_label = <Label> {
+            frame_label := Label{
                 width: Fit
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: #888888
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SMALL{}
+                    color: #x888888
                 }
                 text: "(0 frames)"
             }
         }
 
         // Task description
-        task_label = <Label> {
+        task_label := Label{
             width: Fill
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: #666666
+            draw_text +: {
+                text_style: mod.widgets.studio.TEXT_SMALL{}
+                color: #x666666
             }
             text: "Task description"
         }
     }
 
     // Main episode list widget
-    pub EpisodeList = {{EpisodeList}} {
+    mod.widgets.EpisodeListBase = #(EpisodeList::register_widget(vm))
+    mod.widgets.EpisodeList = set_type_default() do mod.widgets.EpisodeListBase{
         width: Fill
         height: Fill
 
         flow: Down
 
         // Search and filter header
-        header = <View> {
+        header := View{
             width: Fill
             height: Fit
             padding: 8
@@ -84,67 +82,67 @@ live_design! {
             flow: Down
 
             show_bg: true
-            draw_bg: { color: (COLOR_BG_HEADER) }
+            draw_bg.color: mod.widgets.studio.COLOR_BG_HEADER
 
             // Search input
-            search_input = <TextInput> {
+            search_input := TextInput{
                 width: Fill
                 height: 32
-                padding: { left: 8, right: 8 }
+                padding: Inset{left: 8.0 right: 8.0}
 
                 text: ""
 
-                draw_bg: {
-                    color: (COLOR_BG_INPUT)
+                draw_bg +: {
+                    color: mod.widgets.studio.COLOR_BG_INPUT
                 }
 
-                draw_text: {
-                    text_style: <TEXT_BODY> {}
-                    color: (COLOR_TEXT_PRIMARY)
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_BODY{}
+                    color: mod.widgets.studio.COLOR_TEXT_PRIMARY
                 }
             }
 
             // Filter row
-            filter_row = <View> {
+            filter_row := View{
                 width: Fill
                 height: Fit
                 flow: Right
                 spacing: 8
-                align: { y: 0.5 }
+                align: Align{y: 0.5}
 
-                filter_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_SECONDARY)
+                filter_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_SECONDARY
                     }
                     text: "Filter:"
                 }
 
                 // Task filter dropdown placeholder
-                task_filter = <Button> {
+                task_filter := Button{
                     width: Fit
                     height: 24
-                    padding: { left: 8, right: 8 }
+                    padding: Inset{left: 8.0 right: 8.0}
                     text: "All Tasks"
 
-                    draw_bg: {
-                        color: (COLOR_BG_INPUT)
+                    draw_bg +: {
+                        color: mod.widgets.studio.COLOR_BG_INPUT
                         border_radius: 4.0
                     }
 
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_PRIMARY)
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_PRIMARY
                     }
                 }
 
-                <View> { width: Fill }
+                View{ width: Fill }
 
                 // Episode count
-                episode_count = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_MUTED)
+                episode_count := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_MUTED
                     }
                     text: "0 episodes"
                 }
@@ -152,12 +150,12 @@ live_design! {
         }
 
         // Scrollable episode list using PortalList for virtual scrolling
-        list = <PortalList> {
+        list := PortalList{
             width: Fill
             height: Fill
             flow: Down
 
-            EpisodeListItem = <EpisodeListItem> {}
+            EpisodeListItem := mod.widgets.EpisodeListItem{}
         }
     }
 }
@@ -171,16 +169,17 @@ pub struct EpisodeInfo {
     pub task_index: u64,
 }
 
-#[derive(Clone, Debug, DefaultNone)]
+#[derive(Clone, Debug, Default)]
 pub enum EpisodeListAction {
     EpisodeSelected(u64),
     EpisodeDoubleClicked(u64),
     SearchChanged(String),
     FilterChanged(Option<u64>),  // task_index
+    #[default]
     None,
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct EpisodeListItem {
     #[deref]
     view: View,
@@ -220,7 +219,7 @@ impl EpisodeListItem {
     }
 }
 
-#[derive(Live, Widget)]
+#[derive(Script, Widget)]
 pub struct EpisodeList {
     #[deref]
     view: View,
@@ -239,8 +238,8 @@ pub struct EpisodeList {
     initialized: bool,
 }
 
-impl LiveHook for EpisodeList {
-    fn after_apply(&mut self, _cx: &mut Cx, _apply: &mut Apply, _index: usize, _nodes: &[LiveNode]) {
+impl ScriptHook for EpisodeList {
+    fn on_after_new(&mut self, _vm: &mut ScriptVm) {
         // Initialize with demo data if empty
         if !self.initialized {
             self.initialized = true;
@@ -277,26 +276,26 @@ impl Widget for EpisodeList {
                         let episode = &self.episodes[episode_idx];
 
                         // Get the item widget and configure it
-                        let item = list.item(cx, item_id, live_id!(EpisodeListItem));
+                        let item = list.item(cx, item_id, id!(EpisodeListItem));
 
                         // Set episode index on the item widget for click handling
                         if let Some(mut item_inner) = item.borrow_mut::<EpisodeListItem>() {
                             item_inner.episode_index = episode.index;
                         }
 
-                        // Set labels using correct paths from live_design
-                        item.label(id!(top_row.episode_label))
+                        // Set labels using correct paths from the script DSL
+                        item.label(cx, ids!(top_row.episode_label))
                             .set_text(cx, &format!("Episode {}", episode.index));
 
                         let duration_str = format!("{}:{:02}",
                             (episode.duration_secs / 60.0) as u32,
                             (episode.duration_secs % 60.0) as u32);
-                        item.label(id!(top_row.duration_label)).set_text(cx, &duration_str);
+                        item.label(cx, ids!(top_row.duration_label)).set_text(cx, &duration_str);
 
-                        item.label(id!(top_row.frame_label))
+                        item.label(cx, ids!(top_row.frame_label))
                             .set_text(cx, &format!("({} frames)", episode.frame_count));
 
-                        item.label(id!(task_label)).set_text(cx, &episode.task_description);
+                        item.label(cx, ids!(task_label)).set_text(cx, &episode.task_description);
 
                         item.draw_all(cx, &mut Scope::empty());
                     }
@@ -357,7 +356,7 @@ impl EpisodeList {
 
     fn update_episode_count(&mut self, cx: &mut Cx) {
         let text = format!("{} episodes", self.filtered_indices.len());
-        self.view.label(id!(header.filter_row.episode_count)).set_text(cx, &text);
+        self.view.label(cx, ids!(header.filter_row.episode_count)).set_text(cx, &text);
     }
 
     /// Get the currently filtered episodes

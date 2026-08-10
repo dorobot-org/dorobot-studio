@@ -12,148 +12,204 @@ use crate::data::urdf_renderer::{
 #[cfg(feature = "urdf")]
 use crate::data::urdf_renderer::start_renderer_thread;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
     // Individual joint angle display
-    JointDisplay = <View> {
+    let JointDisplay = View{
         width: 60
         height: Fit
         flow: Down
-        align: { x: 0.5 }
+        align: Align{x: 0.5}
 
-        name = <Label> {
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_SECONDARY)
+        name := Label{
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.35, 0.35, 0.4, 1.0)
+                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "J0"
         }
 
-        value = <Label> {
-            draw_text: {
-                text_style: <TEXT_MONO> {}
-                color: (COLOR_TEXT_PRIMARY)
+        value := Label{
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_MONO{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "0.00"
         }
     }
 
     // Robot arm viewer widget
-    pub RobotViewer = {{RobotViewer}} {
+    mod.widgets.RobotViewerBase = #(RobotViewer::register_widget(vm))
+    mod.widgets.RobotViewer = set_type_default() do mod.widgets.RobotViewerBase{
         width: Fill
         height: Fill
 
         flow: Down
 
-        // Header with view controls
-        header = <View> {
+        // Header with view controls - hidden (panel has its own title bar)
+        header := View{
+            visible: false
             width: Fill
             height: 32
-            padding: { left: 8, right: 8 }
+            padding: Inset{left: 8. right: 8.}
             spacing: 8
-            align: { y: 0.5 }
+            align: Align{y: 0.5}
 
             show_bg: true
-            draw_bg: { color: (COLOR_BG_HEADER) }
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_bg = vec4(0.945, 0.961, 0.976, 1.0)
+                    let dark_bg = vec4(0.133, 0.133, 0.157, 1.0)
+                    return mix(light_bg, dark_bg, self.dark_mode)
+                }
+            }
 
-            title = <Label> {
-                draw_text: {
-                    text_style: <TEXT_PANEL_TITLE> {}
-                    color: (COLOR_TEXT_PRIMARY)
+            title := Label{
+                draw_text +: {
+                    text_style: mod.widgets.flex.TEXT_PANEL_TITLE{}
+                    dark_mode: instance(0.0)
+                    get_color: fn() {
+                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                        return mix(light_text, dark_text, self.dark_mode)
+                    }
                 }
                 text: "Robot 3D View"
             }
 
-            <View> { width: Fill }
+            View{ width: Fill }
 
             // View controls
-            reset_view_btn = <SecondaryButton> {
+            reset_view_btn := Button{
                 text: "Reset"
                 width: 50
                 height: 20
-                padding: { left: 6, right: 6 }
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_PRIMARY)
+                padding: Inset{left: 6. right: 6.}
+                draw_bg +: {
+                    dark_mode: instance(0.0)
+                    pixel: fn() {
+                        let light_normal = vec4(0.945, 0.961, 0.976, 1.0)
+                        let dark_normal = vec4(0.165, 0.165, 0.196, 1.0)
+                        let light_hover = vec4(0.886, 0.910, 0.941, 1.0)
+                        let dark_hover = vec4(0.176, 0.176, 0.208, 1.0)
+                        let normal = mix(light_normal, dark_normal, self.dark_mode)
+                        let hover_color = mix(light_hover, dark_hover, self.dark_mode)
+                        return mix(normal, hover_color, self.hover)
+                    }
+                }
+                draw_text +: {
+                    text_style: mod.widgets.flex.TEXT_SMALL{}
+                    dark_mode: instance(0.0)
+                    get_color: fn() {
+                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                        return mix(light_text, dark_text, self.dark_mode)
+                    }
                 }
             }
         }
 
         // 3D viewport - displays kiss3d rendered texture
-        viewport = <View> {
+        viewport := View{
             width: Fill
             height: Fill
-            cursor: Hand
+            cursor: MouseCursor.Hand
 
             show_bg: true
-            draw_bg: { color: #1a1a22 }
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    // Light mode: light gray, Dark mode: dark blue-gray
+                    let light_bg = vec4(0.92, 0.93, 0.95, 1.0)  // Light gray
+                    let dark_bg = vec4(0.102, 0.102, 0.133, 1.0) // #1a1a22
+                    return mix(light_bg, dark_bg, self.dark_mode)
+                }
+            }
 
             flow: Overlay
 
             // Rendered frame from kiss3d
-            frame_image = <Image> {
+            frame_image := Image{
                 width: Fill
                 height: Fill
-                fit: Smallest
+                fit: ImageFit.Smallest
                 visible: false
             }
 
             // Placeholder when no robot loaded
-            placeholder = <View> {
+            placeholder := View{
                 width: Fill
                 height: Fill
-                align: { x: 0.5, y: 0.5 }
+                align: Align{x: 0.5 y: 0.5}
 
-                placeholder_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: (COLOR_TEXT_MUTED)
-                        wrap: Word
+                placeholder_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_BODY{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                            let dark_text = vec4(0.333, 0.333, 0.376, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "Load URDF to visualize robot"
                 }
             }
 
             // Loading indicator
-            loading = <View> {
+            loading := View{
                 width: Fill
                 height: Fill
-                align: { x: 0.5, y: 0.5 }
+                align: Align{x: 0.5 y: 0.5}
                 visible: false
 
-                loading_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: (COLOR_TEXT_SECONDARY)
+                loading_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_BODY{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.35, 0.35, 0.4, 1.0)
+                            let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "Loading URDF..."
                 }
             }
 
             // Error display
-            error_view = <View> {
+            error_view := View{
                 width: Fill
                 height: Fill
-                align: { x: 0.5, y: 0.5 }
+                align: Align{x: 0.5 y: 0.5}
                 visible: false
 
-                error_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: #ff6666
-                        wrap: Word
+                error_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_BODY{}
+                        color: #xff6666
                     }
                     text: ""
                 }
             }
         }
 
-        // Joint angles display (bottom overlay)
-        joint_info = <View> {
+        // Joint angles display (bottom overlay) - hidden by default
+        joint_info := View{
+            visible: false
             width: Fill
             height: 50
             padding: 6
@@ -161,19 +217,26 @@ live_design! {
             spacing: 8
 
             show_bg: true
-            draw_bg: { color: (COLOR_BG_PANEL) }
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_bg = vec4(1.0, 1.0, 1.0, 1.0)
+                    let dark_bg = vec4(0.102, 0.102, 0.122, 1.0)
+                    return mix(light_bg, dark_bg, self.dark_mode)
+                }
+            }
 
-            joint_0 = <JointDisplay> {}
-            joint_1 = <JointDisplay> {}
-            joint_2 = <JointDisplay> {}
-            joint_3 = <JointDisplay> {}
-            joint_4 = <JointDisplay> {}
-            joint_5 = <JointDisplay> {}
+            joint_0 := JointDisplay{}
+            joint_1 := JointDisplay{}
+            joint_2 := JointDisplay{}
+            joint_3 := JointDisplay{}
+            joint_4 := JointDisplay{}
+            joint_5 := JointDisplay{}
         }
     }
 }
 
-#[derive(Live, Widget)]
+#[derive(Script, Widget)]
 pub struct RobotViewer {
     #[deref]
     view: View,
@@ -210,7 +273,7 @@ pub struct RobotViewer {
     #[rust]
     drag_button: usize, // 0 = left (orbit), 1 = right (pan)
     #[rust]
-    last_mouse_pos: DVec2,
+    last_mouse_pos: Vec2d,
 
     // Timer for checking new frames
     #[rust]
@@ -221,15 +284,15 @@ pub struct RobotViewer {
     initialized: bool,
 }
 
-impl LiveHook for RobotViewer {
-    fn after_apply(&mut self, cx: &mut Cx, _apply: &mut Apply, _index: usize, _nodes: &[LiveNode]) {
+impl ScriptHook for RobotViewer {
+    fn on_after_new(&mut self, vm: &mut ScriptVm) {
         if !self.initialized {
             self.initialized = true;
             // Don't auto-start renderer - kiss3d requires main thread on macOS
             // Renderer will be started when load_urdf is called
 
             // Start refresh timer (30 fps)
-            self.refresh_timer = cx.start_interval(0.033);
+            self.refresh_timer = vm.with_cx_mut(|cx| cx.start_interval(0.033));
         }
     }
 }
@@ -252,12 +315,12 @@ impl Widget for RobotViewer {
         });
 
         // Handle reset view button
-        if self.view.button(id!(reset_view_btn)).clicked(&actions) {
+        if self.view.button(cx, ids!(reset_view_btn)).clicked(&actions) {
             self.send_camera_command(CameraCommand::Reset);
         }
 
         // Handle viewport mouse interaction
-        let viewport_area = self.view.view(id!(viewport)).area();
+        let viewport_area = self.view.view(cx, ids!(viewport)).area();
         match event.hits(cx, viewport_area) {
             Hit::FingerDown(fe) => {
                 self.last_mouse_pos = fe.abs;
@@ -296,6 +359,53 @@ impl Widget for RobotViewer {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Apply theme to all themed elements
+        let dm = makepad_app_shell::theme::get_global_dark_mode();
+
+        // Header / viewport / joint info backgrounds
+        for path in [ids!(header), ids!(viewport), ids!(joint_info)] {
+            let mut view = self.view.view(cx, path);
+            script_apply_eval!(cx, view, {
+                draw_bg +: { dark_mode: #(dm) }
+            });
+        }
+        let mut reset_btn = self.view.button(cx, ids!(header.reset_view_btn));
+        script_apply_eval!(cx, reset_btn, {
+            draw_bg +: { dark_mode: #(dm) }
+            draw_text +: { dark_mode: #(dm) }
+        });
+
+        // Title, placeholder/loading labels, and per-joint name/value labels
+        for path in [
+            ids!(header.title) as &[LiveId],
+            ids!(viewport.placeholder.placeholder_label),
+            ids!(viewport.loading.loading_label),
+        ] {
+            let mut label = self.view.label(cx, path);
+            script_apply_eval!(cx, label, {
+                draw_text +: { dark_mode: #(dm) }
+            });
+        }
+        for path in [
+            ids!(joint_info.joint_0.name),
+            ids!(joint_info.joint_0.value),
+            ids!(joint_info.joint_1.name),
+            ids!(joint_info.joint_1.value),
+            ids!(joint_info.joint_2.name),
+            ids!(joint_info.joint_2.value),
+            ids!(joint_info.joint_3.name),
+            ids!(joint_info.joint_3.value),
+            ids!(joint_info.joint_4.name),
+            ids!(joint_info.joint_4.value),
+            ids!(joint_info.joint_5.name),
+            ids!(joint_info.joint_5.value),
+        ] {
+            let mut label = self.view.label(cx, path);
+            script_apply_eval!(cx, label, {
+                draw_text +: { dark_mode: #(dm) }
+            });
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -351,9 +461,9 @@ impl RobotViewer {
             self.update_joint_names(cx, &joint_names);
 
             // Hide loading, show viewport
-            self.view.view(id!(viewport.loading)).set_visible(cx, false);
-            self.view.view(id!(viewport.placeholder)).set_visible(cx, false);
-            self.view.view(id!(viewport.error_view)).set_visible(cx, false);
+            self.view.view(cx, ids!(viewport.loading)).set_visible(cx, false);
+            self.view.view(cx, ids!(viewport.placeholder)).set_visible(cx, false);
+            self.view.view(cx, ids!(viewport.error_view)).set_visible(cx, false);
         }
 
         // Update texture if we have a new frame
@@ -383,13 +493,11 @@ impl RobotViewer {
         });
 
         // Set texture on image widget
-        let image = self.view.image(id!(viewport.frame_image));
+        let image = self.view.image(cx, ids!(viewport.frame_image));
         image.set_texture(cx, Some(texture));
 
         // Make image visible
-        self.view.image(id!(viewport.frame_image)).apply_over(cx, live! {
-            visible: true
-        });
+        self.view.image(cx, ids!(viewport.frame_image)).set_visible(cx, true);
 
         self.view.redraw(cx);
     }
@@ -397,12 +505,12 @@ impl RobotViewer {
     /// Update joint name labels
     fn update_joint_names(&mut self, cx: &mut Cx, names: &[String]) {
         let name_ids = [
-            id!(joint_info.joint_0.name),
-            id!(joint_info.joint_1.name),
-            id!(joint_info.joint_2.name),
-            id!(joint_info.joint_3.name),
-            id!(joint_info.joint_4.name),
-            id!(joint_info.joint_5.name),
+            ids!(joint_info.joint_0.name),
+            ids!(joint_info.joint_1.name),
+            ids!(joint_info.joint_2.name),
+            ids!(joint_info.joint_3.name),
+            ids!(joint_info.joint_4.name),
+            ids!(joint_info.joint_5.name),
         ];
 
         for (i, name_id) in name_ids.iter().enumerate() {
@@ -413,16 +521,16 @@ impl RobotViewer {
             } else {
                 name
             };
-            self.view.label(*name_id).set_text(cx, short_name);
+            self.view.label(cx, *name_id).set_text(cx, short_name);
         }
     }
 
     /// Show error message
     fn show_error(&mut self, cx: &mut Cx, error: &str) {
-        self.view.label(id!(viewport.error_view.error_label)).set_text(cx, error);
-        self.view.view(id!(viewport.error_view)).set_visible(cx, true);
-        self.view.view(id!(viewport.loading)).set_visible(cx, false);
-        self.view.view(id!(viewport.placeholder)).set_visible(cx, false);
+        self.view.label(cx, ids!(viewport.error_view.error_label)).set_text(cx, error);
+        self.view.view(cx, ids!(viewport.error_view)).set_visible(cx, true);
+        self.view.view(cx, ids!(viewport.loading)).set_visible(cx, false);
+        self.view.view(cx, ids!(viewport.placeholder)).set_visible(cx, false);
         self.view.redraw(cx);
     }
 
@@ -433,12 +541,10 @@ impl RobotViewer {
         self.has_robot = false;
 
         // Show loading indicator
-        self.view.view(id!(viewport.loading)).set_visible(cx, true);
-        self.view.view(id!(viewport.placeholder)).set_visible(cx, false);
-        self.view.view(id!(viewport.error_view)).set_visible(cx, false);
-        self.view.image(id!(viewport.frame_image)).apply_over(cx, live! {
-            visible: false
-        });
+        self.view.view(cx, ids!(viewport.loading)).set_visible(cx, true);
+        self.view.view(cx, ids!(viewport.placeholder)).set_visible(cx, false);
+        self.view.view(cx, ids!(viewport.error_view)).set_visible(cx, false);
+        self.view.image(cx, ids!(viewport.frame_image)).set_visible(cx, false);
 
         // Initialize renderer if not already done
         if self.renderer_state.is_none() {
@@ -470,18 +576,18 @@ impl RobotViewer {
 
         // Update joint value displays
         let value_ids = [
-            id!(joint_info.joint_0.value),
-            id!(joint_info.joint_1.value),
-            id!(joint_info.joint_2.value),
-            id!(joint_info.joint_3.value),
-            id!(joint_info.joint_4.value),
-            id!(joint_info.joint_5.value),
+            ids!(joint_info.joint_0.value),
+            ids!(joint_info.joint_1.value),
+            ids!(joint_info.joint_2.value),
+            ids!(joint_info.joint_3.value),
+            ids!(joint_info.joint_4.value),
+            ids!(joint_info.joint_5.value),
         ];
 
         for (i, &value_id) in value_ids.iter().enumerate() {
             let value = angles.get(i).copied().unwrap_or(0.0);
             let text = format!("{:.1}°", value.to_degrees());
-            self.view.label(value_id).set_text(cx, &text);
+            self.view.label(cx, value_id).set_text(cx, &text);
         }
     }
 
@@ -491,19 +597,17 @@ impl RobotViewer {
         self.has_robot = false;
         self.urdf_path = None;
 
-        self.view.view(id!(viewport.placeholder)).set_visible(cx, true);
-        self.view.view(id!(viewport.loading)).set_visible(cx, false);
-        self.view.view(id!(viewport.error_view)).set_visible(cx, false);
-        self.view.image(id!(viewport.frame_image)).apply_over(cx, live! {
-            visible: false
-        });
+        self.view.view(cx, ids!(viewport.placeholder)).set_visible(cx, true);
+        self.view.view(cx, ids!(viewport.loading)).set_visible(cx, false);
+        self.view.view(cx, ids!(viewport.error_view)).set_visible(cx, false);
+        self.view.image(cx, ids!(viewport.frame_image)).set_visible(cx, false);
 
         self.view.redraw(cx);
     }
 
     /// Set placeholder text
     pub fn set_placeholder_text(&mut self, cx: &mut Cx, text: &str) {
-        self.view.label(id!(viewport.placeholder.placeholder_label)).set_text(cx, text);
+        self.view.label(cx, ids!(viewport.placeholder.placeholder_label)).set_text(cx, text);
     }
 }
 

@@ -6,12 +6,12 @@ pub mod timeline;
 pub mod robot_viewer;
 pub mod episode_list;
 
-use makepad_widgets::Cx;
+use makepad_widgets::{ScriptValue, ScriptVm};
 
-pub fn live_design(cx: &mut Cx) {
-    self::video_player::live_design(cx);
-    self::time_series_plot::live_design(cx);
-    self::timeline::live_design(cx);
-    self::robot_viewer::live_design(cx);
-    self::episode_list::live_design(cx);
+pub fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
+    self::video_player::script_mod(vm);
+    self::time_series_plot::script_mod(vm);
+    self::timeline::script_mod(vm);
+    self::robot_viewer::script_mod(vm);
+    self::episode_list::script_mod(vm)
 }

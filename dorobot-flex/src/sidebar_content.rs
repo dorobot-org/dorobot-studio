@@ -6,108 +6,175 @@
 //! - Episode list (scrollable)
 
 use makepad_widgets::*;
+use makepad_app_shell::theme::get_global_dark_mode;
 use crate::app_data::AppData;
-use crate::widgets::episode_list::{EpisodeListAction, EpisodeListWidgetExt};
-use crate::shared::styles::*;
+use crate::widgets::episode_list::EpisodeListWidgetExt;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
-    use crate::widgets::episode_list::EpisodeList;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
-    pub SidebarContent = {{SidebarContent}} {
+    mod.widgets.SidebarContentBase = #(SidebarContent::register_widget(vm))
+    mod.widgets.SidebarContent = set_type_default() do mod.widgets.SidebarContentBase{
         width: Fill
         height: Fill
         flow: Down
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_SIDEBAR) }
+        draw_bg +: {
+            dark_mode: instance(0.0)
+            pixel: fn() {
+                let light_bg = vec4(0.973, 0.976, 0.988, 1.0)
+                let dark_bg = vec4(0.082, 0.082, 0.094, 1.0)
+                return mix(light_bg, dark_bg, self.dark_mode)
+            }
+        }
 
         // Dataset section
-        dataset_section = <View> {
+        dataset_section := View{
             width: Fill
             height: Fit
             padding: 12
             flow: Down
             spacing: 8
 
-            <Label> {
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_MUTED)
+            dataset_label := Label{
+                draw_text +: {
+                    text_style: mod.widgets.flex.TEXT_SMALL{}
+                    dark_mode: instance(0.0)
+                    get_color: fn() {
+                        let light_text = vec4(0.45, 0.45, 0.50, 1.0)
+                        let dark_text = vec4(0.45, 0.45, 0.50, 1.0)
+                        return mix(light_text, dark_text, self.dark_mode)
+                    }
                 }
                 text: "DATASET"
             }
 
-            dataset_name = <Label> {
-                draw_text: {
-                    text_style: <TEXT_SUBTITLE> {}
-                    color: (COLOR_TEXT_PRIMARY)
+            dataset_name := Label{
+                draw_text +: {
+                    text_style: mod.widgets.flex.TEXT_SUBTITLE{}
+                    dark_mode: instance(0.0)
+                    get_color: fn() {
+                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                        return mix(light_text, dark_text, self.dark_mode)
+                    }
                 }
                 text: "No dataset loaded"
             }
 
-            dataset_info = <Label> {
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_SECONDARY)
+            dataset_info := Label{
+                draw_text +: {
+                    text_style: mod.widgets.flex.TEXT_SMALL{}
+                    dark_mode: instance(0.0)
+                    get_color: fn() {
+                        let light_text = vec4(0.35, 0.35, 0.40, 1.0)
+                        let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                        return mix(light_text, dark_text, self.dark_mode)
+                    }
                 }
                 text: ""
             }
 
-            load_btn = <Button> {
+            load_btn := Button{
                 width: Fill
                 height: 36
                 text: "Load Dataset"
 
-                draw_bg: {
-                    color: (COLOR_ACCENT)
+                draw_bg +: {
+                    color: #x3b82f6
+                    pixel: fn() {
+                        let base = self.color
+                        let hover_color = vec4(0.20, 0.45, 0.90, 1.0)
+                        let pressed_color = vec4(0.15, 0.40, 0.85, 1.0)
+                        let color = mix(base, hover_color, self.hover)
+                        return mix(color, pressed_color, self.down)
+                    }
                 }
-                draw_text: {
-                    color: #ffffff
-                    text_style: <TEXT_BODY> {}
+                draw_text +: {
+                    color: #xffffff
+                    text_style: mod.widgets.flex.TEXT_BODY{}
+                }
+            }
+
+            // Error message display (hidden by default)
+            error_view := View{
+                width: Fill
+                height: Fit
+                visible: false
+                padding: Inset{top: 8.}
+
+                error_container := RoundedView{
+                    width: Fill
+                    height: Fit
+                    padding: 8
+                    draw_bg +: {
+                        color: #xfee2e2  // Light red background
+                        border_radius: 4.0
+                    }
+
+                    error_label := Label{
+                        width: Fill
+                        draw_text +: {
+                            text_style: mod.widgets.flex.TEXT_SMALL{}
+                            color: #xdc2626  // Red text
+                        }
+                        text: ""
+                    }
                 }
             }
         }
 
-        <View> {
+        divider := View{
             width: Fill
             height: 1
             show_bg: true
-            draw_bg: { color: (COLOR_DIVIDER) }
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_div = vec4(0.878, 0.878, 0.898, 1.0)
+                    let dark_div = vec4(0.2, 0.2, 0.22, 1.0)
+                    return mix(light_div, dark_div, self.dark_mode)
+                }
+            }
         }
 
         // Episode section header
-        episode_header = <View> {
+        episode_header := View{
             width: Fill
             height: 36
-            padding: { left: 12, right: 12 }
-            align: { y: 0.5 }
+            padding: Inset{left: 12. right: 12.}
+            align: Align{y: 0.5}
 
-            <Label> {
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_MUTED)
+            episode_label := Label{
+                draw_text +: {
+                    text_style: mod.widgets.flex.TEXT_SMALL{}
+                    dark_mode: instance(0.0)
+                    get_color: fn() {
+                        let light_text = vec4(0.45, 0.45, 0.50, 1.0)
+                        let dark_text = vec4(0.45, 0.45, 0.50, 1.0)
+                        return mix(light_text, dark_text, self.dark_mode)
+                    }
                 }
                 text: "EPISODES"
             }
         }
 
         // Episode list (fills remaining space)
-        episode_list = <EpisodeList> {}
+        episode_list := EpisodeList{}
     }
 }
 
-#[derive(Clone, Debug, DefaultNone)]
+#[derive(Clone, Debug, Default)]
 pub enum SidebarAction {
     LoadDataset,
     EpisodeSelected(u64),
+    #[default]
     None,
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct SidebarContent {
     #[deref]
     view: View,
@@ -115,47 +182,48 @@ pub struct SidebarContent {
 
 impl Widget for SidebarContent {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let actions = cx.capture_actions(|cx| {
-            self.view.handle_event(cx, event, scope);
-        });
+        // Let events propagate to children
+        self.view.handle_event(cx, event, scope);
 
-        // Handle load button click
-        if self.view.button(id!(dataset_section.load_btn)).clicked(&actions) {
-            cx.widget_action(self.widget_uid(), &scope.path, SidebarAction::LoadDataset);
-        }
-
-        // Handle episode list actions
-        for action in actions.iter() {
-            if let Some(EpisodeListAction::EpisodeSelected(idx)) = action.downcast_ref() {
-                cx.widget_action(self.widget_uid(), &scope.path, SidebarAction::EpisodeSelected(*idx));
-            }
-        }
+        // The Load Dataset button is a stock Button; its Clicked widget action
+        // is consumed in app.rs handle_actions (manual area hit-testing no
+        // longer coexists with the button's own capture in makepad dev).
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Apply theme
+        let dm = get_global_dark_mode();
+        self.apply_theme(cx, dm);
+
         // Update from AppData
         if let Some(data) = scope.data.get::<AppData>() {
-            // Update dataset info
             if data.dataset.is_some() {
-                self.view.label(id!(dataset_section.dataset_name))
+                self.view.label(cx, ids!(dataset_section.dataset_name))
                     .set_text(cx, &data.dataset_name);
-                self.view.label(id!(dataset_section.dataset_info))
+                self.view.label(cx, ids!(dataset_section.dataset_info))
                     .set_text(cx, &data.dataset_info);
             } else {
-                self.view.label(id!(dataset_section.dataset_name))
+                self.view.label(cx, ids!(dataset_section.dataset_name))
                     .set_text(cx, "No dataset loaded");
-                self.view.label(id!(dataset_section.dataset_info))
+                self.view.label(cx, ids!(dataset_section.dataset_info))
                     .set_text(cx, "");
             }
 
-            // Update episode list
+            // Show/hide error message
+            if let Some(ref error_msg) = data.error_message {
+                self.view.view(cx, ids!(dataset_section.error_view)).set_visible(cx, true);
+                self.view.label(cx, ids!(dataset_section.error_view.error_container.error_label))
+                    .set_text(cx, error_msg);
+            } else {
+                self.view.view(cx, ids!(dataset_section.error_view)).set_visible(cx, false);
+            }
+
             if !data.episodes.is_empty() {
-                self.view.episode_list(id!(episode_list))
+                self.view.episode_list(cx, ids!(episode_list))
                     .set_episodes(cx, data.episodes.clone());
 
-                // Highlight selected episode
                 if let Some(selected) = data.current_episode {
-                    self.view.episode_list(id!(episode_list))
+                    self.view.episode_list(cx, ids!(episode_list))
                         .set_selected(cx, Some(selected));
                 }
             }
@@ -165,3 +233,26 @@ impl Widget for SidebarContent {
     }
 }
 
+impl SidebarContent {
+    fn apply_theme(&mut self, cx: &mut Cx, dm: f64) {
+        script_apply_eval!(cx, self.view, {
+            draw_bg +: { dark_mode: #(dm) }
+        });
+        let mut divider = self.view.view(cx, ids!(divider));
+        script_apply_eval!(cx, divider, {
+            draw_bg +: { dark_mode: #(dm) }
+        });
+        for path in [
+            ids!(dataset_section.dataset_label),
+            ids!(dataset_section.dataset_name),
+            ids!(dataset_section.dataset_info),
+            ids!(episode_header.episode_label),
+        ] {
+            let mut label = self.view.label(cx, path);
+            script_apply_eval!(cx, label, {
+                draw_text +: { dark_mode: #(dm) }
+            });
+        }
+        // load_btn uses a fixed blue accent color, no dark_mode needed
+    }
+}

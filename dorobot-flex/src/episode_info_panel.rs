@@ -1,46 +1,49 @@
 //! Right sidebar with episode information display
-//!
-//! Shows detailed information about the currently selected episode:
-//! - Episode index, frame count, duration, FPS
-//! - Current playback time
-//! - Task description
-//! - State and action channel counts
 
 use makepad_widgets::*;
+use makepad_app_shell::theme::get_global_dark_mode;
 use crate::app_data::AppData;
-use crate::shared::styles::*;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
     // Info row component
-    InfoRow = <View> {
+    let InfoRow = View{
         width: Fill
         height: Fit
         flow: Right
         spacing: 8
 
-        label = <Label> {
+        label := Label{
             width: 80
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_MUTED)
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    let dark_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
         }
 
-        value = <Label> {
-            draw_text: {
-                text_style: <TEXT_BODY> {}
-                color: (COLOR_TEXT_PRIMARY)
+        value := Label{
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_BODY{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "-"
         }
     }
 
-    pub EpisodeInfoPanel = {{EpisodeInfoPanel}} {
+    mod.widgets.EpisodeInfoPanelBase = #(EpisodeInfoPanel::register_widget(vm))
+    mod.widgets.EpisodeInfoPanel = set_type_default() do mod.widgets.EpisodeInfoPanelBase{
         width: Fill
         height: Fill
         flow: Down
@@ -48,91 +51,127 @@ live_design! {
         spacing: 12
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_SIDEBAR) }
+        draw_bg +: {
+            dark_mode: instance(0.0)
+            pixel: fn() {
+                let light_bg = vec4(0.973, 0.976, 0.988, 1.0)
+                let dark_bg = vec4(0.082, 0.082, 0.094, 1.0)
+                return mix(light_bg, dark_bg, self.dark_mode)
+            }
+        }
 
         // Header
-        <Label> {
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_MUTED)
+        info_header := Label{
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    let dark_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "EPISODE INFO"
         }
 
         // Episode details container
-        info_container = <View> {
+        info_container := View{
             width: Fill
             height: Fit
             flow: Down
             spacing: 8
 
-            // Episode index
-            episode_row = <InfoRow> {
-                label = { text: "Episode:" }
-                episode_value = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: (COLOR_TEXT_PRIMARY)
+            episode_row := InfoRow{
+                label +: { text: "Episode:" }
+                episode_value := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_BODY{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "-"
                 }
             }
 
-            // Frame count
-            frames_row = <InfoRow> {
-                label = { text: "Frames:" }
-                frames_value = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: (COLOR_TEXT_PRIMARY)
+            frames_row := InfoRow{
+                label +: { text: "Frames:" }
+                frames_value := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_BODY{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "-"
                 }
             }
 
-            // Duration
-            duration_row = <InfoRow> {
-                label = { text: "Duration:" }
-                duration_value = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: (COLOR_TEXT_PRIMARY)
+            duration_row := InfoRow{
+                label +: { text: "Duration:" }
+                duration_value := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_BODY{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "-"
                 }
             }
 
-            // FPS
-            fps_row = <InfoRow> {
-                label = { text: "FPS:" }
-                fps_value = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: (COLOR_TEXT_PRIMARY)
+            fps_row := InfoRow{
+                label +: { text: "FPS:" }
+                fps_value := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_BODY{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "-"
                 }
             }
 
-            // Current time
-            time_row = <InfoRow> {
-                label = { text: "Time:" }
-                time_value = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_MONO> {}
-                        color: (COLOR_TEXT_PRIMARY)
+            time_row := InfoRow{
+                label +: { text: "Time:" }
+                time_value := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_MONO{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "-"
                 }
             }
 
-            // Current frame
-            frame_row = <InfoRow> {
-                label = { text: "Frame:" }
-                frame_value = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_MONO> {}
-                        color: (COLOR_TEXT_PRIMARY)
+            frame_row := InfoRow{
+                label +: { text: "Frame:" }
+                frame_value := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_MONO{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
+                        }
                     }
                     text: "-"
                 }
@@ -140,76 +179,110 @@ live_design! {
         }
 
         // Divider
-        <View> {
+        divider := View{
             width: Fill
             height: 1
-            margin: { top: 4, bottom: 4 }
+            margin: Inset{top: 4. bottom: 4.}
             show_bg: true
-            draw_bg: { color: (COLOR_DIVIDER) }
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_div = vec4(0.878, 0.878, 0.898, 1.0)
+                    let dark_div = vec4(0.2, 0.2, 0.22, 1.0)
+                    return mix(light_div, dark_div, self.dark_mode)
+                }
+            }
         }
 
         // Task section
-        <Label> {
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_MUTED)
+        task_header := Label{
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    let dark_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "TASK"
         }
 
-        task_description = <Label> {
+        task_description := Label{
             width: Fill
-            draw_text: {
-                text_style: <TEXT_BODY> {}
-                color: (COLOR_TEXT_SECONDARY)
-                wrap: Word
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_BODY{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.35, 0.35, 0.4, 1.0)
+                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "No episode selected"
         }
 
         // Spacer
-        <View> { height: Fill }
+        View{ height: Fill }
 
         // State channels info
-        <Label> {
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_MUTED)
+        state_header := Label{
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    let dark_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "STATE CHANNELS"
         }
-
-        state_channels = <Label> {
+        state_channels := Label{
             width: Fill
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_SECONDARY)
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.35, 0.35, 0.4, 1.0)
+                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "-"
         }
 
         // Action channels info
-        <Label> {
-            margin: { top: 8 }
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_MUTED)
+        action_header := Label{
+            margin: Inset{top: 8.}
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    let dark_text = vec4(0.45, 0.45, 0.5, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "ACTION CHANNELS"
         }
-
-        action_channels = <Label> {
+        action_channels := Label{
             width: Fill
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_SECONDARY)
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.35, 0.35, 0.4, 1.0)
+                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
+                }
             }
             text: "-"
         }
     }
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct EpisodeInfoPanel {
     #[deref]
     view: View,
@@ -221,63 +294,95 @@ impl Widget for EpisodeInfoPanel {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let dm = get_global_dark_mode();
+        self.apply_theme(cx, dm);
+
         if let Some(data) = scope.data.get::<AppData>() {
             if let Some(ep_idx) = data.current_episode {
-                // Episode index
-                self.view.label(id!(info_container.episode_row.episode_value))
+                self.view.label(cx, ids!(info_container.episode_row.episode_value))
                     .set_text(cx, &format!("{}", ep_idx));
-
-                // Frame count
-                let frame_count = data.total_frames();
-                self.view.label(id!(info_container.frames_row.frames_value))
-                    .set_text(cx, &format!("{}", frame_count));
-
-                // Duration
-                self.view.label(id!(info_container.duration_row.duration_value))
+                self.view.label(cx, ids!(info_container.frames_row.frames_value))
+                    .set_text(cx, &format!("{}", data.total_frames()));
+                self.view.label(cx, ids!(info_container.duration_row.duration_value))
                     .set_text(cx, &format!("{:.2}s", data.episode_duration));
-
-                // FPS
-                self.view.label(id!(info_container.fps_row.fps_value))
+                self.view.label(cx, ids!(info_container.fps_row.fps_value))
                     .set_text(cx, &format!("{:.0}", data.episode_fps));
-
-                // Current time
-                self.view.label(id!(info_container.time_row.time_value))
+                self.view.label(cx, ids!(info_container.time_row.time_value))
                     .set_text(cx, &AppData::format_time(data.current_time));
+                self.view.label(cx, ids!(info_container.frame_row.frame_value))
+                    .set_text(cx, &format!("{} / {}", data.current_frame_index(), data.total_frames()));
 
-                // Current frame
-                self.view.label(id!(info_container.frame_row.frame_value))
-                    .set_text(cx, &format!("{} / {}", data.current_frame_index(), frame_count));
-
-                // Task description
                 if let Some(episode_info) = data.episodes.get(ep_idx as usize) {
-                    self.view.label(id!(task_description))
+                    self.view.label(cx, ids!(task_description))
                         .set_text(cx, &episode_info.task_description);
                 }
 
-                // Channel counts
                 if let Some(frame) = data.episode_frames.first() {
-                    self.view.label(id!(state_channels))
+                    self.view.label(cx, ids!(state_channels))
                         .set_text(cx, &format!("{} channels", frame.state.len()));
-                    self.view.label(id!(action_channels))
+                    self.view.label(cx, ids!(action_channels))
                         .set_text(cx, &format!("{} channels", frame.action.len()));
-                } else {
-                    self.view.label(id!(state_channels)).set_text(cx, "-");
-                    self.view.label(id!(action_channels)).set_text(cx, "-");
                 }
             } else {
-                // No episode selected - show placeholders
-                self.view.label(id!(info_container.episode_row.episode_value)).set_text(cx, "-");
-                self.view.label(id!(info_container.frames_row.frames_value)).set_text(cx, "-");
-                self.view.label(id!(info_container.duration_row.duration_value)).set_text(cx, "-");
-                self.view.label(id!(info_container.fps_row.fps_value)).set_text(cx, "-");
-                self.view.label(id!(info_container.time_row.time_value)).set_text(cx, "-");
-                self.view.label(id!(info_container.frame_row.frame_value)).set_text(cx, "-");
-                self.view.label(id!(task_description)).set_text(cx, "No episode selected");
-                self.view.label(id!(state_channels)).set_text(cx, "-");
-                self.view.label(id!(action_channels)).set_text(cx, "-");
+                self.view.label(cx, ids!(info_container.episode_row.episode_value)).set_text(cx, "-");
+                self.view.label(cx, ids!(info_container.frames_row.frames_value)).set_text(cx, "-");
+                self.view.label(cx, ids!(info_container.duration_row.duration_value)).set_text(cx, "-");
+                self.view.label(cx, ids!(info_container.fps_row.fps_value)).set_text(cx, "-");
+                self.view.label(cx, ids!(info_container.time_row.time_value)).set_text(cx, "-");
+                self.view.label(cx, ids!(info_container.frame_row.frame_value)).set_text(cx, "-");
+                self.view.label(cx, ids!(task_description)).set_text(cx, "No episode selected");
+                self.view.label(cx, ids!(state_channels)).set_text(cx, "-");
+                self.view.label(cx, ids!(action_channels)).set_text(cx, "-");
             }
         }
 
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl EpisodeInfoPanel {
+    fn apply_theme(&mut self, cx: &mut Cx, dm: f64) {
+        script_apply_eval!(cx, self.view, {
+            draw_bg +: {dark_mode: #(dm)}
+        });
+        let mut divider = self.view.view(cx, ids!(divider));
+        script_apply_eval!(cx, divider, {
+            draw_bg +: {dark_mode: #(dm)}
+        });
+
+        // Headers, content labels, and info row labels/values
+        for path in [
+            ids!(info_header),
+            ids!(task_header),
+            ids!(state_header),
+            ids!(action_header),
+            ids!(task_description),
+            ids!(state_channels),
+            ids!(action_channels),
+        ] {
+            let mut label = self.view.label(cx, path);
+            script_apply_eval!(cx, label, {
+                draw_text +: {dark_mode: #(dm)}
+            });
+        }
+        for path in [
+            ids!(info_container.episode_row.label),
+            ids!(info_container.episode_row.episode_value),
+            ids!(info_container.frames_row.label),
+            ids!(info_container.frames_row.frames_value),
+            ids!(info_container.duration_row.label),
+            ids!(info_container.duration_row.duration_value),
+            ids!(info_container.fps_row.label),
+            ids!(info_container.fps_row.fps_value),
+            ids!(info_container.time_row.label),
+            ids!(info_container.time_row.time_value),
+            ids!(info_container.frame_row.label),
+            ids!(info_container.frame_row.frame_value),
+        ] {
+            let mut label = self.view.label(cx, path);
+            script_apply_eval!(cx, label, {
+                draw_text +: {dark_mode: #(dm)}
+            });
+        }
     }
 }

@@ -1,184 +1,145 @@
 # Dorobot
 
-Robotics dataset visualization with **Makepad** UI and **Rerun** 3D viewer integration.
+Robotics dataset visualization with **Makepad** UI framework.
 
 ## Overview
 
-Dorobot provides a unified dashboard for robotics visualization:
+Dorobot provides tools for visualizing robotics datasets, with a focus on **LeRobot** format datasets:
 
-- **Makepad UI**: Custom 2D dashboard with status panels, sensor gauges, minimap, and logs
-- **Rerun Integration**: 3D point cloud, trajectory, and detection visualization
-- **Dora Dataflow**: Real-time sensor data streaming from robotics pipelines
+- **dorobot-flex**: Main application with flexible panel layout for dataset visualization
+- **dorobot-studio**: Legacy application with Rerun integration
 
-## Architecture
+## dorobot-flex
+
+The primary application for LeRobot dataset visualization featuring:
+
+- **Multi-camera video playback** with synchronized scrubbing
+- **3D robot visualization** from URDF models
+- **Time series plots** for joint states and sensor data
+- **Flexible panel layout** with drag-and-drop rearrangement
+- **Episode browser** with hierarchical task grouping
+
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Dora Dataflow                            │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
-│  │  LiDAR   │  │  Camera  │  │   Pose   │  │   Object     │    │
-│  │  Driver  │  │  Driver  │  │ Estimator│  │  Detector    │    │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────┬───────┘    │
-│       │             │             │               │             │
-│       └─────────────┴──────┬──────┴───────────────┘             │
-│                            │                                    │
-│                   ┌────────▼────────┐                           │
-│                   │  Dorobot Bridge │                           │
-│                   └────────┬────────┘                           │
-└────────────────────────────┼────────────────────────────────────┘
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-              ▼                             ▼
-    ┌─────────────────┐           ┌─────────────────┐
-    │ SharedRobotState│           │   RerunLogger   │
-    │  (dirty tracking)│           │   (3D viewer)   │
-    └────────┬────────┘           └─────────────────┘
-             │
-             ▼
-    ┌─────────────────┐
-    │   Makepad UI    │
-    │  (50ms polling) │
-    │                 │
-    │ ┌─────────────┐ │
-    │ │Status Panel │ │
-    │ │Sensor Gauges│ │
-    │ │  Minimap    │ │
-    │ │  Log Panel  │ │
-    │ └─────────────┘ │
-    └─────────────────┘
+│                     dorobot-flex Application                     │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌──────────────────────────────────────────┐  │
+│  │   Sidebar   │  │              Panel Grid                   │  │
+│  │             │  │  ┌────────────┬────────────┐              │  │
+│  │ - Dataset   │  │  │ VideoPlayer│ RobotView  │  ← Drag &    │  │
+│  │   Browser   │  │  │ (cam_high) │   (URDF)   │    Drop      │  │
+│  │ - Episode   │  │  ├────────────┼────────────┤    Panels    │  │
+│  │   List      │  │  │ VideoPlayer│ VideoPlayer│              │  │
+│  │ - Episode   │  │  │ (cam_low)  │ (cam_wrist)│              │  │
+│  │   Info      │  │  └────────────┴────────────┘              │  │
+│  └─────────────┘  └──────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  Playback Controls  │  Timeline  │  Time Series Plot       ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### Panel Drag-and-Drop
+
+Panels can be rearranged by dragging their title bars. The content follows the panel:
+- Video panels swap their video sources
+- Robot view can be moved to any panel position
+- Panel visibility can be toggled via the layout menu
 
 ## Project Structure
 
 ```
 dorobot/
 ├── Cargo.toml                    # Workspace root
-├── crates/
-│   ├── dorobot-types/            # Shared data types
-│   │   └── src/lib.rs            # Point3D, PointCloud, Pose3D, etc.
-│   │
-│   ├── dorobot-dora-bridge/      # Dora + Rerun integration
-│   │   └── src/
-│   │       ├── dirty.rs          # DirtyValue, DirtyVec
-│   │       ├── shared_state.rs   # SharedRobotState
-│   │       └── rerun_logger.rs   # RerunLogger wrapper
-│   │
-│   └── dorobot-app/              # Makepad UI application
-│       └── src/
-│           ├── app.rs            # Main application
-│           └── widgets/          # Custom widgets
-│               ├── status_panel.rs
-│               ├── sensor_gauge.rs
-│               ├── log_panel.rs
-│               └── minimap.rs
+├── dorobot-flex/                 # Main application
+│   ├── src/
+│   │   ├── app.rs               # Application logic + drag-drop handling
+│   │   ├── app_data.rs          # Panel registry + shared state
+│   │   ├── data/
+│   │   │   └── lerobot_dataset.rs  # LeRobot format parser
+│   │   └── widgets/
+│   │       ├── video_player.rs  # FFmpeg video decoder
+│   │       ├── robot_viewer.rs  # URDF 3D renderer
+│   │       └── episode_list.rs  # Hierarchical episode browser
+│   └── *.md                     # Development documentation
 │
-└── dataflows/                    # Dora dataflow definitions
-    ├── robot_viz.yaml            # Example dataflow
-    └── nodes/                    # Python node implementations
-        ├── lidar_driver.py
-        └── pose_estimator.py
+├── dorobot-studio/              # Legacy app (Rerun integration)
+├── crates/
+│   ├── dorobot-types/           # Shared data types
+│   └── dorobot-dora-bridge/     # Dora dataflow bridge (legacy)
+└── examples/                    # URDF and Rerun examples
 ```
 
 ## Quick Start
 
-### 1. Build the application
+### Prerequisites
+
+- Rust toolchain (1.75+)
+- FFmpeg development libraries (for video decoding)
+
+On macOS:
+```bash
+brew install ffmpeg
+```
+
+On Ubuntu:
+```bash
+sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+```
+
+### Build and Run
 
 ```bash
 cd ~/home/dorobot
-cargo build --release -p dorobot-app
+cargo run --release -p dorobot-flex
 ```
 
-### 2. Run the Makepad UI
+### Loading a Dataset
 
-```bash
-cargo run --release -p dorobot-app
+1. Click **Open Dataset** in the sidebar
+2. Navigate to a LeRobot dataset directory (containing `meta/info.json`)
+3. Select an episode from the episode list
+4. Use playback controls or drag the timeline to scrub
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Space | Play/Pause |
+| Left/Right | Step frame |
+| Home/End | Jump to start/end |
+
+## LeRobot Dataset Format
+
+dorobot-flex expects the standard LeRobot dataset structure:
+
 ```
-
-The UI will start with simulated demo data. Click "Launch Rerun" to open the 3D viewer.
-
-**Note**: Requires the local Rerun repository at `~/home/rerun` (uses path dependency).
-
-### 3. Run with Dora dataflow (optional)
-
-```bash
-# Install dora
-pip install dora-rs
-
-# Start the dataflow
-dora start dataflows/robot_viz.yaml
-
-# Run the UI connected to dataflow
-cargo run --release -p dorobot-app -- --dora
+dataset/
+├── meta/
+│   ├── info.json           # Dataset metadata (fps, robot_type, etc.)
+│   ├── episodes.jsonl      # Episode index
+│   └── tasks.jsonl         # Task descriptions (optional)
+├── data/
+│   └── chunk-000/
+│       └── episode_000000.parquet  # Frame data
+└── videos/
+    └── chunk-000/
+        ├── observation.images.cam_high/
+        │   └── episode_000000.mp4
+        └── observation.images.cam_low/
+            └── episode_000000.mp4
 ```
-
-## Integration Patterns
-
-### Pattern 1: Rerun as External Viewer
-
-```rust
-use dorobot_dora_bridge::RerunLogger;
-use dorobot_types::PointCloud;
-
-// Launch Rerun viewer
-let logger = RerunLogger::spawn("my_robot")?;
-
-// Log sensor data
-logger.log_point_cloud(&point_cloud)?;
-logger.log_robot_pose(&robot_state, "robot/base")?;
-```
-
-### Pattern 2: SharedRobotState for UI Updates
-
-```rust
-use dorobot_dora_bridge::{SharedRobotState, StateReader, StateWriter};
-
-// Create shared state
-let state = SharedRobotState::new_shared();
-
-// Dora node (producer)
-let writer = StateWriter::new(state.clone());
-writer.set_point_cloud(cloud);
-writer.set_robot_state(pose);
-
-// Makepad UI (consumer, on timer)
-let reader = StateReader::new(state.clone());
-if let Some(cloud) = reader.poll_point_cloud() {
-    update_visualization(cloud);
-}
-```
-
-### Pattern 3: Hybrid (Makepad + Rerun)
-
-```rust
-// Log to both Makepad UI and Rerun
-fn handle_sensor_data(&mut self, data: SensorData) {
-    // Update Makepad UI (2D gauges, status)
-    self.shared_state.system_status.set(data.status);
-
-    // Log to Rerun (3D visualization)
-    self.rerun_logger.log_point_cloud(&data.cloud)?;
-}
-```
-
-## Data Types
-
-| Type | Description | Rerun Visualization |
-|------|-------------|---------------------|
-| `PointCloud` | 3D point cloud with colors | `Points3D` |
-| `LidarScan` | 2D laser scan | `Points3D` (converted) |
-| `ImageFrame` | RGB/Depth images | `Image`, `DepthImage` |
-| `Pose3D` | Position + quaternion | `Transform3D` |
-| `RobotState` | Pose + velocity | `Transform3D` + arrows |
-| `BoundingBox3D` | Object detection | `Boxes3D` |
-| `JointState` | Robot arm joints | `Scalar` (per joint) |
 
 ## Dependencies
 
 - **makepad-widgets**: GPU-accelerated UI framework
-- **rerun**: Time-aware multimodal visualization
-- **dora-node-api**: Robotics dataflow framework
-- **parking_lot**: Fast synchronization primitives
+- **makepad-app-shell**: Flexible panel layout shell
+- **makepad-urdf-player**: URDF model loader and renderer
+- **ffmpeg-next**: Video decoding
+- **parquet/arrow**: Data file parsing
 
 ## License
 

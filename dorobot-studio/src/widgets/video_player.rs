@@ -6,47 +6,50 @@ use crate::data::video_decoder::PlaceholderDecoder;
 #[cfg(feature = "video")]
 use crate::data::video_decoder::VideoDecoder;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
     // Main video player widget
-    pub VideoPlayer = {{VideoPlayer}} {
+    mod.widgets.VideoPlayerBase = #(VideoPlayer::register_widget(vm))
+    mod.widgets.VideoPlayer = set_type_default() do mod.widgets.VideoPlayerBase{
         width: Fill
         height: Fill
 
         show_bg: true
-        draw_bg: { color: #000000 }
+        draw_bg +: {
+            color: instance(#x000000)
+            pixel: fn() {
+                return self.color
+            }
+        }
 
         flow: Overlay
 
         // Video frame display
-        video_area = <View> {
+        video_area := View{
             width: Fill
             height: Fill
-            align: { x: 0.5, y: 0.5 }
+            align: Align{x: 0.5 y: 0.5}
 
             // Image widget for frame display
-            frame_image = <Image> {
+            frame_image := Image{
                 width: Fill
                 height: Fill
-                fit: Smallest
+                fit: ImageFit.Smallest
                 visible: false
             }
 
             // No video placeholder
-            placeholder = <View> {
+            placeholder := View{
                 width: Fit
                 height: Fit
-                align: { x: 0.5, y: 0.5 }
+                align: Align{x: 0.5 y: 0.5}
 
-                placeholder_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_BODY> {}
-                        color: (COLOR_TEXT_MUTED)
-                        wrap: Word
+                placeholder_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_BODY{}
+                        color: mod.widgets.studio.COLOR_TEXT_MUTED
                     }
                     text: "No video loaded"
                 }
@@ -54,24 +57,22 @@ live_design! {
         }
 
         // Camera label overlay (top left)
-        camera_overlay = <View> {
+        camera_overlay := View{
             width: Fill
             height: Fill
             padding: 8
 
-            camera_label = <RoundedView> {
+            camera_label := RoundedView{
                 width: Fit
                 height: Fit
-                padding: { left: 8, right: 8, top: 4, bottom: 4 }
+                padding: Inset{left: 8. right: 8. top: 4. bottom: 4.}
 
-                draw_bg: {
-                    color: #00000080
-                }
+                draw_bg.color: #x00000080
 
-                label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: #ffffff
+                label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: #xffffff
                     }
                     text: "Camera"
                 }
@@ -79,25 +80,23 @@ live_design! {
         }
 
         // Frame info overlay (bottom right)
-        info_overlay = <View> {
+        info_overlay := View{
             width: Fill
             height: Fill
             padding: 8
-            align: { x: 1.0, y: 1.0 }
+            align: Align{x: 1.0 y: 1.0}
 
-            frame_info = <RoundedView> {
+            frame_info := RoundedView{
                 width: Fit
                 height: Fit
-                padding: { left: 8, right: 8, top: 4, bottom: 4 }
+                padding: Inset{left: 8. right: 8. top: 4. bottom: 4.}
 
-                draw_bg: {
-                    color: #00000080
-                }
+                draw_bg.color: #x00000080
 
-                label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_MONO> {}
-                        color: #ffffff
+                label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_MONO{}
+                        color: #xffffff
                     }
                     text: "Frame: 0 / 0"
                 }
@@ -106,7 +105,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct VideoPlayer {
     #[deref]
     view: View,
@@ -157,7 +156,7 @@ impl VideoPlayer {
     /// Set the camera name label
     pub fn set_camera_name(&mut self, cx: &mut Cx, name: &str) {
         self.camera_name = name.to_string();
-        self.view.label(id!(camera_overlay.camera_label.label)).set_text(cx, name);
+        self.view.label(cx, ids!(camera_overlay.camera_label.label)).set_text(cx, name);
     }
 
     /// Update frame info display
@@ -165,16 +164,14 @@ impl VideoPlayer {
         self.current_frame = current;
         self.total_frames = total;
         let text = format!("Frame: {} / {}", current, total);
-        self.view.label(id!(info_overlay.frame_info.label)).set_text(cx, &text);
+        self.view.label(cx, ids!(info_overlay.frame_info.label)).set_text(cx, &text);
     }
 
     /// Show or hide placeholder
     pub fn set_has_video(&mut self, cx: &mut Cx, has_video: bool) {
         self.has_video = has_video;
-        self.view.view(id!(video_area.placeholder)).set_visible(cx, !has_video);
-        self.view.image(id!(video_area.frame_image)).apply_over(cx, live! {
-            visible: (has_video)
-        });
+        self.view.view(cx, ids!(video_area.placeholder)).set_visible(cx, !has_video);
+        self.view.image(cx, ids!(video_area.frame_image)).set_visible(cx, has_video);
         self.view.redraw(cx);
     }
 
@@ -182,16 +179,14 @@ impl VideoPlayer {
     pub fn clear(&mut self, cx: &mut Cx) {
         self.has_video = false;
         self.placeholder_decoder = None;
-        self.view.view(id!(video_area.placeholder)).set_visible(cx, true);
-        self.view.image(id!(video_area.frame_image)).apply_over(cx, live! {
-            visible: false
-        });
+        self.view.view(cx, ids!(video_area.placeholder)).set_visible(cx, true);
+        self.view.image(cx, ids!(video_area.frame_image)).set_visible(cx, false);
         self.view.redraw(cx);
     }
 
     /// Set placeholder text
     pub fn set_placeholder_text(&mut self, cx: &mut Cx, text: &str) {
-        self.view.label(id!(video_area.placeholder.placeholder_label)).set_text(cx, text);
+        self.view.label(cx, ids!(video_area.placeholder.placeholder_label)).set_text(cx, text);
     }
 
     /// Initialize with placeholder decoder for demo mode
@@ -226,14 +221,12 @@ impl VideoPlayer {
         });
 
         // Set texture on the image widget
-        let image = self.view.image(id!(video_area.frame_image));
+        let image = self.view.image(cx, ids!(video_area.frame_image));
         image.set_texture(cx, Some(texture));
 
         // Make frame visible and hide placeholder
-        self.view.image(id!(video_area.frame_image)).apply_over(cx, live! {
-            visible: true
-        });
-        self.view.view(id!(video_area.placeholder)).set_visible(cx, false);
+        self.view.image(cx, ids!(video_area.frame_image)).set_visible(cx, true);
+        self.view.view(cx, ids!(video_area.placeholder)).set_visible(cx, false);
 
         self.has_video = true;
         self.view.redraw(cx);

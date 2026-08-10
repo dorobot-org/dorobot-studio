@@ -4,30 +4,29 @@ use makepad_widgets::*;
 use makepad_widgets::file_tree::{FileTree, FileTreeAction};
 use std::collections::HashMap;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
     // Main episode list widget using FileTree
-    pub EpisodeList = {{EpisodeList}} {
+    mod.widgets.EpisodeListBase = #(EpisodeList::register_widget(vm))
+    mod.widgets.EpisodeList = set_type_default() do mod.widgets.EpisodeListBase{
         width: Fill
         height: Fill
         flow: Down
 
         show_bg: true
-        draw_bg: {
-            instance dark_mode: 0.0
-            fn pixel(self) -> vec4 {
-                let light_bg = vec4(0.973, 0.976, 0.988, 1.0);
-                let dark_bg = vec4(0.082, 0.082, 0.094, 1.0);
-                return mix(light_bg, dark_bg, self.dark_mode);
+        draw_bg +: {
+            dark_mode: instance(0.0)
+            pixel: fn() {
+                let light_bg = vec4(0.973, 0.976, 0.988, 1.0)
+                let dark_bg = vec4(0.082, 0.082, 0.094, 1.0)
+                return mix(light_bg, dark_bg, self.dark_mode)
             }
         }
 
         // Search and filter header
-        header = <View> {
+        header := View{
             width: Fill
             height: Fit
             padding: 8
@@ -35,36 +34,36 @@ live_design! {
             flow: Down
 
             show_bg: true
-            draw_bg: {
-                instance dark_mode: 0.0
-                fn pixel(self) -> vec4 {
-                    let light_bg = vec4(0.94, 0.94, 0.96, 1.0);
-                    let dark_bg = vec4(0.10, 0.10, 0.12, 1.0);
-                    return mix(light_bg, dark_bg, self.dark_mode);
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_bg = vec4(0.94, 0.94, 0.96, 1.0)
+                    let dark_bg = vec4(0.10, 0.10, 0.12, 1.0)
+                    return mix(light_bg, dark_bg, self.dark_mode)
                 }
             }
 
-            filter_row = <View> {
+            filter_row := View{
                 width: Fill
                 height: Fit
                 flow: Right
                 spacing: 8
-                align: { y: 0.5 }
+                align: Align{y: 0.5}
 
-                filter_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: #595966
+                filter_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_SMALL{}
+                        color: #x595966
                     }
                     text: "Episodes"
                 }
 
-                <View> { width: Fill }
+                View{ width: Fill }
 
-                episode_count = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: #737380
+                episode_count := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_SMALL{}
+                        color: #x737380
                     }
                     text: "0 episodes"
                 }
@@ -72,82 +71,80 @@ live_design! {
         }
 
         // FileTree for episode list
-        file_tree: <FileTree> {
+        file_tree: FileTree{
             width: Fill
             height: Fill
 
             node_height: 48.0
 
-            scroll_bars: <ScrollBars> {
+            scroll_bars: ScrollBars{
                 show_scroll_x: false
                 show_scroll_y: true
             }
 
-            file_node: <FileTreeNode> {
+            file_node: FileTreeNode{
                 is_folder: false
                 indent_width: 8.0
 
-                draw_bg: {
-                    fn pixel(self) -> vec4 {
-                        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                        sdf.rect(0., 0., self.rect_size.x, self.rect_size.y);
+                draw_bg +: {
+                    pixel: fn() {
+                        let sdf = Sdf2d.viewport(self.pos * self.rect_size)
+                        sdf.rect(0., 0., self.rect_size.x, self.rect_size.y)
                         sdf.fill(mix(
-                            mix(#ffffff, #e8f4fd, self.hover),
-                            #d0e8ff,
+                            mix(#xffffff, #xe8f4fd, self.hover),
+                            #xd0e8ff,
                             self.active
-                        ));
-                        return sdf.result;
+                        ))
+                        return sdf.result
                     }
                 }
 
-                draw_text: {
-                    text_style: { font_size: 10.0 }
-                    fn get_color(self) -> vec4 {
-                        return mix(#555555, #333333, self.active);
+                draw_text +: {
+                    text_style +: {font_size: 10.0}
+                    get_color: fn() {
+                        return mix(#x555555, #x333333, self.active)
                     }
                 }
 
-                draw_icon: {
-                    fn get_color(self) -> vec4 {
-                        return mix(#888888, #666666, self.hover);
-                    }
+                draw_icon +: {
+                    color: #x888888
+                    color_active: #x666666
                 }
             }
 
-            folder_node: <FileTreeNode> {
+            folder_node: FileTreeNode{
                 is_folder: true
                 indent_width: 8.0
 
-                draw_bg: {
-                    fn pixel(self) -> vec4 {
-                        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                        sdf.rect(0., 0., self.rect_size.x, self.rect_size.y);
+                draw_bg +: {
+                    pixel: fn() {
+                        let sdf = Sdf2d.viewport(self.pos * self.rect_size)
+                        sdf.rect(0., 0., self.rect_size.x, self.rect_size.y)
                         sdf.fill(mix(
-                            mix(#ffffff, #e8f4fd, self.hover),
-                            #d0e8ff,
+                            mix(#xffffff, #xe8f4fd, self.hover),
+                            #xd0e8ff,
                             self.active
-                        ));
-                        return sdf.result;
+                        ))
+                        return sdf.result
                     }
                 }
 
-                draw_text: {
-                    text_style: { font_size: 10.0 }
-                    fn get_color(self) -> vec4 {
-                        return mix(#333333, #222222, self.active);
+                draw_text +: {
+                    text_style +: {font_size: 10.0}
+                    get_color: fn() {
+                        return mix(#x333333, #x222222, self.active)
                     }
                 }
 
-                draw_icon: {
-                    fn get_color(self) -> vec4 {
-                        return mix(#4a90d9, #3080c9, self.hover);
-                    }
+                draw_icon +: {
+                    color: #x4a90d9
+                    color_active: #x3080c9
                 }
             }
 
-            filler: {
-                fn pixel(self) -> vec4 {
-                    return #ffffff;
+            filler +: {
+                pixel: fn() {
+                    return #xffffff
                 }
             }
         }
@@ -170,14 +167,16 @@ pub struct DataSourceInfo {
     pub dtype: String,
     pub shape: Vec<u64>,
     pub is_video: bool,
+    pub channel_names: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, DefaultNone)]
+#[derive(Clone, Debug, Default)]
 pub enum EpisodeListAction {
     EpisodeSelected(u64),
     EpisodeDoubleClicked(u64),
     SearchChanged(String),
     FilterChanged(Option<u64>),
+    #[default]
     None,
 }
 
@@ -195,7 +194,7 @@ struct FileEdge {
     file_node_id: LiveId,
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct EpisodeList {
     #[deref]
     view: View,
@@ -322,17 +321,12 @@ impl EpisodeList {
             .filter(|ds| !ds.is_video)
             .collect();
 
-        for &idx in &self.filtered_indices {
-            let episode = &self.episodes[idx];
-
-            // Generate unique LiveId for this episode folder
-            let episode_folder_id = LiveId(self.live_id_counter);
+        // === Data Sources section (shown ONCE, not per episode) ===
+        if !self.data_sources.is_empty() {
+            let data_sources_folder_id = LiveId(self.live_id_counter);
             self.live_id_counter += 1;
 
-            // Map the episode folder to episode index (for folder clicks)
-            self.live_id_to_episode.insert(episode_folder_id, episode.index);
-
-            let mut episode_children = Vec::new();
+            let mut data_sources_children = Vec::new();
 
             // Add Videos folder if there are video sources
             if !video_sources.is_empty() {
@@ -344,7 +338,6 @@ impl EpisodeList {
                     let video_id = LiveId(self.live_id_counter);
                     self.live_id_counter += 1;
 
-                    // Extract camera name (e.g., "cam_high" from "observation.images.cam_high")
                     let display_name = source.name.split('.').last().unwrap_or(&source.name);
                     let shape_str = source.shape.iter()
                         .map(|s| s.to_string())
@@ -369,7 +362,7 @@ impl EpisodeList {
                     episode_index: None,
                 });
 
-                episode_children.push(FileEdge {
+                data_sources_children.push(FileEdge {
                     name: "Videos".to_string(),
                     file_node_id: videos_folder_id,
                 });
@@ -385,7 +378,6 @@ impl EpisodeList {
                     let data_id = LiveId(self.live_id_counter);
                     self.live_id_counter += 1;
 
-                    // Format shape info
                     let shape_str = if source.shape.is_empty() {
                         "scalar".to_string()
                     } else {
@@ -395,11 +387,37 @@ impl EpisodeList {
                             .join("x")
                     };
 
-                    self.file_nodes.insert(data_id, FileNode {
-                        name: format!("{} [{}]", source.name, shape_str),
-                        child_edges: None,
-                        episode_index: None,
-                    });
+                    // Check if this data source has channel names (make it a folder)
+                    if let Some(ref channel_names) = source.channel_names {
+                        let mut channel_children = Vec::new();
+                        for (idx, ch_name) in channel_names.iter().enumerate() {
+                            let ch_id = LiveId(self.live_id_counter);
+                            self.live_id_counter += 1;
+
+                            self.file_nodes.insert(ch_id, FileNode {
+                                name: format!("[{}] {}", idx, ch_name),
+                                child_edges: None,
+                                episode_index: None,
+                            });
+
+                            channel_children.push(FileEdge {
+                                name: ch_name.clone(),
+                                file_node_id: ch_id,
+                            });
+                        }
+
+                        self.file_nodes.insert(data_id, FileNode {
+                            name: format!("{} [{}]", source.name, shape_str),
+                            child_edges: Some(channel_children),
+                            episode_index: None,
+                        });
+                    } else {
+                        self.file_nodes.insert(data_id, FileNode {
+                            name: format!("{} [{}]", source.name, shape_str),
+                            child_edges: None,
+                            episode_index: None,
+                        });
+                    }
 
                     data_children.push(FileEdge {
                         name: source.name.clone(),
@@ -413,35 +431,75 @@ impl EpisodeList {
                     episode_index: None,
                 });
 
-                episode_children.push(FileEdge {
+                data_sources_children.push(FileEdge {
                     name: "Data".to_string(),
                     file_node_id: data_folder_id,
                 });
             }
 
-            // Format episode folder name
+            self.file_nodes.insert(data_sources_folder_id, FileNode {
+                name: "Data Sources".to_string(),
+                child_edges: Some(data_sources_children),
+                episode_index: None,
+            });
+
+            root_edges.push(FileEdge {
+                name: "Data Sources".to_string(),
+                file_node_id: data_sources_folder_id,
+            });
+        }
+
+        // === Episodes section (simple list, no data sources per episode) ===
+        let episodes_folder_id = LiveId(self.live_id_counter);
+        self.live_id_counter += 1;
+
+        let mut episode_edges = Vec::new();
+
+        for &idx in &self.filtered_indices {
+            let episode = &self.episodes[idx];
+
+            // Generate unique LiveId for this episode (as a file, not folder)
+            let episode_id = LiveId(self.live_id_counter);
+            self.live_id_counter += 1;
+
+            // Map to episode index for selection
+            self.live_id_to_episode.insert(episode_id, episode.index);
+
+            // Format episode name
             let duration_str = format!("{}:{:02}",
                 (episode.duration_secs / 60.0) as u32,
                 (episode.duration_secs % 60.0) as u32);
             let episode_name = format!("Episode {} • {} • {} frames",
                 episode.index, duration_str, episode.frame_count);
 
-            self.file_nodes.insert(episode_folder_id, FileNode {
+            // Episode as a simple file node (no children)
+            self.file_nodes.insert(episode_id, FileNode {
                 name: episode_name,
-                child_edges: Some(episode_children),
+                child_edges: None,
                 episode_index: Some(episode.index),
             });
 
-            root_edges.push(FileEdge {
+            episode_edges.push(FileEdge {
                 name: format!("Episode {}", episode.index),
-                file_node_id: episode_folder_id,
+                file_node_id: episode_id,
             });
         }
 
-        // Create root node (always expanded)
+        self.file_nodes.insert(episodes_folder_id, FileNode {
+            name: format!("Episodes ({})", episode_edges.len()),
+            child_edges: Some(episode_edges),
+            episode_index: None,
+        });
+
+        root_edges.push(FileEdge {
+            name: "Episodes".to_string(),
+            file_node_id: episodes_folder_id,
+        });
+
+        // Create root node
         let root_id = live_id!(episodes_root);
         self.file_nodes.insert(root_id, FileNode {
-            name: format!("Episodes ({})", root_edges.len()),
+            name: "Dataset".to_string(),
             child_edges: Some(root_edges),
             episode_index: None,
         });
@@ -497,7 +555,7 @@ impl EpisodeList {
 
     fn update_episode_count(&mut self, cx: &mut Cx) {
         let text = format!("{} episodes", self.filtered_indices.len());
-        self.view.label(id!(header.filter_row.episode_count)).set_text(cx, &text);
+        self.view.label(cx, ids!(header.filter_row.episode_count)).set_text(cx, &text);
     }
 
     pub fn filtered_episodes(&self) -> Vec<&EpisodeInfo> {

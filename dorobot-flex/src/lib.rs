@@ -12,6 +12,8 @@
 pub use makepad_widgets;
 pub use makepad_app_shell;
 
+pub mod api;
+pub mod ui;
 pub mod shared;
 pub mod widgets;
 pub mod data;

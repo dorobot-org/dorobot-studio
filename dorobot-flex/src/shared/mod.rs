@@ -2,8 +2,8 @@
 
 pub mod styles;
 
-use makepad_widgets::Cx;
+use makepad_widgets::{ScriptValue, ScriptVm};
 
-pub fn live_design(cx: &mut Cx) {
-    self::styles::live_design(cx);
+pub fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
+    self::styles::script_mod(vm)
 }
