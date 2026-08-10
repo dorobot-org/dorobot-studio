@@ -418,16 +418,51 @@ pub struct PlayScreen {
     /// Episode index displayed by each row, in row order.
     #[rust]
     row_episode: Vec<u64>,
+    /// First episode shown, when the list is longer than the row window.
+    #[rust(0usize)]
+    scroll: usize,
+    /// Episodes in the list, so scrolling knows where the end is.
+    #[rust(0usize)]
+    total_rows: usize,
+    /// Sub-row wheel travel, kept so a trackpad does not quantise to nothing.
+    #[rust(0f64)]
+    scroll_accum: f64,
+    /// Set when the wheel moved the window; the app re-syncs and clears it.
+    #[rust(false)]
+    scrolled: bool,
 }
 
 impl Widget for PlayScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // The row window is driven here rather than by a ScrollY view: the rows
+        // are fixed DSL widgets reused across a much longer list, so there is
+        // nothing taller than the viewport for a scroll bar to move.
+        if let Event::Scroll(e) = event {
+            let max = self.total_rows.saturating_sub(ROW_IDS.len());
+            let tree = self.view.widget(cx, ids!(upper.tree));
+            if max > 0 && !tree.is_empty() && tree.area().rect(cx).contains(e.abs) {
+                self.scroll_accum += e.scroll.y;
+                let rows = (self.scroll_accum / ROW_H) as i64;
+                if rows != 0 {
+                    self.scroll_accum -= rows as f64 * ROW_H;
+                    let next = (self.scroll as i64 + rows).clamp(0, max as i64) as usize;
+                    if next != self.scroll {
+                        self.scroll = next;
+                        self.scrolled = true;
+                        e.handled_y.set(true);
+                    }
+                }
+            }
+        }
         self.view.handle_event(cx, event, scope);
     }
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
     }
 }
+
+/// Must track `EpisodeRow`'s height, so a wheel notch advances whole rows.
+const ROW_H: f64 = 26.0;
 
 const ROW_IDS: [&[LiveId]; 13] = [
     ids!(upper.tree.tree_body.row_0), ids!(upper.tree.tree_body.row_1),
@@ -450,6 +485,30 @@ impl PlayScreenRef {
         let Some(mut inner) = self.borrow_mut() else { return };
         let need_seed = !inner.layout_seeded;
         inner.layout_seeded = true;
+
+        // Episode order and the visible window are derived from state alone, so
+        // they are settled before the view is borrowed.
+        let mut groups: Vec<&str> = Vec::new();
+        for e in &st.episodes {
+            if !groups.iter().any(|g| *g == e.task_group) {
+                groups.push(&e.task_group);
+            }
+        }
+        // Rows are laid out in group order so the flat list reads as a tree.
+        let ordered: Vec<_> = groups
+            .iter()
+            .flat_map(|g| st.episodes.iter().filter(move |e| &e.task_group == g))
+            .collect();
+
+        // Below the window size the tree renders as authored, with headers
+        // interleaved; above it the headers cannot move to arbitrary row slots,
+        // so the list flattens and one header reports the position instead.
+        let total = ordered.len();
+        let scrolling = total > ROW_IDS.len();
+        inner.total_rows = total;
+        inner.scroll = inner.scroll.min(total.saturating_sub(ROW_IDS.len()));
+        let start = if scrolling { inner.scroll } else { 0 };
+
         let root = &mut inner.view;
 
         script_apply_eval!(cx, root, { draw_bg +: { light: #(light) } });
@@ -519,33 +578,39 @@ impl PlayScreenRef {
         }
 
         // ---- episode tree: group headers interleaved with rows ------------
-        let mut groups: Vec<&str> = Vec::new();
-        for e in &st.episodes {
-            if !groups.iter().any(|g| *g == e.task_group) {
-                groups.push(&e.task_group);
-            }
-        }
+        let shown = (start + ROW_IDS.len()).min(total);
         for (i, p) in GRP_IDS.iter().enumerate() {
             let g = root.widget(cx, p);
             if g.is_empty() {
                 continue;
             }
-            match groups.get(i) {
+            // Only the first header survives a scrolling list, and it stops
+            // naming a group it can no longer be positioned above.
+            let text = match (scrolling, i) {
+                // Counted in episode index, not list position: the rows are
+                // labelled "ep 029", so a header reading "30–42" would be a
+                // second numbering for the same thing.
+                (true, 0) => {
+                    let first = ordered.get(start).map(|e| e.index).unwrap_or(0);
+                    let last = ordered.get(shown - 1).map(|e| e.index).unwrap_or(0);
+                    let range = format!("ep {:03}–{:03} of {}", first, last, total);
+                    Some(if groups.len() == 1 { range } else { range + "  ·  all tasks" })
+                }
+                (true, _) => None,
+                (false, _) => groups.get(i).map(|n| n.to_string()),
+            };
+            match text {
                 Some(name) => {
                     g.set_visible(cx, true);
                     let mut gl = root.widget(cx, p);
                     script_apply_eval!(cx, gl, { draw_text +: { light: #(light) } });
-                    root.label(cx, p).set_text(cx, name);
+                    root.label(cx, p).set_text(cx, &name);
                 }
                 None => g.set_visible(cx, false),
             }
         }
-        // Rows are laid out in group order so the flat list reads as a tree.
-        let ordered: Vec<_> = groups
-            .iter()
-            .flat_map(|g| st.episodes.iter().filter(move |e| &e.task_group == g))
-            .collect();
-        let row_map: Vec<u64> = ordered.iter().map(|e| e.index).collect();
+        let row_map: Vec<u64> = ordered[start..].iter().map(|e| e.index).collect();
+        let ordered = &ordered[start..];
         for (i, p) in ROW_IDS.iter().enumerate() {
             let row = root.widget(cx, p);
             if row.is_empty() {
@@ -615,6 +680,12 @@ impl PlayScreenRef {
         script_apply_eval!(cx, ruler, { draw_bg +: { head: #(head) light: #(light) } });
 
         inner.row_episode = row_map;
+    }
+
+    /// True once if the wheel moved the row window, so the app re-syncs it.
+    pub fn take_scrolled(&self) -> bool {
+        let Some(mut inner) = self.borrow_mut() else { return false };
+        std::mem::take(&mut inner.scrolled)
     }
 
     /// Episode whose row was released under the pointer, if any.

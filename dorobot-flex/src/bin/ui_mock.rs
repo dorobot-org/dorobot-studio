@@ -233,5 +233,11 @@ impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         self.match_event(cx, event);
         self.ui.handle_event(cx, event, &mut Scope::empty());
+        // Scrolling the episode window produces no action, so it is picked up
+        // here rather than in handle_actions, which would not run for it.
+        if self.ui.play_screen(cx, ids!(page_play)).take_scrolled() {
+            self.sync(cx);
+            self.ui.redraw(cx);
+        }
     }
 }
