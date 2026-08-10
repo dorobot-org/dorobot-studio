@@ -10,6 +10,7 @@ use crate::api::{Intent, PlaybackState, Tag};
 use makepad_app_shell::grid::panel_grid::PanelGridWidgetExt;
 use makepad_app_shell::grid::LayoutState;
 use crate::ui::frame::{apply_light, apply_light_in, theme_chip, theme_panel_head, Themed};
+use crate::widgets::time_series_plot::TimeSeriesPlotWidgetExt;
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -176,25 +177,12 @@ script_mod! {
         }
     }
 
-    let PlotPane = View{
+    // The real plot, fed from the selected episode's parquet. It was a shader
+    // drawing a fixed sine pair, which looked plausible and meant selecting an
+    // episode changed nothing anyone could see.
+    let PlotPane = TimeSeriesPlot{
         width: Fill height: Fill
-        show_bg: true
-        draw_bg +: {
-            light: instance(0.0)
-            pixel: fn() {
-                let x = self.pos.x
-                let bg = mix(#x141922, #xFAFBFD, self.light)
-                let gy = 1.0 - step(0.012, fract(self.pos.y * 4.0))
-                let grid = mix(bg, mix(#x232B3A, #xE8ECF3, self.light), gy)
-                let ys = 0.5 + 0.30 * sin(x * 7.4) + 0.09 * sin(x * 19.0)
-                let ya = ys + 0.05 + 0.03 * sin(x * 11.0)
-                let ls = 1.0 - smoothstep(0.0, 0.012, abs(self.pos.y - ys))
-                let dash = step(0.5, fract(x * 60.0))
-                let la = (1.0 - smoothstep(0.0, 0.012, abs(self.pos.y - ya))) * dash
-                let c1 = mix(grid, #x5B9BF0, ls)
-                return mix(c1, #xD9A24E, la)
-            }
-        }
+        header +: { visible: false }
     }
 
     mod.widgets.PlayScreenBase = #(PlayScreen::register_widget(vm))
@@ -517,7 +505,6 @@ impl PlayScreenRef {
             (ids!(stage_a), Themed::Bg),
             (ids!(stage_b), Themed::Bg),
             (ids!(stage_3d), Themed::Bg),
-            (ids!(stage_plot), Themed::Bg),
             (ids!(upper.side), Themed::Bg),
             (ids!(upper.side.side_body.task_h), Themed::Text),
             (ids!(upper.side.side_body.task_t), Themed::Text),
@@ -668,6 +655,29 @@ impl PlayScreenRef {
             script_apply_eval!(cx, vw, { draw_text +: { warn: #(warn) light: #(light) } });
         }
         root.label(cx, ids!(upper.side.side_body.task_t)).set_text(cx, &s.task);
+
+        // ---- plot: measured vs commanded for the selected episode ----------
+        // The plot reads the app-shell theme global rather than our light
+        // instance, so the two are kept in step here.
+        makepad_app_shell::theme::set_global_dark_mode(1.0 - light);
+        // Channels are interleaved state-then-action per joint so a joint and
+        // its command sit next to each other in the widget's colour order.
+        let plot = root.time_series_plot(cx, ids!(stage_plot));
+        plot.clear();
+        let mut ch = 0;
+        for (i, s) in st.state_series.iter().enumerate() {
+            plot.set_channel_data(ch, &s.name, s.points.clone());
+            ch += 1;
+            if let Some(a) = st.action_series.get(i) {
+                plot.set_channel_data(ch, &format!("{} cmd", a.name), a.points.clone());
+                ch += 1;
+            }
+        }
+        if let Some(last) = st.state_series.first().and_then(|s| s.points.last()) {
+            plot.set_time_range(0.0, last.0);
+        }
+        plot.set_auto_scale_y(true);
+        plot.recompute_scale(cx);
 
         // ---- timeline ------------------------------------------------------
         let frames = s.frames.max(1);

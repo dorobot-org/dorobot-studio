@@ -308,6 +308,18 @@ pub struct PlaybackState {
     /// Channel names from `features.names`, used for plot legends.
     pub state_names: Vec<String>,
     pub action_names: Vec<String>,
+    /// Measured and commanded values for the selected episode, channel-major
+    /// and paired with the frame's own timestamp, so the plot shows the
+    /// recorded timing rather than assuming `frame / fps`.
+    pub state_series: Vec<PlotChannel>,
+    pub action_series: Vec<PlotChannel>,
+}
+
+/// One plotted channel: a name and its `(seconds, value)` samples.
+#[derive(Clone, Debug, Default)]
+pub struct PlotChannel {
+    pub name: String,
+    pub points: Vec<(f64, f64)>,
 }
 
 // ============================================================================

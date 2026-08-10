@@ -359,7 +359,38 @@ fn playback_fixture() -> PlaybackState {
             "wrist_roll".into(),
             "gripper".into(),
         ],
+        // A reach-and-return sweep per joint, with the command leading the
+        // measurement — the shape the design render shows.
+        state_series: plot_fixture(0.0),
+        action_series: plot_fixture(0.06),
     }
+}
+
+/// Six phase-shifted traces over the fixture's 16.1s, offset by `lead`.
+fn plot_fixture(lead: f64) -> Vec<PlotChannel> {
+    const JOINTS: [&str; 6] = [
+        "shoulder_pan",
+        "shoulder_lift",
+        "elbow_flex",
+        "wrist_flex",
+        "wrist_roll",
+        "gripper",
+    ];
+    JOINTS
+        .iter()
+        .enumerate()
+        .map(|(c, name)| PlotChannel {
+            name: (*name).into(),
+            points: (0..161)
+                .map(|i| {
+                    let t = i as f64 / 10.0;
+                    let ph = c as f64 * 0.6;
+                    let v = 0.8 * (t * 0.39 + ph).sin() * (1.0 - 0.08 * c as f64);
+                    (t, v + lead)
+                })
+                .collect(),
+        })
+        .collect()
 }
 
 // -------------------------------------------------------------------- eval --

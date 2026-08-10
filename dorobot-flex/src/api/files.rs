@@ -160,6 +160,8 @@ impl FileBackend {
             drift_series: Vec::new(),
             state_names: names_of("observation.state"),
             action_names: names_of("action"),
+            state_series: Vec::new(),
+            action_series: Vec::new(),
         };
         self.open = Some((id.to_string(), ds));
         if let Some(idx) = self.playback.selected {
@@ -193,6 +195,29 @@ impl FileBackend {
             .and_then(|t| ds.get_task(t))
             .unwrap_or("")
             .to_string();
+
+        // Transpose the frames into channel-major series for the plot. Capped
+        // because a legible plot is the point: six traces already crowd the
+        // pane, and SO-100 has exactly six joints.
+        let series = |pick: fn(&crate::data::lerobot_dataset::EpisodeFrame) -> &Vec<f32>,
+                      names: &[String]| {
+            let width = data.frames.first().map(|f| pick(f).len()).unwrap_or(0).min(6);
+            (0..width)
+                .map(|c| PlotChannel {
+                    name: names
+                        .get(c)
+                        .cloned()
+                        .unwrap_or_else(|| format!("ch {c}")),
+                    points: data
+                        .frames
+                        .iter()
+                        .filter_map(|f| pick(f).get(c).map(|v| (f.timestamp, *v as f64)))
+                        .collect(),
+                })
+                .collect::<Vec<_>>()
+        };
+        self.playback.state_series = series(|f| &f.state, &self.playback.state_names);
+        self.playback.action_series = series(|f| &f.action, &self.playback.action_names);
 
         self.playback.selected = Some(index);
         self.playback.stats = EpisodeStats {

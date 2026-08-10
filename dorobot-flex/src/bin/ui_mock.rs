@@ -226,6 +226,12 @@ impl AppMain for App {
         makepad_widgets::script_mod(vm);
         // app-shell supplies the real draggable PanelGrid used by the Play screen
         dorobot_flex::makepad_app_shell::script_mod(vm);
+        // TimeSeriesPlot lives in widgets and is used by the Play screen's plot
+        // pane, so both must register before ui::script_mod evaluates that DSL.
+        // shared goes first: it defines the mod.widgets.flex text styles the
+        // widgets module builds on.
+        dorobot_flex::shared::script_mod(vm);
+        dorobot_flex::widgets::script_mod(vm);
         dorobot_flex::ui::script_mod(vm);
         self::script_mod(vm)
     }
