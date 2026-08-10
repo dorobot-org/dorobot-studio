@@ -20,11 +20,14 @@ dorobot-dora-bridge = { path = "crates/dorobot-dora-bridge" }
 
 # Makepad
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
-# Local clone (branch makepad-dev) ported to makepad dev; upstream still targets rik
-makepad-app-shell = { path = "../makepad-flex-layout" }
+# Pinned by rev: the makepad-dev branch carries the dev-script port.
+makepad-app-shell = { git = "https://github.com/mofa-org/makepad-flex-layout", rev = "78425b1" }
 
-# Rerun visualization (local development version)
-rerun = { path = "../rerun/crates/top/rerun", default-features = false, features = ["sdk"] }
+# Rerun viewer, optional and off by default (see dorobot-studio's `rerun`
+# feature). Taken from crates.io rather than the monorepo: a git rev would make
+# every clone fetch the whole rerun repo just to resolve a dependency that is
+# not built. 0.28 is the line the local checkout sat on.
+rerun = { version = "0.28", default-features = false, features = ["sdk"] }
 
 # Dora
 dora-node-api = "0.3"

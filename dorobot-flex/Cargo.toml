@@ -16,7 +16,7 @@ dorobot-types = { workspace = true }
 makepad-widgets = { workspace = true }
 makepad-app-shell = { workspace = true }
 # Local WIP clone already ported to makepad dev; upstream still targets rik
-makepad-urdf-player = { path = "../../makepad-urdf-viewer" }
+makepad-urdf-player = { git = "https://github.com/dorobot-org/makepad-urdf-viewer", rev = "ab713d2" }
 
 # Logging
 log = { workspace = true }

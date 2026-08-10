@@ -12,7 +12,7 @@ dorobot-types = { workspace = true }
 dorobot-dora-bridge = { workspace = true }
 
 makepad-widgets = { workspace = true }
-rerun = { workspace = true }
+
 parking_lot = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
@@ -37,6 +37,9 @@ mesh-loader = { workspace = true, optional = true }
 
 [features]
 default = []
+# The old dashboard can stream to a Rerun viewer. Off by default: rerun is by
+# far the heaviest dependency here, and the player does not use it.
+rerun = ["dorobot-dora-bridge/rerun"]
 video = ["ffmpeg-next"]
 urdf = ["kiss3d", "urdf-rs", "mesh-loader"]
 

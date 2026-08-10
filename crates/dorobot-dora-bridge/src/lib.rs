@@ -10,9 +10,14 @@ mod shared_state;
 
 #[cfg(feature = "rerun")]
 mod rerun_logger;
+// Same API without the viewer, so callers compile either way.
+#[cfg(not(feature = "rerun"))]
+mod rerun_stub;
 
 pub use dirty::{DirtyValue, DirtyVec};
 pub use shared_state::{LogEntry, LogLevel, SharedRobotState, StateReader, StateWriter};
 
 #[cfg(feature = "rerun")]
 pub use rerun_logger::RerunLogger;
+#[cfg(not(feature = "rerun"))]
+pub use rerun_stub::RerunLogger;
