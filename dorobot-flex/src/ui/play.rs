@@ -291,7 +291,9 @@ script_mod! {
                 width: 288 height: Fill
                 flow: Down
                 side_head := mod.widgets.ux.PanelHead{ title +: { text: "Episode" } }
-                side_body := View{
+                // Scrolls, so dragging the footer up can never put the
+                // curation buttons out of reach.
+                side_body := ScrollYView{
                     width: Fill height: Fill flow: Down
                     padding: Inset{left: 14. right: 14. top: 10.}
                     spacing: 2.0
@@ -542,11 +544,18 @@ impl Widget for PlayScreen {
                 if let Some((y0, h0)) = self.footer_drag {
                     // Dragging up grows the footer, so the grip follows the
                     // pointer rather than running away from it.
-                    let want = (h0 + (y0 - e.abs.y)).clamp(FOOTER_MIN, FOOTER_MAX);
+                    let screen_h = self.view.area().rect(cx).size.y.max(FOOTER_MIN * 2.0);
+                    let want = (h0 + (y0 - e.abs.y))
+                        .clamp(FOOTER_MIN, screen_h * FOOTER_MAX_FRAC);
                     if (want - self.footer_h).abs() > 0.5 {
                         self.footer_h = want;
-                        let mut card = self.view.widget(cx, ids!(timeline));
-                        script_apply_eval!(cx, card, { height: #(want) });
+                        // Set the walk directly. Height is a Size, not a
+                        // number, so pushing a bare f64 through the script
+                        // layer silently does nothing.
+                        let card = self.view.widget(cx, ids!(timeline));
+                        if let Some(mut card) = card.borrow_mut::<View>() {
+                            card.walk.height = Size::Fixed(want);
+                        }
                         self.view.redraw(cx);
                     }
                 }
@@ -584,10 +593,13 @@ impl Widget for PlayScreen {
 const PLOT_WINDOW_S: f64 = 10.0;
 
 /// How far the footer can be dragged. The lanes share whatever is left after
-/// the transport and scrubber, so the floor is set to keep them legible rather
-/// than merely present; the ceiling keeps the video panes from vanishing.
+/// the transport and scrubber, so the floor keeps them legible rather than
+/// merely present.
 const FOOTER_MIN: f64 = 244.0;
-const FOOTER_MAX: f64 = 640.0;
+/// The ceiling is a share of the screen, not a constant: the inspector beside
+/// the video does not scroll, so a footer tall enough to clip it would put the
+/// curation buttons out of reach on a short window and waste room on a tall one.
+const FOOTER_MAX_FRAC: f64 = 0.55;
 
 /// Footer lanes, one per joint.
 const LANE_IDS: [(&[LiveId], &[LiveId]); 6] = [
