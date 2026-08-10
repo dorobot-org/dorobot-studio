@@ -2,117 +2,115 @@
 
 use makepad_widgets::*;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
+    use mod.draw
 
     // Drawing primitive for plot lines
-    DrawPlotLine = {{DrawPlotLine}} {
-        fn pixel(self) -> vec4 {
-            return self.color;
+    mod.draw.DrawPlotLine = set_type_default() do #(DrawPlotLine::script_shader(vm)){
+        ..mod.draw.DrawQuad
+        pixel: fn() {
+            return self.color
         }
     }
 
     // Main time series plot widget
-    pub TimeSeriesPlot = {{TimeSeriesPlot}} {
+    mod.widgets.TimeSeriesPlotBase = #(TimeSeriesPlot::register_widget(vm))
+    mod.widgets.TimeSeriesPlot = set_type_default() do mod.widgets.TimeSeriesPlotBase{
         width: Fill
         height: 150
 
         flow: Down
 
-        draw_line: {}
+        draw_line: mod.draw.DrawPlotLine{}
 
         // Header with channel toggles
-        header = <View> {
+        header := SolidView{
             width: Fill
             height: 28
-            padding: { left: 8, right: 8 }
+            padding: Inset{left: 8. right: 8.}
             spacing: 8
-            align: { y: 0.5 }
+            align: Align{y: 0.5}
 
-            show_bg: true
-            draw_bg: { color: (COLOR_BG_HEADER) }
+            draw_bg.color: mod.widgets.studio.COLOR_BG_HEADER
 
-            title = <Label> {
+            title := Label{
                 width: Fit
-                draw_text: {
-                    text_style: <TEXT_PANEL_TITLE> {}
-                    color: (COLOR_TEXT_PRIMARY)
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_PANEL_TITLE{}
+                    color: mod.widgets.studio.COLOR_TEXT_PRIMARY
                 }
                 text: "observation.state"
             }
 
-            <View> { width: Fill }  // Spacer
+            View{ width: Fill }  // Spacer
         }
 
         // Content area: Y-axis on left, plot on right
-        content = <View> {
+        content := View{
             width: Fill
             height: Fill
             flow: Right
 
             // Y-axis labels (left side)
-            y_axis = <View> {
+            y_axis := View{
                 width: 40
                 height: Fill
                 flow: Down
-                padding: { top: 4, bottom: 4 }
+                padding: Inset{top: 4. bottom: 4.}
 
-                max_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_MUTED)
+                max_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_MUTED
                     }
                     text: "1.0"
                 }
 
-                <View> { height: Fill }
+                View{ height: Fill }
 
-                min_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_MUTED)
+                min_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_MUTED
                     }
                     text: "-1.0"
                 }
             }
 
             // Plot area
-            plot_area = <View> {
+            plot_area := SolidView{
                 width: Fill
                 height: Fill
-                cursor: Hand
+                cursor: MouseCursor.Hand
 
-                show_bg: true
-                draw_bg: { color: (COLOR_BG_PANEL) }
+                draw_bg.color: mod.widgets.studio.COLOR_BG_PANEL
             }
         }
     }
 
     // Channel legend item
-    pub ChannelLegendItem = <View> {
+    mod.widgets.ChannelLegendItem = View{
         width: Fit
         height: 20
         spacing: 4
-        align: { y: 0.5 }
+        align: Align{y: 0.5}
 
-        color_dot = <View> {
+        color_dot := RoundedView{
             width: 8
             height: 8
-            show_bg: true
-            draw_bg: {
-                color: (COLOR_CHANNEL_0)
+            draw_bg +: {
+                color: mod.widgets.studio.COLOR_CHANNEL_0
                 border_radius: 4.0
             }
         }
 
-        name = <Label> {
+        name := Label{
             width: Fit
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                color: (COLOR_TEXT_SECONDARY)
+            draw_text +: {
+                text_style: mod.widgets.studio.TEXT_SMALL{}
+                color: mod.widgets.studio.COLOR_TEXT_SECONDARY
             }
             text: "ch0"
         }
@@ -120,42 +118,42 @@ live_design! {
 }
 
 // Channel colors for up to 14 channels
-const CHANNEL_COLORS: [Vec4; 14] = [
-    Vec4 { x: 0.30, y: 0.55, z: 0.96, w: 1.0 },  // Blue
-    Vec4 { x: 0.30, y: 0.69, z: 0.31, w: 1.0 },  // Green
-    Vec4 { x: 1.00, y: 0.60, z: 0.00, w: 1.0 },  // Orange
-    Vec4 { x: 0.91, y: 0.12, z: 0.39, w: 1.0 },  // Pink
-    Vec4 { x: 0.61, y: 0.15, z: 0.69, w: 1.0 },  // Purple
-    Vec4 { x: 0.00, y: 0.74, z: 0.83, w: 1.0 },  // Cyan
-    Vec4 { x: 0.55, y: 0.76, z: 0.29, w: 1.0 },  // Light green
-    Vec4 { x: 0.80, y: 0.80, z: 0.20, w: 1.0 },  // Yellow
-    Vec4 { x: 0.90, y: 0.40, z: 0.40, w: 1.0 },  // Red
-    Vec4 { x: 0.50, y: 0.70, z: 0.90, w: 1.0 },  // Light blue
-    Vec4 { x: 0.70, y: 0.50, z: 0.70, w: 1.0 },  // Lavender
-    Vec4 { x: 0.40, y: 0.80, z: 0.60, w: 1.0 },  // Mint
-    Vec4 { x: 0.85, y: 0.65, z: 0.45, w: 1.0 },  // Tan
-    Vec4 { x: 0.60, y: 0.60, z: 0.60, w: 1.0 },  // Gray
+const CHANNEL_COLORS: [Vec4f; 14] = [
+    Vec4f { x: 0.30, y: 0.55, z: 0.96, w: 1.0 },  // Blue
+    Vec4f { x: 0.30, y: 0.69, z: 0.31, w: 1.0 },  // Green
+    Vec4f { x: 1.00, y: 0.60, z: 0.00, w: 1.0 },  // Orange
+    Vec4f { x: 0.91, y: 0.12, z: 0.39, w: 1.0 },  // Pink
+    Vec4f { x: 0.61, y: 0.15, z: 0.69, w: 1.0 },  // Purple
+    Vec4f { x: 0.00, y: 0.74, z: 0.83, w: 1.0 },  // Cyan
+    Vec4f { x: 0.55, y: 0.76, z: 0.29, w: 1.0 },  // Light green
+    Vec4f { x: 0.80, y: 0.80, z: 0.20, w: 1.0 },  // Yellow
+    Vec4f { x: 0.90, y: 0.40, z: 0.40, w: 1.0 },  // Red
+    Vec4f { x: 0.50, y: 0.70, z: 0.90, w: 1.0 },  // Light blue
+    Vec4f { x: 0.70, y: 0.50, z: 0.70, w: 1.0 },  // Lavender
+    Vec4f { x: 0.40, y: 0.80, z: 0.60, w: 1.0 },  // Mint
+    Vec4f { x: 0.85, y: 0.65, z: 0.45, w: 1.0 },  // Tan
+    Vec4f { x: 0.60, y: 0.60, z: 0.60, w: 1.0 },  // Gray
 ];
 
 // Drawing primitive for plot lines
-#[derive(Live, LiveHook, LiveRegister)]
+#[derive(Script, ScriptHook)]
 #[repr(C)]
 pub struct DrawPlotLine {
     #[deref]
     draw_super: DrawQuad,
     #[live]
-    color: Vec4,
+    color: Vec4f,
 }
 
 #[derive(Clone, Debug)]
 pub struct TimeSeriesChannel {
     pub name: String,
     pub data: Vec<(f64, f64)>,  // (timestamp, value)
-    pub color: Vec4,
+    pub color: Vec4f,
     pub visible: bool,
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct TimeSeriesPlot {
     #[deref]
     view: View,
@@ -216,7 +214,6 @@ impl Widget for TimeSeriesPlot {
                 // Emit cursor changed action
                 cx.widget_action(
                     self.widget_uid(),
-                    &scope.path,
                     TimeSeriesPlotAction::CursorMoved(self.cursor_time),
                 );
 
@@ -233,7 +230,6 @@ impl Widget for TimeSeriesPlot {
                 // Emit cursor changed action
                 cx.widget_action(
                     self.widget_uid(),
-                    &scope.path,
                     TimeSeriesPlotAction::CursorMoved(self.cursor_time),
                 );
 
@@ -251,7 +247,7 @@ impl Widget for TimeSeriesPlot {
         let _ = self.view.draw_walk(cx, scope, walk);
 
         // Get the plot area rect for drawing waveforms
-        let plot_area = self.view.view(id!(content.plot_area));
+        let plot_area = self.view.view(cx, ids!(content.plot_area));
         self.plot_rect = plot_area.area().rect(cx);
 
         // Draw the waveforms on top of the plot area
@@ -263,9 +259,10 @@ impl Widget for TimeSeriesPlot {
     }
 }
 
-#[derive(Clone, Debug, DefaultNone)]
+#[derive(Clone, Debug, Default)]
 pub enum TimeSeriesPlotAction {
     CursorMoved(f64),
+    #[default]
     None,
 }
 
@@ -273,12 +270,12 @@ impl TimeSeriesPlot {
     /// Set the plot title
     pub fn set_title(&mut self, cx: &mut Cx, title: &str) {
         self.title = title.to_string();
-        self.view.label(id!(header.title)).set_text(cx, title);
+        self.view.label(cx, ids!(header.title)).set_text(cx, title);
     }
 
     /// Set placeholder text
     pub fn set_placeholder_text(&mut self, cx: &mut Cx, text: &str) {
-        self.view.label(id!(plot_area.placeholder.placeholder_label)).set_text(cx, text);
+        self.view.label(cx, ids!(plot_area.placeholder.placeholder_label)).set_text(cx, text);
     }
 
     /// Set the full data time range (x-axis)
@@ -479,8 +476,8 @@ impl TimeSeriesPlot {
     fn update_y_axis_labels(&mut self, cx: &mut Cx) {
         let max_text = format!("{:.2}", self.value_range.1);
         let min_text = format!("{:.2}", self.value_range.0);
-        self.view.label(id!(content.y_axis.max_label)).set_text(cx, &max_text);
-        self.view.label(id!(content.y_axis.min_label)).set_text(cx, &min_text);
+        self.view.label(cx, ids!(content.y_axis.max_label)).set_text(cx, &max_text);
+        self.view.label(cx, ids!(content.y_axis.min_label)).set_text(cx, &min_text);
     }
 
     /// Draw waveforms for all visible channels

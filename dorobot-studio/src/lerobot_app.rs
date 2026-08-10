@@ -7,32 +7,29 @@ use makepad_widgets::*;
 use crate::data::LeRobotDataset;
 use crate::home::home_screen::HomeScreenWidgetRefExt;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
-    use crate::home::home_screen::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
+    use mod.widgets.studio.*
 
-    LeRobotApp = {{LeRobotApp}} {
-        ui: <Root> {
-            main_window = <Window> {
-                window: {
-                    title: "DoRobot Studio"
-                    inner_size: vec2(1400, 900)
+    startup() do #(DoRobotApp::script_component(vm)){
+        ui: Root{
+            main_window := Window{
+                window.title: "DoRobot Studio"
+                window.inner_size: vec2(1400, 900)
+
+                pass.clear_color: mod.widgets.studio.COLOR_BG_APP
+
+                body +: {
+                    home_screen := HomeScreen{}
                 }
-
-                show_bg: true
-                draw_bg: { color: (COLOR_BG_APP) }
-
-                body = <HomeScreen> {}
             }
         }
     }
 }
 
-#[derive(Live, LiveHook)]
-pub struct LeRobotApp {
+#[derive(Script, ScriptHook)]
+pub struct DoRobotApp {
     #[live]
     ui: WidgetRef,
 
@@ -45,22 +42,7 @@ pub struct LeRobotApp {
     update_timer: Timer,
 }
 
-impl LiveRegister for LeRobotApp {
-    fn live_register(cx: &mut Cx) {
-        // Register Makepad widgets
-        makepad_widgets::live_design(cx);
-
-        // Register our modules
-        crate::shared::live_design(cx);
-        crate::widgets::live_design(cx);
-        crate::home::live_design(cx);
-
-        // Link to dark theme
-        cx.link(live_id!(theme), live_id!(theme_desktop_dark));
-    }
-}
-
-impl MatchEvent for LeRobotApp {
+impl MatchEvent for DoRobotApp {
     fn handle_startup(&mut self, cx: &mut Cx) {
         // Start update timer for animations
         self.update_timer = cx.start_interval(1.0 / 60.0);
@@ -128,19 +110,33 @@ impl MatchEvent for LeRobotApp {
     }
 }
 
-impl AppMain for LeRobotApp {
+impl AppMain for DoRobotApp {
+    fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
+        // Register Makepad widgets (mod.theme defaults to the dark theme)
+        makepad_widgets::script_mod(vm);
+
+        // Register our modules
+        crate::shared::script_mod(vm);
+        crate::widgets::script_mod(vm);
+        crate::home::script_mod(vm);
+        crate::app::script_mod(vm);
+
+        // The app module goes last: it defines the startup() root
+        self::script_mod(vm)
+    }
+
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         self.match_event(cx, event);
         self.ui.handle_event(cx, event, &mut Scope::empty());
     }
 }
 
-impl LeRobotApp {
+impl DoRobotApp {
     fn open_dataset_dialog(&mut self, cx: &mut Cx) {
         // Debug: write to file
         use std::io::Write;
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-            let _ = writeln!(f, "[LeRobotApp] open_dataset_dialog called");
+            let _ = writeln!(f, "[DoRobotApp] open_dataset_dialog called");
         }
 
         // Open native folder picker dialog
@@ -151,7 +147,7 @@ impl LeRobotApp {
 
         if let Some(folder_path) = dialog.pick_folder() {
             if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-                let _ = writeln!(f, "[LeRobotApp] User selected folder: {:?}", folder_path);
+                let _ = writeln!(f, "[DoRobotApp] User selected folder: {:?}", folder_path);
             }
 
             // Convert PathBuf to string and load the dataset
@@ -163,13 +159,13 @@ impl LeRobotApp {
             }
         } else {
             if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-                let _ = writeln!(f, "[LeRobotApp] User cancelled folder picker dialog");
+                let _ = writeln!(f, "[DoRobotApp] User cancelled folder picker dialog");
             }
         }
 
         // Fall back to demo data if dialog cancelled or path invalid
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-            let _ = writeln!(f, "[LeRobotApp] Loading demo data");
+            let _ = writeln!(f, "[DoRobotApp] Loading demo data");
         }
         self.load_demo_dataset(cx);
     }
@@ -179,17 +175,17 @@ impl LeRobotApp {
         // Debug: write to file
         use std::io::Write;
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-            let _ = writeln!(f, "[LeRobotApp] load_dataset called with path: {}", path);
+            let _ = writeln!(f, "[DoRobotApp] load_dataset called with path: {}", path);
         }
 
         match LeRobotDataset::open(path) {
             Ok(dataset) => {
                 if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-                    let _ = writeln!(f, "[LeRobotApp] Dataset loaded: {} episodes", dataset.num_episodes());
+                    let _ = writeln!(f, "[DoRobotApp] Dataset loaded: {} episodes", dataset.num_episodes());
                 }
                 ::log::info!("Loaded dataset from {}: {} episodes", path, dataset.num_episodes());
 
-                let home = self.ui.home_screen(id!(body));
+                let home = self.ui.home_screen(cx, ids!(home_screen));
 
                 // Set dataset info from loaded metadata
                 let info_text = format!(
@@ -245,7 +241,7 @@ impl LeRobotApp {
         // Debug: write to file
         use std::io::Write;
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/dorobot_debug.log") {
-            let _ = writeln!(f, "[LeRobotApp] load_episode called for episode {}, dataset={}", episode_idx, self.dataset.is_some());
+            let _ = writeln!(f, "[DoRobotApp] load_episode called for episode {}, dataset={}", episode_idx, self.dataset.is_some());
         }
 
         if let Some(dataset) = &self.dataset {
@@ -258,7 +254,7 @@ impl LeRobotApp {
                         episode_data.video_paths.len()
                     );
 
-                    let home = self.ui.home_screen(id!(body));
+                    let home = self.ui.home_screen(cx, ids!(home_screen));
 
                     // Set episode metadata (duration, etc.)
                     home.set_episode_data(cx, episode_idx, episode_data.frames.len() as u64);
@@ -275,13 +271,13 @@ impl LeRobotApp {
             }
         } else {
             // Demo mode - just update the selection
-            let home = self.ui.home_screen(id!(body));
+            let home = self.ui.home_screen(cx, ids!(home_screen));
             home.set_episode_data(cx, episode_idx, 150 + (episode_idx % 100));
         }
     }
 
     fn load_demo_dataset(&mut self, cx: &mut Cx) {
-        let home = self.ui.home_screen(id!(body));
+        let home = self.ui.home_screen(cx, ids!(home_screen));
 
         home.set_dataset_info(
             cx,
@@ -306,4 +302,4 @@ impl LeRobotApp {
 }
 
 // Generate the app_main function using Makepad's macro
-app_main!(LeRobotApp);
+app_main!(DoRobotApp);

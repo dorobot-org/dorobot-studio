@@ -1,10 +1,10 @@
 [package]
-name = "dorobot-app"
+name = "dorobot-studio"
 version.workspace = true
 edition = "2021"
 
 [[bin]]
-name = "dorobot"
+name = "dorobot-studio"
 path = "src/main.rs"
 
 [dependencies]

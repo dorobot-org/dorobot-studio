@@ -15,6 +15,8 @@ dorobot-types = { workspace = true }
 # Makepad
 makepad-widgets = { workspace = true }
 makepad-app-shell = { workspace = true }
+# Local WIP clone already ported to makepad dev; upstream still targets rik
+makepad-urdf-player = { path = "../../makepad-urdf-viewer" }
 
 # Logging
 log = { workspace = true }
@@ -22,6 +24,8 @@ env_logger = { workspace = true }
 
 # Data loading
 parquet = { workspace = true }
+arrow-array = "56"
+arrow-schema = "56"
 serde = { workspace = true }
 serde_json = { workspace = true }
 
@@ -36,5 +40,5 @@ anyhow = { workspace = true }
 ffmpeg-next = { workspace = true, optional = true }
 
 [features]
-default = []
+default = ["video"]
 video = ["ffmpeg-next"]

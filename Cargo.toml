@@ -3,7 +3,8 @@ resolver = "2"
 members = [
     "crates/dorobot-types",
     "crates/dorobot-dora-bridge",
-    "crates/dorobot-app",
+    "dorobot-studio",
+    "dorobot-flex",
 ]
 
 [workspace.package]
@@ -18,7 +19,9 @@ dorobot-types = { path = "crates/dorobot-types" }
 dorobot-dora-bridge = { path = "crates/dorobot-dora-bridge" }
 
 # Makepad
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
+# Local clone (branch makepad-dev) ported to makepad dev; upstream still targets rik
+makepad-app-shell = { path = "../makepad-flex-layout" }
 
 # Rerun visualization (local development version)
 rerun = { path = "../rerun/crates/top/rerun", default-features = false, features = ["sdk"] }
@@ -38,7 +41,7 @@ serde_json = "1"
 parquet = { version = "56.1", default-features = false, features = ["arrow", "snap"] }
 
 # Video decoding
-ffmpeg-next = "7"
+ffmpeg-next = "8"
 
 # Utilities
 parking_lot = "0.12"

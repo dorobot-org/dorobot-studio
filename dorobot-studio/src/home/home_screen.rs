@@ -10,63 +10,57 @@ use crate::widgets::episode_list::{EpisodeListAction, EpisodeListWidgetExt};
 use crate::widgets::video_player::VideoPlayerWidgetExt;
 use crate::widgets::robot_viewer::RobotViewerWidgetExt;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
-    use crate::widgets::video_player::*;
-    use crate::widgets::time_series_plot::*;
-    use crate::widgets::timeline::*;
-    use crate::widgets::robot_viewer::*;
-    use crate::widgets::episode_list::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
+    use mod.widgets.studio.*
 
     // ===========================================
     // APP HEADER (Full Width)
     // ===========================================
 
-    AppHeader = <View> {
+    let AppHeader = View{
         width: Fill
         height: 48
-        padding: { left: 16, right: 16 }
+        padding: Inset{left: 16. right: 16.}
         flow: Right
-        align: { y: 0.5 }
+        align: Align{y: 0.5}
         spacing: 16
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_HEADER) }
+        draw_bg.color: mod.widgets.studio.COLOR_BG_HEADER
 
         // App title
-        <Label> {
-            draw_text: {
-                text_style: <TEXT_TITLE> {}
-                color: (COLOR_TEXT_PRIMARY)
+        Label{
+            draw_text +: {
+                text_style: mod.widgets.studio.TEXT_TITLE{}
+                color: mod.widgets.studio.COLOR_TEXT_PRIMARY
             }
             text: "DoRobot Studio"
         }
 
-        <View> { width: Fill }  // Spacer
+        View{ width: Fill }  // Spacer
 
         // Current episode info (right side of header)
-        episode_info_header = <View> {
+        episode_info_header := View{
             width: Fit
             height: Fit
             flow: Right
             spacing: 16
-            align: { y: 0.5 }
+            align: Align{y: 0.5}
 
-            current_episode_label = <Label> {
-                draw_text: {
-                    text_style: <TEXT_SUBTITLE> {}
-                    color: (COLOR_TEXT_PRIMARY)
+            current_episode_label := Label{
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SUBTITLE{}
+                    color: mod.widgets.studio.COLOR_TEXT_PRIMARY
                 }
                 text: ""
             }
 
-            frame_info_label = <Label> {
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_SECONDARY)
+            frame_info_label := Label{
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SMALL{}
+                    color: mod.widgets.studio.COLOR_TEXT_SECONDARY
                 }
                 text: ""
             }
@@ -77,88 +71,88 @@ live_design! {
     // SIDEBAR COMPONENT (Dataset + Episodes List)
     // ===========================================
 
-    Sidebar = <View> {
+    let Sidebar = View{
         width: 280
         height: Fill
         flow: Down
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_SIDEBAR) }
+        draw_bg.color: mod.widgets.studio.COLOR_BG_SIDEBAR
 
         // Dataset section with Load button
-        dataset_section = <View> {
+        dataset_section := View{
             width: Fill
             height: Fit
             padding: 12
             flow: Down
             spacing: 8
 
-            <Label> {
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_MUTED)
+            Label{
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SMALL{}
+                    color: mod.widgets.studio.COLOR_TEXT_MUTED
                 }
                 text: "DATASET"
             }
 
-            dataset_name = <Label> {
-                draw_text: {
-                    text_style: <TEXT_SUBTITLE> {}
-                    color: (COLOR_TEXT_PRIMARY)
+            dataset_name := Label{
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SUBTITLE{}
+                    color: mod.widgets.studio.COLOR_TEXT_PRIMARY
                 }
                 text: "No dataset loaded"
             }
 
-            dataset_info = <Label> {
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_SECONDARY)
+            dataset_info := Label{
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SMALL{}
+                    color: mod.widgets.studio.COLOR_TEXT_SECONDARY
                 }
                 text: ""
             }
 
-            load_btn = <PrimaryButton> {
+            load_btn := PrimaryButton{
                 width: Fill
                 text: "Load Dataset"
             }
         }
 
-        <Divider> {}
+        Divider{}
 
         // Episode section header
-        episode_header = <View> {
+        episode_header := View{
             width: Fill
             height: 36
-            padding: { left: 12, right: 12 }
-            align: { y: 0.5 }
+            padding: Inset{left: 12. right: 12.}
+            align: Align{y: 0.5}
 
-            <Label> {
-                draw_text: {
-                    text_style: <TEXT_SMALL> {}
-                    color: (COLOR_TEXT_MUTED)
+            Label{
+                draw_text +: {
+                    text_style: mod.widgets.studio.TEXT_SMALL{}
+                    color: mod.widgets.studio.COLOR_TEXT_MUTED
                 }
                 text: "EPISODES"
             }
         }
 
         // Episode list
-        episode_list = <EpisodeList> {}
+        episode_list := EpisodeList{}
     }
 
     // ===========================================
     // MAIN CONTENT PANEL
     // ===========================================
 
-    MainContent = <View> {
+    let MainContent = View{
         width: Fill
         height: Fill
         flow: Down
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_APP) }
+        draw_bg.color: mod.widgets.studio.COLOR_BG_APP
 
         // Top panel: Video and 3D viewers
-        top_panel = <View> {
+        top_panel := View{
             width: Fill
             height: Fill
             flow: Right
@@ -166,68 +160,68 @@ live_design! {
             padding: 4
 
             // Video panel
-            video_panel = <View> {
+            video_panel := View{
                 width: Fill
                 height: Fill
                 flow: Down
                 spacing: 4
 
-                <Panel> {
+                Panel{
                     width: Fill
                     height: Fill
-                    primary_video = <VideoPlayer> {}
+                    primary_video := VideoPlayer{}
                 }
 
-                secondary_cameras = <View> {
+                secondary_cameras := View{
                     width: Fill
                     height: 120
                     flow: Right
                     spacing: 4
 
-                    <Panel> {
+                    Panel{
                         width: Fill
                         height: Fill
-                        camera_1 = <VideoPlayer> {}
+                        camera_1 := VideoPlayer{}
                     }
 
-                    <Panel> {
+                    Panel{
                         width: Fill
                         height: Fill
-                        camera_2 = <VideoPlayer> {}
+                        camera_2 := VideoPlayer{}
                     }
                 }
             }
 
-            <VDivider> {}
+            VDivider{}
 
             // 3D Robot viewer
-            robot_panel = <Panel> {
+            robot_panel := Panel{
                 width: 350
                 height: Fill
-                robot_viewer = <RobotViewer> {}
+                robot_viewer := RobotViewer{}
             }
         }
 
-        <Divider> {}
+        Divider{}
 
         // Bottom panel: Plots
-        plots_panel = <View> {
+        plots_panel := View{
             width: Fill
             height: 180
             flow: Right
             spacing: 4
             padding: 4
 
-            <Panel> {
+            Panel{
                 width: Fill
                 height: Fill
-                state_plot = <TimeSeriesPlot> {}
+                state_plot := TimeSeriesPlot{}
             }
 
-            <Panel> {
+            Panel{
                 width: Fill
                 height: Fill
-                action_plot = <TimeSeriesPlot> {}
+                action_plot := TimeSeriesPlot{}
             }
         }
     }
@@ -236,55 +230,55 @@ live_design! {
     // TABLET LAYOUT (Narrower, stacked panels)
     // ===========================================
 
-    TabletContent = <View> {
+    let TabletContent = View{
         width: Fill
         height: Fill
         flow: Down
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_APP) }
+        draw_bg.color: mod.widgets.studio.COLOR_BG_APP
 
         // Top: Video and 3D side by side (smaller)
-        top_panel = <View> {
+        top_panel := View{
             width: Fill
             height: 300
             flow: Right
             spacing: 4
             padding: 4
 
-            <Panel> {
+            Panel{
                 width: Fill
                 height: Fill
-                primary_video = <VideoPlayer> {}
+                primary_video := VideoPlayer{}
             }
 
-            <Panel> {
+            Panel{
                 width: 300
                 height: Fill
-                <CachedWidget> {
-                    robot_viewer = <RobotViewer> {}
+                CachedWidget{
+                    robot_viewer := RobotViewer{}
                 }
             }
         }
 
         // Middle: Plots stacked vertically
-        plots_panel = <View> {
+        plots_panel := View{
             width: Fill
             height: 200
             flow: Down
             spacing: 4
             padding: 4
 
-            <Panel> {
+            Panel{
                 width: Fill
                 height: Fill
-                state_plot = <TimeSeriesPlot> {}
+                state_plot := TimeSeriesPlot{}
             }
 
-            <Panel> {
+            Panel{
                 width: Fill
                 height: Fill
-                action_plot = <TimeSeriesPlot> {}
+                action_plot := TimeSeriesPlot{}
             }
         }
     }
@@ -293,90 +287,90 @@ live_design! {
     // MOBILE LAYOUT (Stack navigation)
     // ===========================================
 
-    MobileContent = <View> {
+    let MobileContent = View{
         width: Fill
         height: Fill
         flow: Down
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_APP) }
+        draw_bg.color: mod.widgets.studio.COLOR_BG_APP
 
         // Full-screen video with tab switching
-        content_area = <PageFlip> {
+        content_area := PageFlip{
             width: Fill
             height: Fill
-            active_page: video_page
+            active_page: @video_page
 
-            video_page = <View> {
+            video_page := View{
                 width: Fill
                 height: Fill
 
-                primary_video = <VideoPlayer> {}
+                primary_video := VideoPlayer{}
             }
 
-            robot_page = <View> {
+            robot_page := View{
                 width: Fill
                 height: Fill
 
-                <CachedWidget> {
-                    robot_viewer = <RobotViewer> {}
+                CachedWidget{
+                    robot_viewer := RobotViewer{}
                 }
             }
 
-            plots_page = <View> {
+            plots_page := View{
                 width: Fill
                 height: Fill
                 flow: Down
                 spacing: 4
                 padding: 4
 
-                <Panel> {
+                Panel{
                     width: Fill
                     height: Fill
-                    state_plot = <TimeSeriesPlot> {}
+                    state_plot := TimeSeriesPlot{}
                 }
 
-                <Panel> {
+                Panel{
                     width: Fill
                     height: Fill
-                    action_plot = <TimeSeriesPlot> {}
+                    action_plot := TimeSeriesPlot{}
                 }
             }
         }
 
         // Tab bar for view switching
-        tab_bar = <View> {
+        tab_bar := View{
             width: Fill
             height: 48
             flow: Right
 
             show_bg: true
-            draw_bg: { color: (COLOR_BG_HEADER) }
+            draw_bg.color: mod.widgets.studio.COLOR_BG_HEADER
 
-            video_tab = <Button> {
+            video_tab := Button{
                 width: Fill
                 text: "Video"
             }
 
-            robot_tab = <Button> {
+            robot_tab := Button{
                 width: Fill
                 text: "3D"
             }
 
-            plots_tab = <Button> {
+            plots_tab := Button{
                 width: Fill
                 text: "Plots"
             }
         }
 
         // Compact timeline
-        timeline_panel = <View> {
+        timeline_panel := View{
             width: Fill
             height: 60
             padding: 4
 
-            <CachedWidget> {
-                timeline = <Timeline> {}
+            CachedWidget{
+                timeline := Timeline{}
             }
         }
     }
@@ -385,16 +379,16 @@ live_design! {
     // FOOTER TIMELINE PLAYER (Full Width with Mini Sidebar)
     // ===========================================
 
-    FooterTimeline = <View> {
+    let FooterTimeline = View{
         width: Fill
         height: 100
         flow: Right
 
         show_bg: true
-        draw_bg: { color: (COLOR_BG_HEADER) }
+        draw_bg.color: mod.widgets.studio.COLOR_BG_HEADER
 
         // Mini sidebar with playback controls
-        mini_sidebar = <View> {
+        mini_sidebar := View{
             width: 280
             height: Fill
             flow: Down
@@ -402,115 +396,109 @@ live_design! {
             spacing: 4
 
             show_bg: true
-            draw_bg: { color: (COLOR_BG_SIDEBAR) }
+            draw_bg.color: mod.widgets.studio.COLOR_BG_SIDEBAR
 
             // Playback controls row
-            playback_controls = <View> {
+            playback_controls := View{
                 width: Fill
                 height: 36
                 flow: Right
                 spacing: 8
-                align: { x: 0.5, y: 0.5 }
+                align: Align{x: 0.5 y: 0.5}
 
-                step_back_btn = <SecondaryButton> {
+                step_back_btn := SecondaryButton{
                     width: 32
                     height: 32
                     padding: 0
                     text: "<<"
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                    }
+                    draw_text.text_style: mod.widgets.studio.TEXT_SMALL{}
                 }
 
-                play_btn = <PrimaryButton> {
+                play_btn := PrimaryButton{
                     width: 48
                     height: 32
                     padding: 0
                     text: "Play"
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                    }
+                    draw_text.text_style: mod.widgets.studio.TEXT_SMALL{}
                 }
 
-                step_fwd_btn = <SecondaryButton> {
+                step_fwd_btn := SecondaryButton{
                     width: 32
                     height: 32
                     padding: 0
                     text: ">>"
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                    }
+                    draw_text.text_style: mod.widgets.studio.TEXT_SMALL{}
                 }
             }
 
             // Time display
-            time_display = <View> {
+            time_display := View{
                 width: Fill
                 height: Fit
                 flow: Right
                 spacing: 8
-                align: { x: 0.5 }
+                align: Align{x: 0.5}
 
-                current_time_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_MONO> {}
-                        color: (COLOR_TEXT_PRIMARY)
+                current_time_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_MONO{}
+                        color: mod.widgets.studio.COLOR_TEXT_PRIMARY
                     }
                     text: "0:00.00"
                 }
 
-                <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_MUTED)
+                Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_MUTED
                     }
                     text: "/"
                 }
 
-                total_time_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_MONO> {}
-                        color: (COLOR_TEXT_SECONDARY)
+                total_time_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_MONO{}
+                        color: mod.widgets.studio.COLOR_TEXT_SECONDARY
                     }
                     text: "0:00.00"
                 }
             }
 
             // Speed control
-            speed_control = <View> {
+            speed_control := View{
                 width: Fill
                 height: Fit
                 flow: Right
                 spacing: 4
-                align: { x: 0.5 }
+                align: Align{x: 0.5}
 
-                <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_MUTED)
+                Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_MUTED
                     }
                     text: "Speed:"
                 }
 
-                speed_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        color: (COLOR_TEXT_PRIMARY)
+                speed_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.studio.TEXT_SMALL{}
+                        color: mod.widgets.studio.COLOR_TEXT_PRIMARY
                     }
                     text: "1.0x"
                 }
             }
         }
 
-        <VDivider> {}
+        VDivider{}
 
         // Timeline area (fills remaining width)
-        timeline_area = <View> {
+        timeline_area := View{
             width: Fill
             height: Fill
             padding: 8
 
-            timeline = <Timeline> {}
+            timeline := Timeline{}
         }
     }
 
@@ -518,53 +506,55 @@ live_design! {
     // MAIN HOME SCREEN WITH ADAPTIVE LAYOUT
     // ===========================================
 
-    pub HomeScreen = {{HomeScreen}} {
+    mod.widgets.HomeScreenBase = #(HomeScreen::register_widget(vm))
+    mod.widgets.HomeScreen = set_type_default() do mod.widgets.HomeScreenBase{
         width: Fill
         height: Fill
         flow: Down
 
         show_bg: true
-        draw_bg: { color: #1a1a1f }
+        draw_bg.color: #x1a1a1f
 
         // Full-width header (fixed)
-        app_header = <AppHeader> {}
+        app_header := AppHeader{}
 
-        <Divider> {}
+        Divider{}
 
         // Main content area - simplified for testing
-        content_area = <View> {
+        content_area := View{
             width: Fill
             height: Fill
             flow: Right
 
             // Sidebar
-            sidebar = <Sidebar> {
+            sidebar := Sidebar{
                 width: 280
             }
 
-            <VDivider> {}
+            VDivider{}
 
             // Main content
-            main_content = <MainContent> {}
+            main_content := MainContent{}
         }
 
-        <Divider> {}
+        Divider{}
 
         // Full-width footer timeline (fixed height)
-        footer_timeline = <FooterTimeline> {}
+        footer_timeline := FooterTimeline{}
     }
 }
 
-#[derive(Clone, Debug, DefaultNone)]
+#[derive(Clone, Debug, Default)]
 pub enum HomeScreenAction {
     LoadDataset,
     EpisodeSelected(u64),
     TimeChanged(f64),
     PlaybackChanged(bool),
+    #[default]
     None,
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct HomeScreen {
     #[deref]
     view: View,
@@ -617,7 +607,7 @@ impl Widget for HomeScreen {
 }
 
 impl HomeScreen {
-    fn handle_widget_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_widget_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         // Handle timeline actions
         for action in actions {
             // Get widget action and cast its inner action
@@ -641,11 +631,11 @@ impl HomeScreen {
                     }
                     _ => {}
                 }
-            }
 
-            // Time series plot cursor moved
-            if let TimeSeriesPlotAction::CursorMoved(time) = action.cast() {
-                self.seek_to(cx, time);
+                // Time series plot cursor moved
+                if let TimeSeriesPlotAction::CursorMoved(time) = widget_action.cast() {
+                    self.seek_to(cx, time);
+                }
             }
 
             // Episode list actions (from cx.action())
@@ -654,7 +644,6 @@ impl HomeScreen {
                 // Fire action to parent to load episode data
                 cx.widget_action(
                     self.widget_uid(),
-                    &scope.path,
                     HomeScreenAction::EpisodeSelected(*idx),
                 );
             }
@@ -663,38 +652,30 @@ impl HomeScreen {
             }
         }
 
-        // Handle load button - check for any button click with the load_btn id
-        for action in actions {
-            // Check if this is a button action from our load button
-            if let Some(widget_action) = action.as_widget_action() {
-                if widget_action.path.data.contains(&live_id!(load_btn).into()) {
-                    if let ButtonAction::Clicked(_modifiers) = action.cast() {
-                        cx.widget_action(
-                            self.widget_uid(),
-                            &scope.path,
-                            HomeScreenAction::LoadDataset,
-                        );
-                    }
-                }
-            }
+        // Handle load button click
+        if self.view.button(cx, ids!(load_btn)).clicked(actions) {
+            cx.widget_action(
+                self.widget_uid(),
+                HomeScreenAction::LoadDataset,
+            );
         }
 
         // Handle footer timeline buttons (play/pause, step buttons)
-        if self.view.button(id!(footer_timeline.mini_sidebar.playback_controls.play_btn)).clicked(actions) {
+        if self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.play_btn)).clicked(actions) {
             self.is_playing = !self.is_playing;
             self.set_playing(cx, self.is_playing);
 
             // Update button text
             let text = if self.is_playing { "Pause" } else { "Play" };
-            self.view.button(id!(footer_timeline.mini_sidebar.playback_controls.play_btn))
+            self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.play_btn))
                 .set_text(cx, text);
         }
 
-        if self.view.button(id!(footer_timeline.mini_sidebar.playback_controls.step_back_btn)).clicked(actions) {
+        if self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.step_back_btn)).clicked(actions) {
             self.step_frame(cx, -1);
         }
 
-        if self.view.button(id!(footer_timeline.mini_sidebar.playback_controls.step_fwd_btn)).clicked(actions) {
+        if self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.step_fwd_btn)).clicked(actions) {
             self.step_frame(cx, 1);
         }
     }
@@ -710,19 +691,19 @@ impl HomeScreen {
         self.current_time = time.clamp(0.0, self.episode_duration);
 
         // Update all synchronized components
-        self.view.timeline(id!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
             .set_current_time(cx, self.current_time);
 
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.state_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.state_plot))
             .set_cursor_time(cx, self.current_time);
 
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.action_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.action_plot))
             .set_cursor_time(cx, self.current_time);
 
         // Update footer time display
-        self.view.label(id!(footer_timeline.mini_sidebar.time_display.current_time_label))
+        self.view.label(cx, ids!(footer_timeline.mini_sidebar.time_display.current_time_label))
             .set_text(cx, &Self::format_time(self.current_time));
-        self.view.label(id!(footer_timeline.mini_sidebar.time_display.total_time_label))
+        self.view.label(cx, ids!(footer_timeline.mini_sidebar.time_display.total_time_label))
             .set_text(cx, &Self::format_time(self.episode_duration));
 
         // Update video frame
@@ -770,7 +751,7 @@ impl HomeScreen {
 
         self.is_playing = playing;
 
-        self.view.timeline(id!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
             .set_playing(cx, playing);
 
         if playing {
@@ -787,43 +768,43 @@ impl HomeScreen {
         let fps = 30.0;
 
         // Update episode info in header
-        self.view.label(id!(app_header.episode_info_header.current_episode_label))
+        self.view.label(cx, ids!(app_header.episode_info_header.current_episode_label))
             .set_text(cx, &format!("Episode {}", episode_idx));
-        self.view.label(id!(app_header.episode_info_header.frame_info_label))
+        self.view.label(cx, ids!(app_header.episode_info_header.frame_info_label))
             .set_text(cx, &format!("{} frames", frame_count));
 
         // Update video player labels and show episode indicator
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.primary_video))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.primary_video))
             .set_camera_name(cx, "cam_high");
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.primary_video))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.primary_video))
             .set_frame_info(cx, 0, frame_count);
 
         // Update secondary cameras
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
             .set_camera_name(cx, "cam_left_wrist");
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
             .set_frame_info(cx, 0, frame_count);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
             .set_camera_name(cx, "cam_right_wrist");
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
             .set_frame_info(cx, 0, frame_count);
 
         // Initialize placeholder decoders for video playback (demo mode)
         // Primary camera: higher resolution
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.primary_video))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.primary_video))
             .init_placeholder(640, 480, fps, frame_count);
         // Secondary cameras: smaller resolution
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
             .init_placeholder(320, 240, fps, frame_count);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
             .init_placeholder(320, 240, fps, frame_count);
 
         // Show first frame immediately
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.primary_video))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.primary_video))
             .show_frame_at_time(cx, 0.0);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
             .show_frame_at_time(cx, 0.0);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
             .show_frame_at_time(cx, 0.0);
 
         // Set timeline duration
@@ -831,31 +812,31 @@ impl HomeScreen {
         self.episode_fps = 30.0;
         self.current_time = 0.0;
 
-        self.view.timeline(id!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
             .set_duration(cx, self.episode_duration, self.episode_fps);
-        self.view.timeline(id!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
             .set_current_time(cx, 0.0);
 
         // Update plot titles
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.state_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.state_plot))
             .set_title(cx, "observation.state");
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.action_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.action_plot))
             .set_title(cx, "action");
 
         // Update plot placeholder text using the new method
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.state_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.state_plot))
             .set_placeholder_text(cx, &format!("Episode {} - 14 state channels\nJoint positions, velocities", episode_idx));
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.action_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.action_plot))
             .set_placeholder_text(cx, &format!("Episode {} - 14 action channels\nTarget joint positions", episode_idx));
 
         // Update time range for plots
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.state_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.state_plot))
             .set_time_range(0.0, self.episode_duration);
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.action_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.action_plot))
             .set_time_range(0.0, self.episode_duration);
 
         // Update robot viewer placeholder
-        self.view.robot_viewer(id!(content_area.main_content.top_panel.robot_panel.robot_viewer))
+        self.view.robot_viewer(cx, ids!(content_area.main_content.top_panel.robot_panel.robot_viewer))
             .set_placeholder_text(cx, &format!("Episode {} - ALOHA Robot\n7 DOF dual arm", episode_idx));
 
         self.view.redraw(cx);
@@ -872,19 +853,19 @@ impl HomeScreen {
         let total_frames = (self.episode_duration * self.episode_fps) as u64;
 
         // Update frame info display
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.primary_video))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.primary_video))
             .set_frame_info(cx, frame_idx, total_frames);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
             .set_frame_info(cx, frame_idx, total_frames);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
             .set_frame_info(cx, frame_idx, total_frames);
 
         // Show frame at current time (uses placeholder decoder)
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.primary_video))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.primary_video))
             .show_frame_at_time(cx, self.current_time);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1))
             .show_frame_at_time(cx, self.current_time);
-        self.view.video_player(id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
+        self.view.video_player(cx, ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2))
             .show_frame_at_time(cx, self.current_time);
     }
 
@@ -905,23 +886,23 @@ impl HomeScreen {
             // Convert state to f64 slice for the robot viewer
             let joint_angles: Vec<f64> = frame.state.iter().map(|&v| v as f64).collect();
 
-            self.view.robot_viewer(id!(content_area.main_content.top_panel.robot_panel.robot_viewer))
+            self.view.robot_viewer(cx, ids!(content_area.main_content.top_panel.robot_panel.robot_viewer))
                 .set_joint_angles(cx, &joint_angles);
         }
     }
 
     /// Set dataset info
     pub fn set_dataset_info(&mut self, cx: &mut Cx, name: &str, info: &str) {
-        self.view.label(id!(content_area.sidebar.dataset_section.dataset_name))
+        self.view.label(cx, ids!(content_area.sidebar.dataset_section.dataset_name))
             .set_text(cx, name);
-        self.view.label(id!(content_area.sidebar.dataset_section.dataset_info))
+        self.view.label(cx, ids!(content_area.sidebar.dataset_section.dataset_info))
             .set_text(cx, info);
     }
 
     /// Initialize plots with channel names
     pub fn init_plots(&mut self, cx: &mut Cx, state_channels: &[&str], action_channels: &[&str]) {
         // State plot
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.state_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.state_plot))
             .set_title(cx, "observation.state");
 
         for (i, name) in state_channels.iter().enumerate() {
@@ -930,7 +911,7 @@ impl HomeScreen {
         }
 
         // Action plot
-        self.view.time_series_plot(id!(content_area.main_content.plots_panel.action_plot))
+        self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.action_plot))
             .set_title(cx, "action");
 
         for (i, name) in action_channels.iter().enumerate() {
@@ -940,7 +921,7 @@ impl HomeScreen {
 
     /// Set the episode list
     pub fn set_episodes(&mut self, cx: &mut Cx, episodes: Vec<crate::widgets::episode_list::EpisodeInfo>) {
-        self.view.episode_list(id!(content_area.sidebar.episode_list))
+        self.view.episode_list(cx, ids!(content_area.sidebar.episode_list))
             .set_episodes(cx, episodes);
     }
 
@@ -951,7 +932,7 @@ impl HomeScreen {
         self.current_time = 0.0;
 
         // Update timeline duration
-        self.view.timeline(id!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
             .set_duration(cx, self.episode_duration, self.episode_fps);
 
         // Reset to start
@@ -979,7 +960,7 @@ impl HomeScreen {
         self.episode_duration = duration;
 
         // Populate state plot
-        let state_plot = self.view.time_series_plot(id!(content_area.main_content.plots_panel.state_plot));
+        let state_plot = self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.state_plot));
         state_plot.set_title(cx, "observation.state");
         state_plot.set_time_range(0.0, duration);
         state_plot.set_auto_scale_y(true);
@@ -998,7 +979,7 @@ impl HomeScreen {
         state_plot.recompute_scale(cx);
 
         // Populate action plot
-        let action_plot = self.view.time_series_plot(id!(content_area.main_content.plots_panel.action_plot));
+        let action_plot = self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.action_plot));
         action_plot.set_title(cx, "action");
         action_plot.set_time_range(0.0, duration);
         action_plot.set_auto_scale_y(true);
@@ -1016,7 +997,7 @@ impl HomeScreen {
         action_plot.recompute_scale(cx);
 
         // Update timeline
-        self.view.timeline(id!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
             .set_duration(cx, duration, self.episode_fps);
 
         self.view.redraw(cx);
@@ -1043,7 +1024,7 @@ impl HomeScreen {
         self.load_camera_video(
             cx,
             video_paths.get("observation.images.cam_high"),
-            id!(content_area.main_content.top_panel.video_panel.primary_video),
+            ids!(content_area.main_content.top_panel.video_panel.primary_video),
             "cam_high",
             fps,
             frame_count,
@@ -1054,7 +1035,7 @@ impl HomeScreen {
         self.load_camera_video(
             cx,
             video_paths.get("observation.images.cam_left_wrist"),
-            id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1),
+            ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_1),
             "cam_left_wrist",
             fps,
             frame_count,
@@ -1065,7 +1046,7 @@ impl HomeScreen {
         self.load_camera_video(
             cx,
             video_paths.get("observation.images.cam_right_wrist"),
-            id!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2),
+            ids!(content_area.main_content.top_panel.video_panel.secondary_cameras.camera_2),
             "cam_right_wrist",
             fps,
             frame_count,
@@ -1073,17 +1054,17 @@ impl HomeScreen {
         );
     }
 
-    fn load_camera_video<const N: usize>(
+    fn load_camera_video(
         &mut self,
         cx: &mut Cx,
         video_path: Option<&PathBuf>,
-        widget_id: &[LiveId; N],
+        widget_id: &[LiveId],
         camera_name: &str,
         fps: f64,
         frame_count: u64,
         frame_offset: u64,
     ) {
-        let video_player = self.view.video_player(widget_id);
+        let video_player = self.view.video_player(cx, widget_id);
         video_player.set_camera_name(cx, camera_name);
         video_player.set_episode_info(frame_offset, frame_count);
 
