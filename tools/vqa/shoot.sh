@@ -85,6 +85,30 @@ APPLESCRIPT
   fi
 }
 
+# The window must come out the same size every session. Setting the AX size
+# sets the frame including the title bar, and the resulting content height has
+# been seen to land on 2044, 2046 or 2048 native. Four pixels is enough to
+# rescale the whole canonical image and shift every row, which reads as a
+# content change against a golden shot at another size.
+native_h() { python3 -c "import sys;from PIL import Image;print(Image.open(sys.argv[1]).size[1])" "$1" 2>/dev/null; }
+EXPECT_H=2048
+fit_height() {
+  local have want delta
+  have=$(native_h "$SHOT"); [ -z "$have" ] && return 0
+  [ "$have" = "$EXPECT_H" ] && return 0
+  delta=$(( (EXPECT_H - have) / 2 ))
+  osascript >/dev/null 2>&1 <<APPLESCRIPT
+tell application "System Events"
+  set p to first process whose name contains "ui_mock"
+  set w to first window of p
+  set {ww, hh} to size of w
+  set size of w to {ww, hh + $delta}
+end tell
+APPLESCRIPT
+  sleep 0.6
+  return 1
+}
+
 # A correct render of this dark UI is dark; anything bright means we grabbed
 # the wrong surface (a race we have actually hit).
 looks_right() {
@@ -97,11 +121,15 @@ sys.exit(0 if sum(im.tobytes()) / (64 * 42) < 110 else 1)
 PY
 }
 
-for attempt in 1 2 3; do
+for attempt in 1 2 3 4; do
   capture_once
-  looks_right && break
-  echo "  capture attempt $attempt looked wrong, retrying" >&2
-  sleep 1.5
+  if ! looks_right; then
+    echo "  capture attempt $attempt looked wrong, retrying" >&2
+    sleep 1.5
+    continue
+  fi
+  fit_height && break
+  echo "  capture attempt $attempt was $(native_h "$SHOT")px tall, nudging to $EXPECT_H" >&2
 done
 
 kill "$APP_PID" 2>/dev/null

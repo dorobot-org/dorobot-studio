@@ -104,6 +104,32 @@ fn urdf_limits(path: &Path) -> Vec<(f32, f32)> {
     out
 }
 
+/// Serial ports that could be a robot arm.
+///
+/// Bluetooth and debug consoles are always present on macOS and are never an
+/// arm, so they are listed separately rather than offered as candidates: the
+/// SO-100 shows up through a USB serial bridge (`usbserial`/`usbmodem` here,
+/// `ttyUSB`/`ttyACM` on Linux).
+fn serial_ports() -> (Vec<String>, usize) {
+    let Ok(entries) = fs::read_dir("/dev") else { return (Vec::new(), 0) };
+    let mut candidates = Vec::new();
+    let mut others = 0usize;
+    for e in entries.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        let is_serial = name.starts_with("cu.") || name.starts_with("ttyUSB") || name.starts_with("ttyACM");
+        if !is_serial {
+            continue;
+        }
+        if name.contains("usbserial") || name.contains("usbmodem") || name.starts_with("ttyUSB") || name.starts_with("ttyACM") {
+            candidates.push(format!("/dev/{name}"));
+        } else {
+            others += 1;
+        }
+    }
+    candidates.sort();
+    (candidates, others)
+}
+
 /// Scan `root` one level deep for anything that looks like a LeRobot dataset.
 fn discover(root: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
@@ -358,6 +384,38 @@ impl FileBackend {
         self.playback.drift_series = drift;
     }
 
+    /// Rebuild the setup wizard from what is actually attached.
+    ///
+    /// Only the first step can be answered without the arm: finding the port is
+    /// a filesystem question, while talking to the motors and sweeping the
+    /// joints are not. The later steps stay pending and say so rather than
+    /// showing a wizard that looks ready to run.
+    pub fn rescan_hardware(&mut self) {
+        let (ports, others) = serial_ports();
+        let found = !ports.is_empty();
+        let step = |title: &str, state: StepState| WizardStep { title: title.into(), state };
+        self.hardware.steps = vec![
+            step("Find port", if found { StepState::Done } else { StepState::Active }),
+            step("Motors", StepState::Pending),
+            step("Calibrate", StepState::Pending),
+            step("Cameras", StepState::Pending),
+            step("Save profile", StepState::Pending),
+        ];
+        self.hardware.robot_label = if found { "unidentified arm".into() } else { String::new() };
+        self.hardware.instruction = if found {
+            format!("Found {}: {}", if ports.len() == 1 { "a port" } else { "ports" }, ports.join(", "))
+        } else if others > 0 {
+            format!("No arm found. {others} serial ports are present but all are Bluetooth or debug consoles — connect the arm over USB and rescan.")
+        } else {
+            "No serial ports at all. Connect the arm over USB and rescan.".into()
+        };
+        // Joints stay empty until a motor answers; a calibration list here
+        // would be an invention.
+        self.hardware.joints.clear();
+        self.hardware.live_angles.clear();
+        self.hardware.active_joint = None;
+    }
+
     /// Where curation tags live for a dataset. A sidecar, not a rewrite of the
     /// LeRobot metadata: tagging must never risk the recording itself.
     fn tag_file(&self) -> Option<PathBuf> {
@@ -452,13 +510,24 @@ impl Backend for FileBackend {
 
     fn dispatch(&mut self, intent: Intent) {
         match intent {
-            Intent::Navigate(s) => self.screen = s,
-            Intent::RescanDatasets => self.rescan(),
+            Intent::Navigate(s) => {
+                if s == Screen::Hardware {
+                    self.rescan_hardware();
+                }
+                self.screen = s;
+            }
+            Intent::RescanDatasets => {
+                self.rescan();
+                self.rescan_hardware();
+            }
             Intent::OpenDataset(id) => {
                 self.open_dataset(&id);
                 self.screen = Screen::Play;
             }
             Intent::SelectEpisode(i) => self.select_episode(i),
+            // Re-enumerate ports: the only wizard step that can be answered
+            // without the arm attached.
+            Intent::WizardRestartStep => self.rescan_hardware(),
             Intent::TogglePlay => {
                 // Restart from the head when play is pressed at the end,
                 // rather than sitting there doing nothing.

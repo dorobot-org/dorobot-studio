@@ -6,7 +6,7 @@
 
 use makepad_widgets::*;
 
-use crate::api::{HardwareState, JointProgress, StepState};
+use crate::api::{HardwareState, Intent, JointProgress, StepState};
 use crate::ui::frame::{apply_light, apply_light_in, theme_panel_head, Themed};
 
 script_mod! {
@@ -315,6 +315,7 @@ script_mod! {
                     btext := View{
                         width: Fill height: Fit flow: Down spacing: 5.0
                         instruction := Label{
+                            width: Fill
                             text: "Move every joint through its full range"
                             draw_text +: {
                                 light: instance(0.0)
@@ -592,5 +593,21 @@ impl HardwareScreenRef {
             draw_bg +: { enabled_f: #(enabled) }
             draw_text +: { enabled_f: #(enabled) }
         });
+    }
+}
+
+impl HardwareScreenRef {
+    /// Wizard buttons, as intents the caller can dispatch. They were drawn but
+    /// never read, so pressing them did nothing.
+    pub fn wizard_intent(&self, cx: &mut Cx, actions: &Actions) -> Option<Intent> {
+        let mut inner = self.borrow_mut()?;
+        let v = &mut inner.view;
+        if v.button(cx, ids!(content.calib.actions.btn_restart)).clicked(actions) {
+            return Some(Intent::WizardRestartStep);
+        }
+        if v.button(cx, ids!(content.calib.actions.btn_continue)).clicked(actions) {
+            return Some(Intent::WizardAdvance);
+        }
+        None
     }
 }

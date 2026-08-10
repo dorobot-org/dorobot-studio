@@ -231,8 +231,22 @@ impl MatchEvent for App {
             dirty = true;
         }
 
+        // Hardware: the wizard's own buttons.
+        if let Some(intent) = self
+            .ui
+            .hardware_screen(cx, ids!(page_hardware))
+            .wizard_intent(cx, actions)
+        {
+            self.backend.dispatch(intent);
+            dirty = true;
+        }
+
         // Library: open the clicked dataset.
         let lib = self.ui.library_screen(cx, ids!(page_library));
+        if lib.clicked_setup(cx, actions) {
+            self.backend.dispatch(Intent::Navigate(Screen::Hardware));
+            dirty = true;
+        }
         if let Some(id) = lib.clicked_dataset(cx, actions, self.backend.library()) {
             self.backend.dispatch(Intent::OpenDataset(id));
             dirty = true;

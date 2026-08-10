@@ -35,6 +35,14 @@ mean, while an element that lost its tint, moved, or vanished shifts whole
 blocks at once. Measured antialiasing noise is 0.000%; a real injected
 regression (the Play "Tag good" button losing its green tone) scores 0.521%.
 
+Captures are also pinned to one native size. Setting the window size sets the
+frame including the title bar, and the content height was landing on 2044, 2046
+or 2048 across sessions. Four pixels rescales the whole canonical image and
+shifts every row, which `solid` reads as a content change because the block
+means genuinely move — unlike antialiasing, that is not noise it can reject.
+`shoot.sh` now nudges the window until the capture is exactly 2048px tall, and
+all goldens were re-taken at that size.
+
 Per-pixel erosion was tried first and rejected. It rejects antialiasing fine,
 but it misses that exact regression: a ~20-level fill delta never clears a
 per-pixel threshold set high enough to ignore glyph halos, so the button silently

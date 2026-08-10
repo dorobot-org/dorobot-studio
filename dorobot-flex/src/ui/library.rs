@@ -355,13 +355,24 @@ script_mod! {
                 spacing: 2.0
                 dev_0 := DeviceRow{}
                 dev_1 := DeviceRow{ icon +: { draw_bg +: {kind: 1.0} } }
-                link_setup := Label{
-                    text: "+  Set up new robot"
+                // A real control, not a painted one: it reads as a link, so it
+                // has to behave like one. A dev View only hit-tests when it
+                // declares a cursor.
+                link_setup := View{
+                    width: Fit height: Fit
                     margin: Inset{top: 14., left: 2.}
-                    draw_text +: {
-                        light: instance(0.0)
-                        text_style: mod.widgets.ux.TEXT_BODY{}
-                        get_color: fn() { return mix(#x6BA1F8, #x2159C4, self.light) }
+                    cursor: MouseCursor.Hand
+                    setup_label := Label{
+                        text: "+  Set up new robot"
+                        draw_text +: {
+                            light: instance(0.0)
+                            hover: instance(0.0)
+                            text_style: mod.widgets.ux.TEXT_BODY{}
+                            get_color: fn() {
+                                let base = mix(#x6BA1F8, #x2159C4, self.light)
+                                return mix(base, mix(#x9CC3FF, #x0E3E96, self.light), self.hover)
+                            }
+                        }
                     }
                 }
                 Filler{}
@@ -408,6 +419,15 @@ const DEVICE_IDS: [&[LiveId]; 2] = [
 
 impl LibraryScreenRef {
     /// Dataset id whose card was clicked, if any.
+    /// True when "Set up new robot" was clicked. The Hardware screen is that
+    /// flow — find the port, check the motors, calibrate, add cameras, save the
+    /// profile — so the link goes there rather than opening a dialog of its own.
+    pub fn clicked_setup(&self, cx: &mut Cx, actions: &Actions) -> bool {
+        let Some(mut inner) = self.borrow_mut() else { return false };
+        let link = inner.view.widget(cx, ids!(hardware_rail.hw_body.link_setup));
+        !link.is_empty() && crate::ui::frame::view_clicked(actions, link.widget_uid())
+    }
+
     pub fn clicked_dataset(&self, cx: &mut Cx, actions: &Actions, state: &LibraryState) -> Option<String> {
         let mut inner = self.borrow_mut()?;
         for (slot, path) in CARD_IDS.iter().enumerate() {
@@ -439,7 +459,7 @@ impl LibraryScreenRef {
             (ids!(left_col.recent), Themed::Bg),
             (ids!(left_col.recent.rec_head.view_all), Themed::Text),
             (ids!(hardware_rail), Themed::Bg),
-            (ids!(hardware_rail.hw_body.link_setup), Themed::Text),
+            (ids!(hardware_rail.hw_body.link_setup.setup_label), Themed::Text),
         ], light);
         for p in [ids!(left_col.recent.rec_head) as &[LiveId], ids!(hardware_rail.hw_head)] {
             let head = root.widget(cx, p);
