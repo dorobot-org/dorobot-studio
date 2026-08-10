@@ -106,6 +106,7 @@ script_mod! {
         draw_bg +: {
             tone: instance(0.0)
             light: instance(0.0)
+            sel: instance(0.0)
             pixel: fn() {
                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                 // 0 neutral, 1 good, 2 bad, 3 primary
@@ -123,14 +124,19 @@ script_mod! {
                 let l_e2 = mix(l_e, #xF0BFBD, step(1.5, self.tone))
                 let light_e = mix(l_e2, #x3B7BEE, step(2.5, self.tone))
                 sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                sdf.fill_keep(mix(fill, fill * 1.12, self.hover))
-                sdf.stroke(mix(dark_e, light_e, self.light), 1.0)
+                // The tag an episode already carries reads as pressed, so the
+                // sidebar answers "what is this tagged?" without looking away.
+                let hot = mix(fill, mix(fill * 1.55, fill * 1.22, self.light), self.sel)
+                sdf.fill_keep(mix(hot, hot * 1.12, self.hover))
+                let edge = mix(dark_e, light_e, self.light)
+                sdf.stroke(mix(edge, edge * 1.6, self.sel), mix(1.0, 1.6, self.sel))
                 return sdf.result
             }
         }
         draw_text +: {
             tone: instance(0.0)
             light: instance(0.0)
+            sel: instance(0.0)
             text_style: mod.widgets.ux.TEXT_BODY{}
             get_color: fn() {
                 let d_ok = mix(#xC9D2E2, #x58BE8A, step(0.5, self.tone))
@@ -139,7 +145,10 @@ script_mod! {
                 let l_ok = mix(#x333B4D, #x1F7A4C, step(0.5, self.tone))
                 let l_bad = mix(l_ok, #xB3312F, step(1.5, self.tone))
                 let light_c = mix(l_bad, #xFFFFFF, step(2.5, self.tone))
-                return mix(dark_c, light_c, self.light)
+                let base = mix(dark_c, light_c, self.light)
+                // A selected button fills with its own colour, so the label has
+                // to leave that colour to stay legible on it.
+                return mix(base, mix(#xF2F5FA, #x10151F, self.light), self.sel)
             }
         }
     }
@@ -330,7 +339,14 @@ script_mod! {
         timeline := mod.widgets.ux.Card{
             width: Fill height: 372
             flow: Down
-            tl_head := mod.widgets.ux.PanelHead{ title +: { text: "Playback" } }
+            // No close button: the transport is not something to dismiss. The
+            // head doubles as the resize grip for the footer.
+            tl_head := mod.widgets.ux.PanelHead{
+                title +: { text: "Playback" }
+                cursor: MouseCursor.RowResize
+                btn_max +: { visible: false }
+                btn_close +: { visible: false }
+            }
             tl_body := View{
                 width: Fill height: Fill flow: Down
                 padding: Inset{left: 14. right: 14. top: 8. bottom: 10.}
@@ -377,7 +393,7 @@ script_mod! {
                 lanes := View{
                     width: Fill height: Fill flow: Down spacing: 1.0
                     lane_0 := View{
-                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        width: Fill height: Fill flow: Right align: Align{y: 0.5}
                         name_0 := Label{
                             width: 104
                             draw_text +: {
@@ -392,7 +408,7 @@ script_mod! {
                         }
                     }
                     lane_1 := View{
-                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        width: Fill height: Fill flow: Right align: Align{y: 0.5}
                         name_1 := Label{
                             width: 104
                             draw_text +: {
@@ -407,7 +423,7 @@ script_mod! {
                         }
                     }
                     lane_2 := View{
-                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        width: Fill height: Fill flow: Right align: Align{y: 0.5}
                         name_2 := Label{
                             width: 104
                             draw_text +: {
@@ -422,7 +438,7 @@ script_mod! {
                         }
                     }
                     lane_3 := View{
-                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        width: Fill height: Fill flow: Right align: Align{y: 0.5}
                         name_3 := Label{
                             width: 104
                             draw_text +: {
@@ -437,7 +453,7 @@ script_mod! {
                         }
                     }
                     lane_4 := View{
-                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        width: Fill height: Fill flow: Right align: Align{y: 0.5}
                         name_4 := Label{
                             width: 104
                             draw_text +: {
@@ -452,7 +468,7 @@ script_mod! {
                         }
                     }
                     lane_5 := View{
-                        width: Fill height: 34 flow: Right align: Align{y: 0.5}
+                        width: Fill height: Fill flow: Right align: Align{y: 0.5}
                         name_5 := Label{
                             width: 104
                             draw_text +: {
@@ -499,6 +515,12 @@ pub struct PlayScreen {
     /// once per selection rather than on every sync.
     #[rust]
     loaded_episode: Option<u64>,
+    /// Footer height, dragged by its head.
+    #[rust(372f64)]
+    footer_h: f64,
+    /// `(pointer y at grab, footer height at grab)` while resizing.
+    #[rust]
+    footer_drag: Option<(f64, f64)>,
 }
 
 impl Widget for PlayScreen {
@@ -506,6 +528,33 @@ impl Widget for PlayScreen {
         // The row window is driven here rather than by a ScrollY view: the rows
         // are fixed DSL widgets reused across a much longer list, so there is
         // nothing taller than the viewport for a scroll bar to move.
+        // Footer resize. Driven from raw mouse events rather than the head's
+        // own actions: a drag has to keep tracking after the pointer leaves
+        // the 34px strip it started in.
+        match event {
+            Event::MouseDown(e) => {
+                let head = self.view.widget(cx, ids!(timeline.tl_head));
+                if !head.is_empty() && head.area().rect(cx).contains(e.abs) {
+                    self.footer_drag = Some((e.abs.y, self.footer_h));
+                }
+            }
+            Event::MouseMove(e) => {
+                if let Some((y0, h0)) = self.footer_drag {
+                    // Dragging up grows the footer, so the grip follows the
+                    // pointer rather than running away from it.
+                    let want = (h0 + (y0 - e.abs.y)).clamp(FOOTER_MIN, FOOTER_MAX);
+                    if (want - self.footer_h).abs() > 0.5 {
+                        self.footer_h = want;
+                        let mut card = self.view.widget(cx, ids!(timeline));
+                        script_apply_eval!(cx, card, { height: #(want) });
+                        self.view.redraw(cx);
+                    }
+                }
+            }
+            Event::MouseUp(_) => self.footer_drag = None,
+            _ => {}
+        }
+
         if let Event::Scroll(e) = event {
             let max = self.total_rows.saturating_sub(ROW_IDS.len());
             let tree = self.view.widget(cx, ids!(upper.tree));
@@ -533,6 +582,12 @@ impl Widget for PlayScreen {
 /// Seconds of trace kept either side of the playhead, so the plot scrolls with
 /// playback instead of standing still.
 const PLOT_WINDOW_S: f64 = 10.0;
+
+/// How far the footer can be dragged. The lanes share whatever is left after
+/// the transport and scrubber, so the floor is set to keep them legible rather
+/// than merely present; the ceiling keeps the video panes from vanishing.
+const FOOTER_MIN: f64 = 244.0;
+const FOOTER_MAX: f64 = 640.0;
 
 /// Footer lanes, one per joint.
 const LANE_IDS: [(&[LiveId], &[LiveId]); 6] = [
@@ -753,6 +808,21 @@ impl PlayScreenRef {
             script_apply_eval!(cx, vw, { draw_text +: { warn: #(warn) light: #(light) } });
         }
         root.label(cx, ids!(upper.side.side_body.task_t)).set_text(cx, &s.task);
+
+        // Curation buttons carry the current tag, so the answer to "is this one
+        // marked?" is where the marking happens, not only in the far-left list.
+        let tag_now = st
+            .selected
+            .and_then(|i| st.episodes.iter().find(|e| e.index == i))
+            .and_then(|e| e.tag);
+        for (path, want) in [
+            (ids!(upper.side.side_body.btn_good) as &[LiveId], Tag::Good),
+            (ids!(upper.side.side_body.btn_bad), Tag::Bad),
+        ] {
+            let on = if tag_now == Some(want) { 1.0 } else { 0.0 };
+            let mut b = root.widget(cx, path);
+            script_apply_eval!(cx, b, { draw_bg +: { sel: #(on) } draw_text +: { sel: #(on) } });
+        }
 
         // ---- plot: measured vs commanded for the selected episode ----------
         // The plot reads the app-shell theme global rather than our light

@@ -262,6 +262,13 @@ impl FileBackend {
             robot_urdf: urdf_for(&ds.info.robot_type),
             joint_frames: Vec::new(),
         };
+        // Restore any curation recorded for this dataset before.
+        let saved = Self::load_tags(&summary.path.join("meta").join("dorobot_tags.json"));
+        for (idx, tag) in saved {
+            if let Some(e) = self.playback.episodes.iter_mut().find(|e| e.index == idx) {
+                e.tag = Some(tag);
+            }
+        }
         self.open = Some((id.to_string(), ds));
         if let Some(idx) = self.playback.selected {
             self.select_episode(idx);
@@ -351,6 +358,66 @@ impl FileBackend {
         self.playback.drift_series = drift;
     }
 
+    /// Where curation tags live for a dataset. A sidecar, not a rewrite of the
+    /// LeRobot metadata: tagging must never risk the recording itself.
+    fn tag_file(&self) -> Option<PathBuf> {
+        let id = self.open.as_ref().map(|(id, _)| id.clone())?;
+        let ds = self.library.datasets.iter().find(|d| d.id == id)?;
+        Some(ds.path.join("meta").join("dorobot_tags.json"))
+    }
+
+    /// Persist tags. Curation that does not survive a restart is not curation.
+    fn save_tags(&mut self) {
+        let Some(path) = self.tag_file() else { return };
+        let mut out = String::from("{\n");
+        let mut first = true;
+        for e in self.playback.episodes.iter() {
+            let Some(t) = e.tag else { continue };
+            if !first {
+                out.push_str(",\n");
+            }
+            first = false;
+            out.push_str(&format!("  \"{}\": \"{}\"", e.index, t.label()));
+        }
+        out.push_str("\n}\n");
+        if let Err(e) = fs::write(&path, out) {
+            ::log::error!("could not save tags to {}: {e}", path.display());
+        }
+        // Library tallies are derived, so they follow the same edit.
+        let (good, bad) = self.playback.episodes.iter().fold((0, 0), |(g, b), e| match e.tag {
+            Some(Tag::Good) => (g + 1, b),
+            Some(Tag::Bad) => (g, b + 1),
+            None => (g, b),
+        });
+        let id = self.open.as_ref().map(|(id, _)| id.clone());
+        if let Some(d) = self
+            .library
+            .datasets
+            .iter_mut()
+            .find(|d| Some(&d.id) == id.as_ref())
+        {
+            d.good = good;
+            d.bad = bad;
+        }
+    }
+
+    /// Read the sidecar written by [`Self::save_tags`].
+    fn load_tags(path: &Path) -> Vec<(u64, Tag)> {
+        let Ok(text) = fs::read_to_string(path) else { return Vec::new() };
+        let mut out = Vec::new();
+        for line in text.lines() {
+            let mut parts = line.split('"').filter(|p| !p.trim().is_empty() && *p != ": ");
+            let (Some(k), Some(v)) = (parts.next(), parts.next()) else { continue };
+            let Ok(idx) = k.trim().parse::<u64>() else { continue };
+            match v.trim() {
+                "good" => out.push((idx, Tag::Good)),
+                "bad" => out.push((idx, Tag::Bad)),
+                _ => {}
+            }
+        }
+        out
+    }
+
     /// Distinct task descriptions, used by the Play tree's group headers.
     pub fn task_groups(&self) -> Vec<String> {
         self.playback
@@ -414,8 +481,11 @@ impl Backend for FileBackend {
             Intent::SetSpeed(s) => self.playback.speed = s.clamp(0.05, 8.0),
             Intent::TagEpisode { episode, tag } => {
                 if let Some(e) = self.playback.episodes.iter_mut().find(|e| e.index == episode) {
-                    e.tag = tag;
+                    // Clicking the tag an episode already carries clears it,
+                    // so the same button both sets and undoes.
+                    e.tag = if e.tag == tag { None } else { tag };
                 }
+                self.save_tags();
             }
             // Recording, hardware and Hub actions need a backend that does not
             // exist yet; ignoring them is better than pretending they worked.
