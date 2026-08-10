@@ -226,37 +226,10 @@ script_mod! {
                 width: Fill height: Fill
                 flow: Down
                 mirror_head := mod.widgets.ux.PanelHead{ title +: { text: "live mirror" } }
-                viewport := View{
-                    width: Fill height: Fill
-                    show_bg: true
-                    draw_bg +: {
-                        pixel: fn() {
-                            // Perspective grid + axis gizmo: the mount point for
-                            // RobotView, drawn so the panel reads as a 3D stage.
-                            let p = self.pos * self.rect_size
-                            let h = self.rect_size.y
-                            let w = self.rect_size.x
-                            let horizon = h * 0.36
-                            let base = mix(#x0C0F16, #x141924, self.pos.y)
-                            let below = step(horizon, p.y)
-                            // receding horizontal lines
-                            let ny = (p.y - horizon) / max(h - horizon, 1.0)
-                            let rows = fract(pow(max(ny, 0.0), 0.55) * 9.0)
-                            let hline = (1.0 - step(0.06, rows)) * below
-                            // radial verticals converging at the vanishing point
-                            let dx = (p.x - w * 0.5) / max(p.y - horizon, 1.0)
-                            let cols = fract(dx * 3.0 + 0.5)
-                            let vline = (1.0 - step(0.02, cols)) * below
-                            let grid = clamp(hline + vline, 0.0, 1.0) * 0.5
-                            return mix(base, #x38425C, grid)
-                        }
-                    }
-                    gizmo := Label{
-                        text: "RobotView mounts here"
-                        margin: Inset{left: 18., top: 14.}
-                        draw_text +: { color: #x4A5470 text_style: mod.widgets.ux.TEXT_META{} }
-                    }
-                }
+                // The real renderer, which brings its own studio gradient with
+                // it. This was a shader drawing a perspective grid with
+                // "RobotView mounts here" written across it.
+                viewport := RobotView{ width: Fill height: Fill }
             }
 
             calib := mod.widgets.ux.Card{
@@ -407,6 +380,9 @@ script_mod! {
 pub struct HardwareScreen {
     #[deref]
     view: View,
+    /// Model currently mounted in the mirror, so it is opened once.
+    #[rust]
+    loaded_urdf: Option<(std::path::PathBuf, std::path::PathBuf)>,
 }
 
 impl Widget for HardwareScreen {
@@ -444,7 +420,34 @@ impl HardwareScreenRef {
     pub fn sync(&self, cx: &mut Cx, state: &HardwareState) {
         let light = crate::ui::frame::light_mode();
         let Some(mut inner) = self.borrow_mut() else { return };
+        let want = state.robot_urdf.clone();
+        let need_load = inner.loaded_urdf != want;
+        if need_load {
+            inner.loaded_urdf = want.clone();
+        }
         let root = &mut inner.view;
+
+        // The mirror renders the robot itself, so the model is opened once and
+        // then only posed. With no arm attached there are no live angles yet,
+        // and it simply sits at its rest pose.
+        let viewer = root.widget(cx, ids!(content.mirror.viewport));
+        if need_load {
+            if let (Some((urdf, assets)), Some(mut rv)) = (
+                want.as_ref(),
+                viewer.borrow_mut::<makepad_urdf_player::robot_view::RobotView>(),
+            ) {
+                if let Err(e) = rv.load_robot(&urdf.to_string_lossy(), &assets.to_string_lossy()) {
+                    ::log::error!("hardware: urdf {} failed to load: {e}", urdf.display());
+                }
+            }
+        }
+        if !state.live_angles.is_empty() {
+            if let Some(mut rv) =
+                viewer.borrow_mut::<makepad_urdf_player::robot_view::RobotView>()
+            {
+                rv.set_joint_angles(cx, &state.live_angles);
+            }
+        }
 
         script_apply_eval!(cx, root, { draw_bg +: { light: #(light) } });
         apply_light_in(cx, root, &[
@@ -457,7 +460,6 @@ impl HardwareScreenRef {
             (ids!(content.calib.banner.btext.subline), Themed::Text),
             (ids!(content.calib.actions.btn_restart), Themed::Both),
             (ids!(content.calib.actions.btn_continue), Themed::Both),
-            (ids!(content.mirror.viewport.gizmo), Themed::Text),
         ], light);
         for p in [ids!(content.mirror.mirror_head) as &[LiveId], ids!(content.calib.calib_head)] {
             let head = root.widget(cx, p);

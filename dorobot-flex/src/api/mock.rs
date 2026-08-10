@@ -261,6 +261,11 @@ fn hardware_fixture() -> HardwareState {
         live_angles: vec![-0.21, 0.76, -1.36, -0.59, 1.59, 0.33],
         active_joint: Some(4),
         instruction: "Move every joint through its full range".into(),
+        robot_urdf: {
+            let assets = PathBuf::from("data/so100");
+            let urdf = assets.join("so100.urdf");
+            urdf.exists().then_some((urdf, assets))
+        },
     }
 }
 

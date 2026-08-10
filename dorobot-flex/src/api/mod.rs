@@ -177,6 +177,8 @@ pub struct HardwareState {
     /// Index into `joints` currently being moved, for the 3D highlight.
     pub active_joint: Option<usize>,
     pub instruction: String,
+    /// `(urdf, assets_dir)` for the mirror, when a model ships for this robot.
+    pub robot_urdf: Option<(PathBuf, PathBuf)>,
 }
 
 impl HardwareState {

@@ -55,32 +55,36 @@ tell application "System Events"
   set p to first process whose name contains "ui_mock"
   set frontmost of p to true
   set w to first window of p
+  -- Sized to clear the Dock while keeping the full screen content. At the
+  -- design 1536x1024 the frame runs to y=1092, and when
+  -- the Dock is showing the usable area ends above that, so the window gets
+  -- clamped a pixel shorter — which is what made captures land on 2046 in some
+  -- sessions and 2048 in others.
   set position of w to {40, 40}
-  set size of w to {1536, 1024}
+  set size of w to {1536, 990}
 end tell
 APPLESCRIPT
 # Let hover/focus animators finish: the pointer sits wherever the user left it,
 # so a mid-animation capture differs from the settled one.
 sleep 3.0
 
-# Capture by window rect rather than window id: the id lookup races with
-# window creation and has been seen to return another app's window.
+# Capture the window itself, not the screen rectangle it occupies. A rect
+# capture picks up whatever is in front of the app - a terminal overlapping the
+# window silently lands in the golden, which has happened. Asking for the
+# window id gets that window's own surface regardless of stacking, and the
+# lookup runs per capture, after the window is known to exist, so it cannot
+# race window creation.
+window_id() {
+  python3 "$ROOT/tools/vqa/window_id.py" 2>/dev/null
+}
+
 capture_once() {
-  local rect
-  rect=$(osascript 2>/dev/null <<'APPLESCRIPT'
-tell application "System Events"
-  set p to first process whose name contains "ui_mock"
-  set frontmost of p to true
-  set w to first window of p
-  set {x, y} to position of w
-  set {ww, hh} to size of w
-  return (x as text) & "," & (y as text) & "," & (ww as text) & "," & (hh as text)
-end tell
-APPLESCRIPT
-)
-  if [ -n "$rect" ]; then
-    screencapture -x -R"$rect" "$SHOT"
+  local wid
+  wid=$(window_id)
+  if [ -n "$wid" ]; then
+    screencapture -x -o -l"$wid" "$SHOT"
   else
+    echo "  no window id for ui_mock; falling back to rect capture" >&2
     screencapture -x -R40,40,1536,1024 "$SHOT"
   fi
 }
@@ -91,21 +95,18 @@ APPLESCRIPT
 # rescale the whole canonical image and shift every row, which reads as a
 # content change against a golden shot at another size.
 native_h() { python3 -c "import sys;from PIL import Image;print(Image.open(sys.argv[1]).size[1])" "$1" 2>/dev/null; }
-EXPECT_H=2048
+EXPECT_H=1980
+# Retry rather than nudge. The window is still settling for a moment after it
+# appears, and a capture taken then comes out 2046 instead of 2048 — two pixels
+# is enough to rescale the canonical image and shift every row, which reads as
+# a content change. Resizing to correct it only adds drift; waiting fixes it,
+# and consecutive settled captures are byte-identical.
 fit_height() {
-  local have want delta
+  local have
   have=$(native_h "$SHOT"); [ -z "$have" ] && return 0
   [ "$have" = "$EXPECT_H" ] && return 0
-  delta=$(( (EXPECT_H - have) / 2 ))
-  osascript >/dev/null 2>&1 <<APPLESCRIPT
-tell application "System Events"
-  set p to first process whose name contains "ui_mock"
-  set w to first window of p
-  set {ww, hh} to size of w
-  set size of w to {ww, hh + $delta}
-end tell
-APPLESCRIPT
-  sleep 0.6
+  echo "  capture was ${have}px tall, expected ${EXPECT_H}px; window still settling" >&2
+  sleep 1.0
   return 1
 }
 

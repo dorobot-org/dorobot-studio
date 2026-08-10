@@ -35,13 +35,23 @@ mean, while an element that lost its tint, moved, or vanished shifts whole
 blocks at once. Measured antialiasing noise is 0.000%; a real injected
 regression (the Play "Tag good" button losing its green tone) scores 0.521%.
 
+Captures come from the window itself (`screencapture -l<id>`), not the screen
+rectangle it sits in. A rect capture picks up whatever is in front of the app —
+a terminal overlapping the window landed in a golden during this work, and the
+brightness check did not catch it because the result was still mostly dark.
+
 Captures are also pinned to one native size. Setting the window size sets the
 frame including the title bar, and the content height was landing on 2044, 2046
 or 2048 across sessions. Four pixels rescales the whole canonical image and
 shifts every row, which `solid` reads as a content change because the block
 means genuinely move — unlike antialiasing, that is not noise it can reject.
-`shoot.sh` now nudges the window until the capture is exactly 2048px tall, and
-all goldens were re-taken at that size.
+The cause was the Dock: at the design's 1536x1024 the window frame runs past
+the usable area, so macOS clamps it a pixel shorter in some sessions and not
+others. `shoot.sh` sizes the window to clear the Dock while keeping the whole
+screen on screen — dropping to 1400x900 was tried first and rejected, because
+it clipped the Sessions panel and the amber token coverage went to zero, which
+the token gate correctly caught. Three cold launches now produce byte-identical
+captures.
 
 Per-pixel erosion was tried first and rejected. It rejects antialiasing fine,
 but it misses that exact regression: a ~20-level fill delta never clears a

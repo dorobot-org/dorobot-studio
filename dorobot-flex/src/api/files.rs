@@ -402,6 +402,15 @@ impl FileBackend {
             step("Save profile", StepState::Pending),
         ];
         self.hardware.robot_label = if found { "unidentified arm".into() } else { String::new() };
+        // The mirror shows the model for whatever robot the open dataset names,
+        // falling back to the SO-100 so the stage is not empty before one is
+        // chosen.
+        let robot = self
+            .open
+            .as_ref()
+            .map(|(_, ds)| ds.info.robot_type.to_lowercase())
+            .unwrap_or_else(|| "so100".into());
+        self.hardware.robot_urdf = urdf_for(&robot).or_else(|| urdf_for("so100"));
         self.hardware.instruction = if found {
             format!("Found {}: {}", if ports.len() == 1 { "a port" } else { "ports" }, ports.join(", "))
         } else if others > 0 {
