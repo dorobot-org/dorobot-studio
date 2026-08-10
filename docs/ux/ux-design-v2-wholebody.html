@@ -1,0 +1,732 @@
+<title>DoRobot Studio — Whole-Body UX Concept v2</title>
+<style>
+:root{
+--ground:#FBFBFC; --surface:#F2F3F7; --surface2:#E9EBF2; --raise:#FFFFFF;
+--ink:#171B26; --ink2:#59617A; --ink3:#858DA6; --line:#DCE0EA;
+--accent:#3B6FE0; --accent-soft:#E8EEFC; --accent-ink:#2A55B8;
+--ok:#2E8F5B; --warn:#B57A1F; --stop:#C43F3A;
+--ok-bg:#E4F1EA; --warn-bg:#F6EEDC; --stop-bg:#F8E5E4;
+--sim:#7A5AD6; --sim-soft:#EDE8FB; --sim-ink:#5B3FB0;
+--mat:#0E1119; --mat-line:#232A38; --mat-ink:#C9D2E4; --mat-dim:#6C7591;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+--ground:#0E1119; --surface:#161A24; --surface2:#1E2431; --raise:#131822;
+--ink:#E7EAF3; --ink2:#98A1B8; --ink3:#6C7591; --line:#252C3A;
+--accent:#6D9BFA; --accent-soft:#1B2740; --accent-ink:#96B7FC;
+--ok:#5CBE8B; --warn:#D6A254; --stop:#E2726B;
+--ok-bg:#152B20; --warn-bg:#302510; --stop-bg:#341C1A;
+--sim:#A28BEA; --sim-soft:#221C3A; --sim-ink:#BCA9F5;
+--mat:#080A0F; --mat-line:#1E2532; --mat-ink:#C9D2E4; --mat-dim:#69728C;
+}}
+:root[data-theme="dark"]{
+--ground:#0E1119; --surface:#161A24; --surface2:#1E2431; --raise:#131822;
+--ink:#E7EAF3; --ink2:#98A1B8; --ink3:#6C7591; --line:#252C3A;
+--accent:#6D9BFA; --accent-soft:#1B2740; --accent-ink:#96B7FC;
+--ok:#5CBE8B; --warn:#D6A254; --stop:#E2726B;
+--ok-bg:#152B20; --warn-bg:#302510; --stop-bg:#341C1A;
+--sim:#A28BEA; --sim-soft:#221C3A; --sim-ink:#BCA9F5;
+--mat:#080A0F; --mat-line:#1E2532; --mat-ink:#C9D2E4; --mat-dim:#69728C;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+font:16px/1.62 ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+-webkit-font-smoothing:antialiased}
+main{max-width:1000px;margin:0 auto;padding:56px 24px 110px}
+.mono,code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+code{font-size:.9em;background:var(--surface2);padding:1px 5px;border-radius:3px}
+
+.mast{border-bottom:2px solid var(--ink);padding-bottom:26px;margin-bottom:12px}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.18em;text-transform:uppercase;
+color:var(--accent-ink);display:flex;gap:12px;align-items:center;margin:0 0 18px}
+.kicker::after{content:"";flex:1;height:1px;background:var(--line)}
+h1{font-size:clamp(30px,4.4vw,46px);line-height:1.06;letter-spacing:-.025em;margin:0 0 14px;font-weight:680;text-wrap:balance}
+.deck{font-size:19px;line-height:1.5;color:var(--ink2);margin:0;max-width:64ch}
+.mast-meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin:22px 0 0;
+font:11.5px/1.5 ui-monospace,Menlo,monospace;color:var(--ink3)}
+.mast-meta b{color:var(--ink2);font-weight:600}
+
+section{margin-top:64px;scroll-margin-top:24px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:22px}
+.sec-num{font:700 12px/1 ui-monospace,Menlo,monospace;color:var(--accent);letter-spacing:.06em;padding-top:4px}
+h2{font-size:25px;letter-spacing:-.018em;margin:0;font-weight:660;text-wrap:balance}
+.sec-head .tail{margin-left:auto;font:11px/1 ui-monospace,monospace;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase}
+h3{font-size:17px;margin:30px 0 6px;font-weight:640;letter-spacing:-.008em}
+h4{font:600 11.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin:22px 0 8px}
+p{margin:11px 0;max-width:74ch}
+.lede{color:var(--ink2);max-width:74ch;margin:0 0 20px}
+ul,ol{margin:10px 0 16px;padding-left:20px;max-width:74ch}
+li{margin:7px 0}li::marker{color:var(--accent)}
+strong{font-weight:650}
+a{color:var(--accent-ink)}
+
+.laws{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:1px;background:var(--line);
+border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.law{background:var(--raise);padding:20px 22px}
+.law .n{font:700 10.5px/1 ui-monospace,monospace;letter-spacing:.12em;color:var(--accent);display:block;margin-bottom:9px}
+.law.new .n{color:var(--sim-ink)}
+.law h3{margin:0 0 6px;font-size:15.5px}
+.law p{margin:0;font-size:14px;color:var(--ink2)}
+
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14.5px}
+th{text-align:left;background:var(--surface);color:var(--ink3);
+font:600 10.5px/1.4 ui-monospace,monospace;letter-spacing:.11em;text-transform:uppercase;
+padding:11px 15px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 15px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+td.k{font-weight:620;white-space:nowrap}
+td.num,td .mono{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font:600 10.5px/1 ui-monospace,monospace;letter-spacing:.05em;padding:4px 8px;border-radius:4px;white-space:nowrap}
+.pill.has{background:var(--ok-bg);color:var(--ok)}
+.pill.part{background:var(--warn-bg);color:var(--warn)}
+.pill.new{background:var(--stop-bg);color:var(--stop)}
+.pill.ext{background:var(--sim-soft);color:var(--sim-ink)}
+
+.screen{border-top:1px solid var(--line);padding-top:30px;margin-top:44px}
+.screen:first-of-type{border-top:none;padding-top:0;margin-top:24px}
+.screen-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.screen-head h3{margin:0;font-size:21px;letter-spacing:-.015em}
+.tag{font:600 10.5px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:4px;background:var(--surface2);color:var(--ink2)}
+.tag.new{background:var(--sim-soft);color:var(--sim-ink)}
+.tag.ext{background:var(--accent-soft);color:var(--accent-ink)}
+.job{font-size:16.5px;color:var(--ink2);margin:10px 0 0;max-width:74ch}
+.kills{background:var(--surface);border-left:3px solid var(--stop);border-radius:0 7px 7px 0;padding:14px 18px;margin:16px 0}
+.kills h4{margin:0 0 6px;color:var(--stop)}
+.kills p{margin:0;font-size:14.5px;color:var(--ink2)}
+
+/* nav model */
+.nav-model{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:20px 0}
+.band{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--raise)}
+.band-h{font:600 10.5px/1 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;
+padding:10px 14px;border-bottom:1px solid var(--line);color:var(--ink3);background:var(--surface)}
+.band.cap .band-h{color:var(--accent-ink);background:var(--accent-soft)}
+.band.sim .band-h{color:var(--sim-ink);background:var(--sim-soft)}
+.band.dep .band-h{color:var(--ok);background:var(--ok-bg)}
+.band ul{margin:0;padding:12px 14px 14px 30px}
+.band li{font-size:14.5px;margin:6px 0}
+.band li b{font-weight:640}
+.band li span{color:var(--ink3);font-size:13px;display:block;line-height:1.4}
+
+/* mockups */
+.mock{background:var(--mat);border:1px solid var(--mat-line);border-radius:10px;padding:0;overflow:hidden;margin:22px 0 8px;color:var(--mat-ink)}
+.mock-bar{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--mat-line);
+font:600 11px/1 ui-monospace,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--mat-dim)}
+.mock-bar .dot{width:9px;height:9px;border-radius:50%;background:var(--mat-line)}
+.mock-body{display:flex;min-height:150px}
+.mock-rail{width:104px;flex:none;border-right:1px solid var(--mat-line);padding:10px 0}
+.mock-rail div{font:11.5px/1 ui-sans-serif,system-ui;padding:8px 12px;color:var(--mat-dim)}
+.mock-rail div.on{color:#fff;background:rgba(109,155,250,.16);border-left:2px solid var(--accent)}
+.mock-rail div.grp{font:600 9.5px/1 ui-monospace,monospace;letter-spacing:.14em;color:#4B5468;padding:12px 12px 4px}
+.mock-main{flex:1;padding:13px;display:grid;gap:10px;min-width:0}
+.panel{border:1px solid var(--mat-line);border-radius:7px;overflow:hidden;background:rgba(255,255,255,.015);min-width:0}
+.panel-h{font:600 10.5px/1 ui-monospace,monospace;letter-spacing:.09em;color:var(--mat-dim);
+padding:7px 10px;border-bottom:1px solid var(--mat-line);display:flex;gap:8px;align-items:center}
+.panel-h .r{margin-left:auto;color:#7F8AA3}
+.panel-b{padding:10px}
+.stat{display:flex;justify-content:space-between;font:12px/1.7 ui-monospace,monospace;color:var(--mat-dim)}
+.stat b{color:#E7EAF3;font-weight:600}
+.chip{display:inline-block;font:600 9.5px/1 ui-monospace,monospace;letter-spacing:.06em;
+padding:4px 7px;border-radius:4px;background:rgba(255,255,255,.06);color:#AEB8CC}
+.chip.ok{background:rgba(92,190,139,.16);color:#7FD3A6}
+.chip.warn{background:rgba(214,162,84,.16);color:#E0B473}
+.chip.stop{background:rgba(226,114,107,.16);color:#EE8C86}
+.chip.sim{background:rgba(162,139,234,.18);color:#BCA9F5}
+.chip.acc{background:rgba(109,155,250,.18);color:#96B7FC}
+.envgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.envgrid i{aspect-ratio:1;border-radius:3px;background:linear-gradient(180deg,#FBF3F4 0%,#F6EFE0 62%,#EFE6CE 100%);position:relative;display:block}
+.envgrid i::after{content:"";position:absolute;left:50%;top:24%;width:2px;height:52%;background:#3B4152;transform:translateX(-50%);border-radius:1px}
+.envgrid i.fall::after{transform:translateX(-50%) rotate(58deg);transform-origin:bottom center;background:#C4564F}
+figcaption{margin-top:10px;font-size:13.5px;color:var(--ink3);display:flex;gap:9px;align-items:baseline}
+figcaption .fig-id{font:600 11px/1 ui-monospace,monospace;letter-spacing:.08em;color:var(--accent-ink);white-space:nowrap}
+figure{margin:26px 0 8px}
+
+/* ladder */
+.ladder{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:18px 0}
+.rung{background:var(--raise);padding:14px 18px;display:grid;grid-template-columns:34px 1fr auto;gap:14px;align-items:start}
+.rung .lv{font:700 11px/1.5 ui-monospace,monospace;color:var(--ink3)}
+.rung h4{margin:0 0 3px;color:var(--ink);font-size:14.5px;letter-spacing:0;text-transform:none;font-family:inherit;font-weight:640}
+.rung p{margin:0;font-size:14px;color:var(--ink2);max-width:64ch}
+.rung.pass{border-left:3px solid var(--ok)}
+.rung.gate{border-left:3px solid var(--warn)}
+.rung.block{border-left:3px solid var(--stop)}
+
+/* body map */
+.bodymap{display:grid;grid-template-columns:190px 1fr;gap:22px;align-items:center;margin:18px 0}
+@media(max-width:680px){.bodymap{grid-template-columns:1fr}}
+.legend{display:grid;gap:8px}
+.legend div{display:flex;gap:9px;align-items:baseline;font-size:14px;color:var(--ink2)}
+.legend i{width:11px;height:11px;border-radius:3px;flex:none;position:relative;top:2px}
+
+.flow{counter-reset:step;margin:18px 0}
+.fstep{counter-increment:step;position:relative;padding:0 0 16px 40px;border-left:1px solid var(--line);margin-left:11px}
+.fstep:last-child{border-left-color:transparent;padding-bottom:0}
+.fstep::before{content:counter(step);position:absolute;left:-11px;top:0;width:22px;height:22px;border-radius:50%;
+background:var(--accent-soft);color:var(--accent-ink);font:700 11px/22px ui-monospace,monospace;text-align:center}
+.fstep b{display:block;font-weight:640;margin-bottom:2px}
+.fstep p{margin:0;font-size:14.5px;color:var(--ink2)}
+
+.scorehead{display:flex;align-items:baseline;gap:16px;margin:6px 0 16px}
+.scorehead .big{font:700 44px/1 ui-monospace,monospace;letter-spacing:-.03em;color:var(--accent)}
+.scorehead .lbl{font:600 11px/1.5 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.risk{background:var(--surface);border-left:3px solid var(--warn);border-radius:0 7px 7px 0;padding:14px 18px;margin:16px 0}
+.risk h4{margin:0 0 6px;color:var(--warn)}
+.risk p{margin:0 0 8px;font-size:14.5px;color:var(--ink2)}
+.risk p:last-child{margin-bottom:0}
+.foot{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--ink3)}
+</style>
+
+<main>
+
+<header class="mast">
+  <p class="kicker">DoRobot Studio · UX Concept · v2 · whole-body</p>
+  <h1>One robot, two teachers</h1>
+  <p class="deck">v1 turned the LeRobot CLI into an operator console for arms. Adding legs does not add a screen —
+  it adds a second way of learning, with a different teacher, a different unit of work, and a different failure mode.
+  This is the design for keeping both in one window without pretending they are the same thing.</p>
+  <div class="mast-meta">
+    <span><b>Extends</b> UX Design Spec v1 (5 surfaces)</span>
+    <span><b>Adds</b> scene · train · compose</span>
+    <span><b>Sim</b> zealot on nexus</span>
+    <span><b>Target</b> humanoid, full body</span>
+  </div>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>What changes when the robot has legs</h2>
+  <span class="tail">the thesis</span></div>
+
+  <p class="lede">An arm is a manipulator bolted to a table. A humanoid is a manipulator standing on
+  something that can fall over — and the two halves are not independent.</p>
+
+  <p>Reaching forward moves the centre of mass forward. Lifting a 2&nbsp;kg box changes the model the legs
+  were trained against. Every good thing the arms do is a disturbance the legs have to reject. That coupling
+  is the entire design problem, and it is why bolting a training tab next to a recorder does not produce a
+  whole-body studio — it produces two apps sharing a title bar.</p>
+
+  <p>The second problem is that the two halves are taught in incompatible ways. The arms learn from a human
+  in the room, one watchable episode at a time. The legs learn from a reward function on a GPU, ten thousand
+  environments at a time. Almost every UX decision below follows from this table.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Arms — demonstration</th><th>Legs — simulation</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Teacher</td><td>a human, physically present</td><td>a reward function, on a GPU</td></tr>
+      <tr><td class="k">Unit of work</td><td>an episode you can watch end to end</td><td>a run you can only sample</td></tr>
+      <tr><td class="k">Failure looks like</td><td>a bad take — obvious in 3 seconds</td><td>a plateau — ambiguous for an hour</td></tr>
+      <tr><td class="k">Cost of a mistake</td><td>30 seconds, redo it</td><td>6 GPU-hours, and you may not notice</td></tr>
+      <tr><td class="k">Ground truth</td><td>the recording itself</td><td>a second simulator</td></tr>
+      <tr><td class="k">Operator's verb</td><td><b>judge</b></td><td><b>tune</b></td></tr>
+      <tr><td class="k">Scarce resource</td><td>human attention</td><td>compute, and patience</td></tr>
+      <tr><td class="k">Reversibility</td><td>delete the take</td><td>nothing is reversible; only re-runnable</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>v1's laws were written for the left column. Three of them need company before they survive the right one.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>Three more laws</h2>
+  <span class="tail">08 total</span></div>
+  <p class="lede">The original five still hold verbatim. These three exist because simulation introduces
+  artefacts that outlive the session that made them, and because a humanoid can hurt itself.</p>
+
+  <div class="laws">
+    <div class="law new"><span class="n">LAW 06</span><h3>Provenance is part of the artifact</h3>
+      <p>A policy names the dataset, scene, reward weights, seed and validation that produced it.
+      A checkpoint you cannot trace is a checkpoint you cannot ship — and after a week of runs, memory is not traceability.</p></div>
+    <div class="law new"><span class="n">LAW 07</span><h3>Earn the real robot</h3>
+      <p>Nothing drives hardware until it has cleared training sim, then a <em>second</em> simulator. The ladder is
+      a visible gate with rungs a policy has or has not cleared, not a convention someone remembers to follow.</p></div>
+    <div class="law new"><span class="n">LAW 08</span><h3>Long work is abandonable</h3>
+      <p>Any run reports progress in its own unit — env-steps, not a spinner — and can be stopped, resumed and
+      compared against its siblings. A six-hour job you cannot judge at minute ten is a six-hour job you will not stop.</p></div>
+  </div>
+
+  <p>Law 05 — <em>one panel vocabulary</em> — does the heaviest lifting in v2. A reward curve, a joint trace and a
+  divergence chart are the same widget with different series. A sim viewport and the calibration mirror are the
+  same <code>RobotView</code>. That is what keeps eight destinations from feeling like eight products.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>Two production lines, one robot</h2>
+  <span class="tail">information architecture</span></div>
+
+  <p class="lede">v1's nav was the data lifecycle, left to right. v2 has two lifecycles that converge, so the nav
+  gains bands rather than more undifferentiated items.</p>
+
+  <div class="nav-model">
+    <div class="band cap"><div class="band-h">Capture · real</div><ul>
+      <li><b>Hardware</b><span>calibrate, profile the rig</span></li>
+      <li><b>Record</b><span>demonstrate the task</span></li>
+      <li><b>Play</b><span>curate what was captured</span></li>
+    </ul></div>
+    <div class="band sim"><div class="band-h">Learn · sim + data</div><ul>
+      <li><b>Scene</b><span>author the training environment</span></li>
+      <li><b>Train</b><span>runs, curves, checkpoints</span></li>
+    </ul></div>
+    <div class="band dep"><div class="band-h">Deploy · whole body</div><ul>
+      <li><b>Compose</b><span>bind upper + lower into one controller</span></li>
+      <li><b>Eval</b><span>the promotion ladder to hardware</span></li>
+    </ul></div>
+  </div>
+
+  <p><b>Library</b> sits above the bands as home, and grows from one shelf to three: <b>Datasets</b> (what the
+  arms were shown), <b>Scenes</b> (what the legs were trained in), <b>Policies</b> (what came out). Same card
+  vocabulary, three nouns.</p>
+
+  <h4>Why Train is one destination, not two</h4>
+  <p>The strongest temptation is a separate "RL" section. It is wrong. Imitation-from-dataset and
+  reinforcement-in-sim differ in what they consume, but the operator's job is identical in both: launch a run,
+  decide at minute ten whether it is learning, promote a checkpoint or kill it. One surface with two run kinds
+  keeps that judgement in one place — and makes the honest comparison "which of my seven runs actually got
+  better" possible at all.</p>
+
+  <h4>What binds the halves</h4>
+  <p>v1 had two binding objects: the <b>rig profile</b> and the <b>panel set</b>. v2 adds a third and it is
+  load-bearing: <b>the rig profile also parameterises the simulation</b>. The URDF, joint limits and calibrated
+  ranges produced by the Hardware wizard are what the Scene instantiates. Calibrate once; the sim inherits the
+  robot you actually own, not the one in the manufacturer's file.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>The new screens</h2>
+  <span class="tail">design intent</span></div>
+
+  <div class="screen">
+    <div class="screen-head"><h3>Scene</h3><span class="tag new">New</span><span class="tag">sim authoring</span></div>
+    <p class="job">Turn a rig profile and a sentence about what "good" means into a training environment you can
+    look at <em>before</em> spending GPU-hours in it.</p>
+
+    <div class="kills"><h4>Kills</h4><p>Editing a Python config dict, launching, waiting twenty minutes, and
+    discovering the reward rewarded standing still. Also kills "what did domain randomization actually do?" —
+    currently answerable only by reading code.</p></div>
+
+    <figure>
+      <div class="mock">
+        <div class="mock-bar"><span class="dot"></span>DoRobot Studio — Scene</div>
+        <div class="mock-body">
+          <div class="mock-rail">
+            <div class="grp">Capture</div><div>Hardware</div><div>Record</div><div>Play</div>
+            <div class="grp">Learn</div><div class="on">Scene</div><div>Train</div>
+            <div class="grp">Deploy</div><div>Compose</div><div>Eval</div>
+          </div>
+          <div class="mock-main" style="grid-template-columns:1.25fr 1fr">
+            <div class="panel" style="grid-row:span 2">
+              <div class="panel-h">scene preview<span class="r">g1 · flat + slope 12°</span></div>
+              <div class="panel-b" style="background:linear-gradient(180deg,#FBF3F4 0%,#F7F0E2 58%,#EDE3C9 100%);height:186px;position:relative">
+                <svg viewBox="0 0 240 150" style="width:100%;height:100%">
+                  <g stroke="#CFC7AC" stroke-width=".6">
+                    <path d="M0 108 H240 M0 122 H240 M0 138 H240"/>
+                    <path d="M40 100 L10 150 M120 100 L120 150 M200 100 L230 150"/>
+                  </g>
+                  <g fill="#3B4152">
+                    <rect x="114" y="44" width="12" height="26" rx="3"/>
+                    <rect x="117" y="70" width="6" height="20"/>
+                    <rect x="110" y="90" width="7" height="22" rx="3"/>
+                    <rect x="123" y="90" width="7" height="22" rx="3"/>
+                    <rect x="104" y="48" width="6" height="20" rx="3"/>
+                    <rect x="130" y="48" width="6" height="20" rx="3"/>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h">reward terms<span class="r">6 active</span></div>
+              <div class="panel-b">
+                <div class="stat"><span>track_lin_vel</span><b>1.00</b></div>
+                <div class="stat"><span>track_ang_vel</span><b>0.50</b></div>
+                <div class="stat"><span>upright</span><b>0.30</b></div>
+                <div class="stat"><span>feet_air_time</span><b>0.15</b></div>
+                <div class="stat"><span>action_rate</span><b>−0.01</b></div>
+                <div class="stat"><span>torque</span><b>−0.00002</b></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h">randomization<span class="r">sampled ×8</span></div>
+              <div class="panel-b">
+                <div class="stat"><span>mass</span><b>±15%</b></div>
+                <div class="stat"><span>friction</span><b>0.4 – 1.2</b></div>
+                <div class="stat"><span>latency</span><b>0 – 20 ms</b></div>
+                <div style="margin-top:8px"><span class="chip sim">resample</span> <span class="chip">preview 8</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><span class="fig-id">FIG 6</span>The reward is a list of named terms with weights, not a
+      function in a file — because the next screen plots each term separately, and you cannot debug what you cannot name.</figcaption>
+    </figure>
+
+    <h4>Anatomy</h4>
+    <ul>
+      <li><b>Robot slot</b> — populated from the rig profile. The sim uses your calibrated joint limits, so a
+      policy is not trained against ranges the physical arm does not have.</li>
+      <li><b>Reward composer</b> — named terms with weights. Naming them is what makes per-term diagnosis
+      possible during training; an unnamed scalar is undebuggable by construction.</li>
+      <li><b>Randomization ranges</b> with a <em>sample</em> action that renders eight draws side by side.
+      Domain randomization becomes something you looked at rather than something you configured.</li>
+      <li><b>Observation / action contract</b> — an explicit table of what the policy sees and emits. This is
+      the document sim-to-real disputes are settled with.</li>
+      <li><b>Terrain</b> — flat, slope, stairs, rough — each with the curriculum thresholds that promote between them.</li>
+    </ul>
+
+    <h4>Build notes</h4>
+    <ul>
+      <li>The preview is the existing <code>RobotView</code> against the same URDF the calibration mirror uses —
+      no new 3D code, and it proves the profile round-trips before a run starts.</li>
+      <li>Scene serialises to the config zealot's env builder already consumes; the UI is an editor for that
+      file, never a second source of truth.</li>
+      <li>Sampling draws are computed by the sim, not the UI — the UI requests <em>n</em> and renders what comes back.</li>
+    </ul>
+  </div>
+
+  <div class="screen">
+    <div class="screen-head"><h3>Train</h3><span class="tag new">New</span><span class="tag">two run kinds</span></div>
+    <p class="job">Launch a run, judge at minute ten whether it is learning, and promote or kill it — without a
+    browser tab, an ssh session, or a log tail.</p>
+
+    <div class="kills"><h4>Kills</h4><p>TensorBoard in another window, <code>tail -f</code> in a third, and the
+    recurring question "is 71k steps/s good, or is my GPU idle?" Also kills the graveyard of unnamed checkpoint
+    directories that no one dares delete.</p></div>
+
+    <figure>
+      <div class="mock">
+        <div class="mock-bar"><span class="dot"></span>DoRobot Studio — Train</div>
+        <div class="mock-body">
+          <div class="mock-rail">
+            <div class="grp">Capture</div><div>Hardware</div><div>Record</div><div>Play</div>
+            <div class="grp">Learn</div><div>Scene</div><div class="on">Train</div>
+            <div class="grp">Deploy</div><div>Compose</div><div>Eval</div>
+          </div>
+          <div class="mock-main" style="grid-template-columns:1fr 1fr">
+            <div class="panel" style="grid-column:span 2">
+              <div class="panel-h">run · g1-walk-slope-07 <span class="chip sim" style="margin-left:6px">reinforcement</span>
+                <span class="r">4096 envs · 68.2k steps/s · 41 min · 168M / 400M</span></div>
+              <div class="panel-b" style="padding:0">
+                <svg viewBox="0 0 600 120" style="display:block;width:100%;height:104px">
+                  <g stroke="#232A38" stroke-width=".7"><path d="M0 30 H600 M0 60 H600 M0 90 H600"/></g>
+                  <path d="M0 112 C90 104 130 74 190 62 C250 50 300 44 360 34 C430 24 500 22 600 19"
+                        fill="none" stroke="#96B7FC" stroke-width="2"/>
+                  <path d="M0 116 C90 112 140 100 200 92 C270 84 330 82 400 79 C470 76 530 75 600 74"
+                        fill="none" stroke="#7FD3A6" stroke-width="1.5" stroke-dasharray="4 3"/>
+                  <path d="M0 118 C120 116 220 113 320 111 C420 109 510 108 600 107"
+                        fill="none" stroke="#E0B473" stroke-width="1.5"/>
+                </svg>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h">live environments<span class="r">16 of 4096</span></div>
+              <div class="panel-b">
+                <div class="envgrid">
+                  <i></i><i></i><i></i><i class="fall"></i><i></i><i></i><i></i><i></i>
+                  <i></i><i></i><i class="fall"></i><i></i><i></i><i></i><i></i><i></i>
+                </div>
+                <div style="margin-top:8px"><span class="chip stop">2 fell</span> <span class="chip ok">14 tracking</span></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h">checkpoints<span class="r">auto · every 10M</span></div>
+              <div class="panel-b">
+                <div class="stat"><span>ckpt-160M</span><b>0.81</b></div>
+                <div class="stat"><span>ckpt-150M</span><b>0.79</b></div>
+                <div class="stat"><span>ckpt-140M</span><b>0.74</b></div>
+                <div style="margin-top:8px"><span class="chip acc">promote →</span> <span class="chip">compare</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><span class="fig-id">FIG 7</span>The environment grid is the screen's reason to exist: a GPU sim
+      is the only trainer that can afford to show you sixteen robots at once, and two of them falling over is a
+      diagnosis a reward curve cannot give you.</figcaption>
+    </figure>
+
+    <h4>Anatomy</h4>
+    <ul>
+      <li><b>Run header</b> — env count, throughput, elapsed, and progress <em>in env-steps</em>. Law 08: the unit
+      is the work, not the clock.</li>
+      <li><b>Per-term reward curves</b> — one line per named Scene term. When total reward rises because
+      <code>feet_air_time</code> is being gamed while <code>track_lin_vel</code> is flat, that is visible rather than inferred.</li>
+      <li><b>Live environment grid</b> — a contact sheet of running envs. Falls are tinted. This is the fastest
+      "is it learning to walk or learning to cheat" signal available anywhere in the stack.</li>
+      <li><b>Termination histogram</b> — fell / timeout / success, over time. A rising fall rate with rising reward
+      is the classic reward-hacking fingerprint.</li>
+      <li><b>Checkpoint rail</b> — auto-saved, scored, one click to promote into Policies with provenance attached (Law 06).</li>
+      <li><b>Imitation runs</b> use the identical frame: dataset instead of scene, loss instead of reward, validation
+      episodes instead of env grid. Same verbs, same buttons.</li>
+    </ul>
+
+    <h4>Build notes</h4>
+    <ul>
+      <li>The UI never links the trainer. A run is a job; <code>zealot-rl</code> emits a metrics stream and the UI
+      is a consumer — the same posture as v1's "no ML in the UI process".</li>
+      <li>Curves are <code>TimeSeriesPlot</code> in small-multiple mode — already needed for Eval's divergence stack.
+      Build once, used by both.</li>
+      <li>The env grid is the one genuinely new render path: <em>n</em> viewports onto one sim. Cheapest honest
+      version is a strided readback of <em>n</em> env root states into <em>n</em> small <code>RobotView</code>s.</li>
+      <li>Throughput and GPU occupancy come from the trainer, displayed as a health signal — a collapsed steps/s is
+      how you learn the loop fell off the GPU.</li>
+    </ul>
+  </div>
+
+  <div class="screen">
+    <div class="screen-head"><h3>Compose</h3><span class="tag new">New</span><span class="tag">the whole-body screen</span></div>
+    <p class="job">Bind an upper-body policy learned from demonstration to a lower-body policy learned in
+    simulation, and see how they fight before either touches hardware.</p>
+
+    <div class="kills"><h4>Kills</h4><p>Nothing — and that is the point. There is no tool for this today.
+    You write an arbiter in Python, run it, and find out on the floor. This screen is the one place the product
+    is not competing with an existing workflow but supplying a missing one.</p></div>
+
+    <figure>
+      <div class="mock">
+        <div class="mock-bar"><span class="dot"></span>DoRobot Studio — Compose</div>
+        <div class="mock-body">
+          <div class="mock-rail">
+            <div class="grp">Capture</div><div>Hardware</div><div>Record</div><div>Play</div>
+            <div class="grp">Learn</div><div>Scene</div><div>Train</div>
+            <div class="grp">Deploy</div><div class="on">Compose</div><div>Eval</div>
+          </div>
+          <div class="mock-main" style="grid-template-columns:1fr 1.1fr">
+            <div class="panel" style="grid-row:span 2">
+              <div class="panel-h">ownership<span class="r">g1 · 29 dof</span></div>
+              <div class="panel-b" style="display:flex;justify-content:center;padding:14px 0 10px">
+                <svg viewBox="0 0 150 200" style="width:132px;height:184px">
+                  <circle cx="75" cy="24" r="13" fill="#5B6478"/>
+                  <rect x="63" y="40" width="24" height="46" rx="7" fill="#5B6478"/>
+                  <g fill="#6D9BFA">
+                    <rect x="42" y="44" width="17" height="9" rx="4"/>
+                    <rect x="34" y="53" width="12" height="34" rx="6"/>
+                    <rect x="30" y="87" width="11" height="26" rx="5"/>
+                    <rect x="91" y="44" width="17" height="9" rx="4"/>
+                    <rect x="104" y="53" width="12" height="34" rx="6"/>
+                    <rect x="109" y="87" width="11" height="26" rx="5"/>
+                  </g>
+                  <rect x="63" y="86" width="24" height="14" rx="4" fill="#D6A254"/>
+                  <g fill="#A28BEA">
+                    <rect x="61" y="100" width="12" height="40" rx="6"/>
+                    <rect x="77" y="100" width="12" height="40" rx="6"/>
+                    <rect x="60" y="140" width="13" height="38" rx="6"/>
+                    <rect x="77" y="140" width="13" height="38" rx="6"/>
+                    <rect x="55" y="178" width="20" height="8" rx="3"/>
+                    <rect x="75" y="178" width="20" height="8" rx="3"/>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h">balance ledger<span class="r">co-sim · nexus</span></div>
+              <div class="panel-b">
+                <div class="stat"><span>CoM margin</span><b style="color:#7FD3A6">7.4 cm</b></div>
+                <div class="stat"><span>worst during reach</span><b style="color:#E0B473">2.1 cm</b></div>
+                <div class="stat"><span>payload assumed</span><b>2.0 kg</b></div>
+                <svg viewBox="0 0 240 46" style="width:100%;height:44px;margin-top:6px">
+                  <path d="M0 40 H240" stroke="#232A38"/>
+                  <path d="M0 12 C40 13 62 30 88 34 C112 38 140 22 176 17 C205 13 222 12 240 11"
+                        fill="none" stroke="#96B7FC" stroke-width="1.8"/>
+                  <path d="M0 36 H240" stroke="#E2726B" stroke-dasharray="3 3" stroke-width="1"/>
+                </svg>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h">handoff contract</div>
+              <div class="panel-b">
+                <div class="stat"><span>upper publishes</span><b>ee pose ×2, grip</b></div>
+                <div class="stat"><span>lower consumes</span><b>CoM budget</b></div>
+                <div class="stat"><span>torso</span><b style="color:#E0B473">contested</b></div>
+                <div style="margin-top:8px"><span class="chip warn">arbiter: priority lower</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><span class="fig-id">FIG 8</span>Colour is ownership: blue joints answer to the demonstration
+      policy, violet to the locomotion policy, amber is contested. The torso is always amber, and that is the
+      honest picture of whole-body control.</figcaption>
+    </figure>
+
+    <h4>Anatomy</h4>
+    <ul>
+      <li><b>Ownership map</b> — every joint coloured by which policy commands it. Contested joints are amber and
+      must be resolved explicitly; the screen will not let you ship an ambiguous binding.</li>
+      <li><b>Handoff contract</b> — what the upper policy publishes (end-effector targets, gripper) and what the
+      lower consumes (a disturbance budget). Stating this is what makes the two independently replaceable.</li>
+      <li><b>Balance ledger</b> — centre-of-mass projection against the support polygon, with margin over time and
+      the payload the legs were trained to expect. <em>Worst margin during the reach</em> is the number that predicts
+      a fall, and no other screen in the product can compute it.</li>
+      <li><b>Co-simulation preview</b> — run the composed controller in nexus: arms performing the demonstrated task,
+      legs stabilising. Failures are classified — fell, dropped, recovered, succeeded — not just counted.</li>
+      <li><b>Arbiter</b> — priority or learned blending on the contested set, versioned with the binding.</li>
+    </ul>
+
+    <h4>Build notes</h4>
+    <ul>
+      <li>Composition is a dora graph — VLA node, locomotion node, arbiter node — which is the shape the bridge
+      already assumes. The screen edits and inspects that graph; it does not host inference.</li>
+      <li>Support polygon comes from foot contacts in sim; CoM from the same articulated state nexus already
+      integrates. Both are readbacks, not new physics.</li>
+      <li>A binding is itself an artifact with provenance: two parent policies, an arbiter config, a co-sim result.
+      It appears in Library as a policy of kind <em>whole-body</em>.</li>
+    </ul>
+  </div>
+
+  <div class="screen">
+    <div class="screen-head"><h3>Eval</h3><span class="tag ext">Extends v1</span><span class="tag">now a gate</span></div>
+    <p class="job">v1's Eval watched a policy drive the rig. v2's Eval decides whether it is allowed to.</p>
+
+    <p>A humanoid that falls damages itself and whatever it is holding. Law 07 turns evaluation from a
+    screen you visit into a ladder a policy climbs, with each rung recorded on the policy card.</p>
+
+    <div class="ladder">
+      <div class="rung pass"><span class="lv">01</span><div><h4>Training sim — nexus</h4>
+        <p>Success rate across the env population it was trained in. Cheap, and proves only that it learned
+        <em>something</em>. Passing is necessary and means little.</p></div><span class="pill has">cleared 0.94</span></div>
+      <div class="rung pass"><span class="lv">02</span><div><h4>Cross-sim — MuJoCo</h4>
+        <p>The same policy in a different engine. This is where physics overfit surfaces: a gait that exploited
+        the training solver's contact model degrades here, and that is exactly what you want to learn indoors.</p></div><span class="pill has">cleared 0.88</span></div>
+      <div class="rung gate"><span class="lv">03</span><div><h4>Hardware, supervised</h4>
+        <p>Real robot, gantry or harness, reduced speed, e-stop armed and on screen. Divergence stack from v1
+        applies unchanged — per-joint measured versus commanded.</p></div><span class="pill part">2 of 5 runs</span></div>
+      <div class="rung block"><span class="lv">04</span><div><h4>Hardware, autonomous</h4>
+        <p>Unharnessed, task speed. Locked until rung 03 clears its run budget. The lock is the feature.</p></div><span class="pill new">locked</span></div>
+    </div>
+
+    <h4>What v1's Eval gains</h4>
+    <ul>
+      <li><b>Fall taxonomy</b> replaces a binary success flag: fell, recovered, task failed but stayed upright,
+      succeeded. For a humanoid these are four different engineering problems.</li>
+      <li><b>Balance trace</b> alongside the joint divergence stack — the whole-body failure is usually a balance
+      failure that a per-joint view will not show.</li>
+      <li><b>Sim-versus-real overlay</b> — the same episode as predicted in sim and as executed on hardware, on one
+      time axis. That difference <em>is</em> the sim-to-real gap, made into an image instead of a feeling.</li>
+    </ul>
+  </div>
+
+  <div class="screen">
+    <div class="screen-head"><h3>Library, Hardware, Record, Play</h3><span class="tag ext">Extends v1</span></div>
+    <ul>
+      <li><b>Library</b> gains the Scenes and Policies shelves, and policy cards carry the ladder state from Eval —
+      so "what is safe to run" is answered at the home screen.</li>
+      <li><b>Hardware</b> gains a second output: alongside the rig profile it now emits the sim robot definition.
+      One calibration, two consumers.</li>
+      <li><b>Record</b> gains bimanual layout and a <em>standing</em> mode where the demonstration is captured while
+      the legs hold a balance controller — because a humanoid demo recorded with locked legs teaches the arms a
+      disturbance profile the real robot will never see.</li>
+      <li><b>Play</b> gains the balance trace as a curatable channel: a take where the robot nearly fell is a bad
+      take even if the manipulation succeeded.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>The flow that matters</h2>
+  <span class="tail">arms + legs → one robot</span></div>
+
+  <p class="lede">The capture and curation loops from v1 are unchanged. Two new flows carry v2, and the second
+  is the one the whole design exists to make possible.</p>
+
+  <h3>Teach the legs</h3>
+  <div class="flow">
+    <div class="fstep"><b>Instantiate the scene from the rig profile.</b><p>The robot you calibrated is the robot
+    that gets simulated — same URDF, same joint limits.</p></div>
+    <div class="fstep"><b>Compose the reward as named terms; sample the randomization.</b><p>Eight draws render
+    side by side. You have now seen the distribution you are about to train against.</p></div>
+    <div class="fstep"><b>Launch, then judge at minute ten.</b><p>Per-term curves plus the env grid. Reward
+    climbing while falls climb is a kill, not a wait.</p></div>
+    <div class="fstep"><b>Promote a checkpoint.</b><p>It lands in Policies with scene, reward weights and seed attached.</p></div>
+    <div class="fstep"><b>Clear rungs 01 and 02.</b><p>Cross-sim in MuJoCo before anything is allowed near hardware.</p></div>
+  </div>
+
+  <h3>Make it one robot</h3>
+  <div class="flow">
+    <div class="fstep"><b>Pick an upper policy and a lower policy in Compose.</b><p>Ownership map fills in; the
+    torso lights amber as contested.</p></div>
+    <div class="fstep"><b>Resolve the contested set and state the contract.</b><p>Upper publishes end-effector
+    targets; lower consumes a disturbance budget. Explicit, versioned, replaceable.</p></div>
+    <div class="fstep"><b>Co-simulate the real task.</b><p>Arms run the demonstrated motion while legs stabilise.
+    Watch the CoM margin during the reach — this is the number that predicts the fall.</p></div>
+    <div class="fstep"><b>Tighten whichever half is wrong.</b><p>Margin too thin can mean the legs need the payload
+    in their randomization, <em>or</em> the demonstration was recorded with locked legs. The ledger distinguishes them.</p></div>
+    <div class="fstep"><b>Promote the binding, climb the ladder.</b><p>The whole-body controller is itself an
+    artifact with parents, and it earns hardware the same way its halves did.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>Implementation map</h2>
+  <span class="tail">against this workspace</span></div>
+
+  <p class="lede">v1 leaned on machinery already in the repository. v2 leans on machinery that exists in
+  <em>someone else's</em> repository — which is a different risk, and worth naming precisely.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Capability</th><th>Status</th><th>Work required</th></tr></thead>
+    <tbody>
+      <tr><td class="k">GPU physics</td><td><span class="pill ext">External</span></td><td>nexus, via zealot. Runs as a job; the UI never links it.</td></tr>
+      <tr><td class="k">PPO / GAE / Adam</td><td><span class="pill ext">External</span></td><td><code>zealot-rl</code>. Consume its metric stream; no trainer in-process.</td></tr>
+      <tr><td class="k">Cross-sim gate</td><td><span class="pill ext">External</span></td><td>MuJoCo is already zealot's reference validator — wrap it as rung 02.</td></tr>
+      <tr><td class="k">3D viewport, joints from state</td><td><span class="pill has">Exists</span></td><td><code>RobotView</code> serves scene preview, env grid cells and co-sim.</td></tr>
+      <tr><td class="k">Small-multiple plots</td><td><span class="pill part">Partial</span></td><td>Built for Play's per-joint lanes; reused for reward terms and divergence.</td></tr>
+      <tr><td class="k">Panel shell, grid, persistence</td><td><span class="pill has">Exists</span></td><td>Reuse across three new surfaces (<code>makepad-app-shell</code>).</td></tr>
+      <tr><td class="k">Job runner + metric stream</td><td><span class="pill new">New</span></td><td>Launch, stream, stop, resume. Shared by both run kinds.</td></tr>
+      <tr><td class="k">Policy registry</td><td><span class="pill new">New</span></td><td>Manifest with provenance and ladder state. Mirrors the tag-sidecar pattern.</td></tr>
+      <tr><td class="k">Scene authoring</td><td><span class="pill new">New</span></td><td>Editor over zealot's env config; reward terms, randomization, curriculum.</td></tr>
+      <tr><td class="k">Environment grid</td><td><span class="pill new">New</span></td><td>Strided readback of <em>n</em> env states into <em>n</em> viewports.</td></tr>
+      <tr><td class="k">Whole-body arbiter</td><td><span class="pill new">New</span></td><td><b>The keystone.</b> dora graph, contract, CoM/support-polygon readout.</td></tr>
+      <tr><td class="k">VLA training</td><td><span class="pill new">New</span></td><td>Job runner over an existing trainer; not ours to write.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Sequencing</h4>
+  <p><b>Policy registry first.</b> It is the cheapest item and everything else produces or consumes its artifacts;
+  built early, it stops the checkpoint graveyard forming. <b>Then the job runner and Train</b>, because a run you can
+  watch is immediately useful even with Scene still a config file. <b>Then Scene</b>, <b>then Compose</b>. Eval's
+  ladder can be built a rung at a time and is useful from rung 01.</p>
+
+  <p>Compose is deliberately last. It is the highest-value screen and the one whose requirements are least knowable
+  until real policies exist to bind — designing it in detail before then would be designing against imagination.</p>
+
+  <div class="risk">
+    <h4>Risks worth stating</h4>
+    <p><b>nexus is young.</b> Its own README says it is "still under heavy development and is still missing many
+    features". The product's simulation half rests on a substrate that may move underneath it, which is an argument
+    for the UI treating the trainer as a replaceable job rather than a library.</p>
+    <p><b>The env grid may not be cheap.</b> Sixteen live viewports onto a running sim is the one component whose
+    cost is unknown. If readback contends with training throughput, it degrades to a sampled contact sheet at 2&nbsp;Hz —
+    still diagnostic, far cheaper.</p>
+    <p><b>Compose assumes a decomposition that may not hold.</b> Some whole-body tasks resist a clean upper/lower
+    split; the honest fallback is a single whole-body policy, and the screen should render that as one owner rather
+    than pretending to a binding that is not there.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>Scorecard</h2><span class="tail">self-assessment</span></div>
+  <div class="scorehead"><span class="big">9.1</span><span class="lbl">/ 10 overall<br>concept design, v2</span></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>Criterion</th><th class="num">Score</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Problem framing</td><td class="num">9.5</td><td>The arms/legs asymmetry is the real design constraint and drives every screen decision rather than decorating them.</td></tr>
+      <tr><td class="k">Information architecture</td><td class="num">9.0</td><td>Two lifecycles converging, banded nav, one Train surface for both run kinds. Cost: eight destinations, up from five.</td></tr>
+      <tr><td class="k">Novel contribution</td><td class="num">9.5</td><td>Compose has no equivalent in any existing tool, and the balance ledger computes something no other screen can.</td></tr>
+      <tr><td class="k">Continuity with v1</td><td class="num">9.5</td><td>Same tokens, same laws, same panel vocabulary; three laws added rather than any rewritten.</td></tr>
+      <tr><td class="k">Buildability</td><td class="num">8.5</td><td>Leans on external, young software. Mitigated by treating the trainer as a job, but the dependency is real.</td></tr>
+      <tr><td class="k">Mockup fidelity</td><td class="num">8.5</td><td>Live HTML/SVG at schematic fidelity — layout and hierarchy are spec, pixel detail is not.</td></tr>
+      <tr><td class="k">Safety posture</td><td class="num">9.5</td><td>The promotion ladder makes "earn the real robot" structural rather than cultural.</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>The weakest number is buildability, and it is weak for an honest reason: the simulation half of this product
+  is someone else's research code on a physics engine that describes itself as incomplete. The design's answer is
+  containment — the trainer is a job behind a metric stream, so it can be swapped without touching a screen.</p>
+</section>
+
+<p class="foot">Extends <b>DoRobot Studio UX Design Spec v1</b> (2026-08-09). Grounded in this workspace:
+<code>dorobot-flex</code> (player, panels, video, URDF view, plots), <code>makepad-app-shell</code>,
+<code>crates/dorobot-dora-bridge</code>. Simulation references
+<a href="https://github.com/haixuanTao/zealot">zealot</a> and
+<a href="https://github.com/dimforge/nexus">nexus</a>, read at their public repositories — not run or benchmarked here.
+Mockups are live HTML/SVG at schematic fidelity, not renders of shipping software.</p>
+
+</main>
