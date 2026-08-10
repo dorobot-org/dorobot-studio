@@ -18,6 +18,7 @@
 pub mod files;
 pub mod mock;
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 // ============================================================================
@@ -313,6 +314,37 @@ pub struct PlaybackState {
     /// recorded timing rather than assuming `frame / fps`.
     pub state_series: Vec<PlotChannel>,
     pub action_series: Vec<PlotChannel>,
+
+    // ---- transport -------------------------------------------------------
+    /// Playhead, in seconds from the start of the episode.
+    pub current_time: f64,
+    pub is_playing: bool,
+    pub speed: f64,
+    /// Camera key -> video file backing the selected episode.
+    pub video_paths: BTreeMap<String, PathBuf>,
+    /// Where this episode starts inside a v3.0 concatenated video file.
+    pub video_frame_offset: u64,
+    /// `(urdf, assets_dir)` for this dataset's robot, when one ships with it.
+    pub robot_urdf: Option<(PathBuf, PathBuf)>,
+    /// Measured joint values per frame, for the 3D mirror. Frame-major, unlike
+    /// the plot series, because the viewer wants one pose at a time.
+    pub joint_frames: Vec<Vec<f32>>,
+}
+
+impl PlaybackState {
+    /// Frame the playhead currently sits on.
+    pub fn frame_index(&self) -> u64 {
+        (self.current_time * self.stats.fps).max(0.0) as u64
+    }
+
+    /// Pose under the playhead, for the robot viewer.
+    pub fn joints_now(&self) -> Option<&Vec<f32>> {
+        self.joint_frames.get(self.frame_index() as usize)
+    }
+
+    pub fn time_label(&self) -> String {
+        format!("{:.1}s / {:.1}s", self.current_time, self.stats.duration_s)
+    }
 }
 
 /// One plotted channel: a name and its `(seconds, value)` samples.
@@ -430,6 +462,13 @@ pub enum Intent {
     DiscardLast,
     ReRecord,
     SetSoundCues(bool),
+
+    // Playback transport
+    TogglePlay,
+    /// Absolute seek, in seconds; clamped to the episode by the backend.
+    Seek(f64),
+    StepFrames(i32),
+    SetSpeed(f64),
 
     // Playback & curation
     SelectEpisode(u64),

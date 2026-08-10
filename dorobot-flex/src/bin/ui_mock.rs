@@ -8,8 +8,16 @@
 //! which is what the visual-diff runner uses.
 
 use dorobot_flex::api::{files::FileBackend, mock::MockBackend, Backend, Intent, Screen};
+use dorobot_flex::widgets::time_series_plot::TimeSeriesPlotAction;
+use dorobot_flex::widgets::timeline::TimelineAction;
+use dorobot_flex::playback_controls::PlaybackAction;
 use dorobot_flex::ui::{frame, hardware::HardwareScreenWidgetRefExt, library::LibraryScreenWidgetRefExt, record::RecordScreenWidgetRefExt, play::PlayScreenWidgetRefExt, eval::EvalScreenWidgetRefExt};
 use makepad_widgets::*;
+
+/// Transport tick. Matches the shipping player, and is independent of the
+/// dataset's own fps: it advances a clock, and every view resolves itself
+/// against that clock rather than counting frames of its own.
+const PLAYBACK_TIMER_FPS: f64 = 60.0;
 
 app_main!(App);
 
@@ -85,6 +93,8 @@ pub struct App {
     backend: Box<dyn Backend>,
     #[rust(false)]
     started: bool,
+    #[rust]
+    playback_timer: Timer,
 }
 
 impl App {
@@ -151,6 +161,33 @@ impl MatchEvent for App {
         }
         self.sync(cx);
         self.started = true;
+        self.playback_timer = cx.start_interval(1.0 / PLAYBACK_TIMER_FPS);
+    }
+
+    fn handle_timer(&mut self, cx: &mut Cx, event: &TimerEvent) {
+        if self.playback_timer.is_timer(event).is_none() {
+            return;
+        }
+        if !self.backend.playback().is_playing {
+            return;
+        }
+        let st = self.backend.playback();
+        let next = st.current_time + st.speed / PLAYBACK_TIMER_FPS;
+        // Stop at the tail rather than wrapping: the last frame is a result
+        // worth looking at.
+        if next >= st.stats.duration_s {
+            self.backend.dispatch(Intent::Seek(st.stats.duration_s));
+            self.backend.dispatch(Intent::TogglePlay);
+            self.sync(cx);
+        } else {
+            self.backend.dispatch(Intent::Seek(next));
+            // Only the playhead moved, so only the views it drives are
+            // touched; a full sync here does not fit in a 60Hz frame.
+            self.ui
+                .play_screen(cx, ids!(page_play))
+                .tick(cx, self.backend.playback());
+        }
+        self.ui.redraw(cx);
     }
 
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
@@ -201,6 +238,57 @@ impl MatchEvent for App {
             dirty = true;
         }
 
+        // Transport: the Timeline widget owns scrub, play/pause and step, and
+        // reports them as actions rather than mutating anything itself.
+        for a in actions {
+            if let Some(a) = a.as_widget_action() {
+                match a.cast::<PlaybackAction>() {
+                    PlaybackAction::Play | PlaybackAction::Pause => {
+                        self.backend.dispatch(Intent::TogglePlay);
+                        dirty = true;
+                    }
+                    PlaybackAction::StepForward => {
+                        self.backend.dispatch(Intent::StepFrames(1));
+                        dirty = true;
+                    }
+                    PlaybackAction::StepBackward => {
+                        self.backend.dispatch(Intent::StepFrames(-1));
+                        dirty = true;
+                    }
+                    PlaybackAction::None => {}
+                }
+                match a.cast::<TimelineAction>() {
+                    TimelineAction::Play | TimelineAction::Pause => {
+                        self.backend.dispatch(Intent::TogglePlay);
+                        dirty = true;
+                    }
+                    TimelineAction::Seek(t) => {
+                        self.backend.dispatch(Intent::Seek(t));
+                        dirty = true;
+                    }
+                    TimelineAction::StepForward => {
+                        self.backend.dispatch(Intent::StepFrames(1));
+                        dirty = true;
+                    }
+                    TimelineAction::StepBackward => {
+                        self.backend.dispatch(Intent::StepFrames(-1));
+                        dirty = true;
+                    }
+                    TimelineAction::SpeedChanged(v) => {
+                        self.backend.dispatch(Intent::SetSpeed(v));
+                        dirty = true;
+                    }
+                    TimelineAction::ScrubEnd | TimelineAction::None => {}
+                }
+                // Dragging the plot cursor scrubs too, so the trace and the
+                // video stay one control.
+                if let TimeSeriesPlotAction::CursorMoved(t) = a.cast::<TimeSeriesPlotAction>() {
+                    self.backend.dispatch(Intent::Seek(t));
+                    dirty = true;
+                }
+            }
+        }
+
         // Play: episode selection and curation.
         let play = self.ui.play_screen(cx, ids!(page_play));
         if let Some(ep) = play.clicked_episode(cx, actions) {
@@ -224,6 +312,9 @@ impl MatchEvent for App {
 impl AppMain for App {
     fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
         makepad_widgets::script_mod(vm);
+        // RobotView, and the XR scene it draws into, back the Play 3D pane
+        makepad_urdf_player::makepad_xr::script_mod(vm);
+        makepad_urdf_player::script_mod(vm);
         // app-shell supplies the real draggable PanelGrid used by the Play screen
         dorobot_flex::makepad_app_shell::script_mod(vm);
         // TimeSeriesPlot lives in widgets and is used by the Play screen's plot
@@ -232,6 +323,7 @@ impl AppMain for App {
         // widgets module builds on.
         dorobot_flex::shared::script_mod(vm);
         dorobot_flex::widgets::script_mod(vm);
+        dorobot_flex::playback_controls::script_mod(vm);
         dorobot_flex::ui::script_mod(vm);
         self::script_mod(vm)
     }

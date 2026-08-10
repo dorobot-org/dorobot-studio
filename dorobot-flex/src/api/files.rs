@@ -12,6 +12,88 @@ use crate::data::LeRobotDataset;
 
 use super::*;
 
+/// URDF and asset dir for a dataset's `robot_type`, when one ships in `data/`.
+/// Mirrors the shipping player's mapping so both resolve the same robot.
+fn urdf_for(robot_type: &str) -> Option<(PathBuf, PathBuf)> {
+    let robot = robot_type.to_lowercase();
+    const KNOWN: &[(&str, &str)] = &[
+        ("so101", "so100"),
+        ("so100", "so100"),
+        ("aimee", "so100"),
+        ("lekiwi", "lekiwi"),
+        ("moss", "moss"),
+        ("koch", "koch"),
+        ("vx300s", "vx300s"),
+    ];
+    let dir = KNOWN
+        .iter()
+        .find(|(pat, _)| robot.contains(pat))
+        .map(|(_, d)| (*d).to_string())
+        .unwrap_or(robot);
+    let assets = PathBuf::from("data").join(&dir);
+    let urdf = assets.join(format!("{dir}.urdf"));
+    urdf.exists().then_some((urdf, assets))
+}
+
+/// Turn a recorded pose into URDF joint values.
+///
+/// LeRobot does not record units in the dataset, so the convention has to be
+/// established against the model. Raw degrees is ruled out: it puts 1183 of
+/// 2724 joint samples outside this URDF's declared limits. Two candidates
+/// survive, and `DOROBOT_JOINT_MAP` selects between them while the SO-100 case
+/// is being confirmed against video:
+///
+/// - `signflip` — degrees, with shoulder_pan/lift, elbow and wrist_flex
+///   inverted. Three of those are forced: the recorded range only fits the
+///   joint limit when negated.
+/// - `norm` (default) — LeRobot's normalized units, +/-100 across each joint's
+///   range and 0..100 for the gripper. The recorded spans match that shape:
+///   every joint lands inside +/-102 while the gripper alone stays in 0..29.
+fn to_urdf_pose(robot: &str, state: &[f32], limits: &[(f32, f32)]) -> Vec<f32> {
+    if !(robot.contains("so100") || robot.contains("so101") || robot.contains("aimee")) {
+        return state.to_vec();
+    }
+    let signflip = std::env::var("DOROBOT_JOINT_MAP").as_deref() == Ok("signflip");
+    const SIGN: [f32; 6] = [-1.0, -1.0, -1.0, -1.0, 1.0, 1.0];
+    state
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            if signflip {
+                v.to_radians() * SIGN.get(i).copied().unwrap_or(1.0)
+            } else {
+                let (lo, hi) = limits.get(i).copied().unwrap_or((-3.15, 3.15));
+                // The gripper is the one channel LeRobot normalizes 0..100.
+                let t = if i == 5 { v / 100.0 } else { (v + 100.0) / 200.0 };
+                lo + t * (hi - lo)
+            }
+        })
+        .collect()
+}
+
+/// Movable joint limits, in URDF order, read from the model the viewer loads.
+fn urdf_limits(path: &Path) -> Vec<(f32, f32)> {
+    let Ok(text) = fs::read_to_string(path) else { return Vec::new() };
+    let mut out = Vec::new();
+    for block in text.split("<joint ").skip(1) {
+        let end = block.find("</joint>").unwrap_or(block.len());
+        let block = &block[..end];
+        if block.contains("type=\"fixed\"") {
+            continue;
+        }
+        let grab = |key: &str| -> Option<f32> {
+            let i = block.find(key)? + key.len();
+            let rest = &block[i..];
+            let j = rest.find('"')?;
+            rest[..j].parse().ok()
+        };
+        if let (Some(lo), Some(hi)) = (grab("lower=\""), grab("upper=\"")) {
+            out.push((lo, hi));
+        }
+    }
+    out
+}
+
 /// Scan `root` one level deep for anything that looks like a LeRobot dataset.
 fn discover(root: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
@@ -162,6 +244,13 @@ impl FileBackend {
             action_names: names_of("action"),
             state_series: Vec::new(),
             action_series: Vec::new(),
+            current_time: 0.0,
+            is_playing: false,
+            speed: 1.0,
+            video_paths: BTreeMap::new(),
+            video_frame_offset: 0,
+            robot_urdf: urdf_for(&ds.info.robot_type),
+            joint_frames: Vec::new(),
         };
         self.open = Some((id.to_string(), ds));
         if let Some(idx) = self.playback.selected {
@@ -219,6 +308,26 @@ impl FileBackend {
         self.playback.state_series = series(|f| &f.state, &self.playback.state_names);
         self.playback.action_series = series(|f| &f.action, &self.playback.action_names);
 
+        self.playback.video_paths = data.video_paths.iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        self.playback.video_frame_offset = data.video_frame_offset;
+        let robot = ds.info.robot_type.to_lowercase();
+        let limits = self
+            .playback
+            .robot_urdf
+            .as_ref()
+            .map(|(u, _)| urdf_limits(u))
+            .unwrap_or_default();
+        self.playback.joint_frames = data
+            .frames
+            .iter()
+            .map(|f| to_urdf_pose(&robot, &f.state, &limits))
+            .collect();
+        // A new episode starts at its head, stopped.
+        self.playback.current_time = 0.0;
+        self.playback.is_playing = false;
+
         self.playback.selected = Some(index);
         self.playback.stats = EpisodeStats {
             frames: data.frames.len() as u64,
@@ -273,6 +382,26 @@ impl Backend for FileBackend {
                 self.screen = Screen::Play;
             }
             Intent::SelectEpisode(i) => self.select_episode(i),
+            Intent::TogglePlay => {
+                // Restart from the head when play is pressed at the end,
+                // rather than sitting there doing nothing.
+                if !self.playback.is_playing
+                    && self.playback.current_time >= self.playback.stats.duration_s - 1e-6
+                {
+                    self.playback.current_time = 0.0;
+                }
+                self.playback.is_playing = !self.playback.is_playing;
+            }
+            Intent::Seek(t) => {
+                self.playback.current_time = t.clamp(0.0, self.playback.stats.duration_s);
+            }
+            Intent::StepFrames(n) => {
+                let fps = self.playback.stats.fps.max(1e-6);
+                let t = self.playback.current_time + n as f64 / fps;
+                self.playback.current_time = t.clamp(0.0, self.playback.stats.duration_s);
+                self.playback.is_playing = false;
+            }
+            Intent::SetSpeed(s) => self.playback.speed = s.clamp(0.05, 8.0),
             Intent::TagEpisode { episode, tag } => {
                 if let Some(e) = self.playback.episodes.iter_mut().find(|e| e.index == episode) {
                     e.tag = tag;

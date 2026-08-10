@@ -11,6 +11,9 @@ use makepad_app_shell::grid::panel_grid::PanelGridWidgetExt;
 use makepad_app_shell::grid::LayoutState;
 use crate::ui::frame::{apply_light, apply_light_in, theme_chip, theme_panel_head, Themed};
 use crate::widgets::time_series_plot::TimeSeriesPlotWidgetExt;
+use crate::widgets::timeline::TimelineWidgetExt;
+use crate::widgets::video_player::VideoPlayerWidgetExt;
+use crate::playback_controls::PlaybackControlsWidgetExt;
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -239,11 +242,11 @@ script_mod! {
                     row1 +: {
                         s1_1 +: {
                             title: "cam_high"
-                            content +: { stage_a := StagePane{} }
+                            content +: { stage_a := VideoPlayer{} }
                         }
                         s1_2 +: {
                             title: "3D View"
-                            content +: { stage_3d := ViewportPane{} }
+                            content +: { stage_3d := RobotView{} }
                         }
                         s1_3 +: { visible: false }
                         s1_4 +: { visible: false }
@@ -256,7 +259,7 @@ script_mod! {
                     row2 +: {
                         s2_1 +: {
                             title: "cam_wrist"
-                            content +: { stage_b := StagePane{} }
+                            content +: { stage_b := VideoPlayer{} }
                         }
                         s2_2 +: {
                             title: "action vs state"
@@ -332,46 +335,24 @@ script_mod! {
                 width: Fill height: Fill flow: Down
                 padding: Inset{left: 14. right: 14. top: 10. bottom: 10.}
                 spacing: 8.0
-                ruler := View{
-                    width: Fill height: 34
-                    show_bg: true
-                    draw_bg +: {
-                        head: instance(0.4)
-                        light: instance(0.0)
-                        pixel: fn() {
-                            let x = self.pos.x
-                            let bg = mix(#x141922, #xF6F8FB, self.light)
-                            // tick marks every 10th of the range
-                            let major = (1.0 - step(0.004, fract(x * 10.0))) * (1.0 - step(0.55, self.pos.y))
-                            let minor = (1.0 - step(0.002, fract(x * 50.0))) * (1.0 - step(0.30, self.pos.y))
-                            let ticks = clamp(major + minor * 0.6, 0.0, 1.0)
-                            let c = mix(bg, mix(#x4A5470, #xB4BCCB, self.light), ticks)
-                            // playhead
-                            let ph = 1.0 - smoothstep(0.0, 0.0016, abs(x - self.head))
-                            return mix(c, #xE5484D, ph)
-                        }
-                    }
-                }
-                drift := View{
-                    width: Fill height: 12
-                    show_bg: true
-                    draw_bg +: {
-                        light: instance(0.0)
-                        pixel: fn() {
-                            // Drift grows toward the tail: where video and
-                            // parquet stop agreeing.
-                            let x = self.pos.x
-                            let d = clamp((x - 0.8) * 5.0, 0.0, 1.0)
-                            let base = mix(#x1B2130, #xEDF0F6, self.light)
-                            return mix(base, #xD9A24E, d * 0.85)
-                        }
-                    }
-                }
+                // The real transport: scrub, play/pause and step, emitting
+                // TimelineAction. The bar this replaced drew a playhead from a
+                // constant and could not be moved.
+                tl := Timeline{ width: Fill height: Fill }
                 controls := View{
                     width: Fill height: Fit
                     flow: Right
                     align: Align{y: 0.5}
                     spacing: 12.0
+                    // Play / step, from the shipping player's own control bar
+                    transport := PlaybackControls{
+                        width: 160 height: Fit
+                        show_bg: false
+                        // Time and speed live on the Timeline and the frame
+                        // counter already; two clocks would disagree.
+                        time_row +: { visible: false }
+                        speed_row +: { visible: false }
+                    }
                     frame_lbl := Label{
                         text: "0 / 0"
                         draw_text +: {
@@ -418,6 +399,10 @@ pub struct PlayScreen {
     /// Set when the wheel moved the window; the app re-syncs and clears it.
     #[rust(false)]
     scrolled: bool,
+    /// Episode whose media is currently loaded, so video and URDF are opened
+    /// once per selection rather than on every sync.
+    #[rust]
+    loaded_episode: Option<u64>,
 }
 
 impl Widget for PlayScreen {
@@ -448,6 +433,10 @@ impl Widget for PlayScreen {
         self.view.draw_walk(cx, scope, walk)
     }
 }
+
+/// Seconds of trace kept either side of the playhead, so the plot scrolls with
+/// playback instead of standing still.
+const PLOT_WINDOW_S: f64 = 10.0;
 
 /// Must track `EpisodeRow`'s height, so a wheel notch advances whole rows.
 const ROW_H: f64 = 26.0;
@@ -497,14 +486,18 @@ impl PlayScreenRef {
         inner.scroll = inner.scroll.min(total.saturating_sub(ROW_IDS.len()));
         let start = if scrolling { inner.scroll } else { 0 };
 
+        // Media is opened once per selection, so the decision is taken before
+        // the view is borrowed.
+        let need_media = inner.loaded_episode != st.selected;
+        if need_media {
+            inner.loaded_episode = st.selected;
+        }
+
         let root = &mut inner.view;
 
         script_apply_eval!(cx, root, { draw_bg +: { light: #(light) } });
         apply_light_in(cx, root, &[
             (ids!(upper.tree), Themed::Bg),
-            (ids!(stage_a), Themed::Bg),
-            (ids!(stage_b), Themed::Bg),
-            (ids!(stage_3d), Themed::Bg),
             (ids!(upper.side), Themed::Bg),
             (ids!(upper.side.side_body.task_h), Themed::Text),
             (ids!(upper.side.side_body.task_t), Themed::Text),
@@ -514,7 +507,6 @@ impl PlayScreenRef {
             (ids!(upper.side.side_body.btn_del), Themed::Both),
             (ids!(upper.side.side_body.btn_push), Themed::Both),
             (ids!(timeline), Themed::Bg),
-            (ids!(timeline.tl_body.ruler), Themed::Bg),
             (ids!(timeline.tl_body.drift), Themed::Bg),
             (ids!(timeline.tl_body.controls.frame_lbl), Themed::Text),
             (ids!(timeline.tl_body.controls.drift_lbl), Themed::Text),
@@ -660,36 +652,133 @@ impl PlayScreenRef {
         // The plot reads the app-shell theme global rather than our light
         // instance, so the two are kept in step here.
         makepad_app_shell::theme::set_global_dark_mode(1.0 - light);
+
         // Channels are interleaved state-then-action per joint so a joint and
         // its command sit next to each other in the widget's colour order.
+        // Rebuilt only when the episode changes: this copies every sample, and
+        // sync runs on every transport tick.
         let plot = root.time_series_plot(cx, ids!(stage_plot));
-        plot.clear();
-        let mut ch = 0;
-        for (i, s) in st.state_series.iter().enumerate() {
-            plot.set_channel_data(ch, &s.name, s.points.clone());
-            ch += 1;
-            if let Some(a) = st.action_series.get(i) {
-                plot.set_channel_data(ch, &format!("{} cmd", a.name), a.points.clone());
+        if need_media {
+            plot.clear();
+            let mut ch = 0;
+            for (i, series) in st.state_series.iter().enumerate() {
+                plot.set_channel_data(ch, &series.name, series.points.clone());
                 ch += 1;
+                if let Some(a) = st.action_series.get(i) {
+                    plot.set_channel_data(ch, &format!("{} cmd", a.name), a.points.clone());
+                    ch += 1;
+                }
             }
+            plot.set_time_range(0.0, st.stats.duration_s);
+            plot.set_auto_scale_y(true);
+            // A sliding window is what makes the trace move under the playhead;
+            // without it the plot is a static picture of the whole episode.
+            plot.set_window_size(PLOT_WINDOW_S);
+            plot.recompute_scale(cx);
         }
-        if let Some(last) = st.state_series.first().and_then(|s| s.points.last()) {
-            plot.set_time_range(0.0, last.0);
-        }
-        plot.set_auto_scale_y(true);
-        plot.recompute_scale(cx);
 
-        // ---- timeline ------------------------------------------------------
-        let frames = s.frames.max(1);
-        let head = 0.4_f64;
-        root.label(cx, ids!(timeline.tl_body.controls.frame_lbl))
-            .set_text(cx, &format!("{} / {}", (frames as f64 * head) as u64, frames));
-        root.label(cx, ids!(timeline.tl_body.controls.drift_lbl))
-            .set_text(cx, &format!("DRIFT {:+.1} f", s.drift_frames));
-        let mut ruler = root.widget(cx, ids!(timeline.tl_body.ruler));
-        script_apply_eval!(cx, ruler, { draw_bg +: { head: #(head) light: #(light) } });
+        // ---- media: load once per episode, then follow the playhead --------
+        if need_media {
+            Self::load_media(cx, root, st);
+        }
+        Self::follow_playhead(cx, root, st);
 
         inner.row_episode = row_map;
+    }
+
+    /// Everything that depends on the playhead, and nothing that does not.
+    ///
+    /// The transport ticks at 60Hz; running a whole `sync` there costs more
+    /// than the frame budget (every row re-evaluated, every theme re-applied)
+    /// and playback visibly runs slow as a result.
+    fn follow_playhead(cx: &mut Cx, root: &mut View, st: &PlaybackState) {
+        let frames = st.stats.frames.max(1);
+        let frame_idx = st.frame_index();
+
+        for path in [ids!(stage_a) as &[LiveId], ids!(stage_b)] {
+            let player = root.video_player(cx, path);
+            if player.borrow().is_some() {
+                player.show_frame_at_time(cx, st.current_time);
+                player.set_frame_info(cx, frame_idx, frames);
+            }
+        }
+
+        // The 3D mirror follows the same playhead, which is what the shipping
+        // player never did — its robot view did not move during playback.
+        let viewer = root.widget(cx, ids!(stage_3d));
+        if let Some(joints) = st.joints_now() {
+            if let Some(mut rv) = viewer.borrow_mut::<makepad_urdf_player::robot_view::RobotView>() {
+                // Already in URDF convention: the backend owns that mapping,
+                // because it is a property of the robot, not of the view.
+                rv.set_joint_angles(cx, joints);
+            }
+        }
+
+        root.time_series_plot(cx, ids!(stage_plot))
+            .set_cursor_time(cx, st.current_time);
+
+        let tl = root.timeline(cx, ids!(timeline.tl_body.tl));
+        tl.set_duration(cx, st.stats.duration_s, st.stats.fps);
+        tl.set_current_time(cx, st.current_time);
+        tl.set_playing(cx, st.is_playing);
+        tl.set_speed(cx, st.speed);
+        root.playback_controls(cx, ids!(timeline.tl_body.controls.transport))
+            .set_playing(cx, st.is_playing);
+        root.label(cx, ids!(timeline.tl_body.controls.frame_lbl))
+            .set_text(cx, &format!("{} / {}", frame_idx.min(frames), frames));
+    }
+
+    /// Transport tick: advance the views the playhead drives, nothing else.
+    pub fn tick(&self, cx: &mut Cx, st: &PlaybackState) {
+        let Some(mut inner) = self.borrow_mut() else { return };
+        let root = &mut inner.view;
+        Self::follow_playhead(cx, root, st);
+    }
+
+    /// Point the two camera panes and the robot at this episode's media.
+    ///
+    /// Camera keys are matched by preference and then by position, the way the
+    /// shipping player does it, so a dataset naming its cameras `top`/`wrist`
+    /// lands in the same panes as one naming them `cam_high`/`cam_left_wrist`.
+    fn load_media(cx: &mut Cx, root: &mut View, st: &PlaybackState) {
+        let keys: Vec<&String> = st.video_paths.keys().collect();
+        let pick = |cands: &[&str], fallback: usize| -> Option<String> {
+            cands
+                .iter()
+                .find_map(|c| keys.iter().find(|k| k.contains(c)).map(|k| (*k).clone()))
+                .or_else(|| keys.get(fallback).map(|k| (*k).clone()))
+        };
+        let main = pick(&["cam_high", "top", "image"], 0);
+        let wrist = pick(&["wrist", "cam_low", "side"], 1);
+
+        for (path, key) in [
+            (ids!(stage_a) as &[LiveId], main),
+            (ids!(stage_b), wrist),
+        ] {
+            let player = root.video_player(cx, path);
+            if player.borrow().is_none() {
+                continue;
+            }
+            player.clear(cx);
+            let Some(key) = key else { continue };
+            // A second pane showing the same file is worse than an empty one.
+            player.set_episode_info(st.video_frame_offset, st.stats.frames);
+            player.set_fps_display(cx, st.stats.fps);
+            if let Some(file) = st.video_paths.get(&key) {
+                if let Err(e) = player.load_video(cx, &file.to_string_lossy()) {
+                    ::log::error!("play: video {key} failed to load: {e}");
+                }
+            }
+        }
+
+        let viewer = root.widget(cx, ids!(stage_3d));
+        if let Some((urdf, assets)) = &st.robot_urdf {
+            if let Some(mut rv) = viewer.borrow_mut::<makepad_urdf_player::robot_view::RobotView>() {
+                if let Err(e) = rv.load_robot(&urdf.to_string_lossy(), &assets.to_string_lossy()) {
+                    ::log::error!("play: urdf {} failed to load: {e}", urdf.display());
+                }
+            }
+        }
     }
 
     /// True once if the wheel moved the row window, so the app re-syncs it.

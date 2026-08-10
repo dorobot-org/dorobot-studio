@@ -3,109 +3,109 @@
 use makepad_widgets::*;
 use makepad_app_shell::theme::get_global_dark_mode;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
     // Drawing primitive for plot lines
-    DrawPlotLine = {{DrawPlotLine}} {
-        fn pixel(self) -> vec4 {
-            return self.color;
+    let DrawPlotLine = set_type_default() do #(DrawPlotLine::script_shader(vm)){
+        ..mod.draw.DrawQuad
+        pixel: fn() {
+            return self.color
         }
     }
 
     // Main time series plot widget
-    pub TimeSeriesPlot = {{TimeSeriesPlot}} {
+    mod.widgets.TimeSeriesPlotBase = #(TimeSeriesPlot::register_widget(vm))
+    mod.widgets.TimeSeriesPlot = set_type_default() do mod.widgets.TimeSeriesPlotBase{
         width: Fill
         height: 150
 
         flow: Down
 
-        draw_line: {}
+        draw_line: DrawPlotLine{}
 
         // Header with channel toggles
-        header = <View> {
+        header := View{
             width: Fill
             height: 28
-            padding: { left: 8, right: 8 }
+            padding: Inset{left: 8. right: 8.}
             spacing: 8
-            align: { y: 0.5 }
+            align: Align{y: 0.5}
 
             show_bg: true
-            draw_bg: {
-                instance dark_mode: 0.0
-                fn pixel(self) -> vec4 {
-                    let light_bg = vec4(0.91, 0.91, 0.93, 1.0);
-                    let dark_bg = vec4(0.12, 0.12, 0.14, 1.0);
-                    return mix(light_bg, dark_bg, self.dark_mode);
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_bg = vec4(0.91, 0.91, 0.93, 1.0)
+                    let dark_bg = vec4(0.12, 0.12, 0.14, 1.0)
+                    return mix(light_bg, dark_bg, self.dark_mode)
                 }
             }
 
-            title = <Label> {
+            title := Label{
                 width: Fit
-                draw_text: {
-                    text_style: <TEXT_PANEL_TITLE> {}
-                    instance dark_mode: 0.0
-                    fn get_color(self) -> vec4 {
-                        let light_text = vec4(0.1, 0.1, 0.12, 1.0);
-                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
-                        return mix(light_text, dark_text, self.dark_mode);
+                draw_text +: {
+                    text_style: mod.widgets.flex.TEXT_PANEL_TITLE{}
+                    dark_mode: instance(0.0)
+                    get_color: fn() {
+                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                        return mix(light_text, dark_text, self.dark_mode)
                     }
                 }
                 text: "observation.state"
             }
 
-            <View> { width: Fill }  // Spacer
+            View{ width: Fill }  // Spacer
         }
 
         // Content area: Y-axis on left, plot on right
-        content = <View> {
+        content := View{
             width: Fill
             height: Fill
             flow: Right
 
             // Y-axis labels (left side)
-            y_axis = <View> {
+            y_axis := View{
                 width: 40
                 height: Fill
                 flow: Down
-                padding: { top: 4, bottom: 4 }
+                padding: Inset{top: 4. bottom: 4.}
 
                 show_bg: true
-                draw_bg: {
-                    instance dark_mode: 0.0
-                    fn pixel(self) -> vec4 {
-                        let light_bg = vec4(0.94, 0.94, 0.96, 1.0);
-                        let dark_bg = vec4(0.10, 0.10, 0.12, 1.0);
-                        return mix(light_bg, dark_bg, self.dark_mode);
+                draw_bg +: {
+                    dark_mode: instance(0.0)
+                    pixel: fn() {
+                        let light_bg = vec4(0.94, 0.94, 0.96, 1.0)
+                        let dark_bg = vec4(0.10, 0.10, 0.12, 1.0)
+                        return mix(light_bg, dark_bg, self.dark_mode)
                     }
                 }
 
-                max_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        instance dark_mode: 0.0
-                        fn get_color(self) -> vec4 {
-                            let light_text = vec4(0.45, 0.45, 0.5, 1.0);
-                            let dark_text = vec4(0.55, 0.55, 0.58, 1.0);
-                            return mix(light_text, dark_text, self.dark_mode);
+                max_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_SMALL{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                            let dark_text = vec4(0.55, 0.55, 0.58, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
                         }
                     }
                     text: "1.0"
                 }
 
-                <View> { height: Fill }
+                View{ height: Fill }
 
-                min_label = <Label> {
-                    draw_text: {
-                        text_style: <TEXT_SMALL> {}
-                        instance dark_mode: 0.0
-                        fn get_color(self) -> vec4 {
-                            let light_text = vec4(0.45, 0.45, 0.5, 1.0);
-                            let dark_text = vec4(0.55, 0.55, 0.58, 1.0);
-                            return mix(light_text, dark_text, self.dark_mode);
+                min_label := Label{
+                    draw_text +: {
+                        text_style: mod.widgets.flex.TEXT_SMALL{}
+                        dark_mode: instance(0.0)
+                        get_color: fn() {
+                            let light_text = vec4(0.45, 0.45, 0.5, 1.0)
+                            let dark_text = vec4(0.55, 0.55, 0.58, 1.0)
+                            return mix(light_text, dark_text, self.dark_mode)
                         }
                     }
                     text: "-1.0"
@@ -113,18 +113,18 @@ live_design! {
             }
 
             // Plot area
-            plot_area = <View> {
+            plot_area := View{
                 width: Fill
                 height: Fill
-                cursor: Hand
+                cursor: MouseCursor.Hand
 
                 show_bg: true
-                draw_bg: {
-                    instance dark_mode: 0.0
-                    fn pixel(self) -> vec4 {
-                        let light_bg = vec4(0.97, 0.97, 0.99, 1.0);
-                        let dark_bg = vec4(0.08, 0.08, 0.10, 1.0);
-                        return mix(light_bg, dark_bg, self.dark_mode);
+                draw_bg +: {
+                    dark_mode: instance(0.0)
+                    pixel: fn() {
+                        let light_bg = vec4(0.97, 0.97, 0.99, 1.0)
+                        let dark_bg = vec4(0.08, 0.08, 0.10, 1.0)
+                        return mix(light_bg, dark_bg, self.dark_mode)
                     }
                 }
             }
@@ -132,31 +132,37 @@ live_design! {
     }
 
     // Channel legend item
-    pub ChannelLegendItem = <View> {
+    mod.widgets.ChannelLegendItem = View{
         width: Fit
         height: 20
         spacing: 4
-        align: { y: 0.5 }
+        align: Align{y: 0.5}
 
-        color_dot = <View> {
+        color_dot := View{
             width: 8
             height: 8
             show_bg: true
-            draw_bg: {
-                color: (COLOR_CHANNEL_0)
-                border_radius: 4.0
+            draw_bg +: {
+                color: instance(mod.widgets.flex.COLOR_CHANNEL_0)
+                border_radius: uniform(4.0)
+                pixel: fn() {
+                    let sdf = Sdf2d.viewport(self.pos * self.rect_size)
+                    sdf.box(0., 0., self.rect_size.x, self.rect_size.y, self.border_radius)
+                    sdf.fill(self.color)
+                    return sdf.result
+                }
             }
         }
 
-        name = <Label> {
+        name := Label{
             width: Fit
-            draw_text: {
-                text_style: <TEXT_SMALL> {}
-                instance dark_mode: 0.0
-                fn get_color(self) -> vec4 {
-                    let light_text = vec4(0.35, 0.35, 0.4, 1.0);
-                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0);
-                    return mix(light_text, dark_text, self.dark_mode);
+            draw_text +: {
+                text_style: mod.widgets.flex.TEXT_SMALL{}
+                dark_mode: instance(0.0)
+                get_color: fn() {
+                    let light_text = vec4(0.35, 0.35, 0.4, 1.0)
+                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                    return mix(light_text, dark_text, self.dark_mode)
                 }
             }
             text: "ch0"
@@ -165,42 +171,42 @@ live_design! {
 }
 
 // Channel colors for up to 14 channels
-const CHANNEL_COLORS: [Vec4; 14] = [
-    Vec4 { x: 0.30, y: 0.55, z: 0.96, w: 1.0 },  // Blue
-    Vec4 { x: 0.30, y: 0.69, z: 0.31, w: 1.0 },  // Green
-    Vec4 { x: 1.00, y: 0.60, z: 0.00, w: 1.0 },  // Orange
-    Vec4 { x: 0.91, y: 0.12, z: 0.39, w: 1.0 },  // Pink
-    Vec4 { x: 0.61, y: 0.15, z: 0.69, w: 1.0 },  // Purple
-    Vec4 { x: 0.00, y: 0.74, z: 0.83, w: 1.0 },  // Cyan
-    Vec4 { x: 0.55, y: 0.76, z: 0.29, w: 1.0 },  // Light green
-    Vec4 { x: 0.80, y: 0.80, z: 0.20, w: 1.0 },  // Yellow
-    Vec4 { x: 0.90, y: 0.40, z: 0.40, w: 1.0 },  // Red
-    Vec4 { x: 0.50, y: 0.70, z: 0.90, w: 1.0 },  // Light blue
-    Vec4 { x: 0.70, y: 0.50, z: 0.70, w: 1.0 },  // Lavender
-    Vec4 { x: 0.40, y: 0.80, z: 0.60, w: 1.0 },  // Mint
-    Vec4 { x: 0.85, y: 0.65, z: 0.45, w: 1.0 },  // Tan
-    Vec4 { x: 0.60, y: 0.60, z: 0.60, w: 1.0 },  // Gray
+const CHANNEL_COLORS: [Vec4f; 14] = [
+    Vec4f { x: 0.30, y: 0.55, z: 0.96, w: 1.0 },  // Blue
+    Vec4f { x: 0.30, y: 0.69, z: 0.31, w: 1.0 },  // Green
+    Vec4f { x: 1.00, y: 0.60, z: 0.00, w: 1.0 },  // Orange
+    Vec4f { x: 0.91, y: 0.12, z: 0.39, w: 1.0 },  // Pink
+    Vec4f { x: 0.61, y: 0.15, z: 0.69, w: 1.0 },  // Purple
+    Vec4f { x: 0.00, y: 0.74, z: 0.83, w: 1.0 },  // Cyan
+    Vec4f { x: 0.55, y: 0.76, z: 0.29, w: 1.0 },  // Light green
+    Vec4f { x: 0.80, y: 0.80, z: 0.20, w: 1.0 },  // Yellow
+    Vec4f { x: 0.90, y: 0.40, z: 0.40, w: 1.0 },  // Red
+    Vec4f { x: 0.50, y: 0.70, z: 0.90, w: 1.0 },  // Light blue
+    Vec4f { x: 0.70, y: 0.50, z: 0.70, w: 1.0 },  // Lavender
+    Vec4f { x: 0.40, y: 0.80, z: 0.60, w: 1.0 },  // Mint
+    Vec4f { x: 0.85, y: 0.65, z: 0.45, w: 1.0 },  // Tan
+    Vec4f { x: 0.60, y: 0.60, z: 0.60, w: 1.0 },  // Gray
 ];
 
 // Drawing primitive for plot lines
-#[derive(Live, LiveHook, LiveRegister)]
+#[derive(Script, ScriptHook)]
 #[repr(C)]
 pub struct DrawPlotLine {
     #[deref]
     draw_super: DrawQuad,
     #[live]
-    color: Vec4,
+    color: Vec4f,
 }
 
 #[derive(Clone, Debug)]
 pub struct TimeSeriesChannel {
     pub name: String,
     pub data: Vec<(f64, f64)>,  // (timestamp, value)
-    pub color: Vec4,
+    pub color: Vec4f,
     pub visible: bool,
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct TimeSeriesPlot {
     #[deref]
     view: View,
@@ -261,7 +267,6 @@ impl Widget for TimeSeriesPlot {
                 // Emit cursor changed action
                 cx.widget_action(
                     self.widget_uid(),
-                    &scope.path,
                     TimeSeriesPlotAction::CursorMoved(self.cursor_time),
                 );
 
@@ -278,7 +283,6 @@ impl Widget for TimeSeriesPlot {
                 // Emit cursor changed action
                 cx.widget_action(
                     self.widget_uid(),
-                    &scope.path,
                     TimeSeriesPlotAction::CursorMoved(self.cursor_time),
                 );
 
@@ -294,18 +298,24 @@ impl Widget for TimeSeriesPlot {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         // Apply theme
         let dm = get_global_dark_mode();
-        self.view.view(id!(header)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
-        self.view.label(id!(header.title)).apply_over(cx, live! { draw_text: { dark_mode: (dm) } });
-        self.view.view(id!(content.y_axis)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
-        self.view.label(id!(content.y_axis.max_label)).apply_over(cx, live! { draw_text: { dark_mode: (dm) } });
-        self.view.label(id!(content.y_axis.min_label)).apply_over(cx, live! { draw_text: { dark_mode: (dm) } });
-        self.view.view(id!(content.plot_area)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
+        let mut header = self.view.view(cx, ids!(header));
+        script_apply_eval!(cx, header, { draw_bg +: { dark_mode: #(dm) } });
+        let mut title = self.view.label(cx, ids!(header.title));
+        script_apply_eval!(cx, title, { draw_text +: { dark_mode: #(dm) } });
+        let mut y_axis = self.view.view(cx, ids!(content.y_axis));
+        script_apply_eval!(cx, y_axis, { draw_bg +: { dark_mode: #(dm) } });
+        let mut max_label = self.view.label(cx, ids!(content.y_axis.max_label));
+        script_apply_eval!(cx, max_label, { draw_text +: { dark_mode: #(dm) } });
+        let mut min_label = self.view.label(cx, ids!(content.y_axis.min_label));
+        script_apply_eval!(cx, min_label, { draw_text +: { dark_mode: #(dm) } });
+        let mut plot_area = self.view.view(cx, ids!(content.plot_area));
+        script_apply_eval!(cx, plot_area, { draw_bg +: { dark_mode: #(dm) } });
 
         // First draw the view (background, header, etc.)
         let _ = self.view.draw_walk(cx, scope, walk);
 
         // Get the plot area rect for drawing waveforms
-        let plot_area = self.view.view(id!(content.plot_area));
+        let plot_area = self.view.view(cx, ids!(content.plot_area));
         self.plot_rect = plot_area.area().rect(cx);
 
         // Draw the waveforms on top of the plot area
@@ -317,9 +327,10 @@ impl Widget for TimeSeriesPlot {
     }
 }
 
-#[derive(Clone, Debug, DefaultNone)]
+#[derive(Clone, Debug, Default)]
 pub enum TimeSeriesPlotAction {
     CursorMoved(f64),
+    #[default]
     None,
 }
 
@@ -327,12 +338,12 @@ impl TimeSeriesPlot {
     /// Set the plot title
     pub fn set_title(&mut self, cx: &mut Cx, title: &str) {
         self.title = title.to_string();
-        self.view.label(id!(header.title)).set_text(cx, title);
+        self.view.label(cx, ids!(header.title)).set_text(cx, title);
     }
 
     /// Set placeholder text
     pub fn set_placeholder_text(&mut self, cx: &mut Cx, text: &str) {
-        self.view.label(id!(plot_area.placeholder.placeholder_label)).set_text(cx, text);
+        self.view.label(cx, ids!(plot_area.placeholder.placeholder_label)).set_text(cx, text);
     }
 
     /// Set the full data time range (x-axis)
@@ -533,8 +544,8 @@ impl TimeSeriesPlot {
     fn update_y_axis_labels(&mut self, cx: &mut Cx) {
         let max_text = format!("{:.2}", self.value_range.1);
         let min_text = format!("{:.2}", self.value_range.0);
-        self.view.label(id!(content.y_axis.max_label)).set_text(cx, &max_text);
-        self.view.label(id!(content.y_axis.min_label)).set_text(cx, &min_text);
+        self.view.label(cx, ids!(content.y_axis.max_label)).set_text(cx, &max_text);
+        self.view.label(cx, ids!(content.y_axis.min_label)).set_text(cx, &min_text);
     }
 
     /// Draw waveforms for all visible channels

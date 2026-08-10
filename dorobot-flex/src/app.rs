@@ -41,334 +41,340 @@ use crate::playback_controls::PlaybackAction;
 use crate::widgets::timeline::{TimelineAction, TimelineWidgetRefExt};
 use crate::widgets::time_series_plot::{TimeSeriesPlotAction, TimeSeriesPlotWidgetRefExt};
 use crate::widgets::video_player::VideoPlayerWidgetRefExt;
-use makepad_urdf_player::robot_view::RobotViewWidgetRefExt;
+use makepad_urdf_player::robot_view::RobotView;
 use crate::widgets::episode_list::{DataSourceInfo, EpisodeListWidgetRefExt};
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
+    use mod.widgets.flex.*
+    use mod.widgets.shell.*
 
-    // Import shell components
-    use makepad_app_shell::shell::layout::ShellLayout;
-    use makepad_app_shell::grid::panel_grid::PanelGrid;
-    use makepad_app_shell::grid::footer_grid::FooterGrid;
-    use makepad_app_shell::panel::panel::Panel;
-    use makepad_app_shell::shell::sidebar::ShellSidebar;
+    startup() do #(DoRobotApp::script_component(vm)){
+        ui: Root{
+            main_window := Window{
+                window.title: "DoRobot Studio"
+                window.inner_size: vec2(1400, 900)
 
-    // Import our components
-    use crate::shared::styles::*;
-    use crate::sidebar_content::SidebarContent;
-    use crate::episode_info_panel::EpisodeInfoPanel;
-    use crate::playback_controls::PlaybackControls;
-    use crate::footer_stack::FooterStack;
-    use crate::widgets::video_player::VideoPlayer;
-    use makepad_urdf_player::robot_view::RobotView;
-    use crate::widgets::time_series_plot::TimeSeriesPlot;
-    use crate::widgets::timeline::Timeline;
+                body +: {
+                    width: Fill
+                    height: Fill
+                    ShellLayout{
+                        // Override the header with logo and title
+                        main_container +: {
+                            header +: {
+                                // Robot logo icon (Hugging Face style R)
+                                logo_container +: {
+                                    width: 28
+                                    height: 28
+                                    show_bg: true
+                                    draw_bg +: {
+                                        dark_mode: instance(0.0)
+                                        pixel: fn() {
+                                            let sdf = Sdf2d.viewport(self.pos * self.rect_size)
 
-    DoRobotApp = {{DoRobotApp}} {
-        ui: <Root> {
-            main_window = <Window> {
-                window: {
-                    title: "DoRobot Studio"
-                    inner_size: vec2(1400, 900)
-                }
+                                            // Scale SVG (24x24) to fit in 28x28 with padding
+                                            let scale = self.rect_size.x / 24.0 * 0.9
+                                            let ox = self.rect_size.x * 0.05  // offset for centering
+                                            let oy = self.rect_size.y * 0.05
 
-                body = <ShellLayout> {
-                    // Override the header with logo and title
-                    main_container = {
-                        header = {
-                            // Robot logo icon (Hugging Face style R)
-                            logo_container = <View> {
-                                width: 28
-                                height: 28
-                                show_bg: true
-                                draw_bg: {
-                                    instance dark_mode: 0.0
-                                    fn pixel(self) -> vec4 {
-                                        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                                            // Small circle at top left (dot)
+                                            sdf.circle(ox + 5.4 * scale, oy + 3.67 * scale, 3.0 * scale)
 
-                                        // Scale SVG (24x24) to fit in 28x28 with padding
-                                        let scale = self.rect_size.x / 24.0 * 0.9;
-                                        let ox = self.rect_size.x * 0.05;  // offset for centering
-                                        let oy = self.rect_size.y * 0.05;
+                                            // Main "R" shape - vertical stem
+                                            sdf.box(ox + 9.0 * scale, oy + 5.5 * scale, 4.5 * scale, 18.0 * scale, 1.0)
 
-                                        // Small circle at top left (dot)
-                                        sdf.circle(ox + 5.4 * scale, oy + 3.67 * scale, 3.0 * scale);
+                                            // "R" bowl at top (approximated as circle + box)
+                                            sdf.box(ox + 9.0 * scale, oy + 0.9 * scale, 8.0 * scale, 5.0 * scale, 1.0)
+                                            sdf.circle(ox + 15.5 * scale, oy + 5.5 * scale, 4.5 * scale)
 
-                                        // Main "R" shape - vertical stem
-                                        sdf.box(ox + 9.0 * scale, oy + 5.5 * scale, 4.5 * scale, 18.0 * scale, 1.0);
+                                            // "R" diagonal leg going down-right
+                                            sdf.rotate(0.6, ox + 13.5 * scale, oy + 10.0 * scale)
+                                            sdf.box(ox + 13.5 * scale, oy + 10.0 * scale, 4.5 * scale, 14.0 * scale, 1.0)
+                                            sdf.rotate(-0.6, ox + 13.5 * scale, oy + 10.0 * scale)
 
-                                        // "R" bowl at top (approximated as circle + box)
-                                        sdf.box(ox + 9.0 * scale, oy + 0.9 * scale, 8.0 * scale, 5.0 * scale, 1.0);
-                                        sdf.circle(ox + 15.5 * scale, oy + 5.5 * scale, 4.5 * scale);
+                                            // Bottom left tail (the "L" part going to bottom-left)
+                                            sdf.rotate(-0.15, ox + 4.0 * scale, oy + 17.5 * scale)
+                                            sdf.box(ox + 0.0 * scale, oy + 17.5 * scale, 9.0 * scale, 5.8 * scale, 1.0)
 
-                                        // "R" diagonal leg going down-right
-                                        sdf.rotate(0.6, ox + 13.5 * scale, oy + 10.0 * scale);
-                                        sdf.box(ox + 13.5 * scale, oy + 10.0 * scale, 4.5 * scale, 14.0 * scale, 1.0);
-                                        sdf.rotate(-0.6, ox + 13.5 * scale, oy + 10.0 * scale);
+                                            // Monochrome color based on theme
+                                            let light_color = vec4(0.2, 0.2, 0.22, 1.0)
+                                            let dark_color = vec4(0.85, 0.85, 0.88, 1.0)
+                                            let color = mix(light_color, dark_color, self.dark_mode)
 
-                                        // Bottom left tail (the "L" part going to bottom-left)
-                                        sdf.rotate(-0.15, ox + 4.0 * scale, oy + 17.5 * scale);
-                                        sdf.box(ox + 0.0 * scale, oy + 17.5 * scale, 9.0 * scale, 5.8 * scale, 1.0);
-
-                                        // Monochrome color based on theme
-                                        let light_color = vec4(0.2, 0.2, 0.22, 1.0);
-                                        let dark_color = vec4(0.85, 0.85, 0.88, 1.0);
-                                        let color = mix(light_color, dark_color, self.dark_mode);
-
-                                        return sdf.fill(color);
+                                            return sdf.fill(color)
+                                        }
                                     }
                                 }
+                                title_label +: { text: "DoRobot Studio" }
                             }
-                            title_label = { text: "DoRobot Studio" }
-                        }
 
-                        dock_wrapper = {
-                            dock = {
-                                // Override left sidebar content - Dataset (themed, dark_mode responsive)
-                                left_sidebar_content = <View> {
-                                    width: Fill, height: Fill
-                                    flow: Down
+                            dock_wrapper +: {
+                                dock +: {
+                                    // Override left sidebar content - Dataset (themed, dark_mode responsive)
+                                    left_sidebar_content: View{
+                                        width: Fill
+                                        height: Fill
+                                        flow: Down
 
-                                    show_bg: true
-                                    draw_bg: {
-                                        instance dark_mode: 0.0
-                                        fn pixel(self) -> vec4 {
-                                            let light = vec4(0.973, 0.980, 0.988, 1.0);
-                                            let dark = vec4(0.082, 0.082, 0.094, 1.0);
-                                            return mix(light, dark, self.dark_mode);
-                                        }
-                                    }
-
-                                    // Header
-                                    left_sidebar_header = <View> {
-                                        width: Fill, height: 40
-                                        padding: { left: 16 }
-                                        align: { y: 0.5 }
                                         show_bg: true
-                                        draw_bg: {
-                                            instance dark_mode: 0.0
-                                            fn pixel(self) -> vec4 {
-                                                let light = vec4(0.945, 0.961, 0.976, 1.0);
-                                                let dark = vec4(0.133, 0.133, 0.157, 1.0);
-                                                return mix(light, dark, self.dark_mode);
+                                        draw_bg +: {
+                                            dark_mode: instance(0.0)
+                                            pixel: fn() {
+                                                let light = vec4(0.973, 0.980, 0.988, 1.0)
+                                                let dark = vec4(0.082, 0.082, 0.094, 1.0)
+                                                return mix(light, dark, self.dark_mode)
                                             }
                                         }
-                                        left_sidebar_title = <Label> {
-                                            draw_text: {
-                                                text_style: <FONT_SEMIBOLD> { font_size: 12.0 }
-                                                instance dark_mode: 0.0
-                                                fn get_color(self) -> vec4 {
-                                                    let light_text = vec4(0.1, 0.1, 0.12, 1.0);
-                                                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
-                                                    return mix(light_text, dark_text, self.dark_mode);
-                                                }
-                                            }
-                                            text: "Dataset"
-                                        }
-                                    }
 
-                                    // Content fills remaining space
-                                    sidebar_content = <SidebarContent> {
-                                        width: Fill, height: Fill
-                                    }
-                                }
-
-                                // Override center content with our panels (2x2 grid)
-                                // Each slot has BOTH video and robot view - we show/hide based on panel_id
-                                center_content = <PanelGrid> {
-                                    window_container = {
-                                        row1 = {
-                                            s1_1 = {
-                                                title: "cam_high"
-                                                content = {
-                                                    video_slot0 = <VideoPlayer> {}
-                                                    robot_slot0 = <RobotView> { visible: false, width: 0, height: 0 }
-                                                }
-                                            }
-                                            s1_2 = {
-                                                title: "3D View"
-                                                content = {
-                                                    video_slot1 = <VideoPlayer> { visible: false, width: 0, height: 0 }
-                                                    robot_slot1 = <RobotView> {}
-                                                }
-                                            }
-                                            // Hide unused slots in row1
-                                            s1_3 = { visible: false, width: 0, height: 0 }
-                                            s1_4 = { visible: false, width: 0, height: 0 }
-                                            s1_5 = { visible: false, width: 0, height: 0 }
-                                            s1_6 = { visible: false, width: 0, height: 0 }
-                                            s1_7 = { visible: false, width: 0, height: 0 }
-                                            s1_8 = { visible: false, width: 0, height: 0 }
-                                            s1_9 = { visible: false, width: 0, height: 0 }
-                                        }
-                                        row2 = {
-                                            s2_1 = {
-                                                title: "cam_left_wrist"
-                                                content = {
-                                                    video_slot2 = <VideoPlayer> {}
-                                                    robot_slot2 = <RobotView> { visible: false, width: 0, height: 0 }
-                                                }
-                                            }
-                                            s2_2 = {
-                                                title: "cam_right_wrist"
-                                                content = {
-                                                    video_slot3 = <VideoPlayer> {}
-                                                    robot_slot3 = <RobotView> { visible: false, width: 0, height: 0 }
-                                                }
-                                            }
-                                            // Hide unused slots in row2
-                                            s2_3 = { visible: false, width: 0, height: 0 }
-                                            s2_4 = { visible: false, width: 0, height: 0 }
-                                            s2_5 = { visible: false, width: 0, height: 0 }
-                                            s2_6 = { visible: false, width: 0, height: 0 }
-                                            s2_7 = { visible: false, width: 0, height: 0 }
-                                            s2_8 = { visible: false, width: 0, height: 0 }
-                                            s2_9 = { visible: false, width: 0, height: 0 }
-                                        }
-                                        // Hide entire row3
-                                        row3 = { visible: false, height: 0 }
-                                    }
-                                }
-
-                                // Override right sidebar content - Episode Info (themed, dark_mode responsive)
-                                right_sidebar_content = <View> {
-                                    width: Fill, height: Fill
-                                    flow: Down
-
-                                    show_bg: true
-                                    draw_bg: {
-                                        instance dark_mode: 0.0
-                                        fn pixel(self) -> vec4 {
-                                            let light = vec4(0.973, 0.980, 0.988, 1.0);
-                                            let dark = vec4(0.082, 0.082, 0.094, 1.0);
-                                            return mix(light, dark, self.dark_mode);
-                                        }
-                                    }
-
-                                    // Header
-                                    right_sidebar_header = <View> {
-                                        width: Fill, height: 40
-                                        padding: { left: 16 }
-                                        align: { y: 0.5 }
-                                        show_bg: true
-                                        draw_bg: {
-                                            instance dark_mode: 0.0
-                                            fn pixel(self) -> vec4 {
-                                                let light = vec4(0.945, 0.961, 0.976, 1.0);
-                                                let dark = vec4(0.133, 0.133, 0.157, 1.0);
-                                                return mix(light, dark, self.dark_mode);
-                                            }
-                                        }
-                                        right_sidebar_title = <Label> {
-                                            draw_text: {
-                                                text_style: <FONT_SEMIBOLD> { font_size: 12.0 }
-                                                instance dark_mode: 0.0
-                                                fn get_color(self) -> vec4 {
-                                                    let light_text = vec4(0.1, 0.1, 0.12, 1.0);
-                                                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
-                                                    return mix(light_text, dark_text, self.dark_mode);
-                                                }
-                                            }
-                                            text: "Episode Info"
-                                        }
-                                    }
-
-                                    // Content fills remaining space
-                                    episode_info = <EpisodeInfoPanel> {
-                                        width: Fill, height: Fill
-                                    }
-                                }
-
-                                // Override footer content
-                                // Playback controls in left sidebar, 3 panels: State Plot, Action Plot, Timeline
-                                footer_content = <FooterGrid> {
-                                    initial_panels: 3
-
-                                    dock = {
-                                        // Left controller sidebar - Playback controls (themed, dark_mode responsive)
-                                        controller_content = <View> {
-                                            width: Fill, height: Fill
-                                            flow: Down
-
+                                        // Header
+                                        left_sidebar_header := View{
+                                            width: Fill
+                                            height: 40
+                                            padding: Inset{left: 16.}
+                                            align: Align{y: 0.5}
                                             show_bg: true
-                                            draw_bg: {
-                                                instance dark_mode: 0.0
-                                                fn pixel(self) -> vec4 {
-                                                    let light = vec4(0.973, 0.980, 0.988, 1.0);
-                                                    let dark = vec4(0.082, 0.082, 0.094, 1.0);
-                                                    return mix(light, dark, self.dark_mode);
+                                            draw_bg +: {
+                                                dark_mode: instance(0.0)
+                                                pixel: fn() {
+                                                    let light = vec4(0.945, 0.961, 0.976, 1.0)
+                                                    let dark = vec4(0.133, 0.133, 0.157, 1.0)
+                                                    return mix(light, dark, self.dark_mode)
                                                 }
                                             }
-
-                                            // Header
-                                            footer_sidebar_header = <View> {
-                                                width: Fill, height: 40
-                                                padding: { left: 16 }
-                                                align: { y: 0.5 }
-                                                show_bg: true
-                                                draw_bg: {
-                                                    instance dark_mode: 0.0
-                                                    fn pixel(self) -> vec4 {
-                                                        let light = vec4(0.945, 0.961, 0.976, 1.0);
-                                                        let dark = vec4(0.133, 0.133, 0.157, 1.0);
-                                                        return mix(light, dark, self.dark_mode);
+                                            left_sidebar_title := Label{
+                                                draw_text +: {
+                                                    text_style: mod.widgets.flex.FONT_SEMIBOLD{font_size: 12.0}
+                                                    dark_mode: instance(0.0)
+                                                    get_color: fn() {
+                                                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                                                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                                                        return mix(light_text, dark_text, self.dark_mode)
                                                     }
                                                 }
-                                                footer_sidebar_title = <Label> {
-                                                    draw_text: {
-                                                        text_style: <FONT_SEMIBOLD> { font_size: 12.0 }
-                                                        instance dark_mode: 0.0
-                                                        fn get_color(self) -> vec4 {
-                                                            let light_text = vec4(0.1, 0.1, 0.12, 1.0);
-                                                            let dark_text = vec4(0.878, 0.878, 0.878, 1.0);
-                                                            return mix(light_text, dark_text, self.dark_mode);
+                                                text: "Dataset"
+                                            }
+                                        }
+
+                                        // Content fills remaining space
+                                        sidebar_content := SidebarContent{
+                                            width: Fill
+                                            height: Fill
+                                        }
+                                    }
+
+                                    // Override center content with our panels (2x2 grid)
+                                    // Each slot has BOTH video and robot view - we show/hide based on panel_id
+                                    center_content: View{
+                                        width: Fill
+                                        height: Fill
+                                        panel_grid := PanelGrid{
+                                            width: Fill
+                                            height: Fill
+                                            window_container +: {
+                                                row1 +: {
+                                                    s1_1 +: {
+                                                        title: "cam_high"
+                                                        content +: {
+                                                            video_slot0 := VideoPlayer{}
+                                                            robot_slot0 := RobotView{ visible: false }
                                                         }
                                                     }
-                                                    text: "Playback"
+                                                    s1_2 +: {
+                                                        title: "3D View"
+                                                        content +: {
+                                                            video_slot1 := VideoPlayer{ visible: false }
+                                                            robot_slot1 := RobotView{}
+                                                        }
+                                                    }
+                                                    // Hide unused slots in row1
+                                                    s1_3 +: { visible: false width: 0 height: 0 }
+                                                    s1_4 +: { visible: false width: 0 height: 0 }
+                                                    s1_5 +: { visible: false width: 0 height: 0 }
+                                                    s1_6 +: { visible: false width: 0 height: 0 }
+                                                    s1_7 +: { visible: false width: 0 height: 0 }
+                                                    s1_8 +: { visible: false width: 0 height: 0 }
+                                                    s1_9 +: { visible: false width: 0 height: 0 }
                                                 }
+                                                row2 +: {
+                                                    s2_1 +: {
+                                                        title: "cam_left_wrist"
+                                                        content +: {
+                                                            video_slot2 := VideoPlayer{}
+                                                            robot_slot2 := RobotView{ visible: false }
+                                                        }
+                                                    }
+                                                    s2_2 +: {
+                                                        title: "cam_right_wrist"
+                                                        content +: {
+                                                            video_slot3 := VideoPlayer{}
+                                                            robot_slot3 := RobotView{ visible: false }
+                                                        }
+                                                    }
+                                                    // Hide unused slots in row2
+                                                    s2_3 +: { visible: false width: 0 height: 0 }
+                                                    s2_4 +: { visible: false width: 0 height: 0 }
+                                                    s2_5 +: { visible: false width: 0 height: 0 }
+                                                    s2_6 +: { visible: false width: 0 height: 0 }
+                                                    s2_7 +: { visible: false width: 0 height: 0 }
+                                                    s2_8 +: { visible: false width: 0 height: 0 }
+                                                    s2_9 +: { visible: false width: 0 height: 0 }
+                                                }
+                                                // Hide entire row3
+                                                row3 +: { visible: false height: 0 }
                                             }
+                                        }
+                                    }
 
-                                            // Content fills remaining space
-                                            playback = <PlaybackControls> {
-                                                width: Fill, height: Fill
+                                    // Override right sidebar content - Episode Info (themed, dark_mode responsive)
+                                    right_sidebar_content: View{
+                                        width: Fill
+                                        height: Fill
+                                        flow: Down
+
+                                        show_bg: true
+                                        draw_bg +: {
+                                            dark_mode: instance(0.0)
+                                            pixel: fn() {
+                                                let light = vec4(0.973, 0.980, 0.988, 1.0)
+                                                let dark = vec4(0.082, 0.082, 0.094, 1.0)
+                                                return mix(light, dark, self.dark_mode)
                                             }
                                         }
 
-                                        // 3 footer panels stacked vertically: State Plot, Action Plot, Timeline
-                                        panel_strip_content = {
-                                            flow: Down
-                                            f1_0 = {
-                                                p0 = {
-                                                    title: "State Plot"
-                                                    content = {
-                                                        state_plot = <TimeSeriesPlot> {}
-                                                    }
+                                        // Header
+                                        right_sidebar_header := View{
+                                            width: Fill
+                                            height: 40
+                                            padding: Inset{left: 16.}
+                                            align: Align{y: 0.5}
+                                            show_bg: true
+                                            draw_bg +: {
+                                                dark_mode: instance(0.0)
+                                                pixel: fn() {
+                                                    let light = vec4(0.945, 0.961, 0.976, 1.0)
+                                                    let dark = vec4(0.133, 0.133, 0.157, 1.0)
+                                                    return mix(light, dark, self.dark_mode)
                                                 }
                                             }
-                                            f1_1 = {
-                                                p0 = {
-                                                    title: "Action Plot"
-                                                    content = {
-                                                        action_plot = <TimeSeriesPlot> {}
+                                            right_sidebar_title := Label{
+                                                draw_text +: {
+                                                    text_style: mod.widgets.flex.FONT_SEMIBOLD{font_size: 12.0}
+                                                    dark_mode: instance(0.0)
+                                                    get_color: fn() {
+                                                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                                                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                                                        return mix(light_text, dark_text, self.dark_mode)
                                                     }
                                                 }
+                                                text: "Episode Info"
                                             }
-                                            f1_2 = {
-                                                p0 = {
-                                                    title: "Timeline"
-                                                    content = {
-                                                        timeline = <Timeline> {}
+                                        }
+
+                                        // Content fills remaining space
+                                        episode_info := EpisodeInfoPanel{
+                                            width: Fill
+                                            height: Fill
+                                        }
+                                    }
+
+                                    // Override footer content
+                                    // Playback controls in left sidebar, 3 panels: State Plot, Action Plot, Timeline
+                                    footer_content: View{
+                                        width: Fill
+                                        height: Fill
+                                        footer_grid := FooterGrid{
+                                            width: Fill
+                                            height: Fill
+                                            initial_panels: 3
+
+                                            dock +: {
+                                                // Left controller sidebar - Playback controls (themed, dark_mode responsive)
+                                                controller_content: View{
+                                                    width: Fill
+                                                    height: Fill
+                                                    flow: Down
+
+                                                    show_bg: true
+                                                    draw_bg +: {
+                                                        dark_mode: instance(0.0)
+                                                        pixel: fn() {
+                                                            let light = vec4(0.973, 0.980, 0.988, 1.0)
+                                                            let dark = vec4(0.082, 0.082, 0.094, 1.0)
+                                                            return mix(light, dark, self.dark_mode)
+                                                        }
+                                                    }
+
+                                                    // Header
+                                                    footer_sidebar_header := View{
+                                                        width: Fill
+                                                        height: 40
+                                                        padding: Inset{left: 16.}
+                                                        align: Align{y: 0.5}
+                                                        show_bg: true
+                                                        draw_bg +: {
+                                                            dark_mode: instance(0.0)
+                                                            pixel: fn() {
+                                                                let light = vec4(0.945, 0.961, 0.976, 1.0)
+                                                                let dark = vec4(0.133, 0.133, 0.157, 1.0)
+                                                                return mix(light, dark, self.dark_mode)
+                                                            }
+                                                        }
+                                                        footer_sidebar_title := Label{
+                                                            draw_text +: {
+                                                                text_style: mod.widgets.flex.FONT_SEMIBOLD{font_size: 12.0}
+                                                                dark_mode: instance(0.0)
+                                                                get_color: fn() {
+                                                                    let light_text = vec4(0.1, 0.1, 0.12, 1.0)
+                                                                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                                                                    return mix(light_text, dark_text, self.dark_mode)
+                                                                }
+                                                            }
+                                                            text: "Playback"
+                                                        }
+                                                    }
+
+                                                    // Content fills remaining space
+                                                    playback := PlaybackControls{
+                                                        width: Fill
+                                                        height: Fill
                                                     }
                                                 }
+
+                                                // 3 footer panels stacked vertically: State Plot, Action Plot, Timeline
+                                                panel_strip_content +: {
+                                                    flow: Down
+                                                    f1_0 +: {
+                                                        p0 +: {
+                                                            title: "State Plot"
+                                                            content +: {
+                                                                state_plot := TimeSeriesPlot{}
+                                                            }
+                                                        }
+                                                    }
+                                                    f1_1 +: {
+                                                        p0 +: {
+                                                            title: "Action Plot"
+                                                            content +: {
+                                                                action_plot := TimeSeriesPlot{}
+                                                            }
+                                                        }
+                                                    }
+                                                    f1_2 +: {
+                                                        p0 +: {
+                                                            title: "Timeline"
+                                                            content +: {
+                                                                timeline := Timeline{}
+                                                            }
+                                                        }
+                                                    }
+                                                    // Hide unused footer slots
+                                                    f1_3 +: { visible: false width: 0 }
+                                                    f1_4 +: { visible: false width: 0 }
+                                                    f1_5 +: { visible: false width: 0 }
+                                                    f1_6 +: { visible: false width: 0 }
+                                                }
                                             }
-                                            // Hide unused footer slots
-                                            f1_3 = { visible: false, width: 0 }
-                                            f1_4 = { visible: false, width: 0 }
-                                            f1_5 = { visible: false, width: 0 }
-                                            f1_6 = { visible: false, width: 0 }
                                         }
                                     }
                                 }
@@ -381,7 +387,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook)]
+#[derive(Script, ScriptHook)]
 pub struct DoRobotApp {
     #[live]
     ui: WidgetRef,
@@ -427,27 +433,6 @@ pub struct DoRobotApp {
     pending_video_update: bool,
 }
 
-impl LiveRegister for DoRobotApp {
-    fn live_register(cx: &mut Cx) {
-        // Register Makepad widgets
-        makepad_widgets::live_design(cx);
-
-        // Register shell widgets
-        makepad_app_shell::live_design(cx);
-
-        // Register URDF player widget
-        makepad_urdf_player::live_design(cx);
-
-        // Register our modules
-        crate::shared::live_design(cx);
-        crate::widgets::live_design(cx);
-        crate::sidebar_content::live_design(cx);
-        crate::episode_info_panel::live_design(cx);
-        crate::playback_controls::live_design(cx);
-        crate::footer_stack::live_design(cx);
-    }
-}
-
 impl MatchEvent for DoRobotApp {
     fn handle_startup(&mut self, cx: &mut Cx) {
         // Start playback timer
@@ -456,7 +441,7 @@ impl MatchEvent for DoRobotApp {
         // Configure PanelGrid to show only 4 panels (2x2 grid)
         // panel_0 = cam_high, panel_1 = 3D View
         // panel_2 = cam_left_wrist, panel_3 = cam_right_wrist
-        let panel_grid = self.ui.panel_grid(id!(center_content));
+        let panel_grid = self.ui.panel_grid(cx, ids!(panel_grid));
         panel_grid.set_layout_state(cx, LayoutState::with_panel_count(4));
         // Set panel titles (these persist across layout state changes)
         panel_grid.set_panel_titles(&[
@@ -467,7 +452,7 @@ impl MatchEvent for DoRobotApp {
         ]);
 
         // Configure FooterGrid to show 3 panels (State Plot, Action Plot, Timeline)
-        let footer_grid = self.ui.footer_grid(id!(footer_content));
+        let footer_grid = self.ui.footer_grid(cx, ids!(footer_grid));
         let footer_state = FooterLayoutState {
             slots: vec![
                 FooterSlotState { visible: true, panel_ids: vec!["footer_panel_0".into()] },
@@ -495,6 +480,12 @@ impl MatchEvent for DoRobotApp {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         use crate::widgets::episode_list::EpisodeListAction;
 
+        // Open Dataset button (in the sidebar) — consume the Button's own click
+        if self.ui.button(cx, ids!(dataset_section.load_btn)).clicked(actions) {
+            log!("APP-DBG load_btn clicked");
+            self.open_dataset_dialog(cx);
+        }
+
         for action in actions {
             // Handle EpisodeListAction (emitted via cx.action() from EpisodeListItem)
             if let Some(EpisodeListAction::EpisodeSelected(idx)) = action.downcast_ref::<EpisodeListAction>() {
@@ -504,6 +495,7 @@ impl MatchEvent for DoRobotApp {
 
             // Handle SidebarAction (emitted via cx.action() from SidebarContent)
             if let Some(SidebarAction::LoadDataset) = action.downcast_ref::<SidebarAction>() {
+                log!("APP-DBG LoadDataset action received, opening dialog");
                 self.open_dataset_dialog(cx);
             }
 
@@ -597,6 +589,31 @@ impl MatchEvent for DoRobotApp {
 }
 
 impl AppMain for DoRobotApp {
+    fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
+        // Register Makepad widgets
+        makepad_widgets::script_mod(vm);
+
+        // Register XR scene support (required by the URDF player)
+        makepad_urdf_player::makepad_xr::script_mod(vm);
+
+        // Register URDF player widget
+        makepad_urdf_player::script_mod(vm);
+
+        // Register shell widgets
+        makepad_app_shell::script_mod(vm);
+
+        // Register our modules
+        crate::shared::script_mod(vm);
+        crate::widgets::script_mod(vm);
+        crate::sidebar_content::script_mod(vm);
+        crate::episode_info_panel::script_mod(vm);
+        crate::playback_controls::script_mod(vm);
+        crate::footer_stack::script_mod(vm);
+
+        // The app module goes last: it defines the startup() root
+        self::script_mod(vm)
+    }
+
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         // Apply theme to custom elements
         self.apply_custom_theme(cx);
@@ -686,10 +703,10 @@ impl DoRobotApp {
     fn update_slot_content(&mut self, cx: &mut Cx, slot_mapping: &[String; 4]) {
         // Physical slot widget IDs
         let video_slots = [
-            id!(video_slot0), id!(video_slot1), id!(video_slot2), id!(video_slot3)
+            ids!(video_slot0), ids!(video_slot1), ids!(video_slot2), ids!(video_slot3)
         ];
         let robot_slots = [
-            id!(robot_slot0), id!(robot_slot1), id!(robot_slot2), id!(robot_slot3)
+            ids!(robot_slot0), ids!(robot_slot1), ids!(robot_slot2), ids!(robot_slot3)
         ];
 
         for (slot_idx, panel_id) in slot_mapping.iter().enumerate() {
@@ -705,26 +722,18 @@ impl DoRobotApp {
 
             if is_robot {
                 // Show robot view, hide video player
-                self.ui.view(video_slots[slot_idx]).apply_over(cx, live! {
-                    visible: false, width: 0, height: 0
-                });
-                self.ui.view(robot_slots[slot_idx]).apply_over(cx, live! {
-                    visible: true, width: Fill, height: Fill
-                });
+                self.ui.widget(cx, video_slots[slot_idx]).set_visible(cx, false);
+                self.ui.widget(cx, robot_slots[slot_idx]).set_visible(cx, true);
             } else {
                 // Show video player, hide robot view
-                self.ui.view(video_slots[slot_idx]).apply_over(cx, live! {
-                    visible: true, width: Fill, height: Fill
-                });
-                self.ui.view(robot_slots[slot_idx]).apply_over(cx, live! {
-                    visible: false, width: 0, height: 0
-                });
+                self.ui.widget(cx, video_slots[slot_idx]).set_visible(cx, true);
+                self.ui.widget(cx, robot_slots[slot_idx]).set_visible(cx, false);
 
                 // Load the correct video for this panel_id
                 if let Some(ps) = panel_slot {
                     if let Some(video_key) = self.data.panel_registry.get_video_key(ps) {
                         if let Some(path) = self.data.video_paths.get(video_key) {
-                            let player = self.ui.video_player(video_slots[slot_idx]);
+                            let player = self.ui.video_player(cx, video_slots[slot_idx]);
                             let _ = player.load_video(cx, &path.to_string_lossy());
                             ::log::debug!("    Loaded video {} into slot {}", video_key, slot_idx);
                         }
@@ -753,6 +762,7 @@ impl DoRobotApp {
     }
 
     fn open_dataset_dialog(&mut self, cx: &mut Cx) {
+        log!("APP-DBG open_dataset_dialog: showing rfd folder picker");
         let dialog = rfd::FileDialog::new()
             .set_title("Select LeRobot Dataset Folder")
             .set_directory(std::env::current_dir().unwrap_or_default());
@@ -842,7 +852,7 @@ impl DoRobotApp {
                 self.load_robot_urdf(cx);
 
                 // Update episode list UI with data sources
-                let episode_list = self.ui.episode_list(id!(episode_list));
+                let episode_list = self.ui.episode_list(cx, ids!(episode_list));
                 episode_list.set_data_sources(cx, data_sources);
                 episode_list.set_episodes(cx, episodes);
 
@@ -961,30 +971,30 @@ impl DoRobotApp {
 
         // Initialize video players at each slot based on default mapping
         // Slot 0: panel_0 (VideoMain) - show video
-        let video_slot0 = self.ui.video_player(id!(video_slot0));
+        let video_slot0 = self.ui.video_player(cx, ids!(video_slot0));
         Self::init_video_player_owned(cx, video_slot0, main_key.as_ref(), &self.data.video_paths, frame_offset, total_frames, fps);
-        self.ui.view(id!(video_slot0)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
-        self.ui.view(id!(robot_slot0)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
+        self.ui.widget(cx, ids!(video_slot0)).set_visible(cx, true);
+        self.ui.widget(cx, ids!(robot_slot0)).set_visible(cx, false);
         let t_v1 = t_start.elapsed();
 
         // Slot 1: panel_1 (RobotView) - show robot, hide video
-        let video_slot1 = self.ui.video_player(id!(video_slot1));
+        let video_slot1 = self.ui.video_player(cx, ids!(video_slot1));
         video_slot1.clear(cx);
-        self.ui.view(id!(video_slot1)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
-        self.ui.view(id!(robot_slot1)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
+        self.ui.widget(cx, ids!(video_slot1)).set_visible(cx, false);
+        self.ui.widget(cx, ids!(robot_slot1)).set_visible(cx, true);
         let t_v2 = t_start.elapsed();
 
         // Slot 2: panel_2 (VideoCam1) - show video
-        let video_slot2 = self.ui.video_player(id!(video_slot2));
+        let video_slot2 = self.ui.video_player(cx, ids!(video_slot2));
         Self::init_video_player_owned(cx, video_slot2, cam1_key.as_ref(), &self.data.video_paths, frame_offset, total_frames, fps);
-        self.ui.view(id!(video_slot2)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
-        self.ui.view(id!(robot_slot2)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
+        self.ui.widget(cx, ids!(video_slot2)).set_visible(cx, true);
+        self.ui.widget(cx, ids!(robot_slot2)).set_visible(cx, false);
 
         // Slot 3: panel_3 (VideoCam2) - show video
-        let video_slot3 = self.ui.video_player(id!(video_slot3));
+        let video_slot3 = self.ui.video_player(cx, ids!(video_slot3));
         Self::init_video_player_owned(cx, video_slot3, cam2_key.as_ref(), &self.data.video_paths, frame_offset, total_frames, fps);
-        self.ui.view(id!(video_slot3)).apply_over(cx, live! { visible: true, width: Fill, height: Fill });
-        self.ui.view(id!(robot_slot3)).apply_over(cx, live! { visible: false, width: 0, height: 0 });
+        self.ui.widget(cx, ids!(video_slot3)).set_visible(cx, true);
+        self.ui.widget(cx, ids!(robot_slot3)).set_visible(cx, false);
         let t_v3 = t_start.elapsed();
 
         // ========================================
@@ -1060,7 +1070,7 @@ impl DoRobotApp {
     /// PHASE 2 FIX: Titles are now included in LayoutState, eliminating the
     /// need for separate set_panel_titles() calls and the race condition workaround.
     fn configure_panel_layout_from_registry(&mut self, cx: &mut Cx, camera_count: usize) {
-        let panel_grid = self.ui.panel_grid(id!(center_content));
+        let panel_grid = self.ui.panel_grid(cx, ids!(panel_grid));
 
         // Get display names from registry
         let main_name = self.data.panel_registry.get_display_name(PanelSlot::VideoMain);
@@ -1068,42 +1078,19 @@ impl DoRobotApp {
         let cam1_name = self.data.panel_registry.get_display_name(PanelSlot::VideoCam1);
         let cam2_name = self.data.panel_registry.get_display_name(PanelSlot::VideoCam2);
 
-        // Build layout state with titles included
-        let layout_state = match camera_count {
-            0 => {
-                let mut state = LayoutState::with_panel_count(1);
-                state.row_assignments = vec![vec!["panel_0".into()], vec![], vec![]];
-                state.visible_panels = ["panel_0"].iter().map(|s| s.to_string()).collect();
-                state.panel_titles.insert("panel_0".into(), robot_name.to_string());
-                state
-            }
-            1 => {
-                let mut state = LayoutState::with_panel_count(2);
-                state.row_assignments = vec![vec!["panel_0".into(), "panel_1".into()], vec![], vec![]];
-                state.visible_panels = ["panel_0", "panel_1"].iter().map(|s| s.to_string()).collect();
-                state.panel_titles.insert("panel_0".into(), main_name.to_string());
-                state.panel_titles.insert("panel_1".into(), robot_name.to_string());
-                state
-            }
-            2 => {
-                let mut state = LayoutState::with_panel_count(3);
-                state.row_assignments = vec![vec!["panel_0".into(), "panel_1".into()], vec!["panel_2".into()], vec![]];
-                state.visible_panels = ["panel_0", "panel_1", "panel_2"].iter().map(|s| s.to_string()).collect();
-                state.panel_titles.insert("panel_0".into(), main_name.to_string());
-                state.panel_titles.insert("panel_1".into(), robot_name.to_string());
-                state.panel_titles.insert("panel_2".into(), cam1_name.to_string());
-                state
-            }
-            _ => {
-                let mut state = LayoutState::with_panel_count(4);
-                state.row_assignments = vec![vec!["panel_0".into(), "panel_1".into()], vec!["panel_2".into(), "panel_3".into()], vec![]];
-                state.visible_panels = ["panel_0", "panel_1", "panel_2", "panel_3"].iter().map(|s| s.to_string()).collect();
-                state.panel_titles.insert("panel_0".into(), main_name.to_string());
-                state.panel_titles.insert("panel_1".into(), robot_name.to_string());
-                state.panel_titles.insert("panel_2".into(), cam1_name.to_string());
-                state.panel_titles.insert("panel_3".into(), cam2_name.to_string());
-                state
-            }
+        // Always lay out the full 2x2 grid; slots without a camera show as
+        // empty placeholder panels ("Empty"), which keeps close/drag/reflow
+        // testable regardless of how many cameras the dataset has.
+        let _ = camera_count;
+        let layout_state = {
+            let mut state = LayoutState::with_panel_count(4);
+            state.row_assignments = vec![vec!["panel_0".into(), "panel_1".into()], vec!["panel_2".into(), "panel_3".into()], vec![]];
+            state.visible_panels = ["panel_0", "panel_1", "panel_2", "panel_3"].iter().map(|s| s.to_string()).collect();
+            state.panel_titles.insert("panel_0".into(), main_name.to_string());
+            state.panel_titles.insert("panel_1".into(), robot_name.to_string());
+            state.panel_titles.insert("panel_2".into(), cam1_name.to_string());
+            state.panel_titles.insert("panel_3".into(), cam2_name.to_string());
+            state
         };
 
         ::log::debug!("[configure_panel_layout] Setting layout with titles: visible={:?}, titles={:?}",
@@ -1163,10 +1150,10 @@ impl DoRobotApp {
     /// Clear all video players and mark layout for reset
     fn clear_videos(&mut self, cx: &mut Cx) {
         // Clear video players at all slots
-        self.ui.video_player(id!(video_slot0)).clear(cx);
-        self.ui.video_player(id!(video_slot1)).clear(cx);
-        self.ui.video_player(id!(video_slot2)).clear(cx);
-        self.ui.video_player(id!(video_slot3)).clear(cx);
+        self.ui.video_player(cx, ids!(video_slot0)).clear(cx);
+        self.ui.video_player(cx, ids!(video_slot1)).clear(cx);
+        self.ui.video_player(cx, ids!(video_slot2)).clear(cx);
+        self.ui.video_player(cx, ids!(video_slot3)).clear(cx);
 
         // Mark layout for reset - will be applied when widget is available
         self.pending_layout_reset = true;
@@ -1179,7 +1166,7 @@ impl DoRobotApp {
             return;
         }
 
-        let panel_grid = self.ui.panel_grid(id!(center_content));
+        let panel_grid = self.ui.panel_grid(cx, ids!(panel_grid));
 
         // Try to get current state to verify widget is available
         if panel_grid.layout_state().is_none() {
@@ -1256,12 +1243,12 @@ impl DoRobotApp {
             let current_time = self.data.current_time;
 
             // Get panel visibility state
-            let panel_grid = self.ui.panel_grid(id!(center_content));
+            let panel_grid = self.ui.panel_grid(cx, ids!(panel_grid));
             let layout_state = panel_grid.layout_state();
 
             // Video player widget IDs for each physical slot
             let video_slots = [
-                id!(video_slot0), id!(video_slot1), id!(video_slot2), id!(video_slot3)
+                ids!(video_slot0), ids!(video_slot1), ids!(video_slot2), ids!(video_slot3)
             ];
 
             // Update each physical slot's video player
@@ -1280,7 +1267,7 @@ impl DoRobotApp {
                 let is_video = panel_slot.map(|ps| ps != PanelSlot::RobotView).unwrap_or(false);
 
                 if is_video {
-                    let player = self.ui.video_player(video_slots[slot_idx]);
+                    let player = self.ui.video_player(cx, video_slots[slot_idx]);
                     player.show_frame_at_time(cx, current_time);
                     player.set_frame_info(cx, frame_idx, total);
                 }
@@ -1288,7 +1275,7 @@ impl DoRobotApp {
         }
 
         // Always update timeline (lightweight)
-        let timeline = self.ui.timeline(id!(timeline));
+        let timeline = self.ui.timeline(cx, ids!(timeline));
         timeline.set_duration(cx, self.data.episode_duration, self.data.episode_fps);
         timeline.set_current_time(cx, self.data.current_time);
         timeline.set_playing(cx, self.data.is_playing);
@@ -1300,11 +1287,13 @@ impl DoRobotApp {
 
             // Update all robot view slots (only the visible one matters)
             let robot_slots = [
-                id!(robot_slot0), id!(robot_slot1), id!(robot_slot2), id!(robot_slot3)
+                ids!(robot_slot0), ids!(robot_slot1), ids!(robot_slot2), ids!(robot_slot3)
             ];
             for slot_id in &robot_slots {
-                let robot_view = self.ui.robot_view(*slot_id);
-                robot_view.set_joint_angles(cx, &joint_angles);
+                let robot_view = self.ui.widget(cx, *slot_id);
+                if let Some(mut rv) = robot_view.borrow_mut::<RobotView>() {
+                    rv.set_joint_angles(cx, &joint_angles);
+                };
             }
         }
     }
@@ -1313,7 +1302,7 @@ impl DoRobotApp {
     fn load_robot_urdf(&mut self, cx: &mut Cx) {
         // Robot view slots
         let robot_slots = [
-            id!(robot_slot0), id!(robot_slot1), id!(robot_slot2), id!(robot_slot3)
+            ids!(robot_slot0), ids!(robot_slot1), ids!(robot_slot2), ids!(robot_slot3)
         ];
 
         if let Some((urdf_path, assets_dir, display_name)) = Self::get_urdf_path(&self.data.robot_type) {
@@ -1324,8 +1313,11 @@ impl DoRobotApp {
 
             // Load the robot model into ALL robot view slots
             for slot_id in &robot_slots {
-                let robot_view = self.ui.robot_view(*slot_id);
-                robot_view.load_robot(cx, &urdf_path, &assets_dir);
+                let robot_view = self.ui.widget(cx, *slot_id);
+                if let Some(mut rv) = robot_view.borrow_mut::<RobotView>() {
+                    rv.load_robot(&urdf_path, &assets_dir);
+                }
+                robot_view.redraw(cx);
             }
 
             // Update registry with robot name
@@ -1336,7 +1328,7 @@ impl DoRobotApp {
             );
 
             // Update panel title
-            let panel_grid = self.ui.panel_grid(id!(center_content));
+            let panel_grid = self.ui.panel_grid(cx, ids!(panel_grid));
             panel_grid.set_panel_titles(&[("panel_1", &title)]);
         } else {
             ::log::warn!("No URDF mapping found for robot_type: {}", self.data.robot_type);
@@ -1349,7 +1341,7 @@ impl DoRobotApp {
             );
 
             // Reset to default title
-            let panel_grid = self.ui.panel_grid(id!(center_content));
+            let panel_grid = self.ui.panel_grid(cx, ids!(panel_grid));
             panel_grid.set_panel_titles(&[("panel_1", "3D View")]);
         }
     }
@@ -1409,7 +1401,7 @@ impl DoRobotApp {
         let action_channels = frames.first().map(|f| f.action.len()).unwrap_or(0);
 
         // Configure and populate state plot
-        let state_plot = self.ui.time_series_plot(id!(state_plot));
+        let state_plot = self.ui.time_series_plot(cx, ids!(state_plot));
         state_plot.set_title(cx, "observation.state");
         state_plot.set_time_range(0.0, self.data.episode_duration);
         state_plot.set_auto_scale_y(true);
@@ -1424,7 +1416,7 @@ impl DoRobotApp {
         state_plot.recompute_scale(cx);
 
         // Configure and populate action plot
-        let action_plot = self.ui.time_series_plot(id!(action_plot));
+        let action_plot = self.ui.time_series_plot(cx, ids!(action_plot));
         action_plot.set_title(cx, "action");
         action_plot.set_time_range(0.0, self.data.episode_duration);
         action_plot.set_auto_scale_y(true);
@@ -1441,54 +1433,53 @@ impl DoRobotApp {
 
     /// Update plot cursor positions (lightweight - just moves cursor)
     fn update_plots_cursor(&mut self, cx: &mut Cx) {
-        let state_plot = self.ui.time_series_plot(id!(state_plot));
+        let state_plot = self.ui.time_series_plot(cx, ids!(state_plot));
         state_plot.set_cursor_time(cx, self.data.current_time);
 
-        let action_plot = self.ui.time_series_plot(id!(action_plot));
+        let action_plot = self.ui.time_series_plot(cx, ids!(action_plot));
         action_plot.set_cursor_time(cx, self.data.current_time);
     }
 
     /// Apply theme to custom sidebar and header elements
+    ///
+    /// Widgets living inside lazily-created dock tab content may not exist yet
+    /// on early events — skip empty refs (the rik apply_over was a silent no-op).
     fn apply_custom_theme(&mut self, cx: &mut Cx) {
         let dm = get_global_dark_mode();
 
-        // Robot logo in header
-        self.ui.view(id!(logo_container)).apply_over(cx, live! {
-            draw_bg: { dark_mode: (dm) }
-        });
+        // Backgrounds (logo + sidebar/footer containers and headers).
+        // The dock registers instantiated tab content under the tab item ids
+        // (left_panel / right_panel / controller_tab), not the template names.
+        for path in [
+            ids!(logo_container),
+            ids!(left_panel),
+            ids!(left_sidebar_header),
+            ids!(right_panel),
+            ids!(right_sidebar_header),
+            ids!(controller_tab),
+            ids!(footer_sidebar_header),
+        ] {
+            let mut w = self.ui.widget(cx, path);
+            if !w.is_empty() {
+                script_apply_eval!(cx, w, {
+                    draw_bg +: { dark_mode: #(dm) }
+                });
+            }
+        }
 
-        // Left sidebar (Dataset) header and background
-        self.ui.view(id!(left_sidebar_content)).apply_over(cx, live! {
-            draw_bg: { dark_mode: (dm) }
-        });
-        self.ui.view(id!(left_sidebar_header)).apply_over(cx, live! {
-            draw_bg: { dark_mode: (dm) }
-        });
-        self.ui.label(id!(left_sidebar_title)).apply_over(cx, live! {
-            draw_text: { dark_mode: (dm) }
-        });
-
-        // Right sidebar (Episode Info) header and background
-        self.ui.view(id!(right_sidebar_content)).apply_over(cx, live! {
-            draw_bg: { dark_mode: (dm) }
-        });
-        self.ui.view(id!(right_sidebar_header)).apply_over(cx, live! {
-            draw_bg: { dark_mode: (dm) }
-        });
-        self.ui.label(id!(right_sidebar_title)).apply_over(cx, live! {
-            draw_text: { dark_mode: (dm) }
-        });
-
-        // Footer sidebar (Playback) header and background
-        self.ui.view(id!(footer_sidebar_content)).apply_over(cx, live! {
-            draw_bg: { dark_mode: (dm) }
-        });
-        self.ui.view(id!(footer_sidebar_header)).apply_over(cx, live! {
-            draw_bg: { dark_mode: (dm) }
-        });
-        self.ui.label(id!(footer_sidebar_title)).apply_over(cx, live! {
-            draw_text: { dark_mode: (dm) }
-        });
+        // Titles (text color follows theme)
+        for path in [
+            ids!(left_sidebar_title),
+            ids!(right_sidebar_title),
+            ids!(footer_sidebar_title),
+        ] {
+            let mut w = self.ui.widget(cx, path);
+            if !w.is_empty() {
+                script_apply_eval!(cx, w, {
+                    draw_text +: { dark_mode: #(dm) }
+                });
+            }
+        }
     }
 }
 

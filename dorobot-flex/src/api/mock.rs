@@ -72,6 +72,16 @@ impl Backend for MockBackend {
     fn dispatch(&mut self, intent: Intent) {
         match intent {
             Intent::Navigate(s) => self.screen = s,
+            Intent::TogglePlay => self.playback.is_playing = !self.playback.is_playing,
+            Intent::Seek(t) => {
+                self.playback.current_time = t.clamp(0.0, self.playback.stats.duration_s)
+            }
+            Intent::StepFrames(n) => {
+                let fps = self.playback.stats.fps.max(1e-6);
+                self.playback.current_time =
+                    (self.playback.current_time + n as f64 / fps).clamp(0.0, self.playback.stats.duration_s);
+            }
+            Intent::SetSpeed(v) => self.playback.speed = v.clamp(0.05, 8.0),
             Intent::NewRecordingSession => self.screen = Screen::Record,
             Intent::OpenDataset(id) => {
                 self.playback.dataset_name = id;
@@ -363,6 +373,15 @@ fn playback_fixture() -> PlaybackState {
         // measurement — the shape the design render shows.
         state_series: plot_fixture(0.0),
         action_series: plot_fixture(0.06),
+        // The design fixtures have no media behind them; the transport is
+        // parked so the mock screens render a still, defined frame.
+        current_time: 0.0,
+        is_playing: false,
+        speed: 1.0,
+        video_paths: BTreeMap::new(),
+        video_frame_offset: 0,
+        robot_urdf: None,
+        joint_frames: Vec::new(),
     }
 }
 

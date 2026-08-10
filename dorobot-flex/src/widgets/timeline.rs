@@ -3,57 +3,56 @@
 use makepad_widgets::*;
 use makepad_app_shell::theme::get_global_dark_mode;
 
-live_design! {
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-    use crate::shared::styles::*;
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
 
     // Drawing primitive for ruler ticks
-    DrawRulerTick = {{DrawRulerTick}} {
-        fn pixel(self) -> vec4 {
-            return self.color;
+    set_type_default() do #(DrawRulerTick::script_shader(vm)){
+        ..mod.draw.DrawQuad
+        pixel: fn() {
+            return self.color
         }
     }
 
     // Main timeline widget
-    pub Timeline = {{Timeline}} {
+    mod.widgets.TimelineBase = #(Timeline::register_widget(vm))
+    mod.widgets.Timeline = set_type_default() do mod.widgets.TimelineBase{
         width: Fill
         height: 80
 
         flow: Down
 
-        draw_tick: {}
-        draw_text: {
-            text_style: <THEME_FONT_REGULAR>{ font_size: 9.0 }
-            instance dark_mode: 0.0
-            fn get_color(self) -> vec4 {
-                let light_text = vec4(0.33, 0.33, 0.36, 1.0);
-                let dark_text = vec4(0.55, 0.55, 0.58, 1.0);
-                return mix(light_text, dark_text, self.dark_mode);
+        draw_text +: {
+            text_style: theme.font_regular{font_size: 9.0}
+            dark_mode: instance(0.0)
+            get_color: fn() {
+                let light_text = vec4(0.33, 0.33, 0.36, 1.0)
+                let dark_text = vec4(0.55, 0.55, 0.58, 1.0)
+                return mix(light_text, dark_text, self.dark_mode)
             }
         }
 
         // Playback controls bar - hidden since we use FooterTimeline's controls
-        controls = <View> {
+        controls := View{
             width: Fill
             height: 0
             visible: false
         }
 
         // Time ruler with ticks and labels
-        ruler_area = <View> {
+        ruler_area := View{
             width: Fill
             height: 20
-            padding: { left: 4, right: 4 }
+            padding: Inset{left: 4. right: 4.}
 
             show_bg: true
-            draw_bg: {
-                instance dark_mode: 0.0
-                fn pixel(self) -> vec4 {
-                    let light_bg = vec4(0.91, 0.91, 0.93, 1.0);
-                    let dark_bg = vec4(0.12, 0.12, 0.14, 1.0);
-                    return mix(light_bg, dark_bg, self.dark_mode);
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_bg = vec4(0.91, 0.91, 0.93, 1.0)
+                    let dark_bg = vec4(0.12, 0.12, 0.14, 1.0)
+                    return mix(light_bg, dark_bg, self.dark_mode)
                 }
             }
 
@@ -61,33 +60,33 @@ live_design! {
         }
 
         // Timeline track
-        track_area = <View> {
+        track_area := View{
             width: Fill
             height: Fill
-            cursor: Hand
+            cursor: MouseCursor.Hand
             flow: Overlay
 
             show_bg: true
-            draw_bg: {
-                instance dark_mode: 0.0
-                fn pixel(self) -> vec4 {
-                    let light_bg = vec4(0.94, 0.94, 0.96, 1.0);
-                    let dark_bg = vec4(0.16, 0.16, 0.19, 1.0);
-                    return mix(light_bg, dark_bg, self.dark_mode);
+            draw_bg +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    let light_bg = vec4(0.94, 0.94, 0.96, 1.0)
+                    let dark_bg = vec4(0.16, 0.16, 0.19, 1.0)
+                    return mix(light_bg, dark_bg, self.dark_mode)
                 }
             }
 
             // Playhead indicator (positioned via margin)
-            playhead = <View> {
+            playhead := View{
                 width: 2
                 height: Fill
-                margin: { left: 0 }
+                margin: Inset{left: 0.}
                 show_bg: true
-                draw_bg: { color: #ff4545 }
+                draw_bg.color: #xff4545
             }
 
             // Episode markers (rendered as overlays)
-            episode_markers = <View> {
+            episode_markers := View{
                 width: Fill
                 height: Fill
             }
@@ -96,16 +95,16 @@ live_design! {
 }
 
 // Drawing primitive for ruler ticks
-#[derive(Live, LiveHook, LiveRegister)]
+#[derive(Script, ScriptHook)]
 #[repr(C)]
 pub struct DrawRulerTick {
     #[deref]
     draw_super: DrawQuad,
     #[live]
-    color: Vec4,
+    color: Vec4f,
 }
 
-#[derive(Clone, Debug, DefaultNone)]
+#[derive(Clone, Debug, Default)]
 pub enum TimelineAction {
     Play,
     Pause,
@@ -114,10 +113,11 @@ pub enum TimelineAction {
     StepForward,
     StepBackward,
     SpeedChanged(f64),
+    #[default]
     None,
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Script, ScriptHook, Widget)]
 pub struct Timeline {
     #[deref]
     view: View,
@@ -169,49 +169,45 @@ impl Widget for Timeline {
         });
 
         // Handle button clicks
-        if self.view.button(id!(play_btn)).clicked(&actions) {
+        if self.view.button(cx, ids!(play_btn)).clicked(&actions) {
             self.is_playing = !self.is_playing;
             let action = if self.is_playing {
-                self.view.button(id!(play_btn)).set_text(cx, "||");
+                self.view.button(cx, ids!(play_btn)).set_text(cx, "||");
                 TimelineAction::Play
             } else {
-                self.view.button(id!(play_btn)).set_text(cx, ">");
+                self.view.button(cx, ids!(play_btn)).set_text(cx, ">");
                 TimelineAction::Pause
             };
-            cx.widget_action(self.widget_uid(), &scope.path, action);
+            cx.widget_action(self.widget_uid(), action);
         }
 
-        if self.view.button(id!(step_back_btn)).clicked(&actions) {
-            cx.widget_action(self.widget_uid(), &scope.path, TimelineAction::StepBackward);
+        if self.view.button(cx, ids!(step_back_btn)).clicked(&actions) {
+            cx.widget_action(self.widget_uid(), TimelineAction::StepBackward);
         }
 
-        if self.view.button(id!(step_fwd_btn)).clicked(&actions) {
-            cx.widget_action(self.widget_uid(), &scope.path, TimelineAction::StepForward);
+        if self.view.button(cx, ids!(step_fwd_btn)).clicked(&actions) {
+            cx.widget_action(self.widget_uid(), TimelineAction::StepForward);
         }
 
         // Handle track scrubbing - direct hit detection on the track area view
-        let track_view = self.view.view(id!(track_area));
+        let track_view = self.view.view(cx, ids!(track_area));
         let track_area = track_view.area();
         let track_rect = track_area.rect(cx);
-
-
-        // Store scope path for scrubbing actions
-        let scope_path = scope.path.clone();
 
         match event.hits_with_capture_overload(cx, track_area, self.is_scrubbing) {
             Hit::FingerDown(fe) => {
                 cx.set_key_focus(track_area);  // Grab focus for continued tracking
                 self.is_scrubbing = true;
-                self.scrub_to_position_with_path(cx, &scope_path, fe.abs.x, track_rect);
+                self.scrub_to_position(cx, fe.abs.x, track_rect);
             }
             Hit::FingerMove(fe) if self.is_scrubbing => {
-                self.scrub_to_position_with_path(cx, &scope_path, fe.abs.x, track_rect);
+                self.scrub_to_position(cx, fe.abs.x, track_rect);
             }
             Hit::FingerUp(_) => {
                 if self.is_scrubbing {
                     self.is_scrubbing = false;
                     // Emit ScrubEnd so app can do final video update
-                    cx.widget_action(self.widget_uid(), &scope_path, TimelineAction::ScrubEnd);
+                    cx.widget_action(self.widget_uid(), TimelineAction::ScrubEnd);
                 }
             }
             _ => {}
@@ -221,14 +217,18 @@ impl Widget for Timeline {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         // Apply theme
         let dm = get_global_dark_mode();
-        self.view.view(id!(ruler_area)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
-        self.view.view(id!(track_area)).apply_over(cx, live! { draw_bg: { dark_mode: (dm) } });
+        for path in [ids!(ruler_area), ids!(track_area)] {
+            let mut view = self.view.view(cx, path);
+            script_apply_eval!(cx, view, {
+                draw_bg +: { dark_mode: #(dm) }
+            });
+        }
 
         // First draw the view structure
         let _ = self.view.draw_walk(cx, scope, walk);
 
         // Get ruler area for drawing time ticks
-        let ruler_area = self.view.view(id!(ruler_area));
+        let ruler_area = self.view.view(cx, ids!(ruler_area));
         self.ruler_rect = ruler_area.area().rect(cx);
 
         // Draw time ruler ticks and labels
@@ -262,7 +262,7 @@ impl Timeline {
         };
 
         // Draw ticks
-        self.draw_tick.color = Vec4 { x: 0.5, y: 0.5, z: 0.5, w: 1.0 };
+        self.draw_tick.color = vec4(0.5, 0.5, 0.5, 1.0);
 
         let mut time = 0.0;
         while time <= self.duration {
@@ -300,11 +300,11 @@ impl Timeline {
         }
     }
 
-    fn scrub_to_position_with_path(&mut self, cx: &mut Cx, scope_path: &HeapLiveIdPath, abs_x: f64, rect: Rect) {
+    fn scrub_to_position(&mut self, cx: &mut Cx, abs_x: f64, rect: Rect) {
         let rel_x = ((abs_x - rect.pos.x) / rect.size.x).clamp(0.0, 1.0);
         let time = rel_x * self.duration;
         self.set_current_time(cx, time);
-        cx.widget_action(self.widget_uid(), scope_path, TimelineAction::Seek(time));
+        cx.widget_action(self.widget_uid(), TimelineAction::Seek(time));
     }
 
     /// Set the total duration
@@ -334,19 +334,21 @@ impl Timeline {
         };
 
         // Get track area dimensions
-        let track_rect = self.view.view(id!(track_area)).area().rect(cx);
+        let track_rect = self.view.view(cx, ids!(track_area)).area().rect(cx);
         let playhead_x = progress * track_rect.size.x;
 
         // Update playhead margin to position it
-        self.view.view(id!(track_area.playhead)).apply_over(cx, live! {
-            margin: { left: (playhead_x) }
-        });
+        let playhead = self.view.view(cx, ids!(track_area.playhead));
+        if let Some(mut inner) = playhead.borrow_mut() {
+            inner.walk.margin.left = playhead_x;
+            inner.redraw(cx);
+        };
     }
 
     /// Set playback speed
     pub fn set_speed(&mut self, cx: &mut Cx, speed: f64) {
         self.playback_speed = speed;
-        self.view.label(id!(controls.speed_label))
+        self.view.label(cx, ids!(controls.speed_label))
             .set_text(cx, &format!("{:.1}x", speed));
     }
 
@@ -354,7 +356,7 @@ impl Timeline {
     pub fn set_playing(&mut self, cx: &mut Cx, playing: bool) {
         self.is_playing = playing;
         let text = if playing { "||" } else { ">" };
-        self.view.button(id!(play_btn)).set_text(cx, text);
+        self.view.button(cx, ids!(play_btn)).set_text(cx, text);
     }
 
     /// Add episode boundary marker
@@ -371,11 +373,11 @@ impl Timeline {
         // Time display: MM:SS.mmm / MM:SS.mmm
         let current_str = Self::format_time(self.current_time);
         let duration_str = Self::format_time(self.duration);
-        self.view.label(id!(controls.time_display))
+        self.view.label(cx, ids!(controls.time_display))
             .set_text(cx, &format!("{} / {}", current_str, duration_str));
 
         // Frame display
-        self.view.label(id!(controls.frame_display))
+        self.view.label(cx, ids!(controls.frame_display))
             .set_text(cx, &format!("F: {} / {}", self.current_frame, self.total_frames));
     }
 
