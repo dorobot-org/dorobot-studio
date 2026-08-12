@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/makepad-plot",
+    "nexus-studio",
     "crates/dorobot-types",
     "crates/dorobot-dora-bridge",
     "dorobot-studio",
