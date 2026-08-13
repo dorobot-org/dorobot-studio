@@ -34,10 +34,10 @@ script_mod! {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                     let active = step(0.5, self.state) * (1.0 - step(1.5, self.state))
                     let done = step(1.5, self.state)
-                    let idle_ring = mix(#x39415A, #xCBD2DE, self.light)
-                    let ring = mix(idle_ring, #x4C8BF5, active + done)
-                    let base = mix(#x12151C, #xFFFFFF, self.light)
-                    let fill = mix(base, #x4C8BF5, active)
+                    let idle_ring = mix(#x2A2725, #xD8D4CF, self.light)
+                    let ring = mix(idle_ring, #xD15010, active + done)
+                    let base = mix(#x141312, #xFFFFFF, self.light)
+                    let fill = mix(base, #xD15010, active)
                     sdf.circle(13.0, 13.0, 11.5)
                     sdf.fill_keep(fill)
                     sdf.stroke(ring, 1.6)
@@ -45,7 +45,7 @@ script_mod! {
                     sdf.move_to(7.5, 13.2)
                     sdf.line_to(11.4, 17.0)
                     sdf.line_to(18.5, 9.4)
-                    sdf.stroke(mix(#x00000000, #x58BE8A, done), 2.0)
+                    sdf.stroke(mix(#x00000000, #x3E7A4A, done), 2.0)
                     return sdf.result
                 }
             }
@@ -57,7 +57,7 @@ script_mod! {
                     text_style: mod.widgets.ux.TEXT_CHIP{}
                     get_color: fn() {
                         let active = step(0.5, self.state) * (1.0 - step(1.5, self.state))
-                        let idle = mix(#x8B95AD, #x79839A, self.light)
+                        let idle = mix(#xD8D4CF, #x7A7169, self.light)
                         return mix(idle, #xFFFFFF, active)
                     }
                 }
@@ -72,9 +72,9 @@ script_mod! {
                 get_color: fn() {
                     let active = step(0.5, self.state) * (1.0 - step(1.5, self.state))
                     let done = step(1.5, self.state)
-                    let pending = mix(#x77819A, #x8992A6, self.light)
-                    let fin = mix(#xD7DDEA, #x2A3244, self.light)
-                    let acc = mix(#x6BA1F8, #x2159C4, self.light)
+                    let pending = mix(#x7A7169, #xD8D4CF, self.light)
+                    let fin = mix(#xD8D4CF, #x2A2725, self.light)
+                    let acc = mix(#xD15010, #xEF6F2E, self.light)
                     return mix(mix(pending, fin, done), acc, active)
                 }
             }
@@ -89,8 +89,8 @@ script_mod! {
             done: instance(0.0)
             light: instance(0.0)
             pixel: fn() {
-                let idle = mix(#x2A3140, #xDCE1EA, self.light)
-                return mix(idle, #x4C8BF5, self.done)
+                let idle = mix(#x2A2725, #xE8E5E1, self.light)
+                return mix(idle, #xD15010, self.done)
             }
         }
     }
@@ -107,8 +107,8 @@ script_mod! {
             light: instance(0.0)
             pixel: fn() {
                 // hairline separator on the bottom edge
-                let base = mix(#x161B24, #xFFFFFF, self.light)
-                let sep = mix(#x242B3A, #xEAEEF5, self.light)
+                let base = mix(#x1B1917, #xFFFFFF, self.light)
+                let sep = mix(#x2A2725, #xF2F0ED, self.light)
                 let t = step(self.rect_size.y - 1.0, self.pos.y * self.rect_size.y)
                 return mix(base, sep, t)
             }
@@ -122,15 +122,15 @@ script_mod! {
                 light: instance(0.0)
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                    let empty = mix(#x12151C, #xFFFFFF, self.light)
-                    let ring = mix(mix(#x434C63, #xC7CEDB, self.light), #x58BE8A, self.done)
+                    let empty = mix(#x141312, #xFFFFFF, self.light)
+                    let ring = mix(mix(#x6B625B, #xD8D4CF, self.light), #x3E7A4A, self.done)
                     sdf.circle(11.0, 11.0, 9.0)
-                    sdf.fill_keep(mix(empty, #x1E6B45, self.done))
+                    sdf.fill_keep(mix(empty, #x6FAB78, self.done))
                     sdf.stroke(ring, 1.4)
                     sdf.move_to(6.5, 11.2)
                     sdf.line_to(9.7, 14.4)
                     sdf.line_to(15.4, 7.8)
-                    sdf.stroke(mix(#x00000000, #xBFF0D6, self.done), 1.8)
+                    sdf.stroke(mix(#x00000000, #x3E7A4A, self.done), 1.8)
                     return sdf.result
                 }
             }
@@ -140,7 +140,7 @@ script_mod! {
             draw_text +: {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_META{}
-                get_color: fn() { return mix(#x6C7591, #x99A1B3, self.light) }
+                get_color: fn() { return mix(#x7A7169, #xD8D4CF, self.light) }
             }
         }
         jname := Label{
@@ -149,7 +149,7 @@ script_mod! {
             draw_text +: {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_BODY{}
-                get_color: fn() { return mix(#xD7DDEA, #x2A3244, self.light) }
+                get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
             }
         }
         bar := View{
@@ -162,12 +162,12 @@ script_mod! {
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                     sdf.box(0.0, 3.0, self.rect_size.x, 6.0, 3.0)
-                    sdf.fill(mix(#x2B3243, #xE4E8F0, self.light))
+                    sdf.fill(mix(#x2A2725, #xE8E5E1, self.light))
                     // swept portion, centred like a range sweep
                     let w = self.rect_size.x * self.frac
                     let x0 = (self.rect_size.x - w) * 0.5
                     sdf.box(x0, 3.0, w, 6.0, 3.0)
-                    sdf.fill(mix(#x4C8BF5, #x58BE8A, self.done))
+                    sdf.fill(mix(#xD15010, #x3E7A4A, self.done))
                     return sdf.result
                 }
             }
@@ -180,8 +180,8 @@ script_mod! {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_META{}
                 get_color: fn() {
-                    let normal = mix(#xA8B1C4, #x616A7D, self.light)
-                    let alert = mix(#xD9A24E, #x8A6414, self.light)
+                    let normal = mix(#xD8D4CF, #x7A7169, self.light)
+                    let alert = mix(#xB07514, #xF0A330, self.light)
                     return mix(normal, alert, self.warn)
                 }
             }
@@ -198,7 +198,7 @@ script_mod! {
         show_bg: true
         draw_bg +: {
             light: instance(0.0)
-            pixel: fn() { return mix(#x12151C, #xF4F6FA, self.light) }
+            pixel: fn() { return mix(#x141312, #xFBFAF8, self.light) }
         }
 
         stepper := View{
@@ -248,12 +248,12 @@ script_mod! {
                     draw_bg +: {
                         light: instance(0.0)
                         border_size: 1.0
-                        border_radius: 6.0
+                        border_radius: 0.0
                         pixel: fn() {
                             let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                            sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                            sdf.fill_keep(mix(#x141B2B, #xF2F6FD, self.light))
-                            sdf.stroke(mix(#x27334C, #xD5E0F2, self.light), 1.0)
+                            sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                            sdf.fill_keep(mix(#x1B1917, #xFBFAF8, self.light))
+                            sdf.stroke(mix(#x2A2725, #xE8E5E1, self.light), 1.0)
                             return sdf.result
                         }
                     }
@@ -272,7 +272,7 @@ script_mod! {
                                 // angle from 12 o'clock, clockwise, 0..1
                                 let a = fract(atan2(p.x, -p.y) / 6.2831853 + 1.0)
                                 let on = 1.0 - step(self.frac, a)
-                                let track = mix(mix(#x2A3140, #xDCE2EC, self.light), #x58BE8A, on)
+                                let track = mix(mix(#x2A2725, #xE8E5E1, self.light), #x3E7A4A, on)
                                 return mix(#x00000000, track, band)
                             }
                         }
@@ -281,7 +281,7 @@ script_mod! {
                             draw_text +: {
                                 light: instance(0.0)
                                 text_style: mod.widgets.ux.TEXT_TITLE{}
-                                get_color: fn() { return mix(#xE6EAF2, #x1B2231, self.light) }
+                                get_color: fn() { return mix(#xE8E5E1, #x2A2725, self.light) }
                             }
                         }
                     }
@@ -293,12 +293,12 @@ script_mod! {
                             draw_text +: {
                                 light: instance(0.0)
                                 text_style: mod.widgets.ux.TEXT_TITLE{}
-                                get_color: fn() { return mix(#xE6EAF2, #x1B2231, self.light) }
+                                get_color: fn() { return mix(#xE8E5E1, #x2A2725, self.light) }
                             }
                         }
                         subline := Label{
                             text: "0/0 joints complete"
-                            draw_text +: { color: #x9AA5BC text_style: mod.widgets.ux.TEXT_META{} }
+                            draw_text +: { color: #xD8D4CF text_style: mod.widgets.ux.TEXT_META{} }
                         }
                     }
                 }
@@ -331,18 +331,18 @@ script_mod! {
                             light: instance(0.0)
                             pixel: fn() {
                                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                                let idle = mix(#x161B25, #xFFFFFF, self.light)
-                                let hov = mix(#x1E2532, #xF1F4FA, self.light)
+                                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                                let idle = mix(#x1B1917, #xFFFFFF, self.light)
+                                let hov = mix(#x2A2725, #xF2F0ED, self.light)
                                 sdf.fill_keep(mix(idle, hov, self.hover))
-                                sdf.stroke(mix(#x333B52, #xD7DCE7, self.light), 1.0)
+                                sdf.stroke(mix(#x2A2725, #xD8D4CF, self.light), 1.0)
                                 return sdf.result
                             }
                         }
                         draw_text +: {
                             light: instance(0.0)
                             text_style: mod.widgets.ux.TEXT_BODY{}
-                            get_color: fn() { return mix(#xC9D2E2, #x333B4D, self.light) }
+                            get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
                         }
                     }
                     btn_continue := Button{
@@ -353,10 +353,10 @@ script_mod! {
                             light: instance(0.0)
                             pixel: fn() {
                                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                                let off = mix(#x2A3446, #xE4E8F0, self.light)
-                                let live = mix(off, #x3B7BEE, self.enabled_f)
-                                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                                sdf.fill(mix(live, #x5C93F7, self.hover * self.enabled_f))
+                                let off = mix(#x2A2725, #xE8E5E1, self.light)
+                                let live = mix(off, #xD15010, self.enabled_f)
+                                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                                sdf.fill(mix(live, #xD15010, self.hover * self.enabled_f))
                                 return sdf.result
                             }
                         }
@@ -365,7 +365,7 @@ script_mod! {
                             light: instance(0.0)
                             text_style: mod.widgets.ux.TEXT_BODY{}
                             get_color: fn() {
-                                let off = mix(#x6C7591, #xA2AAB9, self.light)
+                                let off = mix(#x7A7169, #xD8D4CF, self.light)
                                 return mix(off, #xFFFFFF, self.enabled_f)
                             }
                         }

@@ -48,8 +48,8 @@ script_mod! {
         draw_bg +: {
             dark_mode: instance(0.0)
             pixel: fn() {
-                let light_bg = vec4(0.97, 0.97, 0.98, 1.0)  // #f8f8fa
-                let dark_bg = vec4(0.05, 0.05, 0.06, 1.0)   // near black
+                let light_bg = vec4(0.984, 0.980, 0.973, 1.0)  // #f8f8fa
+                let dark_bg = vec4(0.039, 0.035, 0.031, 1.0)   // near black
                 return mix(light_bg, dark_bg, self.dark_mode)
             }
         }
@@ -79,8 +79,8 @@ script_mod! {
                         text_style: mod.widgets.flex.TEXT_BODY{}
                         dark_mode: instance(0.0)
                         get_color: fn() {
-                            let light_text = vec4(0.33, 0.33, 0.33, 1.0)
-                            let dark_text = vec4(0.6, 0.6, 0.6, 1.0)
+                            let light_text = vec4(0.420, 0.384, 0.357, 1.0)
+                            let dark_text = vec4(0.478, 0.443, 0.412, 1.0)
                             return mix(light_text, dark_text, self.dark_mode)
                         }
                     }

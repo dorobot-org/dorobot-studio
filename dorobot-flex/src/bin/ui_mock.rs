@@ -51,7 +51,7 @@ script_mod! {
             main_window := Window{
                 window.title: "DoRobot Studio"
                 window.inner_size: vec2(1536, 1024)
-                pass.clear_color: #x12151C
+                pass.clear_color: #x141312
 
                 body +: {
                     width: Fill
@@ -326,6 +326,8 @@ impl MatchEvent for App {
 impl AppMain for App {
     fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
         makepad_widgets::script_mod(vm);
+        // Shared tokens first: flex's styles alias onto them.
+        dorobot_ux::script_mod(vm);
         // RobotView, and the XR scene it draws into, back the Play 3D pane
         makepad_urdf_player::makepad_xr::script_mod(vm);
         makepad_urdf_player::script_mod(vm);

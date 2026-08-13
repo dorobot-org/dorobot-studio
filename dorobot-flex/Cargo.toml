@@ -14,6 +14,8 @@ dorobot-types = { workspace = true }
 
 # Makepad
 makepad-widgets = { workspace = true }
+# The shared visual language: tokens, faces and the widget kit.
+dorobot-ux = { workspace = true }
 makepad-app-shell = { workspace = true }
 # Local WIP clone already ported to makepad dev; upstream still targets rik
 makepad-urdf-player = { git = "https://github.com/dorobot-org/makepad-urdf-viewer", rev = "ab713d2" }

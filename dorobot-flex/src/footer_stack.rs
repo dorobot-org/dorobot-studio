@@ -25,8 +25,8 @@ script_mod! {
         draw_bg +: {
             dark_mode: instance(0.0)
             pixel: fn() {
-                let light = vec4(1.0, 1.0, 1.0, 1.0)
-                let dark = vec4(0.102, 0.102, 0.122, 1.0)
+                let light = vec4(1.000, 1.000, 1.000, 1.0)
+                let dark = vec4(0.106, 0.098, 0.090, 1.0)
                 return mix(light, dark, self.dark_mode)
             }
         }

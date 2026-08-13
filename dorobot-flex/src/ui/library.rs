@@ -32,17 +32,17 @@ script_mod! {
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                     // placeholder preview: soft vertical gradient + camera glyph
-                    let top = mix(#x252C3A, #xEDF0F6, self.light)
-                    let bot = mix(#x1B222E, #xE2E7F0, self.light)
+                    let top = mix(#x2A2725, #xF2F0ED, self.light)
+                    let bot = mix(#x2A2725, #xE8E5E1, self.light)
                     let g = mix(top, bot, self.pos.y)
-                    sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 4.0)
+                    sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 0.5)
                     sdf.fill(g)
                     let cx0 = self.rect_size.x * 0.5
                     let cy0 = self.rect_size.y * 0.5
                     sdf.box(cx0 - 15.0, cy0 - 10.0, 30.0, 20.0, 3.0)
-                    sdf.stroke(mix(#x49536B, #xC2C9D6, self.light), 1.2)
+                    sdf.stroke(mix(#x6B625B, #xD8D4CF, self.light), 1.2)
                     sdf.circle(cx0, cy0, 5.5)
-                    sdf.stroke(mix(#x49536B, #xC2C9D6, self.light), 1.2)
+                    sdf.stroke(mix(#x6B625B, #xD8D4CF, self.light), 1.2)
                     return sdf.result
                 }
             }
@@ -60,7 +60,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.FONT_MEDIUM{font_size: 13.5}
-                    get_color: fn() { return mix(#xE6EAF2, #x1B2231, self.light) }
+                    get_color: fn() { return mix(#xE8E5E1, #x2A2725, self.light) }
                 }
             }
             meta := Label{
@@ -68,7 +68,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_META{}
-                    get_color: fn() { return mix(#x8B95AD, #x6A7387, self.light) }
+                    get_color: fn() { return mix(#xD8D4CF, #x7A7169, self.light) }
                 }
             }
             chips := View{
@@ -109,13 +109,13 @@ script_mod! {
                 kind: instance(0.0)
                 light: instance(0.0)
                 border_size: 1.0
-                border_radius: 6.0
+                border_radius: 0.0
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                    sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                    sdf.fill_keep(mix(#x222836, #xF1F3F8, self.light))
-                    sdf.stroke(mix(#x2A3140, #xE0E5EE, self.light), 1.0)
-                    let c = mix(#xA9B3C8, #x5C6578, self.light)
+                    sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                    sdf.fill_keep(mix(#x2A2725, #xF2F0ED, self.light))
+                    sdf.stroke(mix(#x2A2725, #xE8E5E1, self.light), 1.0)
+                    let c = mix(#xD8D4CF, #x5E564E, self.light)
                     if self.kind < 0.5 {
                         // robot arm
                         sdf.box(11.0, 27.0, 18.0, 4.0, 1.0) sdf.fill(c)
@@ -139,7 +139,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_BODY{}
-                    get_color: fn() { return mix(#xE6EAF2, #x1B2231, self.light) }
+                    get_color: fn() { return mix(#xE8E5E1, #x2A2725, self.light) }
                 }
             }
             dev_detail := Label{
@@ -147,7 +147,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_META{}
-                    get_color: fn() { return mix(#x6C7591, #x848DA0, self.light) }
+                    get_color: fn() { return mix(#x7A7169, #xD8D4CF, self.light) }
                 }
             }
         }
@@ -159,7 +159,7 @@ script_mod! {
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                     sdf.circle(5.0, 5.0, 4.0)
-                    sdf.fill(mix(#x6C7591, #x58BE8A, self.online))
+                    sdf.fill(mix(#x7A7169, #x3E7A4A, self.online))
                     return sdf.result
                 }
             }
@@ -181,9 +181,9 @@ script_mod! {
                 light: instance(0.0)
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                    let d = mix(#x2A3242, #x1B222E, self.pos.y)
-                    let l = mix(#xEDF0F6, #xE2E7F0, self.pos.y)
-                    sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 4.0)
+                    let d = mix(#x6B625B, #x2A2725, self.pos.y)
+                    let l = mix(#xF2F0ED, #xE8E5E1, self.pos.y)
+                    sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 0.5)
                     sdf.fill(mix(d, l, self.light))
                     return sdf.result
                 }
@@ -196,7 +196,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_BODY{}
-                    get_color: fn() { return mix(#xE6EAF2, #x1B2231, self.light) }
+                    get_color: fn() { return mix(#xE8E5E1, #x2A2725, self.light) }
                 }
             }
             sdataset := Label{
@@ -204,7 +204,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_META{}
-                    get_color: fn() { return mix(#x8B95AD, #x6A7387, self.light) }
+                    get_color: fn() { return mix(#xD8D4CF, #x7A7169, self.light) }
                 }
             }
             sstate := mod.widgets.ux.Chip{
@@ -224,7 +224,7 @@ script_mod! {
         show_bg: true
         draw_bg +: {
             light: instance(0.0)
-            pixel: fn() { return mix(#x12151C, #xF4F6FA, self.light) }
+            pixel: fn() { return mix(#x141312, #xFBFAF8, self.light) }
         }
 
         left_col := View{
@@ -245,7 +245,7 @@ script_mod! {
                     draw_text +: {
                         light: instance(0.0)
                         text_style: mod.widgets.ux.TEXT_H1{}
-                        get_color: fn() { return mix(#xE6EAF2, #x161C29, self.light) }
+                        get_color: fn() { return mix(#xE8E5E1, #x1B1917, self.light) }
                     }
                 }
                 Filler{}
@@ -253,13 +253,13 @@ script_mod! {
                     text: "+  New Recording Session"
                     padding: Inset{left: 18. right: 18. top: 11. bottom: 11.}
                     draw_bg +: {
-                        border_radius: 6.0
+                        border_radius: 0.0
                         pixel: fn() {
                             let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                            let base = #x3B7BEE
-                            let c = mix(base, #x5C93F7, self.hover)
-                            sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                            sdf.fill(mix(c, #x2E63C9, self.down))
+                            let base = #xD15010
+                            let c = mix(base, #xD15010, self.hover)
+                            sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                            sdf.fill(mix(c, #xEF6F2E, self.down))
                             return sdf.result
                         }
                     }
@@ -275,21 +275,21 @@ script_mod! {
                     padding: Inset{left: 18. right: 18. top: 11. bottom: 11.}
                     draw_bg +: {
                         light: instance(0.0)
-                        border_radius: 6.0
+                        border_radius: 0.0
                         pixel: fn() {
                             let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                            sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                            let idle = mix(#x161B25, #xFFFFFF, self.light)
-                            let hov = mix(#x1E2532, #xF1F4FA, self.light)
+                            sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                            let idle = mix(#x1B1917, #xFFFFFF, self.light)
+                            let hov = mix(#x2A2725, #xF2F0ED, self.light)
                             sdf.fill_keep(mix(idle, hov, self.hover))
-                            sdf.stroke(mix(#x333B52, #xD7DCE7, self.light), 1.0)
+                            sdf.stroke(mix(#x2A2725, #xD8D4CF, self.light), 1.0)
                             return sdf.result
                         }
                     }
                     draw_text +: {
                         light: instance(0.0)
                         text_style: mod.widgets.ux.TEXT_BODY{}
-                        get_color: fn() { return mix(#xC9D2E2, #x333B4D, self.light) }
+                        get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
                     }
                 }
             }
@@ -330,7 +330,7 @@ script_mod! {
                         draw_text +: {
                             light: instance(0.0)
                             text_style: mod.widgets.ux.TEXT_BODY{}
-                            get_color: fn() { return mix(#x6BA1F8, #x2159C4, self.light) }
+                            get_color: fn() { return mix(#xD15010, #xEF6F2E, self.light) }
                         }
                     }
                 }
@@ -369,8 +369,8 @@ script_mod! {
                             hover: instance(0.0)
                             text_style: mod.widgets.ux.TEXT_BODY{}
                             get_color: fn() {
-                                let base = mix(#x6BA1F8, #x2159C4, self.light)
-                                return mix(base, mix(#x9CC3FF, #x0E3E96, self.light), self.hover)
+                                let base = mix(#xD15010, #xEF6F2E, self.light)
+                                return mix(base, mix(#xD15010, #xEF6F2E, self.light), self.hover)
                             }
                         }
                     }

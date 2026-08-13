@@ -18,18 +18,18 @@ script_mod! {
     mod.widgets.ux = {}
 
     // ---------------------------------------------------------------- color --
-    mod.widgets.ux.GROUND      = #x12151C
-    mod.widgets.ux.SURFACE     = #x1A1F29
-    mod.widgets.ux.ELEVATED    = #x222836
-    mod.widgets.ux.LINE        = #x2A3140
-    mod.widgets.ux.INK         = #xE6EAF2
-    mod.widgets.ux.INK_2       = #x9AA5BC
-    mod.widgets.ux.INK_3       = #x6C7591
-    mod.widgets.ux.ACCENT      = #x4C8BF5
-    mod.widgets.ux.ACCENT_SOFT = #x1B2740
-    mod.widgets.ux.OK          = #x58BE8A
-    mod.widgets.ux.WARN        = #xD9A24E
-    mod.widgets.ux.STOP        = #xE5484D
+    mod.widgets.ux.GROUND      = #x141312
+    mod.widgets.ux.SURFACE     = #x1B1917
+    mod.widgets.ux.ELEVATED    = #x2A2725
+    mod.widgets.ux.LINE        = #x2A2725
+    mod.widgets.ux.INK         = #xE8E5E1
+    mod.widgets.ux.INK_2       = #xD8D4CF
+    mod.widgets.ux.INK_3       = #x7A7169
+    mod.widgets.ux.ACCENT      = #xD15010
+    mod.widgets.ux.ACCENT_SOFT = #x2A2725
+    mod.widgets.ux.OK          = #x3E7A4A
+    mod.widgets.ux.WARN        = #xB07514
+    mod.widgets.ux.STOP        = #xC43B36
 
     // ----------------------------------------------------------------- type --
     // Roboto for Latin, Noto Sans SC for Chinese. ("Open Sans SC" is not a
@@ -76,12 +76,12 @@ script_mod! {
         draw_bg +: {
             light: instance(0.0)
             border_size: 1.0
-            border_radius: 7.0
+            border_radius: 0.0
             pixel: fn() {
                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                let fill = mix(#x1A1F29, #xFFFFFF, self.light)
-                let edge = mix(#x262D3B, #xE3E7EF, self.light)
-                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 7.0)
+                let fill = mix(#x1B1917, #xFFFFFF, self.light)
+                let edge = mix(#x2A2725, #xE8E5E1, self.light)
+                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
                 sdf.fill_keep(fill)
                 sdf.stroke(edge, 1.0)
                 return sdf.result
@@ -102,8 +102,8 @@ script_mod! {
             light: instance(0.0)
             pixel: fn() {
                 // hairline along the bottom edge only
-                let base = mix(#x1A1F29, #xFFFFFF, self.light)
-                let border = mix(#x262D3B, #xE7EBF2, self.light)
+                let base = mix(#x1B1917, #xFFFFFF, self.light)
+                let border = mix(#x2A2725, #xE8E5E1, self.light)
                 let t = step(self.rect_size.y - 1.0, self.pos.y * self.rect_size.y)
                 return mix(base, border, t)
             }
@@ -116,7 +116,7 @@ script_mod! {
                 light: instance(0.0)
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                    let c = mix(#x4B5468, #xB6BCCB, self.light)
+                    let c = mix(#x6B625B, #xD8D4CF, self.light)
                     let r = 1.0
                     sdf.circle(2.0, 3.0, r)  sdf.fill(c)
                     sdf.circle(7.0, 3.0, r)  sdf.fill(c)
@@ -133,7 +133,7 @@ script_mod! {
             draw_text +: {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_TITLE{}
-                get_color: fn() { return mix(#xD7DDEA, #x2A3244, self.light) }
+                get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
             }
         }
         Filler{}
@@ -145,7 +145,7 @@ script_mod! {
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                     sdf.box(2.0, 2.0, 9.0, 9.0, 1.5)
-                    sdf.stroke(mix(#x79839A, #x99A1B3, self.light), 1.1)
+                    sdf.stroke(mix(#x7A7169, #xD8D4CF, self.light), 1.1)
                     return sdf.result
                 }
             }
@@ -159,9 +159,9 @@ script_mod! {
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                     sdf.move_to(3.0, 3.0)  sdf.line_to(10.0, 10.0)
-                    sdf.stroke(mix(#x79839A, #x99A1B3, self.light), 1.1)
+                    sdf.stroke(mix(#x7A7169, #xD8D4CF, self.light), 1.1)
                     sdf.move_to(10.0, 3.0) sdf.line_to(3.0, 10.0)
-                    sdf.stroke(mix(#x79839A, #x99A1B3, self.light), 1.1)
+                    sdf.stroke(mix(#x7A7169, #xD8D4CF, self.light), 1.1)
                     return sdf.result
                 }
             }
@@ -183,24 +183,24 @@ script_mod! {
             pixel: fn() {
                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                 // Shader `let` is immutable, so select branchlessly on tone.
-                let f_ok = mix(#x222836, #x14301F, step(0.5, self.tone))
-                let f_stop = mix(f_ok, #x33191B, step(1.5, self.tone))
-                let f_accent = mix(f_stop, #x14243E, step(2.5, self.tone))
-                let fill = mix(f_accent, #x332813, step(3.5, self.tone))
-                let l_ok = mix(#x394153, #x2C6B48, step(0.5, self.tone))
-                let l_stop = mix(l_ok, #x7A2F32, step(1.5, self.tone))
-                let l_accent = mix(l_stop, #x2E538F, step(2.5, self.tone))
-                let line = mix(l_accent, #x7A5A22, step(3.5, self.tone))
+                let f_ok = mix(#x2A2725, #x2A2725, step(0.5, self.tone))
+                let f_stop = mix(f_ok, #x2A2725, step(1.5, self.tone))
+                let f_accent = mix(f_stop, #x2A2725, step(2.5, self.tone))
+                let fill = mix(f_accent, #x2A2725, step(3.5, self.tone))
+                let l_ok = mix(#x2A2725, #x6FAB78, step(0.5, self.tone))
+                let l_stop = mix(l_ok, #xE54048, step(1.5, self.tone))
+                let l_accent = mix(l_stop, #xEF6F2E, step(2.5, self.tone))
+                let line = mix(l_accent, #xF0A330, step(3.5, self.tone))
                 // light palette: tinted washes instead of dark fills
-                let lf_ok = mix(#xF1F3F7, #xE6F5EC, step(0.5, self.tone))
-                let lf_stop = mix(lf_ok, #xFCEAE9, step(1.5, self.tone))
-                let lf_accent = mix(lf_stop, #xE8F0FE, step(2.5, self.tone))
-                let lfill = mix(lf_accent, #xFBF1DF, step(3.5, self.tone))
-                let ll_ok = mix(#xDFE3EC, #xB6DEC7, step(0.5, self.tone))
-                let ll_stop = mix(ll_ok, #xF0BFBD, step(1.5, self.tone))
-                let ll_accent = mix(ll_stop, #xBBD3FA, step(2.5, self.tone))
-                let lline = mix(ll_accent, #xE6CE9C, step(3.5, self.tone))
-                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 4.0)
+                let lf_ok = mix(#xF2F0ED, #xF2F0ED, step(0.5, self.tone))
+                let lf_stop = mix(lf_ok, #xF2F0ED, step(1.5, self.tone))
+                let lf_accent = mix(lf_stop, #xF2F0ED, step(2.5, self.tone))
+                let lfill = mix(lf_accent, #xF2F0ED, step(3.5, self.tone))
+                let ll_ok = mix(#xE8E5E1, #xD8D4CF, step(0.5, self.tone))
+                let ll_stop = mix(ll_ok, #xC43B36, step(1.5, self.tone))
+                let ll_accent = mix(ll_stop, #xD15010, step(2.5, self.tone))
+                let lline = mix(ll_accent, #xB07514, step(3.5, self.tone))
+                sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
                 sdf.fill_keep(mix(fill, lfill, self.light))
                 sdf.stroke(mix(line, lline, self.light), 1.0)
                 return sdf.result
@@ -213,14 +213,14 @@ script_mod! {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_CHIP{}
                 get_color: fn() {
-                    let c_ok = mix(#x9AA5BC, #x58BE8A, step(0.5, self.tone))
-                    let c_stop = mix(c_ok, #xE5484D, step(1.5, self.tone))
-                    let c_accent = mix(c_stop, #x6BA1F8, step(2.5, self.tone))
-                    let dark_c = mix(c_accent, #xD9A24E, step(3.5, self.tone))
-                    let l_ok = mix(#x606A7E, #x1F7A4C, step(0.5, self.tone))
-                    let l_stop = mix(l_ok, #xB3312F, step(1.5, self.tone))
-                    let l_accent = mix(l_stop, #x2159C4, step(2.5, self.tone))
-                    let light_c = mix(l_accent, #x8A6414, step(3.5, self.tone))
+                    let c_ok = mix(#xD8D4CF, #x3E7A4A, step(0.5, self.tone))
+                    let c_stop = mix(c_ok, #xC43B36, step(1.5, self.tone))
+                    let c_accent = mix(c_stop, #xD15010, step(2.5, self.tone))
+                    let dark_c = mix(c_accent, #xB07514, step(3.5, self.tone))
+                    let l_ok = mix(#x7A7169, #x6FAB78, step(0.5, self.tone))
+                    let l_stop = mix(l_ok, #xE54048, step(1.5, self.tone))
+                    let l_accent = mix(l_stop, #xEF6F2E, step(2.5, self.tone))
+                    let light_c = mix(l_accent, #xF0A330, step(3.5, self.tone))
                     return mix(dark_c, light_c, self.light)
                 }
             }
@@ -239,8 +239,8 @@ script_mod! {
         draw_bg +: {
             light: instance(0.0)
             pixel: fn() {
-                let base = mix(#x0F131B, #xFFFFFF, self.light)
-                let border = mix(#x262D3B, #xE3E7EF, self.light)
+                let base = mix(#x141312, #xFFFFFF, self.light)
+                let border = mix(#x2A2725, #xE8E5E1, self.light)
                 let t = step(self.rect_size.y - 1.0, self.pos.y * self.rect_size.y)
                 return mix(base, border, t)
             }
@@ -253,7 +253,7 @@ script_mod! {
                 light: instance(0.0)
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                    let c = mix(#xB8C1D2, #x4A5266, self.light)
+                    let c = mix(#xD8D4CF, #x6B625B, self.light)
                     sdf.move_to(2.0, 5.0)  sdf.line_to(18.0, 5.0)  sdf.stroke(c, 1.3)
                     sdf.move_to(2.0, 10.0) sdf.line_to(18.0, 10.0) sdf.stroke(c, 1.3)
                     sdf.move_to(2.0, 15.0) sdf.line_to(18.0, 15.0) sdf.stroke(c, 1.3)
@@ -268,7 +268,7 @@ script_mod! {
             draw_bg +: {
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                    let c = #x4C8BF5
+                    let c = #xD15010
                     // stylised arm: base, upper link, forearm, gripper dot
                     sdf.box(3.0, 19.0, 13.0, 4.0, 1.2)
                     sdf.fill(c)
@@ -281,7 +281,7 @@ script_mod! {
                     sdf.fill(c)
                     sdf.rotate(-0.5, 12.0, 10.0)
                     sdf.circle(20.0, 6.0, 2.6)
-                    sdf.fill(#xCED5E4)
+                    sdf.fill(#xD8D4CF)
                     return sdf.result
                 }
             }
@@ -291,7 +291,7 @@ script_mod! {
             draw_text +: {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.FONT_MEDIUM{font_size: 14.0}
-                get_color: fn() { return mix(#xE6EAF2, #x1C2231, self.light) }
+                get_color: fn() { return mix(#xE8E5E1, #x2A2725, self.light) }
             }
         }
         Filler{}
@@ -308,9 +308,9 @@ script_mod! {
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                         sdf.circle(8.5, 7.0, 5.4)
-                        sdf.stroke(mix(#x8B95AD, #x6B7488, self.light), 1.2)
+                        sdf.stroke(mix(#xD8D4CF, #x7A7169, self.light), 1.2)
                         sdf.move_to(5.5, 13.0) sdf.line_to(11.5, 13.0)
-                        sdf.stroke(mix(#x8B95AD, #x6B7488, self.light), 1.2)
+                        sdf.stroke(mix(#xD8D4CF, #x7A7169, self.light), 1.2)
                         return sdf.result
                     }
                 }
@@ -323,9 +323,9 @@ script_mod! {
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                         sdf.circle(8.5, 8.5, 7.2)
-                        sdf.stroke(mix(#x8B95AD, #x6B7488, self.light), 1.2)
+                        sdf.stroke(mix(#xD8D4CF, #x7A7169, self.light), 1.2)
                         sdf.circle(8.5, 12.0, 0.9)
-                        sdf.fill(mix(#x8B95AD, #x6B7488, self.light))
+                        sdf.fill(mix(#xD8D4CF, #x7A7169, self.light))
                         return sdf.result
                     }
                 }
@@ -340,9 +340,9 @@ script_mod! {
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                         sdf.circle(8.5, 8.5, 6.6)
-                        sdf.stroke(mix(#x8B95AD, #x6B7488, self.light), 1.2)
+                        sdf.stroke(mix(#xD8D4CF, #x7A7169, self.light), 1.2)
                         sdf.circle(8.5, 8.5, 2.4)
-                        sdf.stroke(mix(#x8B95AD, #x6B7488, self.light), 1.2)
+                        sdf.stroke(mix(#xD8D4CF, #x7A7169, self.light), 1.2)
                         return sdf.result
                     }
                 }
@@ -352,8 +352,8 @@ script_mod! {
                 align: Align{x: 0.5 y: 0.5}
                 show_bg: true
                 draw_bg +: {
-                    color: #x2B60C6
-                    border_radius: 14.0
+                    color: #xEF6F2E
+                    border_radius: 0.0
                 }
                 Label{
                     text: "AK"
@@ -381,13 +381,13 @@ script_mod! {
             light: instance(0.0)
             pixel: fn() {
                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                let well = mix(#x1B2740, #xE8EFFC, self.light)
+                let well = mix(#x2A2725, #xF2F0ED, self.light)
                 let idle = mix(#x0F131B00, #xF7F8FB00, self.light)
-                sdf.box(9.0, 4.0, self.rect_size.x - 18.0, self.rect_size.y - 8.0, 6.0)
+                sdf.box(9.0, 4.0, self.rect_size.x - 18.0, self.rect_size.y - 8.0, 0.5)
                 sdf.fill(mix(idle, well, self.active))
                 // slim accent marker on the leading edge
                 sdf.box(2.0, 12.0, 2.5, self.rect_size.y - 24.0, 1.25)
-                sdf.fill(mix(idle, #x4C8BF5, self.active))
+                sdf.fill(mix(idle, #xD15010, self.active))
                 return sdf.result
             }
         }
@@ -401,8 +401,8 @@ script_mod! {
                 light: instance(0.0)
                 pixel: fn() {
                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                    let idle_c = mix(#x77819A, #x757E93, self.light)
-                    let on_c = mix(#xA9C6FB, #x2F62C9, self.light)
+                    let idle_c = mix(#x7A7169, #x7A7169, self.light)
+                    let on_c = mix(#xD15010, #xEF6F2E, self.light)
                     let c = mix(idle_c, on_c, self.active)
                     if self.icon < 0.5 {
                         // library: folder
@@ -454,8 +454,8 @@ script_mod! {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_NAV{}
                 get_color: fn() {
-                    let idle_c = mix(#x77819A, #x757E93, self.light)
-                    let on_c = mix(#xA9C6FB, #x2F62C9, self.light)
+                    let idle_c = mix(#x7A7169, #x7A7169, self.light)
+                    let on_c = mix(#xD15010, #xEF6F2E, self.light)
                     return mix(idle_c, on_c, self.active)
                 }
             }
@@ -472,8 +472,8 @@ script_mod! {
         draw_bg +: {
             light: instance(0.0)
             pixel: fn() {
-                let base = mix(#x0F131B, #xF7F8FB, self.light)
-                let border = mix(#x262D3B, #xE3E7EF, self.light)
+                let base = mix(#x141312, #xFBFAF8, self.light)
+                let border = mix(#x2A2725, #xE8E5E1, self.light)
                 let t = step(self.rect_size.x - 1.0, self.pos.x * self.rect_size.x)
                 return mix(base, border, t)
             }
