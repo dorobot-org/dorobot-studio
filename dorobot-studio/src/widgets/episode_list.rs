@@ -86,6 +86,9 @@ script_mod! {
 
             // Search input
             search_input := TextInput{
+            // makepad ships `empty_text: "Your text here"` and no `visible`
+            // property; see nx.Field in dorobot-ux for the wrapper.
+            empty_text: "Filter episodes"
                 width: Fill
                 height: 32
                 padding: Inset{left: 8.0 right: 8.0}

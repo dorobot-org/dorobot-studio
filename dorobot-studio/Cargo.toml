@@ -12,6 +12,8 @@ dorobot-types = { workspace = true }
 dorobot-dora-bridge = { workspace = true }
 
 makepad-widgets = { workspace = true }
+# The shared visual language, same crate dorobot-nexus's palette tracks.
+dorobot-ux = { workspace = true }
 
 parking_lot = { workspace = true }
 log = { workspace = true }

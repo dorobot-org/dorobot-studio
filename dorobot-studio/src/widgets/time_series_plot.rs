@@ -1,6 +1,7 @@
 //! Time Series Plot Widget for observation.state and action visualization
 
 use makepad_widgets::*;
+use dorobot_ux::tokens::pal;
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -117,23 +118,15 @@ script_mod! {
     }
 }
 
-// Channel colors for up to 14 channels
-const CHANNEL_COLORS: [Vec4f; 14] = [
-    Vec4f { x: 0.30, y: 0.55, z: 0.96, w: 1.0 },  // Blue
-    Vec4f { x: 0.30, y: 0.69, z: 0.31, w: 1.0 },  // Green
-    Vec4f { x: 1.00, y: 0.60, z: 0.00, w: 1.0 },  // Orange
-    Vec4f { x: 0.91, y: 0.12, z: 0.39, w: 1.0 },  // Pink
-    Vec4f { x: 0.61, y: 0.15, z: 0.69, w: 1.0 },  // Purple
-    Vec4f { x: 0.00, y: 0.74, z: 0.83, w: 1.0 },  // Cyan
-    Vec4f { x: 0.55, y: 0.76, z: 0.29, w: 1.0 },  // Light green
-    Vec4f { x: 0.80, y: 0.80, z: 0.20, w: 1.0 },  // Yellow
-    Vec4f { x: 0.90, y: 0.40, z: 0.40, w: 1.0 },  // Red
-    Vec4f { x: 0.50, y: 0.70, z: 0.90, w: 1.0 },  // Light blue
-    Vec4f { x: 0.70, y: 0.50, z: 0.70, w: 1.0 },  // Lavender
-    Vec4f { x: 0.40, y: 0.80, z: 0.60, w: 1.0 },  // Mint
-    Vec4f { x: 0.85, y: 0.65, z: 0.45, w: 1.0 },  // Tan
-    Vec4f { x: 0.60, y: 0.60, z: 0.60, w: 1.0 },  // Gray
-];
+/// Series identity comes from the shared validated palette, the same five slots
+/// dorobot-nexus plots with. What was here was 14 hand-picked hues cycled by
+/// channel index; measured all-pairs under protan/deutan simulation, five is
+/// the most that stay mutually distinguishable in both themes, so channel 6+
+/// repeats a hue and carries a dash pattern as its second channel of identity.
+fn channel_style(i: usize, light: f32) -> (Vec4f, usize) {
+    let th = pal::Th { l: light };
+    (th.series(i), i / pal::SERIES_MAX)
+}
 
 // Drawing primitive for plot lines
 #[derive(Script, ScriptHook)]
@@ -150,6 +143,8 @@ pub struct TimeSeriesChannel {
     pub name: String,
     pub data: Vec<(f64, f64)>,  // (timestamp, value)
     pub color: Vec4f,
+    /// 0 = solid; above that the channel reuses a hue and this tells them apart.
+    pub dash: usize,
     pub visible: bool,
 }
 
@@ -161,6 +156,10 @@ pub struct TimeSeriesPlot {
     // Drawing primitive for lines
     #[live]
     draw_line: DrawPlotLine,
+
+    /// Theme: 0 dark, 1 light. Series colours are stepped per theme.
+    #[live(0.0)]
+    light: f32,
 
     // Data
     #[rust]
@@ -350,7 +349,7 @@ impl TimeSeriesPlot {
 
     /// Add or update a channel
     pub fn set_channel_data(&mut self, channel_idx: usize, name: &str, data: Vec<(f64, f64)>) {
-        let color = CHANNEL_COLORS[channel_idx % CHANNEL_COLORS.len()];
+        let (color, dash) = channel_style(channel_idx, self.light);
 
         if channel_idx < self.channels.len() {
             self.channels[channel_idx].name = name.to_string();
@@ -361,7 +360,8 @@ impl TimeSeriesPlot {
                 self.channels.push(TimeSeriesChannel {
                     name: format!("ch{}", self.channels.len()),
                     data: vec![],
-                    color: CHANNEL_COLORS[self.channels.len() % CHANNEL_COLORS.len()],
+                    color: channel_style(self.channels.len(), self.light).0,
+                    dash: channel_style(self.channels.len(), self.light).1,
                     visible: true,
                 });
             }
@@ -369,6 +369,7 @@ impl TimeSeriesPlot {
                 name: name.to_string(),
                 data,
                 color,
+                dash,
                 visible: true,
             });
         }
@@ -511,6 +512,11 @@ impl TimeSeriesPlot {
 
             self.draw_line.color = channel.color;
 
+            // Past the palette a hue repeats, so identity comes from a dash
+            // pattern measured in pixels along the trace.
+            let dash_period = match channel.dash { 0 => 0.0, 1 => 7.0, 2 => 4.0, _ => 2.0 };
+            let mut run = 0.0_f64;
+
             let mut prev_y: Option<f64> = None;
             let mut prev_x: Option<f64> = None;
 
@@ -535,14 +541,18 @@ impl TimeSeriesPlot {
                     let max_y = py.max(y);
                     let bar_height = (max_y - min_y).max(2.0);
 
-                    // Draw vertical bar
-                    self.draw_line.draw_abs(
-                        cx,
-                        Rect {
-                            pos: dvec2(px, min_y),
-                            size: dvec2((x - px).max(1.0), bar_height),
-                        },
-                    );
+                    run += (x - px).abs().max(1.0);
+                    let gap = dash_period > 0.0
+                        && ((run / dash_period).floor() as i64) % 2 == 1;
+                    if !gap {
+                        self.draw_line.draw_abs(
+                            cx,
+                            Rect {
+                                pos: dvec2(px, min_y),
+                                size: dvec2((x - px).max(1.0), bar_height),
+                            },
+                        );
+                    }
                 }
 
                 prev_y = Some(y);

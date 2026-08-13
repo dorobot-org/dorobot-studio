@@ -1,4 +1,12 @@
-//! LeRobot Viewer Styles and Theme
+//! DoRobot Studio styles — an alias layer onto the shared `nx` design system.
+//!
+//! Every name here is the one this app's screens already use, so the restyle is
+//! one reviewable file rather than a diff across every screen. What changed is
+//! what the names resolve to: the same palette, faces and series colours that
+//! dorobot-nexus draws with, so the two apps read as one product.
+//!
+//! Colours are `mix(dark, light, LIGHT)` resolved at DSL load — see
+//! `shared/theme.rs` for why that beats pushing a float per widget.
 
 use makepad_widgets::*;
 
@@ -15,74 +23,44 @@ script_mod! {
     // Namespace object for this app's shared style constants
     mod.widgets.studio = {}
 
-    mod.widgets.studio.FONT_REGULAR = TextStyle{
-        font_family: FontFamily{
-            latin := FontMember{res: crate_resource("self:resources/fonts/Manrope-Regular.ttf") asc: 0.0 desc: 0.0}
-            chinese := FontMember{res: crate_resource("makepad-widgets:resources/LXGWWenKaiRegular.ttf") asc: 0.0 desc: 0.0}
-            emoji := FontMember{res: crate_resource("makepad-widgets:resources/NotoColorEmoji.ttf") asc: 0.0 desc: 0.0}
-        }
-    }
-    mod.widgets.studio.FONT_MEDIUM = TextStyle{
-        font_family: FontFamily{
-            latin := FontMember{res: crate_resource("self:resources/fonts/Manrope-Medium.ttf") asc: 0.0 desc: 0.0}
-            chinese := FontMember{res: crate_resource("makepad-widgets:resources/LXGWWenKaiRegular.ttf") asc: 0.0 desc: 0.0}
-            emoji := FontMember{res: crate_resource("makepad-widgets:resources/NotoColorEmoji.ttf") asc: 0.0 desc: 0.0}
-        }
-    }
-    mod.widgets.studio.FONT_SEMIBOLD = TextStyle{
-        font_family: FontFamily{
-            latin := FontMember{res: crate_resource("self:resources/fonts/Manrope-SemiBold.ttf") asc: 0.0 desc: 0.0}
-            chinese := FontMember{res: crate_resource("makepad-widgets:resources/LXGWWenKaiBold.ttf") asc: 0.0 desc: 0.0}
-            emoji := FontMember{res: crate_resource("makepad-widgets:resources/NotoColorEmoji.ttf") asc: 0.0 desc: 0.0}
-        }
-    }
-    mod.widgets.studio.FONT_BOLD = TextStyle{
-        font_family: FontFamily{
-            latin := FontMember{res: crate_resource("self:resources/fonts/Manrope-Bold.ttf") asc: 0.0 desc: 0.0}
-            chinese := FontMember{res: crate_resource("makepad-widgets:resources/LXGWWenKaiBold.ttf") asc: 0.0 desc: 0.0}
-            emoji := FontMember{res: crate_resource("makepad-widgets:resources/NotoColorEmoji.ttf") asc: 0.0 desc: 0.0}
-        }
-    }
+    mod.widgets.studio.FONT_REGULAR  = mod.widgets.nx.FONT_R{}
+    mod.widgets.studio.FONT_MEDIUM   = mod.widgets.nx.FONT_M{}
+    mod.widgets.studio.FONT_SEMIBOLD = mod.widgets.nx.FONT_B{}
+    mod.widgets.studio.FONT_BOLD     = mod.widgets.nx.FONT_B{}
 
     // ===========================================
     // COLOR PALETTE (Dark Theme - Rerun-inspired)
     // ===========================================
 
-    mod.widgets.studio.COLOR_BG_APP = #x0d0d0f
-    mod.widgets.studio.COLOR_BG_SIDEBAR = #x151518
-    mod.widgets.studio.COLOR_BG_PANEL = #x1a1a1f
-    mod.widgets.studio.COLOR_BG_HEADER = #x222228
-    mod.widgets.studio.COLOR_BG_INPUT = #x2a2a32
-    mod.widgets.studio.COLOR_BG_HOVER = #x2d2d35
+    mod.widgets.studio.COLOR_BG_APP = mix(#x0A0908, #xF2F0ED, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_BG_SIDEBAR = mix(#x141312, #xFBFAF8, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_BG_PANEL = mix(#x141312, #xFBFAF8, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_BG_HEADER = mix(#x1B1917, #xFFFFFF, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_BG_INPUT = mix(#x060505, #xE8E5E1, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_BG_HOVER = mix(#x2A2725, #xD8D4CF, mod.widgets.studio_theme.LIGHT)
 
-    mod.widgets.studio.COLOR_ACCENT = #x4c8bf5
-    mod.widgets.studio.COLOR_ACCENT_HOVER = #x6ba1ff
-    mod.widgets.studio.COLOR_SUCCESS = #x4caf50
-    mod.widgets.studio.COLOR_WARNING = #xff9800
-    mod.widgets.studio.COLOR_ERROR = #xf44336
+    mod.widgets.studio.COLOR_ACCENT = mix(#xEF6F2E, #xD15010, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_ACCENT_HOVER = mix(#xF5854A, #xE0631E, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_SUCCESS = mix(#x6FAB78, #x3E7A4A, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_WARNING = mix(#xF0A330, #xB07514, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_ERROR = mix(#xE54048, #xC43B36, mod.widgets.studio_theme.LIGHT)
 
-    mod.widgets.studio.COLOR_TEXT_PRIMARY = #xe0e0e0
-    mod.widgets.studio.COLOR_TEXT_SECONDARY = #x888890
-    mod.widgets.studio.COLOR_TEXT_MUTED = #x555560
+    mod.widgets.studio.COLOR_TEXT_PRIMARY = mix(#xF2F0EC, #x161413, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_TEXT_SECONDARY = mix(#x948781, #x5E564E, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_TEXT_MUTED = mix(#x6B625B, #x7A7169, mod.widgets.studio_theme.LIGHT)
 
-    mod.widgets.studio.COLOR_BORDER = #x333340
-    mod.widgets.studio.COLOR_BORDER_LIGHT = #x444450
-
-    // Timeline colors
-    mod.widgets.studio.COLOR_PLAYHEAD = #xff4444
-    mod.widgets.studio.COLOR_TIMELINE_TRACK = #x2a2a32
-    mod.widgets.studio.COLOR_TIMELINE_TICK = #x444450
-
-    // Waveform channel colors
-    mod.widgets.studio.COLOR_CHANNEL_0 = #x4c8bf5
-    mod.widgets.studio.COLOR_CHANNEL_1 = #x4caf50
-    mod.widgets.studio.COLOR_CHANNEL_2 = #xff9800
-    mod.widgets.studio.COLOR_CHANNEL_3 = #xe91e63
-    mod.widgets.studio.COLOR_CHANNEL_4 = #x9c27b0
-    mod.widgets.studio.COLOR_CHANNEL_5 = #x00bcd4
-    mod.widgets.studio.COLOR_CHANNEL_6 = #x8bc34a
-
-    // ===========================================
+    mod.widgets.studio.COLOR_BORDER = mix(#x2A2725, #xD8D4CF, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_BORDER_LIGHT = mix(#x3A3633, #xC4BFB9, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_PLAYHEAD = mix(#xEF6F2E, #xD15010, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_TIMELINE_TRACK = mix(#x060505, #xE8E5E1, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_TIMELINE_TICK = mix(#x2A2725, #xD8D4CF, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_CHANNEL_0 = mix(#x01A2C5, #x0098B9, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_CHANNEL_1 = mix(#xAB3D09, #x9A3404, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_CHANNEL_2 = mix(#xDF6791, #xE15E8E, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_CHANNEL_3 = mix(#xB5900A, #xB28D00, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_CHANNEL_4 = mix(#x754CB0, #x60309B, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_CHANNEL_5 = mix(#x01A2C5, #x0098B9, mod.widgets.studio_theme.LIGHT)
+    mod.widgets.studio.COLOR_CHANNEL_6 = mix(#xAB3D09, #x9A3404, mod.widgets.studio_theme.LIGHT)
     // TEXT STYLES (using Manrope)
     // ===========================================
 
@@ -107,7 +85,7 @@ script_mod! {
         font_size: 10.0
     }
 
-    mod.widgets.studio.TEXT_MONO = theme.font_code{
+    mod.widgets.studio.TEXT_MONO = mod.widgets.nx.FONT_MONO{
         font_size: 11.0
     }
 
@@ -124,7 +102,7 @@ script_mod! {
         show_bg: true
         draw_bg +: {
             color: mod.widgets.studio.COLOR_BG_PANEL
-            border_radius: 8.0
+            border_radius: 0.0
         }
     }
 
@@ -150,7 +128,7 @@ script_mod! {
         draw_bg +: {
             color: #x00000000
             color_hover: mod.widgets.studio.COLOR_BG_HOVER
-            border_radius: 4.0
+            border_radius: 0.0
         }
 
         draw_text +: {
@@ -169,7 +147,7 @@ script_mod! {
         draw_bg +: {
             color: mod.widgets.studio.COLOR_ACCENT
             color_hover: mod.widgets.studio.COLOR_ACCENT_HOVER
-            border_radius: 4.0
+            border_radius: 0.0
         }
 
         draw_text +: {
@@ -187,7 +165,7 @@ script_mod! {
         draw_bg +: {
             color: mod.widgets.studio.COLOR_BG_INPUT
             color_hover: mod.widgets.studio.COLOR_BG_HOVER
-            border_radius: 4.0
+            border_radius: 0.0
         }
 
         draw_text +: {

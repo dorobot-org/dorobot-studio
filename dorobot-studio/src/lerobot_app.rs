@@ -114,6 +114,8 @@ impl AppMain for DoRobotApp {
     fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
         // Register Makepad widgets (mod.theme defaults to the dark theme)
         makepad_widgets::script_mod(vm);
+        // Shared tokens before this app's styles, which alias onto them.
+        dorobot_ux::script_mod(vm);
 
         // Register our modules
         crate::shared::script_mod(vm);
