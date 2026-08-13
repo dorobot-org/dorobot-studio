@@ -2338,6 +2338,7 @@ dependencies = [
  "arrow-array",
  "arrow-schema",
  "dorobot-types",
+ "dorobot-ux",
  "env_logger",
  "ffmpeg-next",
  "log 0.4.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2358,6 +2359,7 @@ dependencies = [
  "anyhow",
  "dorobot-dora-bridge",
  "dorobot-types",
+ "dorobot-ux",
  "env_logger",
  "ffmpeg-next",
  "kiss3d",
@@ -2379,6 +2381,13 @@ name = "dorobot-types"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "dorobot-ux"
+version = "0.1.0"
+dependencies = [
+ "makepad-widgets",
 ]
 
 [[package]]
@@ -4666,6 +4675,7 @@ dependencies = [
 name = "nexus-studio"
 version = "0.1.0"
 dependencies = [
+ "dorobot-ux",
  "makepad-plot",
  "makepad-urdf-player 0.1.0 (git+https://github.com/dorobot-org/makepad-urdf-viewer?rev=24bfa8f)",
  "makepad-widgets",

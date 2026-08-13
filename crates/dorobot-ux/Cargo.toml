@@ -1,0 +1,9 @@
+[package]
+name = "dorobot-ux"
+version.workspace = true
+edition = "2021"
+license.workspace = true
+description = "Shared design tokens and custom-drawn widgets for the DoRobot apps"
+
+[dependencies]
+makepad-widgets = { workspace = true }

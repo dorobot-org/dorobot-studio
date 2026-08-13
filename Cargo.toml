@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/makepad-plot",
+    "crates/dorobot-ux",
     "nexus-studio",
     "crates/dorobot-types",
     "crates/dorobot-dora-bridge",
@@ -18,6 +19,8 @@ authors = ["dorobot team"]
 [workspace.dependencies]
 # Internal crates
 dorobot-types = { path = "crates/dorobot-types" }
+# The shared visual language: tokens + custom-drawn widgets.
+dorobot-ux = { path = "crates/dorobot-ux" }
 dorobot-dora-bridge = { path = "crates/dorobot-dora-bridge" }
 
 # Makepad
