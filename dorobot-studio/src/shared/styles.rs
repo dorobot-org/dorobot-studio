@@ -148,6 +148,14 @@ script_mod! {
             color: mod.widgets.studio.COLOR_ACCENT
             color_hover: mod.widgets.studio.COLOR_ACCENT_HOVER
             border_radius: 0.0
+            // Setting `color` alone is not enough: makepad's stock Button draws
+            // a bevelled outset over it, which is why this button rendered grey
+            // while its accent token was correct all along. Flattening `pixel`
+            // makes the accent the button.
+            pixel: fn() {
+                let base = mix(self.color, self.color_hover, self.hover)
+                return mix(base, self.color_hover, self.down)
+            }
         }
 
         draw_text +: {

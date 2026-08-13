@@ -71,11 +71,15 @@ impl MatchEvent for DoRobotApp {
 
         let footer_grid = self.ui.footer_grid(cx, ids!(footer_grid));
         footer_grid.set_layout_state(cx, FooterLayoutState {
-            slots: vec![
-                FooterSlotState { visible: true, panel_ids: vec!["footer_panel_0".into()] },
-                FooterSlotState { visible: true, panel_ids: vec!["footer_panel_1".into()] },
-                FooterSlotState { visible: true, panel_ids: vec!["footer_panel_2".into()] },
-            ],
+            // All seven slots, so the state is authoritative: set_layout_state
+            // replaces the vec wholesale, and any slot left out keeps whatever
+            // the DSL gave it.
+            slots: (0..7)
+                .map(|i| FooterSlotState {
+                    visible: i < 3,
+                    panel_ids: vec![format!("footer_panel_{i}")],
+                })
+                .collect(),
             fullscreen_panel: None,
         });
         footer_grid.set_panel_title(cx, 0, 0, "observation.state");

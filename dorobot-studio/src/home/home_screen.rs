@@ -379,16 +379,10 @@ script_mod! {
     // FOOTER TIMELINE PLAYER (Full Width with Mini Sidebar)
     // ===========================================
 
-    let FooterTimeline = View{
-        width: Fill
-        height: 100
-        flow: Right
-
-        show_bg: true
-        draw_bg.color: mod.widgets.studio.COLOR_BG_HEADER
-
-        // Mini sidebar with playback controls
-        mini_sidebar := View{
+    // Playback transport. Lives in the shell footer's controller rail,
+    // which is always visible — unlike a footer panel, which starts
+    // collapsed to its title bar.
+    let PlaybackRail = View{
             width: 280
             height: Fill
             flow: Down
@@ -488,19 +482,17 @@ script_mod! {
                     text: "1.0x"
                 }
             }
-        }
+    }
 
-        VDivider{}
-
-        // Timeline area (fills remaining width)
-        timeline_area := View{
+    // The scrubber, as a footer panel the user can expand.
+    let TimelineArea = View{
             width: Fill
             height: Fill
             padding: 8
 
             timeline := Timeline{}
-        }
     }
+
 
     // ===========================================
     // MAIN HOME SCREEN WITH ADAPTIVE LAYOUT
@@ -602,10 +594,14 @@ script_mod! {
                                 initial_panels: 3
 
                                 dock +: {
-                                    // Same for the footer's controller rail.
+                                    // Playback transport, always visible.
                                     controller_content: View{
                                         width: Fill
                                         height: Fill
+                                        mini_sidebar := PlaybackRail{
+                                            width: Fill
+                                            height: Fill
+                                        }
                                     }
 
                                     // Slots are FooterSlots holding stacked panels;
@@ -627,12 +623,16 @@ script_mod! {
                                         f1_2 +: {
                                             p0 +: {
                                                 title: "Timeline"
-                                                content +: { footer_timeline := FooterTimeline{} }
+                                                content +: { timeline_area := TimelineArea{} }
                                             }
                                         }
+                                        // SLOT_COUNT is 7; hide every slot past
+                                        // the three in use or the extras render
+                                        // as stray "Panel" rows.
                                         f1_3 +: { visible: false width: 0 }
                                         f1_4 +: { visible: false width: 0 }
                                         f1_5 +: { visible: false width: 0 }
+                                        f1_6 +: { visible: false width: 0 }
                                     }
                                 }
                             }
@@ -761,21 +761,21 @@ impl HomeScreen {
         }
 
         // Handle footer timeline buttons (play/pause, step buttons)
-        if self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.play_btn)).clicked(actions) {
+        if self.view.button(cx, ids!(mini_sidebar.playback_controls.play_btn)).clicked(actions) {
             self.is_playing = !self.is_playing;
             self.set_playing(cx, self.is_playing);
 
             // Update button text
             let text = if self.is_playing { "Pause" } else { "Play" };
-            self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.play_btn))
+            self.view.button(cx, ids!(mini_sidebar.playback_controls.play_btn))
                 .set_text(cx, text);
         }
 
-        if self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.step_back_btn)).clicked(actions) {
+        if self.view.button(cx, ids!(mini_sidebar.playback_controls.step_back_btn)).clicked(actions) {
             self.step_frame(cx, -1);
         }
 
-        if self.view.button(cx, ids!(footer_timeline.mini_sidebar.playback_controls.step_fwd_btn)).clicked(actions) {
+        if self.view.button(cx, ids!(mini_sidebar.playback_controls.step_fwd_btn)).clicked(actions) {
             self.step_frame(cx, 1);
         }
     }
@@ -791,7 +791,7 @@ impl HomeScreen {
         self.current_time = time.clamp(0.0, self.episode_duration);
 
         // Update all synchronized components
-        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(timeline_area.timeline))
             .set_current_time(cx, self.current_time);
 
         self.view.time_series_plot(cx, ids!(content_area.main_content.plots_panel.state_plot))
@@ -801,9 +801,9 @@ impl HomeScreen {
             .set_cursor_time(cx, self.current_time);
 
         // Update footer time display
-        self.view.label(cx, ids!(footer_timeline.mini_sidebar.time_display.current_time_label))
+        self.view.label(cx, ids!(mini_sidebar.time_display.current_time_label))
             .set_text(cx, &Self::format_time(self.current_time));
-        self.view.label(cx, ids!(footer_timeline.mini_sidebar.time_display.total_time_label))
+        self.view.label(cx, ids!(mini_sidebar.time_display.total_time_label))
             .set_text(cx, &Self::format_time(self.episode_duration));
 
         // Update video frame
@@ -851,7 +851,7 @@ impl HomeScreen {
 
         self.is_playing = playing;
 
-        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(timeline_area.timeline))
             .set_playing(cx, playing);
 
         if playing {
@@ -912,9 +912,9 @@ impl HomeScreen {
         self.episode_fps = 30.0;
         self.current_time = 0.0;
 
-        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(timeline_area.timeline))
             .set_duration(cx, self.episode_duration, self.episode_fps);
-        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(timeline_area.timeline))
             .set_current_time(cx, 0.0);
 
         // Update plot titles
@@ -1032,7 +1032,7 @@ impl HomeScreen {
         self.current_time = 0.0;
 
         // Update timeline duration
-        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(timeline_area.timeline))
             .set_duration(cx, self.episode_duration, self.episode_fps);
 
         // Reset to start
@@ -1097,7 +1097,7 @@ impl HomeScreen {
         action_plot.recompute_scale(cx);
 
         // Update timeline
-        self.view.timeline(cx, ids!(footer_timeline.timeline_area.timeline))
+        self.view.timeline(cx, ids!(timeline_area.timeline))
             .set_duration(cx, duration, self.episode_fps);
 
         self.view.redraw(cx);
