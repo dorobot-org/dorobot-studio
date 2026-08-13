@@ -2343,7 +2343,7 @@ dependencies = [
  "ffmpeg-next",
  "log 0.4.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "makepad-app-shell",
- "makepad-urdf-player 0.1.0 (git+https://github.com/dorobot-org/makepad-urdf-viewer?rev=ab713d2)",
+ "makepad-urdf-player",
  "makepad-widgets",
  "parquet",
  "rfd",
@@ -2351,11 +2351,6 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
 ]
-
-[[package]]
-name = "dorobot-nexus"
-version = "0.1.0"
-source = "git+https://github.com/dorobot-org/dorobot-nexus?rev=5c78875#5c78875d7eb0eda2ecbb42c1146f14bc2407dd1b"
 
 [[package]]
 name = "dorobot-studio"
@@ -4047,13 +4042,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "makepad-plot"
-version = "0.2.0"
-dependencies = [
- "makepad-widgets",
-]
-
-[[package]]
 name = "makepad-regex"
 version = "0.1.0"
 source = "git+https://github.com/makepad/makepad?branch=dev#ed3eb88d4a135590fcef17e51a3dba0e04c25a33"
@@ -4132,19 +4120,6 @@ source = "git+https://github.com/makepad/makepad?branch=dev#ed3eb88d4a135590fcef
 dependencies = [
  "makepad-math",
  "makepad-micro-serde",
-]
-
-[[package]]
-name = "makepad-urdf-player"
-version = "0.1.0"
-source = "git+https://github.com/dorobot-org/makepad-urdf-viewer?rev=24bfa8f#24bfa8fe98a339cdd464c2b03da68f73166f4c33"
-dependencies = [
- "glam",
- "makepad-widgets",
- "makepad-xr",
- "serde_json",
- "stl_io",
- "urdf-rs 0.9.0",
 ]
 
 [[package]]
@@ -4674,19 +4649,6 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "nexus-studio"
-version = "0.1.0"
-dependencies = [
- "dorobot-nexus",
- "dorobot-ux",
- "makepad-plot",
- "makepad-urdf-player 0.1.0 (git+https://github.com/dorobot-org/makepad-urdf-viewer?rev=24bfa8f)",
- "makepad-widgets",
- "objc",
- "rfd",
 ]
 
 [[package]]
