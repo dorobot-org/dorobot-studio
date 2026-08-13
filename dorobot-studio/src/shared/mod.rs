@@ -1,5 +1,6 @@
 //! Shared styles and components
 
+pub mod shell_theme;
 pub mod styles;
 pub mod theme;
 

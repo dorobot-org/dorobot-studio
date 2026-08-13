@@ -510,37 +510,137 @@ script_mod! {
     mod.widgets.HomeScreen = set_type_default() do mod.widgets.HomeScreenBase{
         width: Fill
         height: Fill
-        flow: Down
 
-        show_bg: true
-        draw_bg.color: #x1a1a1f
-
-        // Full-width header (fixed)
-        app_header := AppHeader{}
-
-        Divider{}
-
-        // Main content area - simplified for testing
-        content_area := View{
+        // The layout is app-shell's: draggable, resizable, dockable panels and
+        // collapsible sidebars, rather than the fixed Views this screen used to
+        // build by hand. The content is unchanged — the same VideoPlayers,
+        // RobotViewer, plots and timeline, rehomed into shell slots — and the
+        // leaf ids are kept so the Rust side still finds them by `ids!()`.
+        //
+        // Chrome colours come from `shared::shell_theme`, handed to app-shell
+        // through its theme hook in `lerobot_app`.
+        shell := ShellLayout{
             width: Fill
             height: Fill
-            flow: Right
 
-            // Sidebar
-            sidebar := Sidebar{
-                width: 280
+            main_container +: {
+                header +: {
+                    title_label +: { text: "DoRobot Studio" }
+                }
+
+                dock_wrapper +: {
+                    dock +: {
+                        // Dataset and episodes, as the collapsible left rail.
+                        left_sidebar_content: Sidebar{
+                            width: Fill
+                            height: Fill
+                        }
+
+                        // Cameras and the robot view, now each a real panel:
+                        // draggable, dockable, closable, maximisable.
+                        center_content: View{
+                            width: Fill
+                            height: Fill
+                            panel_grid := PanelGrid{
+                                width: Fill
+                                height: Fill
+                                window_container +: {
+                                    row1 +: {
+                                        s1_1 +: {
+                                            title: "Camera"
+                                            content +: { primary_video := VideoPlayer{} }
+                                        }
+                                        s1_2 +: {
+                                            title: "Robot 3D View"
+                                            content +: { robot_viewer := RobotViewer{} }
+                                        }
+                                        s1_3 +: { visible: false width: 0 height: 0 }
+                                        s1_4 +: { visible: false width: 0 height: 0 }
+                                        s1_5 +: { visible: false width: 0 height: 0 }
+                                        s1_6 +: { visible: false width: 0 height: 0 }
+                                        s1_7 +: { visible: false width: 0 height: 0 }
+                                        s1_8 +: { visible: false width: 0 height: 0 }
+                                        s1_9 +: { visible: false width: 0 height: 0 }
+                                    }
+                                    row2 +: {
+                                        s2_1 +: {
+                                            title: "Camera 1"
+                                            content +: { camera_1 := VideoPlayer{} }
+                                        }
+                                        s2_2 +: {
+                                            title: "Camera 2"
+                                            content +: { camera_2 := VideoPlayer{} }
+                                        }
+                                        s2_3 +: { visible: false width: 0 height: 0 }
+                                        s2_4 +: { visible: false width: 0 height: 0 }
+                                        s2_5 +: { visible: false width: 0 height: 0 }
+                                        s2_6 +: { visible: false width: 0 height: 0 }
+                                        s2_7 +: { visible: false width: 0 height: 0 }
+                                        s2_8 +: { visible: false width: 0 height: 0 }
+                                        s2_9 +: { visible: false width: 0 height: 0 }
+                                    }
+                                    row3 +: { visible: false height: 0 }
+                                }
+                            }
+                        }
+
+                        // This app has no right rail; app-shell ships demo
+                        // content there (Properties/Editor/Terminal), so it is
+                        // replaced with nothing rather than left showing.
+                        right_sidebar_content: View{
+                            width: Fill
+                            height: Fill
+                        }
+
+                        // Plots and the timeline, as the footer strip.
+                        footer_content: View{
+                            width: Fill
+                            height: Fill
+                            footer_grid := FooterGrid{
+                                width: Fill
+                                height: Fill
+                                initial_panels: 3
+
+                                dock +: {
+                                    // Same for the footer's controller rail.
+                                    controller_content: View{
+                                        width: Fill
+                                        height: Fill
+                                    }
+
+                                    // Slots are FooterSlots holding stacked panels;
+                                    // one panel each (p0), the rest hidden.
+                                    panel_strip_content +: {
+                                        flow: Down
+                                        f1_0 +: {
+                                            p0 +: {
+                                                title: "observation.state"
+                                                content +: { state_plot := TimeSeriesPlot{} }
+                                            }
+                                        }
+                                        f1_1 +: {
+                                            p0 +: {
+                                                title: "action"
+                                                content +: { action_plot := TimeSeriesPlot{} }
+                                            }
+                                        }
+                                        f1_2 +: {
+                                            p0 +: {
+                                                title: "Timeline"
+                                                content +: { footer_timeline := FooterTimeline{} }
+                                            }
+                                        }
+                                        f1_3 +: { visible: false width: 0 }
+                                        f1_4 +: { visible: false width: 0 }
+                                        f1_5 +: { visible: false width: 0 }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-
-            VDivider{}
-
-            // Main content
-            main_content := MainContent{}
         }
-
-        Divider{}
-
-        // Full-width footer timeline (fixed height)
-        footer_timeline := FooterTimeline{}
     }
 }
 

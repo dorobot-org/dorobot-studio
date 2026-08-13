@@ -34,6 +34,7 @@ use makepad_app_shell::grid::footer_grid::FooterGridWidgetRefExt;
 use makepad_app_shell::grid::{LayoutState, FooterLayoutState, FooterSlotState};
 use makepad_app_shell::panel::PanelAction;
 use makepad_app_shell::theme::get_global_dark_mode;
+use makepad_app_shell::shell::layout::ShellLayoutWidgetRefExt;
 use crate::app_data::{AppData, PanelSlot, PanelContent};
 use crate::data::LeRobotDataset;
 use crate::sidebar_content::SidebarAction;
@@ -59,7 +60,7 @@ script_mod! {
                 body +: {
                     width: Fill
                     height: Fill
-                    ShellLayout{
+                    shell_layout := ShellLayout{
                         // Override the header with logo and title
                         main_container +: {
                             header +: {
@@ -435,6 +436,23 @@ pub struct DoRobotApp {
 
 impl MatchEvent for DoRobotApp {
     fn handle_startup(&mut self, cx: &mut Cx) {
+        // The dorobot look is the dark one. Every widget here already carries a
+        // dorobot-ux light/dark pair, and the shell now does too (see
+        // `shared::shell_theme`), but the global defaults to light and nothing
+        // ever moved it — so the whole dark half was wired and unreachable.
+        //
+        // Set once at startup rather than baking dark values into the light
+        // slots: that keeps the light theme intact and correct, so a toggle is
+        // a one-line change here rather than a re-theming exercise.
+        //
+        // Through the widget, not `set_global_dark_mode`: the global is an
+        // *output* of ShellLayout::apply_theme, which recomputes it from the
+        // widget's own state on first draw — so setting the global directly is
+        // overwritten a frame later and looks like nothing happened.
+        self.ui
+            .shell_layout(cx, ids!(shell_layout))
+            .set_dark_mode(cx, true);
+
         // Start playback timer
         self.playback_timer = cx.start_interval(1.0 / PLAYBACK_TIMER_FPS);
 

@@ -3,7 +3,12 @@
 //! app-shell draws its chrome — header, sidebar, panel bodies and title bars,
 //! footer — from `mod.widgets.shell.*` tokens bound as uniform defaults. This
 //! module replaces those tokens with dorobot-ux's surfaces, so the shell and
-//! the screens inside it read as one product.
+//! this app's own screens read as one product.
+//!
+//! Identical to dorobot-flex's copy on purpose: both apps draw the same
+//! product, and the tokens are the contract between them. If they ever need to
+//! differ, that is a design decision worth making explicitly rather than by
+//! letting two copies drift.
 //!
 //! It must be registered inside `script_mod_with_theme`'s hook: after
 //! app-shell's defaults, before its widgets bind them. Registering it anywhere

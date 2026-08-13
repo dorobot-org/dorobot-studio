@@ -4,6 +4,10 @@
 //! Supports LeRobot v2.0 and v3.0 dataset formats.
 
 use makepad_widgets::*;
+use makepad_app_shell::shell::layout::ShellLayoutWidgetRefExt;
+use makepad_app_shell::grid::panel_grid::PanelGridWidgetRefExt;
+use makepad_app_shell::grid::footer_grid::FooterGridWidgetRefExt;
+use makepad_app_shell::grid::{LayoutState, FooterLayoutState, FooterSlotState};
 use crate::data::LeRobotDataset;
 use crate::home::home_screen::HomeScreenWidgetRefExt;
 
@@ -44,6 +48,40 @@ pub struct DoRobotApp {
 
 impl MatchEvent for DoRobotApp {
     fn handle_startup(&mut self, cx: &mut Cx) {
+        // The dorobot look is the dark one. Set through the widget rather than
+        // `set_global_dark_mode`: the global is an *output* of
+        // ShellLayout::apply_theme, recomputed from the widget's own state on
+        // first draw, so setting it directly is overwritten a frame later.
+        self.ui
+            .shell_layout(cx, ids!(shell))
+            .set_dark_mode(cx, true);
+
+        // Titles live in the grid's layout state, which outlives the DSL
+        // defaults — set them here or a restored layout shows "Panel".
+        // The layout state establishes the panel ids the titles key on; setting
+        // titles without it leaves them on whatever the previous layout had.
+        let panel_grid = self.ui.panel_grid(cx, ids!(panel_grid));
+        panel_grid.set_layout_state(cx, LayoutState::with_panel_count(4));
+        panel_grid.set_panel_titles(&[
+            ("panel_0", "Camera"),
+            ("panel_1", "Robot 3D View"),
+            ("panel_2", "Camera 1"),
+            ("panel_3", "Camera 2"),
+        ]);
+
+        let footer_grid = self.ui.footer_grid(cx, ids!(footer_grid));
+        footer_grid.set_layout_state(cx, FooterLayoutState {
+            slots: vec![
+                FooterSlotState { visible: true, panel_ids: vec!["footer_panel_0".into()] },
+                FooterSlotState { visible: true, panel_ids: vec!["footer_panel_1".into()] },
+                FooterSlotState { visible: true, panel_ids: vec!["footer_panel_2".into()] },
+            ],
+            fullscreen_panel: None,
+        });
+        footer_grid.set_panel_title(cx, 0, 0, "observation.state");
+        footer_grid.set_panel_title(cx, 1, 0, "action");
+        footer_grid.set_panel_title(cx, 2, 0, "Timeline");
+
         // Start update timer for animations
         self.update_timer = cx.start_interval(1.0 / 60.0);
 
@@ -119,6 +157,15 @@ impl AppMain for DoRobotApp {
 
         // Register our modules
         crate::shared::script_mod(vm);
+
+        // The panel shell, with this app's palette handed to it in the window
+        // between app-shell's default tokens and the widgets that bind them.
+        // Registering the theme anywhere else compiles and silently does
+        // nothing — ShellLayout composes its children as this call returns.
+        makepad_app_shell::script_mod_with_theme(vm, |vm| {
+            crate::shared::shell_theme::script_mod(vm);
+        });
+
         crate::widgets::script_mod(vm);
         crate::home::script_mod(vm);
         crate::app::script_mod(vm);

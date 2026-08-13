@@ -242,6 +242,13 @@ impl SidebarContent {
         script_apply_eval!(cx, divider, {
             draw_bg +: { dark_mode: #(dm) }
         });
+        // The episode list carries its own dorobot-ux pair but is not reached by
+        // the push above — it is a widget, not a plain view, so it needs one of
+        // its own or it stays light while everything around it goes dark.
+        let mut episodes = self.view.episode_list(cx, ids!(episode_list));
+        script_apply_eval!(cx, episodes, {
+            draw_bg +: { dark_mode: #(dm) }
+        });
         for path in [
             ids!(dataset_section.dataset_label),
             ids!(dataset_section.dataset_name),

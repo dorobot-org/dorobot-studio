@@ -2364,6 +2364,7 @@ dependencies = [
  "ffmpeg-next",
  "kiss3d",
  "log 0.4.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "makepad-app-shell",
  "makepad-widgets",
  "mesh-loader",
  "parking_lot 0.12.5",
