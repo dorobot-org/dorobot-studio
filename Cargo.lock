@@ -2353,6 +2353,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "dorobot-nexus"
+version = "0.1.0"
+source = "git+https://github.com/dorobot-org/dorobot-nexus?rev=5c78875#5c78875d7eb0eda2ecbb42c1146f14bc2407dd1b"
+
+[[package]]
 name = "dorobot-studio"
 version = "0.1.0"
 dependencies = [
@@ -4675,6 +4680,7 @@ dependencies = [
 name = "nexus-studio"
 version = "0.1.0"
 dependencies = [
+ "dorobot-nexus",
  "dorobot-ux",
  "makepad-plot",
  "makepad-urdf-player 0.1.0 (git+https://github.com/dorobot-org/makepad-urdf-viewer?rev=24bfa8f)",
