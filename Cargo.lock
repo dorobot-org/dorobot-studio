@@ -3775,7 +3775,7 @@ dependencies = [
 [[package]]
 name = "makepad-app-shell"
 version = "0.1.0"
-source = "git+https://github.com/mofa-org/makepad-flex-layout?rev=78425b1#78425b1af5c3d45aea55be616e231f5225d4291d"
+source = "git+https://github.com/mofa-org/makepad-flex-layout?rev=3f971f0#3f971f0eeb113be439821458618927730e6f8254"
 dependencies = [
  "dirs",
  "makepad-widgets",

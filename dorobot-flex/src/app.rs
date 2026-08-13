@@ -602,7 +602,7 @@ impl AppMain for DoRobotApp {
         makepad_urdf_player::script_mod(vm);
 
         // Register shell widgets
-        makepad_app_shell::script_mod(vm);
+        makepad_app_shell::script_mod_with_theme(vm, |vm| { crate::shared::shell_theme::script_mod(vm); });
 
         // Register our modules
         crate::shared::script_mod(vm);
