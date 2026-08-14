@@ -400,7 +400,11 @@ script_mod! {
         }
 
         glyph := View{
-            width: 16 height: 16
+            // Any size works: the shader scales its 22-unit design space to
+            // rect_size, so the artwork fits the button rather than being
+            // clipped by it. It was drawn at fixed pixel coordinates reaching
+            // x=20, so even the original 19px view cropped the folder's edge.
+            width: 18 height: 18
             show_bg: true
             draw_bg +: {
                 icon: instance(0.0)
@@ -411,44 +415,48 @@ script_mod! {
                     let idle_c = mix(#x7A7169, #x7A7169, self.light)
                     let on_c = mix(#xD15010, #xEF6F2E, self.light)
                     let c = mix(idle_c, on_c, self.active)
+                    // Design space is 22 units square; scale it to the view.
+                    let s = self.rect_size.x / 22.0
+                    let w1 = 1.5 * s
+                    let w2 = 1.3 * s
                     if self.icon < 0.5 {
                         // library: folder
-                        sdf.move_to(2.0, 6.0)
-                        sdf.line_to(8.0, 6.0)
-                        sdf.line_to(10.0, 8.5)
-                        sdf.line_to(20.0, 8.5)
-                        sdf.line_to(20.0, 18.0)
-                        sdf.line_to(2.0, 18.0)
+                        sdf.move_to(2.0 * s, 6.0 * s)
+                        sdf.line_to(8.0 * s, 6.0 * s)
+                        sdf.line_to(10.0 * s, 8.5 * s)
+                        sdf.line_to(20.0 * s, 8.5 * s)
+                        sdf.line_to(20.0 * s, 18.0 * s)
+                        sdf.line_to(2.0 * s, 18.0 * s)
                         sdf.close_path()
-                        sdf.stroke(c, 1.5)
+                        sdf.stroke(c, w1)
                     } else if self.icon < 1.5 {
                         // record: ring with filled core
-                        sdf.circle(11.0, 11.0, 8.0)
-                        sdf.stroke(c, 1.5)
-                        sdf.circle(11.0, 11.0, 3.6)
+                        sdf.circle(11.0 * s, 11.0 * s, 8.0 * s)
+                        sdf.stroke(c, w1)
+                        sdf.circle(11.0 * s, 11.0 * s, 3.6 * s)
                         sdf.fill(c)
                     } else if self.icon < 2.5 {
                         // play: triangle
-                        sdf.move_to(5.0, 3.5)
-                        sdf.line_to(18.0, 11.0)
-                        sdf.line_to(5.0, 18.5)
+                        sdf.move_to(5.0 * s, 3.5 * s)
+                        sdf.line_to(18.0 * s, 11.0 * s)
+                        sdf.line_to(5.0 * s, 18.5 * s)
                         sdf.close_path()
-                        sdf.stroke(c, 1.5)
+                        sdf.stroke(c, w1)
                     } else if self.icon < 3.5 {
                         // hardware: chip
-                        sdf.box(5.0, 5.0, 12.0, 12.0, 1.5)
-                        sdf.stroke(c, 1.5)
-                        sdf.box(9.0, 9.0, 4.0, 4.0, 0.8)
+                        sdf.box(5.0 * s, 5.0 * s, 12.0 * s, 12.0 * s, 1.5 * s)
+                        sdf.stroke(c, w1)
+                        sdf.box(9.0 * s, 9.0 * s, 4.0 * s, 4.0 * s, 0.8 * s)
                         sdf.fill(c)
-                        sdf.move_to(2.0, 8.0)  sdf.line_to(5.0, 8.0)  sdf.stroke(c, 1.3)
-                        sdf.move_to(2.0, 14.0) sdf.line_to(5.0, 14.0) sdf.stroke(c, 1.3)
-                        sdf.move_to(17.0, 8.0)  sdf.line_to(20.0, 8.0)  sdf.stroke(c, 1.3)
-                        sdf.move_to(17.0, 14.0) sdf.line_to(20.0, 14.0) sdf.stroke(c, 1.3)
+                        sdf.move_to(2.0 * s, 8.0 * s)  sdf.line_to(5.0 * s, 8.0 * s)  sdf.stroke(c, w2)
+                        sdf.move_to(2.0 * s, 14.0 * s) sdf.line_to(5.0 * s, 14.0 * s) sdf.stroke(c, w2)
+                        sdf.move_to(17.0 * s, 8.0 * s)  sdf.line_to(20.0 * s, 8.0 * s)  sdf.stroke(c, w2)
+                        sdf.move_to(17.0 * s, 14.0 * s) sdf.line_to(20.0 * s, 14.0 * s) sdf.stroke(c, w2)
                     } else {
                         // eval: bar chart
-                        sdf.box(3.0, 12.0, 3.6, 7.0, 0.8)  sdf.fill(c)
-                        sdf.box(9.0, 7.0, 3.6, 12.0, 0.8)  sdf.fill(c)
-                        sdf.box(15.0, 3.0, 3.6, 16.0, 0.8) sdf.fill(c)
+                        sdf.box(3.0 * s, 12.0 * s, 3.6 * s, 7.0 * s, 0.8 * s)  sdf.fill(c)
+                        sdf.box(9.0 * s, 7.0 * s, 3.6 * s, 12.0 * s, 0.8 * s)  sdf.fill(c)
+                        sdf.box(15.0 * s, 3.0 * s, 3.6 * s, 16.0 * s, 0.8 * s) sdf.fill(c)
                     }
                     return sdf.result
                 }

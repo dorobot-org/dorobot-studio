@@ -221,7 +221,18 @@ script_mod! {
                 tree_head := mod.widgets.ux.PanelHead{ title +: { text: "dataset" } }
                 tree_body := View{
                     width: Fill height: Fill flow: Down
-                    padding: Inset{bottom: 8.}
+                    // Right padding clears the scroll bar; without it the bar
+                    // overlaps the quality chips at the row's trailing edge.
+                    padding: Inset{bottom: 8. right: 10.}
+                    // The row window above only engages once the list is longer
+                    // than the fixed row slots; when the panel is shorter than
+                    // those slots the tail was simply clipped and unreachable.
+                    // Real scroll bars cover that case, and both together mean
+                    // the list is reachable whatever the panel height.
+                    scroll_bars: ScrollBars{
+                        show_scroll_x: false
+                        show_scroll_y: true
+                    }
                     grp_0 := GroupHead{}
                     row_0 := EpisodeRow{}
                     row_1 := EpisodeRow{}
