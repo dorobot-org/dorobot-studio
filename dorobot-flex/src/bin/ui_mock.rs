@@ -69,6 +69,29 @@ script_mod! {
                         width: Fill
                         height: Fill
 
+                        // The hamburger's floating menu and the side rail are
+                        // the same navigation, the way mofa-studio does it: one
+                        // content widget, two presentations (pinned inline, or
+                        // floating on hover). app-shell already has that
+                        // mechanism — `pinned_sidebar` and `overlay_sidebar`
+                        // both mount OverlaySidebarContent — but it ships
+                        // stock "Quick Actions" (New Project / Open Recent /
+                        // Import File …) which has nothing to do with this app.
+                        // Both now show the nav, so the floating menu is the
+                        // side menu rather than a second, unrelated one.
+                        pinned_sidebar +: {
+                            pinned_sidebar_content: mod.widgets.ux.NavRail{
+                                width: Fill
+                                height: Fill
+                            }
+                        }
+                        overlay_sidebar +: {
+                            overlay_sidebar_content: mod.widgets.ux.NavRail{
+                                width: Fill
+                                height: Fill
+                            }
+                        }
+
                         main_container +: {
                             header +: {
                                 title_label +: { text: "DoRobot Studio" }

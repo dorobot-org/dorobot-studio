@@ -18,18 +18,25 @@ script_mod! {
     mod.widgets.ux = {}
 
     // ---------------------------------------------------------------- color --
-    mod.widgets.ux.GROUND      = #x141312
-    mod.widgets.ux.SURFACE     = #x1B1917
-    mod.widgets.ux.ELEVATED    = #x2A2725
-    mod.widgets.ux.LINE        = #x2A2725
-    mod.widgets.ux.INK         = #xE8E5E1
-    mod.widgets.ux.INK_2       = #xD8D4CF
-    mod.widgets.ux.INK_3       = #x7A7169
-    mod.widgets.ux.ACCENT      = #xD15010
-    mod.widgets.ux.ACCENT_SOFT = #x2A2725
-    mod.widgets.ux.OK          = #x3E7A4A
-    mod.widgets.ux.WARN        = #xB07514
-    mod.widgets.ux.STOP        = #xC43B36
+    // The dorobot-ux palette, dark theme. These were a private copy that had
+    // drifted: the surfaces matched, but every semantic colour was the *light*
+    // variant painted on a dark ground — ACCENT was VIO_L, OK was OK_L, WARN
+    // AMB_L, STOP HOT_L — which is why the orange read muted and the good/bad
+    // chips looked dull. They are colours designed for a white background.
+    //
+    // Names are dorobot_ux::tokens::pal's, so a drift is greppable next time.
+    mod.widgets.ux.GROUND      = #x141312   // pal::DEEP_D
+    mod.widgets.ux.SURFACE     = #x1B1917   // pal::LIFT_D
+    mod.widgets.ux.ELEVATED    = #x2A2725   // pal::EDGE_D
+    mod.widgets.ux.LINE        = #x2A2725   // pal::EDGE_D
+    mod.widgets.ux.INK         = #xF2F0EC   // pal::INK_D
+    mod.widgets.ux.INK_2       = #xCFC9C2   // pal::INK2_D
+    mod.widgets.ux.INK_3       = #x94877F   // pal::DIM_D
+    mod.widgets.ux.ACCENT      = #xEF6F2E   // pal::VIO_D
+    mod.widgets.ux.ACCENT_SOFT = #x2A1708   // pal::VIOG_D — the accent's ground
+    mod.widgets.ux.OK          = #x6FAB78   // pal::OK_D
+    mod.widgets.ux.WARN        = #xF0A330   // pal::AMB_D
+    mod.widgets.ux.STOP        = #xE54048   // pal::HOT_D
 
     // ----------------------------------------------------------------- type --
     // Roboto for Latin, Noto Sans SC for Chinese. ("Open Sans SC" is not a
