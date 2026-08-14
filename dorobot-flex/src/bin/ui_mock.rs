@@ -69,31 +69,18 @@ script_mod! {
                         width: Fill
                         height: Fill
 
-                        // The hamburger's floating menu and the side rail are
-                        // the same navigation, the way mofa-studio does it: one
-                        // content widget, two presentations (pinned inline, or
-                        // floating on hover). app-shell already has that
-                        // mechanism — `pinned_sidebar` and `overlay_sidebar`
-                        // both mount OverlaySidebarContent — but it ships
-                        // stock "Quick Actions" (New Project / Open Recent /
-                        // Import File …) which has nothing to do with this app.
-                        // Both now show the nav, so the floating menu is the
-                        // side menu rather than a second, unrelated one.
-                        pinned_sidebar +: {
-                            pinned_sidebar_content: mod.widgets.ux.NavRail{
-                                width: Fill
-                                height: Fill
-                            }
-                        }
-                        overlay_sidebar +: {
-                            overlay_sidebar_content: mod.widgets.ux.NavRail{
-                                width: Fill
-                                height: Fill
-                            }
-                        }
+                        // No floating menu. app-shell ships a hover/pinned
+                        // overlay sidebar (stock "Quick Actions"), but this app
+                        // already has a permanent nav rail — a second menu over
+                        // the top of it is redundant. Both presentations are
+                        // hidden, and the hamburger with them, since it would
+                        // otherwise be a control that does nothing.
+                        pinned_sidebar +: { visible: false width: 0 }
+                        overlay_sidebar +: { visible: false width: 0 }
 
                         main_container +: {
                             header +: {
+                                hamburger_btn +: { visible: false width: 0 }
                                 title_label +: { text: "DoRobot Studio" }
                             }
 

@@ -390,17 +390,17 @@ script_mod! {
                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                 let well = mix(#x2A2725, #xF2F0ED, self.light)
                 let idle = mix(#x0F131B00, #xF7F8FB00, self.light)
-                sdf.box(9.0, 4.0, self.rect_size.x - 18.0, self.rect_size.y - 8.0, 0.5)
+                sdf.box(6.0, 2.0, self.rect_size.x - 12.0, self.rect_size.y - 4.0, 0.5)
                 sdf.fill(mix(idle, well, self.active))
                 // slim accent marker on the leading edge
-                sdf.box(2.0, 12.0, 2.5, self.rect_size.y - 24.0, 1.25)
+                sdf.box(1.0, 10.0, 2.5, self.rect_size.y - 20.0, 1.25)
                 sdf.fill(mix(idle, #xD15010, self.active))
                 return sdf.result
             }
         }
 
         glyph := View{
-            width: 19 height: 19
+            width: 16 height: 16
             show_bg: true
             draw_bg +: {
                 icon: instance(0.0)
