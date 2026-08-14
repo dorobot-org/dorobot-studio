@@ -1,6 +1,7 @@
 //! Episode List Widget using FileTree for reliable click handling
 
 use makepad_widgets::*;
+use makepad_app_shell::theme::get_global_dark_mode;
 use makepad_widgets::file_tree::{FileTree, FileTreeAction};
 use std::collections::HashMap;
 
@@ -77,6 +78,17 @@ script_mod! {
 
             node_height: 48.0
 
+            // `filler` is what paints the empty area below the last row — the
+            // white block under an unloaded dataset. It is a DrawBgQuad, not a
+            // View: the tree has no show_bg/draw_bg of its own, so this is the
+            // only surface to reach.
+            filler +: {
+                dark_mode: instance(0.0)
+                pixel: fn() {
+                    return mix(#xFBFAF8, #x141312, self.dark_mode)
+                }
+            }
+
             scroll_bars: ScrollBars{
                 show_scroll_x: false
                 show_scroll_y: true
@@ -87,22 +99,23 @@ script_mod! {
                 indent_width: 8.0
 
                 draw_bg +: {
+                    dark_mode: instance(0.0)
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                         sdf.rect(0., 0., self.rect_size.x, self.rect_size.y)
-                        sdf.fill(mix(
-                            mix(#xFFFFFF, #xF2F0ED, self.hover),
-                            #xE8E5E1,
-                            self.active
-                        ))
+                        let base = mix(#xFBFAF8, #x141312, self.dark_mode)
+                        let hovered = mix(#xF2F0ED, #x1B1917, self.dark_mode)
+                        let selected = mix(#xE8E5E1, #x2A2725, self.dark_mode)
+                        sdf.fill(mix(mix(base, hovered, self.hover), selected, self.active))
                         return sdf.result
                     }
                 }
 
                 draw_text +: {
                     text_style +: {font_size: 10.0}
+                    dark_mode: instance(0.0)
                     get_color: fn() {
-                        return mix(#x6B625B, #x6B625B, self.active)
+                        return mix(#x5E564E, #xCFC9C2, self.dark_mode)
                     }
                 }
 
@@ -117,22 +130,25 @@ script_mod! {
                 indent_width: 8.0
 
                 draw_bg +: {
+                    dark_mode: instance(0.0)
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                         sdf.rect(0., 0., self.rect_size.x, self.rect_size.y)
-                        sdf.fill(mix(
-                            mix(#xFFFFFF, #xF2F0ED, self.hover),
-                            #xE8E5E1,
-                            self.active
-                        ))
+                        let base = mix(#xFBFAF8, #x141312, self.dark_mode)
+                        let hovered = mix(#xF2F0ED, #x1B1917, self.dark_mode)
+                        let selected = mix(#xE8E5E1, #x2A2725, self.dark_mode)
+                        sdf.fill(mix(mix(base, hovered, self.hover), selected, self.active))
                         return sdf.result
                     }
                 }
 
                 draw_text +: {
                     text_style +: {font_size: 10.0}
+                    dark_mode: instance(0.0)
                     get_color: fn() {
-                        return mix(#x6B625B, #x2A2725, self.active)
+                        let base = mix(#x5E564E, #xCFC9C2, self.dark_mode)
+                        let sel = mix(#x2A2725, #xF2F0EC, self.dark_mode)
+                        return mix(base, sel, self.active)
                     }
                 }
 
@@ -259,6 +275,29 @@ impl Widget for EpisodeList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // This widget's root and its header both carry a dorobot-ux light/dark
+        // pair, but nothing ever moved `dark_mode` off its default, so the list
+        // stayed light while the rest of the window went dark.
+        //
+        // Applied here, against `self.view`, rather than pushed in from the
+        // sidebar: `draw_bg` lives on the inner View, so a push aimed at this
+        // widget's own ref fails type-check in the script VM — and that failure
+        // takes the whole app down with a divide-by-zero in draw_list_2d rather
+        // than degrading.
+        let dm = get_global_dark_mode();
+        script_apply_eval!(cx, self.view, {
+            draw_bg +: { dark_mode: #(dm) }
+        });
+        let mut header = self.view.view(cx, ids!(header));
+        script_apply_eval!(cx, header, {
+            draw_bg +: { dark_mode: #(dm) }
+        });
+        script_apply_eval!(cx, self.file_tree, {
+            filler +: { dark_mode: #(dm) }
+            file_node +: { draw_bg +: { dark_mode: #(dm) } draw_text +: { dark_mode: #(dm) } }
+            folder_node +: { draw_bg +: { dark_mode: #(dm) } draw_text +: { dark_mode: #(dm) } }
+        });
+
         // Draw header
         self.view.draw_walk(cx, scope, walk)?;
 
