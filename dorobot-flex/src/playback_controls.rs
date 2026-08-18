@@ -2,7 +2,6 @@
 
 use makepad_widgets::*;
 use makepad_app_shell::theme::get_global_dark_mode;
-use crate::app_data::AppData;
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -241,25 +240,17 @@ impl Widget for PlaybackControls {
         }
     }
 
+    /// Draws the controls and nothing else.
+    ///
+    /// There used to be a second path here that pulled the transport state out
+    /// of the old viewer's `AppData` during draw. That viewer is gone, and the
+    /// screens that remain hold their playback state themselves and push it in
+    /// through [`PlaybackControlsRef::set_playing`] — which existed already,
+    /// precisely because an owner without `AppData` in scope got a button
+    /// labelled "Play" while the episode was playing.
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let dm = get_global_dark_mode();
         self.apply_theme(cx, dm);
-
-        if let Some(data) = scope.data.get::<AppData>() {
-            if self.is_playing != data.is_playing {
-                self.is_playing = data.is_playing;
-                let text = if self.is_playing { "Pause" } else { "Play" };
-                self.view.button(cx, ids!(buttons_row.play_btn)).set_text(cx, text);
-            }
-
-            self.view.label(cx, ids!(time_row.current_time))
-                .set_text(cx, &AppData::format_time(data.current_time));
-            self.view.label(cx, ids!(time_row.total_time))
-                .set_text(cx, &AppData::format_time(data.episode_duration));
-            self.view.label(cx, ids!(speed_row.speed_label))
-                .set_text(cx, &format!("{:.1}x", data.playback_speed));
-        }
-
         self.view.draw_walk(cx, scope, walk)
     }
 }

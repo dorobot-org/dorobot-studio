@@ -4,7 +4,6 @@ members = [
     "crates/dorobot-ux",
     "crates/dorobot-types",
     "crates/dorobot-dora-bridge",
-    "dorobot-studio",
     "dorobot-flex",
 ]
 
