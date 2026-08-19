@@ -3459,11 +3459,12 @@ dependencies = [
 [[package]]
 name = "makepad-urdf-player"
 version = "0.1.0"
-source = "git+https://github.com/dorobot-org/makepad-urdf-viewer?rev=957f23092fa05983ffa2a398ee112d37132c2b4e#957f23092fa05983ffa2a398ee112d37132c2b4e"
+source = "git+https://github.com/dorobot-org/makepad-urdf-viewer?rev=283d303df6d3e158bac2c281a190ac1f749b5bd5#283d303df6d3e158bac2c281a190ac1f749b5bd5"
 dependencies = [
  "glam",
  "makepad-widgets",
  "makepad-xr",
+ "roxmltree",
  "serde_json",
  "stl_io",
  "urdf-rs",
@@ -5447,6 +5448,12 @@ dependencies = [
  "untrusted",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rustc-demangle"
