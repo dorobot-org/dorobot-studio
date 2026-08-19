@@ -4,19 +4,17 @@ version.workspace = true
 edition = "2021"
 description = "DoRobot Studio with Flex Layout Shell"
 
-[[bin]]
-name = "dorobot-flex"
-path = "src/main.rs"
-
 [dependencies]
 # Workspace dependencies
 dorobot-types = { workspace = true }
 
 # Makepad
 makepad-widgets = { workspace = true }
+# The shared visual language: tokens, faces and the widget kit.
+dorobot-ux = { workspace = true }
 makepad-app-shell = { workspace = true }
 # Local WIP clone already ported to makepad dev; upstream still targets rik
-makepad-urdf-player = { git = "https://github.com/dorobot-org/makepad-urdf-viewer", rev = "ab713d2" }
+makepad-urdf-player = { git = "https://github.com/dorobot-org/makepad-urdf-viewer", rev = "283d303df6d3e158bac2c281a190ac1f749b5bd5" }
 
 # Logging
 log = { workspace = true }

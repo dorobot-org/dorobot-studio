@@ -28,8 +28,8 @@ script_mod! {
                 text_style: mod.widgets.flex.TEXT_SMALL{}
                 dark_mode: instance(0.0)
                 get_color: fn() {
-                    let light_text = vec4(0.35, 0.35, 0.4, 1.0)
-                    let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                    let light_text = vec4(0.420, 0.384, 0.357, 1.0)
+                    let dark_text = vec4(0.478, 0.443, 0.412, 1.0)
                     return mix(light_text, dark_text, self.dark_mode)
                 }
             }
@@ -41,8 +41,8 @@ script_mod! {
                 text_style: mod.widgets.flex.TEXT_MONO{}
                 dark_mode: instance(0.0)
                 get_color: fn() {
-                    let light_text = vec4(0.1, 0.1, 0.12, 1.0)
-                    let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                    let light_text = vec4(0.106, 0.098, 0.090, 1.0)
+                    let dark_text = vec4(0.910, 0.898, 0.882, 1.0)
                     return mix(light_text, dark_text, self.dark_mode)
                 }
             }
@@ -71,8 +71,8 @@ script_mod! {
             draw_bg +: {
                 dark_mode: instance(0.0)
                 pixel: fn() {
-                    let light_bg = vec4(0.945, 0.961, 0.976, 1.0)
-                    let dark_bg = vec4(0.133, 0.133, 0.157, 1.0)
+                    let light_bg = vec4(0.949, 0.941, 0.929, 1.0)
+                    let dark_bg = vec4(0.165, 0.153, 0.145, 1.0)
                     return mix(light_bg, dark_bg, self.dark_mode)
                 }
             }
@@ -82,8 +82,8 @@ script_mod! {
                     text_style: mod.widgets.flex.TEXT_PANEL_TITLE{}
                     dark_mode: instance(0.0)
                     get_color: fn() {
-                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
-                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                        let light_text = vec4(0.106, 0.098, 0.090, 1.0)
+                        let dark_text = vec4(0.910, 0.898, 0.882, 1.0)
                         return mix(light_text, dark_text, self.dark_mode)
                     }
                 }
@@ -101,10 +101,10 @@ script_mod! {
                 draw_bg +: {
                     dark_mode: instance(0.0)
                     pixel: fn() {
-                        let light_normal = vec4(0.945, 0.961, 0.976, 1.0)
-                        let dark_normal = vec4(0.165, 0.165, 0.196, 1.0)
-                        let light_hover = vec4(0.886, 0.910, 0.941, 1.0)
-                        let dark_hover = vec4(0.176, 0.176, 0.208, 1.0)
+                        let light_normal = vec4(0.949, 0.941, 0.929, 1.0)
+                        let dark_normal = vec4(0.165, 0.153, 0.145, 1.0)
+                        let light_hover = vec4(0.910, 0.898, 0.882, 1.0)
+                        let dark_hover = vec4(0.165, 0.153, 0.145, 1.0)
                         let normal = mix(light_normal, dark_normal, self.dark_mode)
                         let hover_color = mix(light_hover, dark_hover, self.dark_mode)
                         return mix(normal, hover_color, self.hover)
@@ -114,8 +114,8 @@ script_mod! {
                     text_style: mod.widgets.flex.TEXT_SMALL{}
                     dark_mode: instance(0.0)
                     get_color: fn() {
-                        let light_text = vec4(0.1, 0.1, 0.12, 1.0)
-                        let dark_text = vec4(0.878, 0.878, 0.878, 1.0)
+                        let light_text = vec4(0.106, 0.098, 0.090, 1.0)
+                        let dark_text = vec4(0.910, 0.898, 0.882, 1.0)
                         return mix(light_text, dark_text, self.dark_mode)
                     }
                 }
@@ -133,8 +133,8 @@ script_mod! {
                 dark_mode: instance(0.0)
                 pixel: fn() {
                     // Light mode: light gray, Dark mode: dark blue-gray
-                    let light_bg = vec4(0.92, 0.93, 0.95, 1.0)  // Light gray
-                    let dark_bg = vec4(0.102, 0.102, 0.133, 1.0) // #1a1a22
+                    let light_bg = vec4(0.949, 0.941, 0.929, 1.0)  // Light gray
+                    let dark_bg = vec4(0.106, 0.098, 0.090, 1.0) // #1a1a22
                     return mix(light_bg, dark_bg, self.dark_mode)
                 }
             }
@@ -160,8 +160,8 @@ script_mod! {
                         text_style: mod.widgets.flex.TEXT_BODY{}
                         dark_mode: instance(0.0)
                         get_color: fn() {
-                            let light_text = vec4(0.45, 0.45, 0.5, 1.0)
-                            let dark_text = vec4(0.333, 0.333, 0.376, 1.0)
+                            let light_text = vec4(0.478, 0.443, 0.412, 1.0)
+                            let dark_text = vec4(0.420, 0.384, 0.357, 1.0)
                             return mix(light_text, dark_text, self.dark_mode)
                         }
                     }
@@ -181,8 +181,8 @@ script_mod! {
                         text_style: mod.widgets.flex.TEXT_BODY{}
                         dark_mode: instance(0.0)
                         get_color: fn() {
-                            let light_text = vec4(0.35, 0.35, 0.4, 1.0)
-                            let dark_text = vec4(0.533, 0.533, 0.565, 1.0)
+                            let light_text = vec4(0.420, 0.384, 0.357, 1.0)
+                            let dark_text = vec4(0.478, 0.443, 0.412, 1.0)
                             return mix(light_text, dark_text, self.dark_mode)
                         }
                     }
@@ -200,7 +200,7 @@ script_mod! {
                 error_label := Label{
                     draw_text +: {
                         text_style: mod.widgets.flex.TEXT_BODY{}
-                        color: #xff6666
+                        color: #xC43B36
                     }
                     text: ""
                 }
@@ -220,8 +220,8 @@ script_mod! {
             draw_bg +: {
                 dark_mode: instance(0.0)
                 pixel: fn() {
-                    let light_bg = vec4(1.0, 1.0, 1.0, 1.0)
-                    let dark_bg = vec4(0.102, 0.102, 0.122, 1.0)
+                    let light_bg = vec4(1.000, 1.000, 1.000, 1.0)
+                    let dark_bg = vec4(0.106, 0.098, 0.090, 1.0)
                     return mix(light_bg, dark_bg, self.dark_mode)
                 }
             }

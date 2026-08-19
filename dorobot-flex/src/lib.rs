@@ -18,9 +18,6 @@ pub mod shared;
 pub mod widgets;
 pub mod data;
 
-pub mod app_data;
-pub mod sidebar_content;
-pub mod episode_info_panel;
+/// Still here because `ui`'s Play screen draws with it; the rest of the old
+/// viewer's app modules went with its binary.
 pub mod playback_controls;
-pub mod footer_stack;
-pub mod app;

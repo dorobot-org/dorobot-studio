@@ -1,11 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/makepad-plot",
-    "nexus-studio",
+    "crates/dorobot-ux",
     "crates/dorobot-types",
     "crates/dorobot-dora-bridge",
-    "dorobot-studio",
     "dorobot-flex",
 ]
 
@@ -18,12 +16,16 @@ authors = ["dorobot team"]
 [workspace.dependencies]
 # Internal crates
 dorobot-types = { path = "crates/dorobot-types" }
+# The shared visual language: tokens + custom-drawn widgets.
+dorobot-ux = { path = "crates/dorobot-ux" }
 dorobot-dora-bridge = { path = "crates/dorobot-dora-bridge" }
 
 # Makepad
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
 # Pinned by rev: the makepad-dev branch carries the dev-script port.
-makepad-app-shell = { git = "https://github.com/mofa-org/makepad-flex-layout", rev = "78425b1" }
+# theme-hook: exposes mod.widgets.shell.* tokens and script_mod_with_theme,
+# which is how dorobot-flex supplies the nexus palette to the shell chrome.
+makepad-app-shell = { git = "https://github.com/mofa-org/makepad-flex-layout", rev = "3f971f0" }
 
 # Rerun viewer, optional and off by default (see dorobot-studio's `rerun`
 # feature). Taken from crates.io rather than the monorepo: a git rev would make

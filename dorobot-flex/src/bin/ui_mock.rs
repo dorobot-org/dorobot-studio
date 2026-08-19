@@ -13,6 +13,7 @@ use dorobot_flex::widgets::timeline::TimelineAction;
 use dorobot_flex::playback_controls::PlaybackAction;
 use dorobot_flex::ui::{frame, hardware::HardwareScreenWidgetRefExt, library::LibraryScreenWidgetRefExt, record::RecordScreenWidgetRefExt, play::PlayScreenWidgetRefExt, eval::EvalScreenWidgetRefExt};
 use makepad_widgets::*;
+use dorobot_flex::makepad_app_shell::shell::layout::ShellLayoutWidgetRefExt;
 
 /// Transport tick. Matches the shipping player, and is independent of the
 /// dataset's own fps: it advances a clock, and every view resolves itself
@@ -51,31 +52,89 @@ script_mod! {
             main_window := Window{
                 window.title: "DoRobot Studio"
                 window.inner_size: vec2(1536, 1024)
-                pass.clear_color: #x12151C
+                pass.clear_color: #x141312
 
                 body +: {
                     width: Fill
                     height: Fill
-                    flow: Down
 
-                    app_bar := mod.widgets.ux.AppBar{}
-
-                    work := View{
+                    // The screens sit in app-shell's ShellLayout rather than the
+                    // hand-rolled AppBar + work-row they were prototyped in, so
+                    // they inherit what the framework provides: a collapsible
+                    // rail, resizable regions, and panels that dock and persist.
+                    //
+                    // The nav rail and the pages keep their ids, so the screen
+                    // switching in `Screen::apply` still resolves.
+                    shell := ShellLayout{
                         width: Fill
                         height: Fill
-                        flow: Right
 
-                        nav := mod.widgets.ux.NavRail{}
+                        // No floating menu. app-shell ships a hover/pinned
+                        // overlay sidebar (stock "Quick Actions"), but this app
+                        // already has a permanent nav rail — a second menu over
+                        // the top of it is redundant. Both presentations are
+                        // hidden, and the hamburger with them, since it would
+                        // otherwise be a control that does nothing.
+                        pinned_sidebar +: { visible: false width: 0 }
+                        overlay_sidebar +: { visible: false width: 0 }
 
-                        pages := View{
-                            width: Fill
-                            height: Fill
-                            flow: Overlay
-                            page_library := LibraryScreen{}
-                            page_hardware := HardwareScreen{ visible: false }
-                            page_record := RecordScreen{ visible: false }
-                            page_play := PlayScreen{ visible: false }
-                            page_eval := EvalScreen{ visible: false }
+                        main_container +: {
+                            header +: {
+                                hamburger_btn +: { visible: false width: 0 }
+                                title_label +: { text: "DoRobot Studio" }
+                            }
+
+                            dock_wrapper +: {
+                                dock +: {
+                                    // Region sizes. The shell defaults suit a
+                                    // three-pane IDE; this UX wants a narrow
+                                    // icon rail, no footer strip, and no right
+                                    // rail — its screens bring their own side
+                                    // content.
+                                    root +: { align: SplitterAlign.FromB(0.0) }
+                                    main_area +: { align: SplitterAlign.FromA(96.0) }
+                                    right_area +: { align: SplitterAlign.FromB(0.0) }
+
+                                    // The shell's footer grid ships seven empty
+                                    // demo panels; nothing here uses it.
+                                    footer_content: View{
+                                        width: Fill
+                                        height: Fill
+                                    }
+
+                                    left_sidebar_content: View{
+                                        width: Fill
+                                        height: Fill
+                                        nav := mod.widgets.ux.NavRail{
+                                            width: Fill
+                                            height: Fill
+                                        }
+                                    }
+
+                                    center_content: View{
+                                        width: Fill
+                                        height: Fill
+                                        pages := View{
+                                            width: Fill
+                                            height: Fill
+                                            flow: Overlay
+                                            page_library := LibraryScreen{}
+                                            page_hardware := HardwareScreen{ visible: false }
+                                            page_record := RecordScreen{ visible: false }
+                                            page_play := PlayScreen{ visible: false }
+                                            page_eval := EvalScreen{ visible: false }
+                                        }
+                                    }
+
+                                    // The screens carry their own side content
+                                    // (Library's Hardware panel, Play's inspector),
+                                    // so the shell's own rails stay empty.
+                                    right_sidebar_content: View{
+                                        width: Fill
+                                        height: Fill
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -138,6 +197,12 @@ impl App {
 
 impl MatchEvent for App {
     fn handle_startup(&mut self, cx: &mut Cx) {
+        // Dark is the product's look; set through the widget because the
+        // global is recomputed from ShellLayout's own state on first draw.
+        self.ui
+            .shell_layout(cx, ids!(shell))
+            .set_dark_mode(cx, true);
+
         // Optional deep-link so the diff runner can shoot one screen per launch.
         let args: Vec<String> = std::env::args().collect();
         if let Some(i) = args.iter().position(|a| a == "--screen") {
@@ -326,11 +391,15 @@ impl MatchEvent for App {
 impl AppMain for App {
     fn script_mod(vm: &mut ScriptVm) -> ScriptValue {
         makepad_widgets::script_mod(vm);
+        // Shared tokens first: flex's styles alias onto them.
+        dorobot_ux::script_mod(vm);
         // RobotView, and the XR scene it draws into, back the Play 3D pane
         makepad_urdf_player::makepad_xr::script_mod(vm);
         makepad_urdf_player::script_mod(vm);
         // app-shell supplies the real draggable PanelGrid used by the Play screen
-        dorobot_flex::makepad_app_shell::script_mod(vm);
+        dorobot_flex::makepad_app_shell::script_mod_with_theme(vm, |vm| {
+            dorobot_flex::shared::shell_theme::script_mod(vm);
+        });
         // TimeSeriesPlot lives in widgets and is used by the Play screen's plot
         // pane, so both must register before ui::script_mod evaluates that DSL.
         // shared goes first: it defines the mod.widgets.flex text styles the

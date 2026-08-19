@@ -31,9 +31,9 @@ script_mod! {
                     let p = self.pos
                     // soft vignette so the pane reads as a camera stage
                     let d = length(p - vec2(0.5, 0.45))
-                    let core = mix(#x101620, #x18202D, p.y)
-                    let lit = mix(core, #x0A0E15, clamp(d * 0.9, 0.0, 1.0))
-                    return mix(lit, mix(#x20252E, #x0D1017, clamp(d, 0.0, 1.0)), self.light * 0.0)
+                    let core = mix(#x141312, #x1B1917, p.y)
+                    let lit = mix(core, #x0A0908, clamp(d * 0.9, 0.0, 1.0))
+                    return mix(lit, mix(#x2A2725, #x141312, clamp(d, 0.0, 1.0)), self.light * 0.0)
                 }
             }
             badge := RoundedView{
@@ -46,7 +46,7 @@ script_mod! {
                 show_bg: true
                 draw_bg +: {
                     color: #x14181FCC
-                    border_radius: 4.0
+                    border_radius: 0.0
                 }
                 dot := View{
                     width: 7 height: 7
@@ -55,14 +55,14 @@ script_mod! {
                         pixel: fn() {
                             let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                             sdf.circle(3.5, 3.5, 3.0)
-                            sdf.fill(#xE5484D)
+                            sdf.fill(#xC43B36)
                             return sdf.result
                         }
                     }
                 }
                 Label{
                     text: "LIVE"
-                    draw_text +: { color: #xE3E7EF text_style: mod.widgets.ux.TEXT_CHIP{} }
+                    draw_text +: { color: #xE8E5E1 text_style: mod.widgets.ux.TEXT_CHIP{} }
                 }
             }
         }
@@ -80,7 +80,7 @@ script_mod! {
             draw_text +: {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_META{}
-                get_color: fn() { return mix(#x8B95AD, #x6A7387, self.light) }
+                get_color: fn() { return mix(#xD8D4CF, #x7A7169, self.light) }
             }
         }
         jv := Label{
@@ -88,7 +88,7 @@ script_mod! {
             draw_text +: {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_META{}
-                get_color: fn() { return mix(#xD7DDEA, #x2A3244, self.light) }
+                get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
             }
         }
         wave := View{
@@ -108,9 +108,9 @@ script_mod! {
                         + 0.05 * sin(x * 91.0 + s * 1.7)
                     let d = abs(self.pos.y - y)
                     let line = 1.0 - smoothstep(0.0, 0.09, d)
-                    let hue0 = mix(#x5B9BF0, #x58BE8A, fract(s * 0.37))
-                    let hue = mix(hue0, #xD9A24E, fract(s * 0.19))
-                    let bg = mix(#x141922, #xF3F5F9, self.light)
+                    let hue0 = mix(#xD15010, #x3E7A4A, fract(s * 0.37))
+                    let hue = mix(hue0, #xB07514, fract(s * 0.19))
+                    let bg = mix(#x1B1917, #xF2F0ED, self.light)
                     return mix(bg, hue, line)
                 }
             }
@@ -120,7 +120,7 @@ script_mod! {
             draw_text +: {
                 light: instance(0.0)
                 text_style: mod.widgets.ux.TEXT_META{}
-                get_color: fn() { return mix(#x646D82, #x99A1B3, self.light) }
+                get_color: fn() { return mix(#x7A7169, #xD8D4CF, self.light) }
             }
         }
     }
@@ -133,14 +133,14 @@ script_mod! {
             light: instance(0.0)
             pixel: fn() {
                 let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 4.0)
-                sdf.fill(mix(mix(#x232A38, #x161B24, self.pos.y),
-                             mix(#xEDF0F6, #xE1E6EF, self.pos.y), self.light))
+                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 0.5)
+                sdf.fill(mix(mix(#x2A2725, #x1B1917, self.pos.y),
+                             mix(#xF2F0ED, #xE8E5E1, self.pos.y), self.light))
                 // sprocket strips top and bottom
                 sdf.box(0.0, 0.0, self.rect_size.x, 7.0, 0.0)
-                sdf.fill(mix(#x11151D, #xD3D9E4, self.light))
+                sdf.fill(mix(#x141312, #xD8D4CF, self.light))
                 sdf.box(0.0, self.rect_size.y - 7.0, self.rect_size.x, 7.0, 0.0)
-                sdf.fill(mix(#x11151D, #xD3D9E4, self.light))
+                sdf.fill(mix(#x141312, #xD8D4CF, self.light))
                 return sdf.result
             }
         }
@@ -155,7 +155,7 @@ script_mod! {
         show_bg: true
         draw_bg +: {
             light: instance(0.0)
-            pixel: fn() { return mix(#x12151C, #xF4F6FA, self.light) }
+            pixel: fn() { return mix(#x141312, #xFBFAF8, self.light) }
         }
 
         // ---- session bar ----
@@ -175,7 +175,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_BODY{}
-                    get_color: fn() { return mix(#xC7CEDD, #x39415A, self.light) }
+                    get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
                 }
             }
             counter := Label{
@@ -183,7 +183,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.FONT_MEDIUM{font_size: 17.0}
-                    get_color: fn() { return mix(#xE6EAF2, #x161C29, self.light) }
+                    get_color: fn() { return mix(#xE8E5E1, #x1B1917, self.light) }
                 }
             }
             elapsed := Label{
@@ -192,7 +192,7 @@ script_mod! {
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.FONT_MEDIUM{font_size: 17.0}
-                    get_color: fn() { return mix(#x8B95AD, #x6A7387, self.light) }
+                    get_color: fn() { return mix(#xD8D4CF, #x7A7169, self.light) }
                 }
             }
         }
@@ -255,8 +255,8 @@ script_mod! {
                                 let dx = (p.x - self.rect_size.x * 0.5) / max(p.y - horizon, 1.0)
                                 let vline = (1.0 - step(0.02, fract(dx * 2.5 + 0.5))) * below
                                 let g = clamp(hline + vline, 0.0, 1.0) * 0.45
-                                let base = mix(#x0C0F16, #xEDF0F6, self.light)
-                                return mix(base, mix(#x38425C, #xC6CDDA, self.light), g)
+                                let base = mix(#x141312, #xF2F0ED, self.light)
+                                return mix(base, mix(#x2A2725, #xD8D4CF, self.light), g)
                             }
                         }
                         Label{
@@ -264,7 +264,7 @@ script_mod! {
                             draw_text +: {
                                 light: instance(0.0)
                                 text_style: mod.widgets.ux.TEXT_META{}
-                                get_color: fn() { return mix(#x4A5470, #xA7AEBF, self.light) }
+                                get_color: fn() { return mix(#x6B625B, #xD8D4CF, self.light) }
                             }
                         }
                     }
@@ -284,7 +284,7 @@ script_mod! {
                                 draw_text +: {
                                     light: instance(0.0)
                                     text_style: mod.widgets.ux.TEXT_CHIP{}
-                                    get_color: fn() { return mix(#x77819A, #x8992A6, self.light) }
+                                    get_color: fn() { return mix(#x7A7169, #xD8D4CF, self.light) }
                                 }
                             }
                             prog_val := Label{
@@ -292,7 +292,7 @@ script_mod! {
                                 draw_text +: {
                                     light: instance(0.0)
                                     text_style: mod.widgets.ux.TEXT_META{}
-                                    get_color: fn() { return mix(#xD7DDEA, #x2A3244, self.light) }
+                                    get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
                                 }
                             }
                         }
@@ -305,9 +305,9 @@ script_mod! {
                                 pixel: fn() {
                                     let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                                     sdf.box(0.0, 0.0, self.rect_size.x, 8.0, 4.0)
-                                    sdf.fill(mix(#x2B3243, #xE4E8F0, self.light))
+                                    sdf.fill(mix(#x2A2725, #xE8E5E1, self.light))
                                     sdf.box(0.0, 0.0, self.rect_size.x * self.frac, 8.0, 4.0)
-                                    sdf.fill(#x4C8BF5)
+                                    sdf.fill(#xD15010)
                                     return sdf.result
                                 }
                             }
@@ -317,7 +317,7 @@ script_mod! {
                             draw_text +: {
                                 light: instance(0.0)
                                 text_style: mod.widgets.ux.TEXT_META{}
-                                get_color: fn() { return mix(#x8B95AD, #x6A7387, self.light) }
+                                get_color: fn() { return mix(#xD8D4CF, #x7A7169, self.light) }
                             }
                         }
                         cues := Label{
@@ -325,7 +325,7 @@ script_mod! {
                             draw_text +: {
                                 light: instance(0.0)
                                 text_style: mod.widgets.ux.TEXT_CHIP{}
-                                get_color: fn() { return mix(#x77819A, #x8992A6, self.light) }
+                                get_color: fn() { return mix(#x7A7169, #xD8D4CF, self.light) }
                             }
                         }
                     }
@@ -370,17 +370,17 @@ script_mod! {
                     light: instance(0.0)
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                        sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                        let idle = mix(#x161B25, #xFFFFFF, self.light)
-                        sdf.fill_keep(mix(idle, mix(#x1E2532, #xF1F4FA, self.light), self.hover))
-                        sdf.stroke(mix(#x333B52, #xD7DCE7, self.light), 1.0)
+                        sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                        let idle = mix(#x1B1917, #xFFFFFF, self.light)
+                        sdf.fill_keep(mix(idle, mix(#x2A2725, #xF2F0ED, self.light), self.hover))
+                        sdf.stroke(mix(#x2A2725, #xD8D4CF, self.light), 1.0)
                         return sdf.result
                     }
                 }
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_BODY{}
-                    get_color: fn() { return mix(#xC9D2E2, #x333B4D, self.light) }
+                    get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
                 }
             }
             btn_rerecord := Button{
@@ -390,17 +390,17 @@ script_mod! {
                     light: instance(0.0)
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                        sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                        let idle = mix(#x161B25, #xFFFFFF, self.light)
-                        sdf.fill_keep(mix(idle, mix(#x1E2532, #xF1F4FA, self.light), self.hover))
-                        sdf.stroke(mix(#x333B52, #xD7DCE7, self.light), 1.0)
+                        sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                        let idle = mix(#x1B1917, #xFFFFFF, self.light)
+                        sdf.fill_keep(mix(idle, mix(#x2A2725, #xF2F0ED, self.light), self.hover))
+                        sdf.stroke(mix(#x2A2725, #xD8D4CF, self.light), 1.0)
                         return sdf.result
                     }
                 }
                 draw_text +: {
                     light: instance(0.0)
                     text_style: mod.widgets.ux.TEXT_BODY{}
-                    get_color: fn() { return mix(#xC9D2E2, #x333B4D, self.light) }
+                    get_color: fn() { return mix(#xD8D4CF, #x2A2725, self.light) }
                 }
             }
             Filler{}
@@ -413,9 +413,9 @@ script_mod! {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
                         let c = self.rect_size.x * 0.5
                         sdf.circle(c, c, c - 2.0)
-                        sdf.stroke(#xE5484D, 2.0)
+                        sdf.stroke(#xC43B36, 2.0)
                         sdf.circle(c, c, c - 8.0)
-                        sdf.fill(mix(#xE5484D, #xC4383D, self.hover))
+                        sdf.fill(mix(#xC43B36, #xC43B36, self.hover))
                         // stop glyph while recording, solid disc when idle
                         sdf.box(c - 9.0, c - 9.0, 18.0, 18.0, 3.0)
                         sdf.fill(mix(#xE5484D00, #xFFFFFF, self.recording))
@@ -430,8 +430,8 @@ script_mod! {
                 draw_bg +: {
                     pixel: fn() {
                         let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                        sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 6.0)
-                        sdf.fill(mix(#x3B7BEE, #x5C93F7, self.hover))
+                        sdf.box(0.5, 0.5, self.rect_size.x - 1.0, self.rect_size.y - 1.0, 0.5)
+                        sdf.fill(mix(#xD15010, #xD15010, self.hover))
                         return sdf.result
                     }
                 }
