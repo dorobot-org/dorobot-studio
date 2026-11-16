@@ -81,6 +81,10 @@ The [Nano room integration guide](tools/aisle-validation/README.md#mobile-nano-i
 retains the original AISLE validation experiments. The recording workflow currently
 captures at 5 Hz; the Live mode does not imply 30 fps throughput.
 
+For a Codex-operated Nexus simulation that picks three floor cubes and places
+them on a coffee table while streaming into Studio, see the
+[three-cube live demo](tools/nano-three-cubes/README.md).
+
 ## Overview
 
 Dorobot provides tools for visualizing robotics datasets, with a focus on **LeRobot** format datasets:
