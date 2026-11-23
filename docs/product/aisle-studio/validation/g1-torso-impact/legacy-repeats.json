@@ -1,0 +1,107 @@
+{
+  "recipe": {
+    "mass_kg": 0.221,
+    "speed_m_s": 1.112,
+    "lateral_m": -0.009
+  },
+  "repeats": [
+    {
+      "repeat": 0,
+      "control_sha256": "ea3bf0a4c1ac83e800098f1a1ad5445bdfd57f6d9fa2ae6e16fdad06f6dc4a42",
+      "passed": false,
+      "loaded_steps": 2000,
+      "wrist_error_mm": 2.622826487090743,
+      "disturbance": {
+        "contacts": 0,
+        "normal_impulse_sum_ns": 0,
+        "links": [],
+        "recovery_s": null,
+        "last_contact_step": null,
+        "recovered_step": null,
+        "passed": false
+      }
+    },
+    {
+      "repeat": 0,
+      "control_sha256": "97166d9d9939ff46f7704b62ecc1fee2d3d29d16f26655f1d6e1e976c488c86c",
+      "passed": false,
+      "loaded_steps": 2000,
+      "wrist_error_mm": 2.6227492689532745,
+      "disturbance": {
+        "contacts": 0,
+        "normal_impulse_sum_ns": 0,
+        "links": [],
+        "recovery_s": null,
+        "last_contact_step": null,
+        "recovered_step": null,
+        "passed": false
+      }
+    },
+    {
+      "repeat": 1,
+      "control_sha256": "ea3bf0a4c1ac83e800098f1a1ad5445bdfd57f6d9fa2ae6e16fdad06f6dc4a42",
+      "passed": false,
+      "loaded_steps": 2000,
+      "wrist_error_mm": 2.6228956589971766,
+      "disturbance": {
+        "contacts": 0,
+        "normal_impulse_sum_ns": 0,
+        "links": [],
+        "recovery_s": null,
+        "last_contact_step": null,
+        "recovered_step": null,
+        "passed": false
+      }
+    },
+    {
+      "repeat": 1,
+      "control_sha256": "97166d9d9939ff46f7704b62ecc1fee2d3d29d16f26655f1d6e1e976c488c86c",
+      "passed": false,
+      "loaded_steps": 2000,
+      "wrist_error_mm": 2.622804135668266,
+      "disturbance": {
+        "contacts": 0,
+        "normal_impulse_sum_ns": 0,
+        "links": [],
+        "recovery_s": null,
+        "last_contact_step": null,
+        "recovered_step": null,
+        "passed": false
+      }
+    },
+    {
+      "repeat": 2,
+      "control_sha256": "ea3bf0a4c1ac83e800098f1a1ad5445bdfd57f6d9fa2ae6e16fdad06f6dc4a42",
+      "passed": true,
+      "loaded_steps": 2000,
+      "wrist_error_mm": 2.623357663591494,
+      "disturbance": {
+        "contacts": 2,
+        "normal_impulse_sum_ns": 0.11294574767816812,
+        "links": [
+          "pelvis_contour_link"
+        ],
+        "recovery_s": 0.5,
+        "last_contact_step": 638,
+        "recovered_step": 738,
+        "passed": true
+      }
+    },
+    {
+      "repeat": 2,
+      "control_sha256": "97166d9d9939ff46f7704b62ecc1fee2d3d29d16f26655f1d6e1e976c488c86c",
+      "passed": false,
+      "loaded_steps": 2000,
+      "wrist_error_mm": 2.6227959513030825,
+      "disturbance": {
+        "contacts": 0,
+        "normal_impulse_sum_ns": 0,
+        "links": [],
+        "recovery_s": null,
+        "last_contact_step": null,
+        "recovered_step": null,
+        "passed": false
+      }
+    }
+  ]
+}

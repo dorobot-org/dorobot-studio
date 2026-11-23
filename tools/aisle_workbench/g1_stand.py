@@ -24,7 +24,26 @@ def impact_parameters(values):
     return values
 
 
-def simulate(out, model, plan, impact=False, parameters=None, reach_weights=None):
+def launch_position(recipe, aim):
+    if aim == "pelvis-v1":
+        return [0.29, recipe["lateral_m"], 0.16]
+    if aim != "torso-v2":
+        raise ValueError("Unknown G1 impact calibration")
+    # The neutral G1 torso collision mesh spans z=0.035..0.356 m in the pelvis
+    # frame. Aim at its mid-height at x=0.05 m, compensating for ballistic drop.
+    flight_s = (0.29 - 0.05) / recipe["speed_m_s"]
+    return [0.29, recipe["lateral_m"], 0.195 + 0.5 * 9.81 * flight_s**2]
+
+
+def simulate(
+    out,
+    model,
+    plan,
+    impact=False,
+    parameters=None,
+    reach_weights=None,
+    impact_aim="torso-v2",
+):
     from g1_reach_checkpoint import features
     from aisle.kinematics import load_urdf_chain
     from aisle.sim import nexus_backend as nx
@@ -115,7 +134,7 @@ def simulate(out, model, plan, impact=False, parameters=None, reach_weights=None
     initial_xy = robot.get_pos()[:2].copy()
     block_id = scene.gpu_index(0, block.handles[0]) if block is not None else None
     launch_at = 600  # Three seconds into the scored trial.
-    launch_pos = [0.29, parameters["lateral_m"], 0.16]
+    launch_pos = launch_position(parameters, impact_aim)
     launch_velocity = [-parameters["speed_m_s"], 0, 0]
     wrist_name = plan["joint"].split("_", 1)[0] + "_wrist_yaw_link"
     wrist = robot.get_link(wrist_name)
@@ -144,6 +163,7 @@ def simulate(out, model, plan, impact=False, parameters=None, reach_weights=None
             floor_z_m=float(floor_z),
             disturbance=(
                 dict(
+                    calibration=impact_aim,
                     mass_kg=block_mass,
                     side_m=block_side,
                     initial_position_m=launch_pos,
@@ -356,7 +376,15 @@ def simulate(out, model, plan, impact=False, parameters=None, reach_weights=None
             recovery_s=recovery_s,
             last_contact_step=last_contact,
             recovered_step=recovery_step,
-            passed=bool(impact_rows and recovery_s is not None and recovery_s <= 2),
+            passed=bool(
+                impact_rows
+                and recovery_s is not None
+                and recovery_s <= 2
+                and (
+                    impact_aim != "torso-v2"
+                    or any(row["link"] == "torso_link" for row in impact_rows)
+                )
+            ),
         )
         if impact
         else None
