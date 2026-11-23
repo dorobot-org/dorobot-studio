@@ -1,0 +1,105 @@
+# Offline replay of the Tracer navigation chain on a recorded bag, with the Studio bridge on top (no robot, no CAN).
+# Template: run_replay.sh replaces the at-sign tokens (DORA_NAV, NAV_TEST, BAG, BRIDGE, HERE, DATAFLOW) and starts it as
+# `nav-replay`. Wiring follows DORA_NAV/apps/tracer/tracer_nav.yml. Left out on purpose: tracer, navcmd (binds UDP
+# 127.0.0.1:9998), cmd_gate, goal_resume, livox. goal_once sends one goal when loc_trust says trusted; pure_pursuit is
+# only here for goal_status (its cmd_vel goes nowhere).
+# Initial pose: none injected. loc_refine relocalizes by itself on the bag's start (the bag starts at the map origin,
+# P5), exactly as on the robot; navcmd/manual_initialpose inputs are dropped.
+nodes:
+  - id: player
+    path: @NAV_TEST@/nodes/dn_bag_player.py
+    env:
+      BAG: @BAG@
+      SECONDS: "0"            # whole bag
+      RATE: "1.0"             # real time
+      LOOPS: "1"
+      POINT_FORMAT: MID360    # one format for super_lio and hdl, like the livox driver
+    outputs: [pointcloud, imu]
+  - id: super_lio
+    path: @DORA_NAV@/build/modules/odometry/super_lio_dora/super_lio_dora_node
+    env:
+      CLOUD_BODY: "1"
+    inputs:
+      pointcloud: {source: player/pointcloud, queue_size: 4}
+      imu: {source: player/imu, queue_size: 400}
+    outputs: [odom, odom_imu, cloud_world, cloud_body]
+  - id: hdl
+    path: @DORA_NAV@/build/modules/localization/hdl_localization_dora/hdl_localization_dora_node
+    args: @DORA_NAV@/apps/tracer/hdl_tracer_live.json
+    inputs:
+      pointcloud: {source: player/pointcloud, queue_size: 4}
+      imu: {source: player/imu, queue_size: 400}
+      initialpose: loc_refine/initialpose
+    outputs: [pose]
+  - id: pose_fuser
+    path: @DORA_NAV@/build/modules/localization/pose_fuser/pose_fuser_node
+    inputs:
+      odom: {source: super_lio/odom, queue_size: 100}
+      map_pose: {source: hdl/pose, queue_size: 10}
+    outputs: [map_odom, map_base]
+  - id: loc_refine
+    path: @DORA_NAV@/build/modules/localization/loc_refine_dora/loc_refine_dora_node
+    env:
+      MAP_PCD: /home/nvidia/nvme/tracer_slam/maps/garage_20261121/map.pcd
+    inputs:
+      cloud_body: {source: super_lio/cloud_body, queue_size: 10}
+      odom: {source: super_lio/odom, queue_size: 100}
+      trust: loc_trust/status
+      map_pose: hdl/pose
+    outputs: [initialpose, state, result]
+  - id: loc_trust
+    path: @DORA_NAV@/build/modules/localization/loc_trust_dora/loc_trust_dora_node
+    inputs:
+      initialpose: loc_refine/initialpose
+      odom: {source: super_lio/odom, queue_size: 100}
+      cloud: {source: super_lio/cloud_body, queue_size: 10}
+      map_pose: {source: hdl/pose, queue_size: 10}
+      map_odom: {source: pose_fuser/map_odom, queue_size: 10}
+    outputs: [status]
+  - id: cloud_to_scan
+    path: @DORA_NAV@/build/modules/planner/nav_costmap/cloud_to_scan_dora_node
+    inputs:
+      cloud: {source: super_lio/cloud_body, queue_size: 4}
+    outputs: [scan]
+  - id: goal_once
+    path: @HERE@/goal_once.py
+    env:
+      GOAL: "1.5 1.5 0"       # map point Q
+      GOAL_ID: REPLAY1
+    inputs:
+      trust: loc_trust/status
+    outputs: [goal]
+  - id: astar_planner
+    path: @DORA_NAV@/build/modules/planner/global_planner/astar_planner_dora/astar_planner_dora_node
+    args: @DORA_NAV@/modules/planner/global_planner/astar_planner_dora/config/astar_planner_tracer.json
+    inputs:
+      pose: pose_fuser/map_base
+      goal: goal_once/goal
+      goal_status: pure_pursuit/goal_status
+      scan: cloud_to_scan/scan
+      tick: dora/timer/millis/100
+    outputs: [path]
+  - id: pure_pursuit
+    path: @DORA_NAV@/build/modules/planner/local_planner/pure_pursuit_dora/pure_pursuit_dora_node
+    args: @DORA_NAV@/modules/planner/local_planner/pure_pursuit_dora/config/pure_pursuit_tracer.json
+    inputs:
+      goal: goal_once/goal
+      path: astar_planner/path
+      pose: pose_fuser/map_base
+      scan: cloud_to_scan/scan
+      tick: dora/timer/millis/50
+    outputs: [cmd_vel, goal_status]
+  - id: viz_bridge
+    path: @BRIDGE@
+    args: @HERE@/../../config/tracer.json
+    env:
+      NAV_VIZ_DATAFLOW: @DATAFLOW@
+    inputs:
+      pose: {source: pose_fuser/map_base, queue_size: 2}
+      path: {source: astar_planner/path, queue_size: 2}
+      goal: {source: goal_once/goal, queue_size: 2}
+      goal_status: {source: pure_pursuit/goal_status, queue_size: 2}
+      scan: {source: cloud_to_scan/scan, queue_size: 2}
+      cloud: {source: super_lio/cloud_body, queue_size: 2}
+      trust: {source: loc_trust/status, queue_size: 2}
+      refine_state: {source: loc_refine/state, queue_size: 2}

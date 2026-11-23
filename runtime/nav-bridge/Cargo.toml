@@ -14,5 +14,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 
+# The probe holds its evaluation logic and unit tests (`cargo test` runs them).
+[[example]]
+name = "dviz_probe"
+test = true
+
 # Own workspace: not part of the Studio root workspace or runtime/.
 [workspace]

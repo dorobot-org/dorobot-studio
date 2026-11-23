@@ -131,3 +131,14 @@ closes Zenoh. A Studio reader that is connected but stalled holds that close for
 it and then ends the process with `_exit` after flushing stdout and stderr; the process
 is gone within about 1 s of Stop. If the worker thread dies, the bridge prints an ERROR
 line on stderr and keeps consuming Dora events (dropping them) until Stop.
+
+## Offline replay and probe
+
+`tests/replay/` replays the mapping bag through the nav chain plus this bridge without the
+robot (`run_replay.sh`, template `nav_replay.yml.in`, one goal from `goal_once.py`; it
+refuses to start while the live `tracer-nav` dataflow runs). `examples/dviz_probe.rs`
+subscribes to `dviz/**`, prints a JSON summary and checks it against `tests/replay/expect.json`:
+
+```bash
+cargo run --release --locked --example dviz_probe -- --connect tcp/127.0.0.1:7450 --seconds 60 --expect tests/replay/expect.json
+```

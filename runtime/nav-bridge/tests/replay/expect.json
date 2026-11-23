@@ -1,0 +1,16 @@
+{
+  "_comment": "Expectations for dviz_probe on the offline replay. max_hz is 1.1x the rate cap of the design (nav/status: 10 Hz); one extra message is allowed per entity (startup publish). nav/plan only appears after the goal (goal_once sends it once the localization is trusted), so run the probe long enough (60 s).",
+  "max_total_bytes_per_s": 1000000,
+  "entities": {
+    "map/grid":        { "required": true, "max_hz": 0.22 },
+    "map/cloud":       { "required": true, "max_hz": 0.11, "max_points": 50000 },
+    "robot/pose":      { "required": true, "max_hz": 22.0 },
+    "robot/footprint": { "required": true, "max_hz": 22.0 },
+    "nav/plan":        { "required": true },
+    "nav/trail":       { "required": true, "max_hz": 2.2 },
+    "nav/goal":        { "required": true, "max_hz": 0.55 },
+    "sensors/scan":    { "required": true, "max_hz": 11.0 },
+    "sensors/cloud":   { "required": true, "max_hz": 5.5, "max_points": 5000 },
+    "nav/status":      { "required": true, "max_hz": 10.0 }
+  }
+}
