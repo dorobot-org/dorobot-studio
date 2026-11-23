@@ -46,3 +46,8 @@ To repeat this handoff, follow the workbench setup and run the native verifier w
 A further matched spatial test gave each provider the same instruction on two different robot-camera observations. Each selected red and then blue and reached both targets under the hardware-model limits. The head camera and the estimated floor positions are retained with the measured outcomes. [How to use onboard perception](onboard-authoring/README.md)
 
 One additional DeepSeek authoring call during camera-fault testing returned an unreadable controller. The draft failed before a robot run started. A fresh call produced a valid plan and the complete camera-timing test passed. Studio now retains malformed text for inspection and accepts a single JSON object in a Markdown code fence. The five-request comparison above counts the original fixed set of prompts.
+
+
+## Run Studio with Codex absent from PATH
+
+A fresh headless Studio process received a PATH containing only the Octos executable and the macOS system utilities. The test checked that Codex could not be resolved on that PATH. Octos 2.0.3-rc.11 called DeepSeek's hosted model. Both camera-selected Nano approaches and the G1 standing-impact trial passed. G1 retained two-foot support throughout 2,000 physics steps and reached its 100-step recovery window after 0.50 seconds. Each Studio journey reopened its final measured outcome on restart. [Recorded environment, requests and native trials](octos-standalone.json)
