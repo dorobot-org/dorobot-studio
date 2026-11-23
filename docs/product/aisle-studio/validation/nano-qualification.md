@@ -47,3 +47,7 @@ Set `MANIFEST_SHA256` to the published digest printed by `prepare`. The runner e
 32 of 50 complete tasks passed (64%, 95% Wilson interval 50.1–75.9%). All 50 motor traces verified. The audit counted zero measured guard bypasses. This version missed the 45-success threshold. Four failures had all three cubes placed successfully but lost loaded wheel contact for 1, 12, 1 and 9 physics steps respectively. These remained whole-task failures. The full report discloses every seed and salt and retains all 18 failures. [Scored report](nano-holdout-a/report.json) · [Raw evidence for independent verification](nano-holdout-a/evidence.zip)
 
 [Native 50-case verification and restart](nano-holdout-a/native-verification.json) · [Studio Evidence screenshot](nano-holdout-a/studio.png)
+
+### Cohort B
+
+36 of 50 complete tasks passed (72%, 95% Wilson interval 58.3–82.5%). All 50 motor traces verified with zero measured guard bypasses. This cohort also missed the 45-success threshold. Four trials found no reachable unoccupied release point, four encountered an unreachable arm waypoint, three placed every cube but lost loaded wheel support for one step, one lost the red cube in transit and two missed a placement criterion. The two independent cohorts provide separate estimates. [Scored report and disclosed seeds](nano-holdout-b/report.json) · [Exact controller, motor logs and evidence for every case](nano-holdout-b/evidence.zip)
