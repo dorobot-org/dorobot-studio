@@ -173,10 +173,19 @@ impl DvizSession {
         self.stop_current(&mut lock(&self.control));
     }
 
-    /// Where visual messages go from now on.
+    /// Where visual messages go from now on. Does not wait for the previous
+    /// sink to go away: dropping a Rerun stream flushes it, which can take
+    /// seconds while its viewer is still starting, so it is dropped on a
+    /// short-lived thread, after the sink lock is released.
     pub fn set_sink(&self, sink: Box<dyn Sink>) {
-        let previous = mem::replace(&mut *lock(&self.shared.sink), sink);
-        drop(previous);
+        let previous = {
+            let mut current = lock(&self.shared.sink);
+            mem::replace(&mut *current, sink)
+        };
+        // If no thread can be started, the sink is dropped here after all.
+        let _ = thread::Builder::new()
+            .name("dviz-sink-drop".into())
+            .spawn(move || drop(previous));
     }
 
     pub fn set_entity_enabled(&self, entity: &str, enabled: bool) {
@@ -481,4 +490,52 @@ impl Inbox {
 /// statements, so a panic elsewhere must not take the UI down with it.
 fn lock<T: ?Sized>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Drops as slowly as a Rerun stream flushing to a viewer that is still
+    /// starting, then raises `dropped`.
+    struct SlowDropSink {
+        dropped: Arc<AtomicBool>,
+    }
+
+    impl Sink for SlowDropSink {
+        fn log(&mut self, _: &str, _: &MvizMessage, _: Option<&[u8]>) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    impl Drop for SlowDropSink {
+        fn drop(&mut self) {
+            thread::sleep(Duration::from_secs(2));
+            self.dropped.store(true, Ordering::Relaxed);
+        }
+    }
+
+    #[test]
+    fn set_sink_does_not_drop_the_previous_sink_on_the_caller() {
+        let session = DvizSession::new();
+        let dropped = Arc::new(AtomicBool::new(false));
+        session.set_sink(Box::new(SlowDropSink {
+            dropped: dropped.clone(),
+        }));
+
+        let started = Instant::now();
+        session.set_sink(Box::new(DiscardSink));
+        let took = started.elapsed();
+        assert!(took < Duration::from_millis(100), "set_sink took {took:?}");
+
+        // Still dropped, just elsewhere.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !dropped.load(Ordering::Relaxed) && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(20));
+        }
+        assert!(
+            dropped.load(Ordering::Relaxed),
+            "the old sink was never dropped"
+        );
+    }
 }
