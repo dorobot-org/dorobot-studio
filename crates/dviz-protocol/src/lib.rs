@@ -21,6 +21,8 @@
 //! - `scalar` - Time-series scalar values
 //! - `image` - Images (binary payload)
 //! - `log` - System log entries from nodes
+//! - `grid2d` - 2D occupancy grids / costmaps (u8 binary payload)
+//! - `status` - Navigation status (JSON only)
 
 use serde::{Deserialize, Serialize};
 
@@ -463,6 +465,117 @@ pub fn serialize_message(header: &MvizMessage, binary: Option<&[u8]>) -> Vec<u8>
     result
 }
 
+/// Kind of 2D grid carried by a `grid2d` message
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GridKind {
+    /// Occupancy grid (free / occupied / unknown)
+    Occupancy,
+    /// Costmap
+    Costmap,
+}
+
+/// `grid2d` header (the `data` field). The binary payload is `width * height`
+/// bytes, row-major, row 0 is the row with the smallest y.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Grid2DHeader {
+    /// Cells along x
+    pub width: u32,
+    /// Cells along y
+    pub height: u32,
+    /// Cell edge length in metres
+    pub resolution: f32,
+    /// x, y, yaw in the map frame (corner of the lower-left cell)
+    pub origin: [f32; 3],
+    /// What the cell values mean
+    pub kind: GridKind,
+}
+
+/// Occupancy cell value: free
+pub const GRID_FREE: u8 = 0;
+/// Occupancy cell value: occupied
+pub const GRID_OCCUPIED: u8 = 100;
+/// Occupancy cell value: unknown
+pub const GRID_UNKNOWN: u8 = 255;
+/// Upper bound on `width * height` accepted by [`parse_grid2d`]
+pub const GRID_MAX_CELLS: usize = 16 * 1024 * 1024;
+
+/// Validate a `grid2d` header against its binary payload and return the cells.
+///
+/// Returns `None` unless `width` and `height` are > 0, `width * height <=
+/// GRID_MAX_CELLS`, `resolution` is finite and > 0, and `binary.len() ==
+/// width * height`.
+pub fn parse_grid2d<'a>(header: &Grid2DHeader, binary: &'a [u8]) -> Option<&'a [u8]> {
+    if header.width == 0 || header.height == 0 {
+        return None;
+    }
+    if !header.resolution.is_finite() || header.resolution <= 0.0 {
+        return None;
+    }
+    let cells = (header.width as usize).checked_mul(header.height as usize)?;
+    if cells > GRID_MAX_CELLS || binary.len() != cells {
+        return None;
+    }
+    Some(binary)
+}
+
+/// Navigation status (the `data` field of a `status` message)
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct NavStatus {
+    /// Localization trusted (`loc_trust/status` status == 0)
+    pub loc_ok: bool,
+    pub loc_reason: String,
+    /// `loc_refine/state` state
+    pub refine_state: Option<String>,
+    /// `cmd_gate/state` armed
+    pub armed: bool,
+    pub estop: bool,
+    pub gate_reason: String,
+    /// `tracer/state` mode
+    pub chassis_mode: Option<String>,
+    pub chassis_armed: Option<bool>,
+    pub chassis_reason: Option<String>,
+    pub goal_id: Option<String>,
+    /// `pure_pursuit/goal_status` state
+    pub goal_state: Option<String>,
+    pub goal_reason: Option<String>,
+    /// `map_base` twist linear.x
+    pub v: Option<f32>,
+    /// `map_base` twist angular.z
+    pub w: Option<f32>,
+    /// Goal command channel enabled (always false until delivery 2)
+    #[serde(default)]
+    pub cmd_goal_enabled: bool,
+}
+
+/// Entity names published by the navigation bridge (`dviz/<robot_id>/<entity>`)
+pub mod nav_entities {
+    pub const MAP_GRID: &str = "map/grid";
+    pub const MAP_CLOUD: &str = "map/cloud";
+    pub const ROBOT_POSE: &str = "robot/pose";
+    pub const ROBOT_FOOTPRINT: &str = "robot/footprint";
+    pub const NAV_PLAN: &str = "nav/plan";
+    pub const NAV_TRAIL: &str = "nav/trail";
+    pub const NAV_GOAL: &str = "nav/goal";
+    pub const SENSORS_SCAN: &str = "sensors/scan";
+    pub const SENSORS_CLOUD: &str = "sensors/cloud";
+    pub const NAV_STATUS: &str = "nav/status";
+
+    /// Every entity name above
+    pub const ALL: [&str; 10] = [
+        MAP_GRID,
+        MAP_CLOUD,
+        ROBOT_POSE,
+        ROBOT_FOOTPRINT,
+        NAV_PLAN,
+        NAV_TRAIL,
+        NAV_GOAL,
+        SENSORS_SCAN,
+        SENSORS_CLOUD,
+        NAV_STATUS,
+    ];
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -588,5 +701,112 @@ mod tests {
     #[test]
     fn parse_points_rejects_short_binary() {
         assert_eq!(parse_points_xyz_f32(&[0u8; 20], 2), None);
+    }
+
+    fn grid_header(width: u32, height: u32, resolution: f32) -> Grid2DHeader {
+        Grid2DHeader {
+            width,
+            height,
+            resolution,
+            origin: [-1.0, 2.0, 0.5],
+            kind: GridKind::Occupancy,
+        }
+    }
+
+    #[test]
+    fn grid2d_round_trip() {
+        let header = grid_header(4, 3, 0.05);
+        let cells: Vec<u8> = (0u8..12)
+            .map(|i| [GRID_FREE, GRID_OCCUPIED, GRID_UNKNOWN][(i % 3) as usize])
+            .collect();
+        let msg = MvizMessage {
+            msg_type: "grid2d".to_string(),
+            timestamp: Some(1.5),
+            data: serde_json::to_value(&header).unwrap(),
+            format: Some("u8".to_string()),
+            count: Some(12),
+        };
+        let bytes = serialize_message(&msg, Some(&cells));
+        let (parsed, binary) = parse_message(&bytes).unwrap();
+        assert_eq!(parsed.msg_type, "grid2d");
+        assert_eq!(parsed.count, Some(12));
+        let parsed_header: Grid2DHeader = serde_json::from_value(parsed.data).unwrap();
+        assert_eq!(parsed_header, header);
+        assert_eq!(parse_grid2d(&parsed_header, binary.unwrap()), Some(&cells[..]));
+    }
+
+    #[test]
+    fn grid2d_kind_serializes_lowercase() {
+        let v = serde_json::to_value(GridKind::Costmap).unwrap();
+        assert_eq!(v, serde_json::json!("costmap"));
+    }
+
+    #[test]
+    fn grid2d_rejects_bad_sizes() {
+        let ok = vec![0u8; 12];
+        assert!(parse_grid2d(&grid_header(4, 3, 0.05), &ok).is_some());
+        // length mismatch
+        assert_eq!(parse_grid2d(&grid_header(4, 3, 0.05), &ok[..11]), None);
+        assert_eq!(parse_grid2d(&grid_header(4, 3, 0.05), &[0u8; 13]), None);
+        // zero dimensions
+        assert_eq!(parse_grid2d(&grid_header(0, 3, 0.05), &[]), None);
+        assert_eq!(parse_grid2d(&grid_header(4, 0, 0.05), &[]), None);
+        // bad resolution
+        assert_eq!(parse_grid2d(&grid_header(4, 3, f32::NAN), &ok), None);
+        assert_eq!(parse_grid2d(&grid_header(4, 3, f32::INFINITY), &ok), None);
+        assert_eq!(parse_grid2d(&grid_header(4, 3, 0.0), &ok), None);
+        assert_eq!(parse_grid2d(&grid_header(4, 3, -0.05), &ok), None);
+        // too many cells, even with a matching payload length
+        let w = 4097u32;
+        let h = 4096u32;
+        assert!((w as usize) * (h as usize) > GRID_MAX_CELLS);
+        let big = vec![0u8; (w as usize) * (h as usize)];
+        assert_eq!(parse_grid2d(&grid_header(w, h, 0.05), &big), None);
+        // u32::MAX x u32::MAX must not overflow or panic
+        assert_eq!(parse_grid2d(&grid_header(u32::MAX, u32::MAX, 0.05), &ok), None);
+    }
+
+    #[test]
+    fn nav_status_round_trip() {
+        let json = serde_json::json!({
+            "loc_ok": true,
+            "loc_reason": "ok",
+            "refine_state": "idle",
+            "armed": true,
+            "estop": false,
+            "gate_reason": "armed",
+            "chassis_mode": "can",
+            "chassis_armed": true,
+            "chassis_reason": "fine",
+            "goal_id": "g1",
+            "goal_state": "active",
+            "goal_reason": "tracking",
+            "v": 0.1,
+            "w": -0.2,
+            "cmd_goal_enabled": true,
+        });
+        let status: NavStatus = serde_json::from_value(json.clone()).unwrap();
+        assert!(status.loc_ok && status.armed && status.cmd_goal_enabled);
+        assert_eq!(status.goal_id.as_deref(), Some("g1"));
+        assert_eq!(status.v, Some(0.1));
+        let back: NavStatus = serde_json::from_value(serde_json::to_value(&status).unwrap()).unwrap();
+        assert_eq!(back, status);
+
+        // cmd_goal_enabled is optional on the wire and defaults to false
+        let mut legacy = json;
+        legacy.as_object_mut().unwrap().remove("cmd_goal_enabled");
+        let status: NavStatus = serde_json::from_value(legacy).unwrap();
+        assert!(!status.cmd_goal_enabled);
+    }
+
+    #[test]
+    fn nav_entities_all_distinct() {
+        let mut seen = std::collections::HashSet::new();
+        for e in nav_entities::ALL {
+            assert!(seen.insert(e), "duplicate entity {e}");
+        }
+        assert_eq!(seen.len(), 10);
+        assert!(nav_entities::ALL.contains(&nav_entities::NAV_STATUS));
+        assert!(nav_entities::ALL.contains(&nav_entities::MAP_GRID));
     }
 }
