@@ -5,6 +5,7 @@ from collections import Counter, deque
 from importlib.metadata import version
 import io
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -14,6 +15,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 from PIL import Image
+from aisle import kinematics
 from aisle.sim.nexus_backend import quat_wxyz_to_matrix
 from verify_arm_reach import ArmModel
 
@@ -335,6 +337,8 @@ def execute(out, seed, colors, record=False):
         with subprocess.Popen(
             [sys.executable, str(policy)],
             cwd=empty,
+            env=os.environ
+            | {"PYTHONPATH": str(Path(kinematics.__file__).resolve().parents[1])},
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=err,
@@ -362,6 +366,12 @@ def execute(out, seed, colors, record=False):
                         np.savez(data, **packet)
                         payload = data.getvalue()
                         child.stdin.write(struct.pack(">I", len(payload)) + payload)
+                    elif op == "jaw observation" and command["color"] == active_color:
+                        # Retain the exact policy exposure used to confirm a grasp.
+                        Image.fromarray(packet["left_wrist"]).save(
+                            out / f"jaw-{sim.tick:05}-{active_color}.png"
+                        )
+                        child.stdin.write(b'{"ok":true}\n')
                     elif op == "table observation":
                         child.stdin.write(b'{"ok":true}\n')
                     elif op in ("wheel", "joint"):

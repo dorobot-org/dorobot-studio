@@ -25,11 +25,11 @@ def visible_in_jaws(rgb, color):
         if low >= 0
         else ((hue <= high) | (hue >= 180 + low))
     )
-    mask = color_mask & (sat > 90) & (val > 55)
+    mask = color_mask & (sat > 125) & (val > 55)
     # Calibrated wrist ROI spans the gripper opening when the jaws are closed.
     h, w = mask.shape
     opening = mask[round(0.61 * h) : round(0.89 * h), round(0.17 * w) : round(0.48 * w)]
-    return float(opening.mean()) >= 0.65
+    return float(opening.mean()) >= 0.14 and float(mask.mean()) >= 0.04
 
 
 class Controller:
@@ -96,7 +96,9 @@ class Controller:
 
     def held_in_wrist_view(self, color):
         rgb = self.sense()["left_wrist"]
-        return visible_in_jaws(rgb, color)
+        visible = visible_in_jaws(rgb, color)
+        self.act("jaw observation", color=color, visible=visible)
+        return visible
 
     def align(self):
         for present_left_side in (False, True):
