@@ -2,11 +2,12 @@
   "backend": "headless",
   "requested_size": "1440x900",
   "provider": "reference",
-  "native_binary_sha256": "05224e71e0fedeb4d222e6c3eb6459c62aea387b3f4d24ae2bd9a0ae0bb0a127",
+  "native_binary_sha256": "78bee1dcc735cf7eab86619bab7d0c8ca3533a974c5c0233211429818e5f2658",
+  "studio_source_commit": "72ee2fd7de5872ad0baead0db0547929dc3492ad",
   "sessions": [
     {
       "stage": "journey",
-      "pid": 5075,
+      "pid": 38835,
       "observed_dark": false,
       "windows": [
         [
@@ -17,7 +18,7 @@
     },
     {
       "stage": "recovery",
-      "pid": 7739,
+      "pid": 42214,
       "observed_dark": false,
       "windows": [
         [
@@ -28,12 +29,12 @@
     }
   ],
   "trials": [
-    "1795462586582150000-Nano-run",
-    "1795462591294600000-G1-run",
-    "1795462595699824000-G1-run"
+    "1795462931313328000-Nano-run",
+    "1795462935832523000-G1-run",
+    "1795462940023550000-G1-run"
   ],
   "files": {
-    "journey.json": "639d497cde9a8a9d475f7f36b05b189c79aa5970c3098131d77cf933562a805f",
+    "journey.json": "d1d3f3bd620ffeae38d7522166833b7e4aa8c9663195cbe929854b1e997094a5",
     "recovery.json": "b202d1dc8e7cf482ab9eb8610a56060b887dd24477ef8438532dbb4fff6c1f12"
   }
 }

@@ -1,6 +1,6 @@
 # Reference workbench acceptance
 
-Tested on 2026-11-23 with the native Makepad app on Apple Silicon, AISLE `dbd34a7`, Nexus 0.2.1 on Metal and the Studio implementation at `c5d1a17`. The two robot roots were fixed in a zero-gravity inspection fixture. The evaluated quantity was the selected shoulder's measured angular displacement.
+Tested on 2026-11-23 with the native Makepad app on Apple Silicon, AISLE `dbd34a7`, Nexus 0.2.1 on Metal and the Studio implementation at `72ee2fd`. The two robot roots were fixed in a zero-gravity inspection fixture. The evaluated quantity was the selected shoulder's measured angular displacement.
 
 | Trial | Controller | Requested | Measured | Outcome |
 | --- | --- | ---: | ---: | --- |
@@ -14,14 +14,14 @@ The second G1 instruction specified three quarters of the prior signed displacem
 
 | Mode | Size and appearance | Records |
 | --- | --- | --- |
-| Makepad headless, authenticated Codex | 1024 × 768 dark | [24 checks](headless-dark/journey.json) and [2 recovery checks](headless-dark/recovery.json) |
-| Makepad offscreen, authenticated Codex | 1440 × 900 light | [24 checks](desktop-light/journey.json), [2 recovery checks](desktop-light/recovery.json) and [nine screenshots](desktop-light/) |
-| Makepad offscreen, authenticated Codex | 1024 × 768 dark | [24 checks](desktop-dark/journey.json), [2 recovery checks](desktop-dark/recovery.json) and [nine screenshots](desktop-dark/) |
-| Makepad headless, local reference provider | 1440 × 900 light | [21 checks](headless-reference/journey.json) and [2 recovery checks](headless-reference/recovery.json) |
+| Makepad headless, authenticated Codex | 1024 × 768 dark | [25 checks](headless-dark/journey.json) and [2 recovery checks](headless-dark/recovery.json) |
+| Makepad offscreen, authenticated Codex | 1440 × 900 light | [25 checks](desktop-light/journey.json), [2 recovery checks](desktop-light/recovery.json) and [nine screenshots](desktop-light/) |
+| Makepad offscreen, authenticated Codex | 1024 × 768 dark | [25 checks](desktop-dark/journey.json), [2 recovery checks](desktop-dark/recovery.json) and [nine screenshots](desktop-dark/) |
+| Makepad headless, local reference provider | 1440 × 900 light | [22 checks](headless-reference/journey.json) and [2 recovery checks](headless-reference/recovery.json) |
 
 Each mode includes a manifest of the native binary hash, launched process IDs, observed window sizes and appearance, trial IDs and output hashes. [Headless](headless-dark/mode-manifest.json) · [Light desktop](desktop-light/mode-manifest.json) · [Dark desktop](desktop-dark/mode-manifest.json) · [Reference provider](headless-reference/mode-manifest.json)
 
-The journeys used native pointer and keyboard events. They prepared controllers, inspected the URDFs, selected a gain profile, started each simulation, exported datasets, navigated saved evidence and controller history, stopped an active run and opened a 25-frame G1 episode in the existing Replay page. Restarting the app recovered the stopped trial and the G1 controller. The video-enabled offscreen build displayed the recorded operator camera beside the G1 model in Replay. [Replay screenshot](desktop-light/G1-replay.png)
+The journeys used native pointer and keyboard events. The two fixture profiles and identical input programs produced matching signed displacements across independent processes. Each journey recorded the cancelled physics worker’s process group and checked the operating system for remaining live members. They prepared controllers, inspected the URDFs, selected a gain profile, started each simulation, exported datasets, navigated saved evidence and controller history, stopped an active run and opened a 25-frame G1 episode in the existing Replay page. Restarting the app recovered the stopped trial and the G1 controller. The video-enabled offscreen build displayed the recorded operator camera beside the G1 model in Replay. [Replay screenshot](desktop-light/G1-replay.png)
 
 The local Rust workspace suite passed 113 tests with video disabled. macOS exposes two spellings of its temporary directory. The existing Nexus test compares path strings, so the full suite was run with TMPDIR set to its canonical path. Three Python contract tests exercised rejected commands, mismatched feedback and shutdown of a worker and its child after the Studio pipe closes. Rust regression tests covered failed preparation retaining the previous controller and late cancellation retaining an already scored outcome. The rendered journeys used an external GPU-backed worker with the same released AISLE adapter in all four modes.
 

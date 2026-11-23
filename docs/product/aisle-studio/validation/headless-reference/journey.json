@@ -117,6 +117,10 @@
     "status": "Stopped by operator"
   },
   {
+    "check": "cancelled worker group exited",
+    "process_group": 41990
+  },
+  {
     "check": "reopen scored evidence",
     "robot": "G1",
     "status": "Stopped by operator"
