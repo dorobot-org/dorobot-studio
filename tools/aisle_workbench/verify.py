@@ -38,6 +38,11 @@ def main():
         help="Run and score a Nano floor-to-table journey",
     )
     scenario.add_argument(
+        "--observed-author",
+        action="store_true",
+        help="Select a target from two actual onboard scene observations",
+    )
+    scenario.add_argument(
         "--camera-faults",
         action="store_true",
         help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
@@ -68,7 +73,9 @@ def main():
         parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
         parser.error("--layout requires a Nano transfer scenario")
-    if (args.standing or args.transfer or args.camera_faults) and not args.provider:
+    if (
+        args.standing or args.transfer or args.camera_faults or args.observed_author
+    ) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -145,6 +152,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.observed_author:
+                    check.append("--observed-author")
                 if args.camera_faults:
                     check.append("--camera-faults")
                 if args.handoff:

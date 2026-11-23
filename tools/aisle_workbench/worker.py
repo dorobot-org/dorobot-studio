@@ -320,7 +320,21 @@ def request_controller(provider, prompt, schema, output):
     return plan, model_name
 
 
+def room_for_mobile(args, meta):
+    room_path = getattr(args, "room_revision", None)
+    if room_path is None:
+        return [], None
+    from room_revision import load_revision
+    from run_rgb_approach import scene_recipe
+
+    revision = load_revision(
+        room_path, args.room_hash, scene_recipe(args.seed), meta["model_hash"]
+    )
+    return revision["obstacles"], revision.get("settings")
+
+
 def prepare(args, meta):
+    observation = None
     feedback = measured_feedback(args.feedback, meta) if args.feedback else None
     model_name = None
     if args.provider == "reference":
@@ -389,14 +403,45 @@ def prepare(args, meta):
                 "unsupported tasks by setting supported=false. Instruction: "
                 + args.task
             )
+        if getattr(args, "onboard_context", False):
+            if args.robot != "Nano":
+                raise ValueError("Onboard scene observation requires the Nano profile")
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from onboard_scene import capture
+
+            obstacles, settings = room_for_mobile(args, meta)
+            public, observation = capture(
+                args.out,
+                meta,
+                args.seed,
+                getattr(args, "room_hash", None),
+                obstacles,
+                settings,
+            )
+            prompt += (
+                "\nUse only the following onboard measurements for spatial references. y_left_m increases to the robot's left. distance_m is horizontal range. Select only observed targets and reject unresolvable requests. Sensor observation: "
+                + json.dumps(public)
+            )
+        elif args.robot == "Nano":
+            prompt += "\nIf selecting the target requires comparing its current position with others and no onboard measurements are provided, reject the request."
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
         plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
+    validated = validate(plan, meta)
+    if observation and validated.get("kind") in ("visual-approach", "table-transfer"):
+        selected = (
+            [validated["color"]]
+            if validated["kind"] == "visual-approach"
+            else validated["color_order"].split(",")
+        )
+        if any(public["objects"][color]["status"] != "localized" for color in selected):
+            raise ValueError("Onboard cameras could not localize each selected target")
     return dict(
-        **validate(plan, meta),
+        **validated,
+        **({"scene_observation": observation} if observation else {}),
         **({"previous_trial": feedback} if feedback else {}),
         robot=args.robot,
         task=args.task,
@@ -421,6 +466,16 @@ def simulate(args, meta):
     if plan["model_hash"] != meta["model_hash"] or plan["robot"] != args.robot:
         raise ValueError("Controller and robot model differ")
     control = validate(plan, meta)
+    if "scene_observation" in plan:
+        from onboard_scene import bind
+
+        bind(
+            args.controller.parent,
+            args.out,
+            plan["scene_observation"],
+            getattr(args, "seed", 0),
+            getattr(args, "room_hash", None),
+        )
     (args.out / "controller.json").write_bytes(original)
     mobile = control.get("kind") in ("visual-approach", "table-transfer")
     fixture = (
@@ -475,19 +530,11 @@ def simulate(args, meta):
         )
     if mobile:
         sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
-        room_objects = []
-        room_settings = None
+        room_objects, room_settings = room_for_mobile(args, meta)
         room_path = getattr(args, "room_revision", None)
         if room_path is not None:
-            from room_revision import load_revision
-            from run_rgb_approach import scene_recipe
             import shutil
 
-            revision = load_revision(
-                room_path, args.room_hash, scene_recipe(args.seed), meta["model_hash"]
-            )
-            room_objects = revision["obstacles"]
-            room_settings = revision.get("settings")
             for artifact in (
                 "room.json",
                 "reference-image",
@@ -645,6 +692,7 @@ def main():
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
     p.add_argument("--archive", type=Path)
+    p.add_argument("--onboard-context", action="store_true")
     p.add_argument(
         "--rgb-timing",
         choices=["normal", "intermittent", "disconnected"],

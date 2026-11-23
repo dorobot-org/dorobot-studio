@@ -72,6 +72,7 @@ pub enum Action {
     Fixture(bool),
     Impact(bool),
     RgbTiming(RgbTiming),
+    ToggleOnboardContext,
     EditRoom(bool),
     ImportRoom {
         source: String,
@@ -265,6 +266,7 @@ pub struct Workbench {
     pub compliant: bool,
     pub impact: bool,
     pub rgb_timing: RgbTiming,
+    pub onboard_context: bool,
     pub room_editor: bool,
     pub show_evaluation: bool,
     pub evaluation: Value,
@@ -307,6 +309,7 @@ impl Workbench {
             compliant: false,
             impact: false,
             rgb_timing: RgbTiming::Normal,
+            onboard_context: false,
             room_editor: false,
             show_evaluation: false,
             evaluation: Value::Null,
@@ -569,7 +572,16 @@ impl Workbench {
         }
         let mobile =
             self.plan["kind"] == "table-transfer" || self.plan["kind"] == "visual-approach";
-        if op == "room" || (op == "run" && mobile) {
+        let capture_onboard = op == "prepare"
+            && self.onboard_context
+            && self.robot == Robot::Nano
+            && planner != Planner::Reference;
+        if capture_onboard {
+            cmd.arg("--onboard-context")
+                .arg("--seed")
+                .arg(self.layout_seed.to_string());
+        }
+        if op == "room" || (op == "run" && mobile) || capture_onboard {
             if let Some(path) = &self.room_path {
                 cmd.arg("--room-revision").arg(path).arg("--room-hash").arg(
                     self.room_selection["sha256"]
@@ -709,6 +721,10 @@ impl Workbench {
             Action::ImportRoom { source, edit } => {
                 self.room_request = Some((source, edit));
                 self.launch("room", Planner::Reference, None)
+            }
+            Action::ToggleOnboardContext => {
+                self.onboard_context = !self.onboard_context;
+                Ok(())
             }
             Action::RgbTiming(value) => {
                 self.rgb_timing = value;
