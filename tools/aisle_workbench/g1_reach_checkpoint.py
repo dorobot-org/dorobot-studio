@@ -68,10 +68,16 @@ def train(dataset, trial, out):
         ):
             raise ValueError("Selected dataset differs from the measured teacher trial")
         initial = float(motors["q_before"][0, j])
+        # The exported frame shows the pose after this tick. At inference the
+        # joint encoder is available before the command. Fit with that same exposure.
+        observed_before = motors["q_before"][19::20, j].copy()
     phase = np.minimum(1.0, (np.arange(100) + 1) / info["fps"])
     reference = initial + plan["delta_rad"] * phase
     x = np.array(
-        [features(t, e) for t, e in zip(phase, reference - state[:, j], strict=True)]
+        [
+            features(t, e)
+            for t, e in zip(phase, reference - observed_before, strict=True)
+        ]
     )
     y = action[:, j] - reference
     ridge = 1e-5
@@ -95,6 +101,8 @@ def train(dataset, trial, out):
         parent_controller_sha256=meta["controller_hash"],
         dataset_sha256=dataset_hash,
         teacher_trial=trial.name,
+        teacher_motor_sha256=result["motor_work_sha256"],
+        encoder_timing="before issuing the sampled motor target",
         frames=100,
     )
     save(
