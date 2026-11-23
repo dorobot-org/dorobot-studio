@@ -16,3 +16,19 @@ Times measure one CLI authoring call per provider per task, including process st
 The subsequent floating-base trial exercised a separate Nano wheel controller. Both providers approached the red cube in Nexus and reproduced the same command and measurement trace. [RGB approach comparison, live view and replay](nano-rgb-approach.md)
 
 The grounded Nano transfer capability subsequently exercised both providers on a complete floor-to-table task. [Task setup, matching criteria and measured outcomes](nano-table-transfer.md)
+
+## Five matched requests and a retry from measured feedback
+
+The following authoring calls used the same Workbench validation code and task text. The provider order alternated across cases. Each provider received one attempt per case. The revision received per-cube verdicts and the last onboard wrist and stereo readings from the same retained failure on layout 2.
+
+| Request | DeepSeek via Octos | Codex | Accepted program or outcome |
+| --- | ---: | ---: | --- |
+| Place green, blue, then red | 2.97 s | 6.70 s | Both preserved the requested sequence |
+| Approach blue to 0.52 m | 2.21 s | 5.98 s | Both selected blue and 0.52 m |
+| G1 standing left shoulder +0.10 rad | 1.89 s | 4.99 s | Both selected standing and the correct joint and sign |
+| G1 walk and open a door | 2.14 s | 6.39 s | Both rejected the unsupported capability |
+| Retry the cube that failed | 1.56 s | 5.14 s | Both identified blue from the recorded verdict |
+
+Each provider met all five expectations. Median authoring time was **2.14 s for DeepSeek and 5.98 s for Codex** on this Mac. The timed interval includes CLI startup and model-service latency. This small set exercises constrained task authoring and rejection.
+
+The two independently prepared blue-only retry artifacts were then executed from the identical initial layout in Nexus. Each placed blue 120 mm inside the rim, maintained wheel contact on all 7,268 physics steps and produced byte-identical motor journals. This tests the selected retry subtask from a fresh scene. The three-cube holdout evaluates full episodes separately. The model chooses the task parameters, while local camera perception, navigation and grasp code drive the simulated robot. [Requests, model identities, timing, feedback and both retry receipts](paired-authoring-requests.json)
