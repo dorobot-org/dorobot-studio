@@ -1,12 +1,17 @@
 use dorobot_studio_core::api::Backend;
 use dorobot_studio_plugin::*;
 
+mod graph;
 #[cfg(feature = "rerun")]
 mod rerun_sink;
 mod route;
 mod session;
 mod view_panel;
 
+pub use graph::{
+    hit_test, layout, DvizGraph, DvizGraphAction, DvizGraphRef, DvizGraphWidgetRefExt, GraphLayout,
+    Point,
+};
 #[cfg(feature = "rerun")]
 pub use rerun_sink::RerunSink;
 pub use route::{route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP};
@@ -43,7 +48,9 @@ impl StudioPlugin for DvizPlugin {
         }
     }
 
-    fn register(&self, _: &mut ScriptVm) {}
+    fn register(&self, vm: &mut ScriptVm) {
+        graph::script_mod(vm);
+    }
 
     fn create(&self, panel: &str, vm: &mut ScriptVm) -> Result<Box<dyn PluginPanel>, String> {
         match panel {

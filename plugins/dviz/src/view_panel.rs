@@ -1,17 +1,20 @@
 //! The `dviz_view` panel: connection, the 3D window, the display list, logs
-//! and nodes.
+//! and nodes, as a list or as the dataflow graph with the clicked node's
+//! detail.
 //!
 //! The panel only holds a handle to the process-wide [`DvizSession`]; every
 //! `sync` reads a fresh snapshot of it. Nothing here waits on the session:
 //! `connect` and `disconnect` return at once and report through the snapshot.
 
-use crate::{open_viewer, DvizSession, EntityInfo, SessionOptions, SessionSnapshot};
+use crate::{
+    open_viewer, DvizGraphWidgetRefExt, DvizSession, EntityInfo, SessionOptions, SessionSnapshot,
+};
 use dorobot_studio_core::{
     api::Backend,
     ui::frame::{self, Themed},
 };
 use dorobot_studio_plugin::*;
-use dviz_protocol::{GraphNode, GraphNodeStatus, LogEntry, LogLevel};
+use dviz_protocol::{GraphEdge, GraphNode, GraphNodeStatus, LogEntry, LogLevel};
 use std::collections::BTreeMap;
 
 /// Newest log lines shown; the `logs` label holds this many.
@@ -28,6 +31,12 @@ pub struct DvizViewPanel {
     viewer_error: Option<String>,
     warn_only: bool,
     light: Option<f64>,
+    /// Nodes as the graph rather than the list.
+    graph_view: bool,
+    /// The node last clicked in the graph; its detail shows in graph view.
+    selected: Option<String>,
+    /// `(graph_view, light)` the List / Graph buttons were last styled for.
+    view_buttons: Option<(bool, f64)>,
 }
 
 struct EntityRow {
@@ -75,8 +84,15 @@ impl DvizViewPanel {
                         logs := Label{width: Fill max_lines: 12 text: ""}
                     }
                     node_card := mod.widgets.ux.Card{width: Fill height: Fill flow: Down padding: 12.0 spacing: 6.0
-                        Label{text: "Nodes"}
+                        View{width: Fill height: Fit flow: Right spacing: 6.0 align: Align{y: 0.5}
+                            Label{text: "Nodes"}
+                            node_list := mod.widgets.ux.SegmentButton{text: "List"}
+                            node_graph := mod.widgets.ux.SegmentButton{text: "Graph"}
+                        }
                         nodes := Label{width: Fill max_lines: 12 text: ""}
+                        // Before the graph: the graph fills what is left.
+                        node_detail := Label{width: Fill max_lines: 6 text: "" visible: false}
+                        graph := mod.widgets.DvizGraph{visible: false}
                     }
                 }
             }
@@ -88,6 +104,9 @@ impl DvizViewPanel {
             viewer_error: None,
             warn_only: false,
             light: None,
+            graph_view: false,
+            selected: None,
+            view_buttons: None,
         }
     }
 
@@ -104,6 +123,44 @@ impl DvizViewPanel {
         self.root
             .label(cx, ids!(nodes))
             .set_text(cx, &node_text(&snapshot.nodes, NODE_LINES));
+        self.sync_node_view(cx, &snapshot);
+    }
+
+    /// Shows the list or the graph, and in graph view the selected node's
+    /// detail. The graph is only fed while it is shown.
+    fn sync_node_view(&mut self, cx: &mut Cx, snapshot: &SessionSnapshot) {
+        let light = self.light.unwrap_or_else(frame::light_mode);
+        if self.view_buttons != Some((self.graph_view, light)) {
+            for (path, on) in [
+                (ids!(node_list), !self.graph_view),
+                (ids!(node_graph), self.graph_view),
+            ] {
+                frame::sync_nav_button(cx, &self.root.widget(cx, path), on, light);
+            }
+            self.view_buttons = Some((self.graph_view, light));
+        }
+        self.root
+            .widget(cx, ids!(nodes))
+            .set_visible(cx, !self.graph_view);
+        self.root
+            .widget(cx, ids!(graph))
+            .set_visible(cx, self.graph_view);
+        let detail = match (&self.selected, self.graph_view) {
+            (Some(id), true) => node_detail(&snapshot.nodes, &snapshot.edges, id),
+            _ => None,
+        };
+        let label = self.root.widget(cx, ids!(node_detail));
+        label.set_text(cx, detail.as_deref().unwrap_or(""));
+        label.set_visible(cx, detail.is_some());
+        if self.graph_view {
+            self.root.dviz_graph(cx, ids!(graph)).set(
+                cx,
+                &snapshot.nodes,
+                &snapshot.edges,
+                self.selected.as_deref(),
+                light as f32,
+            );
+        }
     }
 
     fn sync_entities(&mut self, cx: &mut Cx, entities: &BTreeMap<String, EntityInfo>) {
@@ -200,6 +257,12 @@ impl PluginPanel for DvizViewPanel {
             self.viewer_error = open_viewer(self.session).err();
         } else if let Some(warn_only) = self.root.check_box(cx, ids!(log_level)).changed(actions) {
             self.warn_only = warn_only;
+        } else if self.root.button(cx, ids!(node_list)).clicked(actions) {
+            self.graph_view = false;
+        } else if self.root.button(cx, ids!(node_graph)).clicked(actions) {
+            self.graph_view = true;
+        } else if let Some(id) = self.root.dviz_graph(cx, ids!(graph)).clicked_node(actions) {
+            self.selected = Some(id);
         } else if let Some((name, enabled)) = self
             .rows
             .iter()
@@ -288,7 +351,7 @@ fn log_text(logs: &[LogEntry], warn_only: bool, limit: usize) -> String {
         .join("\n")
 }
 
-/// Name, status and last activity (seconds since the dataflow started).
+/// One line per node, up to `limit`.
 fn node_text(nodes: &[GraphNode], limit: usize) -> String {
     if nodes.is_empty() {
         return "No nodes".to_string();
@@ -296,16 +359,48 @@ fn node_text(nodes: &[GraphNode], limit: usize) -> String {
     nodes
         .iter()
         .take(limit)
-        .map(|node| {
-            let status = match node.status {
-                GraphNodeStatus::Active => "active",
-                GraphNodeStatus::Idle => "idle",
-                GraphNodeStatus::Error => "error",
-            };
-            format!("{} · {status} · last seen {:.1} s", node.id, node.last_seen)
-        })
+        .map(node_line)
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Name, status and last activity (seconds since the dataflow started).
+fn node_line(node: &GraphNode) -> String {
+    let status = match node.status {
+        GraphNodeStatus::Active => "active",
+        GraphNodeStatus::Idle => "idle",
+        GraphNodeStatus::Error => "error",
+    };
+    format!("{} · {status} · last seen {:.1} s", node.id, node.last_seen)
+}
+
+/// The node's line, then its inputs (`port ← node/output`) and outputs
+/// (`output → node/port`); `None` when `id` is not among `nodes`.
+fn node_detail(nodes: &[GraphNode], edges: &[GraphEdge], id: &str) -> Option<String> {
+    let node = nodes.iter().find(|node| node.id == id)?;
+    let list = |ports: Vec<String>| {
+        if ports.is_empty() {
+            "none".to_string()
+        } else {
+            ports.join(", ")
+        }
+    };
+    let inputs = edges
+        .iter()
+        .filter(|edge| edge.to_node == id)
+        .map(|edge| format!("{} ← {}/{}", edge.to_port, edge.from_node, edge.from_port))
+        .collect();
+    let outputs = edges
+        .iter()
+        .filter(|edge| edge.from_node == id)
+        .map(|edge| format!("{} → {}/{}", edge.from_port, edge.to_node, edge.to_port))
+        .collect();
+    Some(format!(
+        "{}\nInputs: {}\nOutputs: {}",
+        node_line(node),
+        list(inputs),
+        list(outputs)
+    ))
 }
 
 fn entity_text(info: &EntityInfo) -> String {
@@ -411,6 +506,48 @@ mod tests {
         );
         assert_eq!(node_text(&nodes, 1), "planner · active · last seen 12.3 s");
         assert_eq!(node_text(&[], 10), "No nodes");
+    }
+
+    #[test]
+    fn node_detail_lists_status_inputs_and_outputs() {
+        let node = |id: &str, status| GraphNode {
+            id: id.into(),
+            status,
+            last_seen: 2.0,
+        };
+        let edge = |from_node: &str, from_port: &str, to_node: &str, to_port: &str| GraphEdge {
+            from_node: from_node.into(),
+            from_port: from_port.into(),
+            to_node: to_node.into(),
+            to_port: to_port.into(),
+        };
+        let nodes = [
+            node("camera", GraphNodeStatus::Idle),
+            node("detector", GraphNodeStatus::Error),
+        ];
+        let edges = [
+            edge("camera", "image", "detector", "frame"),
+            edge("camera", "image", "recorder", "video"),
+            edge("dora", "timer/millis/50", "camera", "tick"),
+        ];
+        assert_eq!(
+            node_detail(&nodes, &edges, "camera").as_deref(),
+            Some(
+                "camera · idle · last seen 2.0 s\n\
+                 Inputs: tick ← dora/timer/millis/50\n\
+                 Outputs: image → detector/frame, image → recorder/video"
+            )
+        );
+        assert_eq!(
+            node_detail(&nodes, &edges, "detector").as_deref(),
+            Some(
+                "detector · error · last seen 2.0 s\n\
+                 Inputs: frame ← camera/image\n\
+                 Outputs: none"
+            )
+        );
+        // `recorder` only appears in an edge.
+        assert_eq!(node_detail(&nodes, &edges, "recorder"), None);
     }
 
     #[test]

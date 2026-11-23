@@ -2,7 +2,9 @@
 //! without a window). Each test has its own leaked `&'static DvizSession`, its
 //! own loopback port and topic prefix, and multicast off, as in `loopback.rs`.
 
-use dorobot_plugin_dviz::{open_viewer, DvizSession, DvizViewPanel};
+use dorobot_plugin_dviz::{
+    open_viewer, DvizGraphAction, DvizGraphWidgetRefExt, DvizPlugin, DvizSession, DvizViewPanel,
+};
 use dorobot_studio_core::api::mock::MockBackend;
 use dorobot_studio_plugin::*;
 use dviz_protocol::{serialize_message, MvizMessage};
@@ -21,6 +23,8 @@ fn setup() -> (Cx, &'static DvizSession) {
     cx.init_cx_os();
     cx.with_vm(|vm| {
         dorobot_studio_core::register_ui(vm);
+        // As the host does: the plugin's own widgets (the graph).
+        DvizPlugin.register(vm);
         assert!(vm.take_errors().is_empty());
     });
     (cx, Box::leak(Box::new(DvizSession::new())))
@@ -159,6 +163,34 @@ fn log_message(level: &str, message: &str) -> Vec<u8> {
         msg_type: "log".to_string(),
         timestamp: Some(1.0),
         data: json!({"level": level, "message": message, "node_id": "planner"}),
+        format: None,
+        count: None,
+    };
+    serialize_message(&header, None)
+}
+
+/// A `graph_update` with `(id, status, last_seen)` nodes and
+/// `(from_node, from_port, to_node, to_port)` edges.
+fn graph_message(nodes: &[(&str, &str, f64)], edges: &[(&str, &str, &str, &str)]) -> Vec<u8> {
+    let nodes: Vec<_> = nodes
+        .iter()
+        .map(|(id, status, last_seen)| json!({"id": id, "status": status, "last_seen": last_seen}))
+        .collect();
+    let edges: Vec<_> = edges
+        .iter()
+        .map(|(from_node, from_port, to_node, to_port)| {
+            json!({
+                "from_node": from_node,
+                "from_port": from_port,
+                "to_node": to_node,
+                "to_port": to_port,
+            })
+        })
+        .collect();
+    let header = MvizMessage {
+        msg_type: "graph_update".to_string(),
+        timestamp: Some(2.0),
+        data: json!({"nodes": nodes, "edges": edges, "timestamp": 2.0}),
         format: None,
         count: None,
     };
@@ -318,4 +350,77 @@ fn entity_toggle_disables_routing() {
     assert_eq!(synced.widget_uid(), toggle.widget_uid());
     assert!(!synced.as_check_box().active(&cx));
     assert_no_script_errors(&mut cx);
+}
+
+#[test]
+fn graph_view_builds_without_script_errors_and_shows_node_detail_on_select() {
+    let (mut cx, session) = setup();
+    let mut panel = new_panel(&mut cx, session);
+    let (peer, endpoint) = listening_peer();
+    let prefix = "dviz_panel_graph";
+    connect_through_panel(&mut cx, &mut panel, session, &endpoint, prefix);
+    let publisher = matched_publisher(&peer, format!("{prefix}/graph"));
+    publisher
+        .put(graph_message(
+            &[
+                ("lidar", "active", 1.0),
+                ("planner", "active", 12.34),
+                ("controller", "error", 3.0),
+            ],
+            &[
+                ("lidar", "points", "planner", "cloud"),
+                ("dora", "timer/millis/100", "planner", "tick"),
+                ("planner", "path", "controller", "path"),
+            ],
+        ))
+        .wait()
+        .unwrap();
+    assert!(
+        wait_until(SETTLE, || session.snapshot().nodes.len() == 3),
+        "the graph update never arrived"
+    );
+    sync(&mut cx, &mut panel);
+
+    // The list stays the default view.
+    let root = panel.root();
+    let list = root.widget(&mut cx, ids!(nodes));
+    let graph = root.widget(&mut cx, ids!(graph));
+    let detail = root.widget(&mut cx, ids!(node_detail));
+    assert!(!graph.is_empty() && !detail.is_empty());
+    assert!(list.visible() && !graph.visible() && !detail.visible());
+    assert!(list.text().contains("planner · active"), "{}", list.text());
+
+    assert!(click(&mut cx, &mut panel, ids!(node_graph)));
+    sync(&mut cx, &mut panel);
+    assert!(!list.visible() && graph.visible());
+    assert_eq!(
+        root.dviz_graph(&mut cx, ids!(graph)).node_ids(),
+        ["lidar", "planner", "controller"]
+    );
+    assert!(!detail.visible(), "no detail before a node is selected");
+
+    // A click on the planner's box.
+    let actions = cx.capture_actions(|cx| {
+        cx.widget_action(
+            graph.widget_uid(),
+            DvizGraphAction::Selected("planner".into()),
+        )
+    });
+    assert!(panel.handle_actions(&mut cx, &actions, &mut MockBackend::new()));
+    assert!(detail.visible());
+    assert_eq!(
+        detail.text(),
+        "planner · active · last seen 12.3 s\n\
+         Inputs: cloud ← lidar/points, tick ← dora/timer/millis/100\n\
+         Outputs: path → controller/path"
+    );
+    // The selection survives the next sync.
+    sync(&mut cx, &mut panel);
+    assert!(detail.visible() && detail.text().starts_with("planner"));
+
+    // Back to the list: the detail goes with the graph.
+    assert!(click(&mut cx, &mut panel, ids!(node_list)));
+    assert!(list.visible() && !graph.visible() && !detail.visible());
+    assert_no_script_errors(&mut cx);
+    session.disconnect();
 }
