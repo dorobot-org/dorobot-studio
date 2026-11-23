@@ -6,7 +6,7 @@
 //! The tests run one at a time (`serial`): `encoded_count` is process-wide, and the
 //! push-latency test should not share the CPU with another bridge.
 
-use dorobot_nav_bridge::config::BridgeConfig;
+use dorobot_nav_bridge::config::{BridgeConfig, Rates};
 use dorobot_nav_bridge::publish::{zenoh_publisher, Publish};
 use dorobot_nav_bridge::worker::{encoded_count, spawn_worker, Inbox};
 use dviz_protocol::{
@@ -193,13 +193,15 @@ struct Flood {
     /// Longest `push`, leaving out pushes during which this thread was preempted
     /// (that time is the OS's, not `push`'s). A push that sleeps on the lock is a
     /// voluntary switch and still counts. Without /proc every push counts.
+    /// Wake-up preemption is deliberately not measured either: `push` wakes no
+    /// thread (the worker polls), so a preemption during it is the scheduler's doing.
     max_push: Duration,
     preempted: usize,
 }
 
-/// Pushes 20 000-point clouds at 200 Hz for `duration`; only the call itself is timed.
-fn flood_clouds(inbox: &Inbox, duration: Duration) -> Flood {
-    let payload = cloud(20_000);
+/// Pushes `points`-point clouds at 200 Hz for `duration`; only the call itself is timed.
+fn flood_clouds(inbox: &Inbox, duration: Duration, points: usize) -> Flood {
+    let payload = cloud(points);
     let period = Duration::from_millis(5);
     let mut next = Instant::now();
     let mut f = Flood { pushes: 0, max_push: Duration::ZERO, preempted: 0 };
@@ -220,7 +222,7 @@ fn flood_clouds(inbox: &Inbox, duration: Duration) -> Flood {
             thread::sleep(d);
         }
     }
-    assert!(f.preempted * 2 < f.pushes, "{} of {} pushes preempted", f.preempted, f.pushes);
+    assert!(f.preempted * 5 < f.pushes, "{} of {} pushes preempted", f.preempted, f.pushes);
     f
 }
 
@@ -307,7 +309,14 @@ fn late_subscriber_gets_static_map_within_six_seconds() {
 fn slow_subscriber_never_blocks_the_dora_side() {
     let _serial = serial();
     let port = free_port();
-    let mut bridge = Bridge::start(bridge_cfg(port));
+    // Every pushed cloud goes out (200 Hz x ~60 KB = ~12 MB/s, ~60 MB over the flood)
+    // to a reader that takes 5 samples/s. Loopback TCP buffers hold at most ~10 MB
+    // (Linux default tcp_wmem / tcp_rmem maxima, 4 + 6 MB), so the link is congested
+    // after the first second.
+    // 5000-point clouds fit one 64 KB Zenoh batch (no fragmentation) and keep the
+    // debug-build worker well under one core, so a backlog can only mean blocking.
+    let cfg = BridgeConfig { rates_hz: Rates { cloud: 200.0, ..Rates::default() }, ..bridge_cfg(port) };
+    let mut bridge = Bridge::start(cfg);
     let sub = Subscriber::connect(port, Duration::from_millis(200));
 
     // Wait until the bridge is publishing to the subscriber, so the flood below
@@ -319,7 +328,7 @@ fn slow_subscriber_never_blocks_the_dora_side() {
     });
     assert!(linked, "subscriber never got robot/pose");
 
-    let f = flood_clouds(&bridge.inbox, Duration::from_secs(5));
+    let f = flood_clouds(&bridge.inbox, Duration::from_secs(5), 5000);
     println!(
         "slow subscriber: max push {:?} ({} of {} preempted, not timed), dropped {}, clouds received {}",
         f.max_push,
@@ -329,11 +338,21 @@ fn slow_subscriber_never_blocks_the_dora_side() {
         sub.count(nav_entities::SENSORS_CLOUD)
     );
     assert!(f.max_push < Duration::from_millis(1), "push took {:?}", f.max_push);
-    // With drop-style congestion control the worker is not held up by the stuck
-    // reader either: it keeps up with the flood and the inbox empties at once.
+    // Drop-style congestion control: once the link is congested Zenoh drops the
+    // clouds instead of waiting, so the worker is not held up by the stuck reader and
+    // the inbox empties at once. With `CongestionControl::Block` each put would wait
+    // for the reader (~5 samples/s) and the inbox would stay full.
+    let drained = Instant::now();
     assert!(wait_until(Duration::from_secs(1), || bridge.inbox.is_empty()), "worker is stuck");
+    println!("inbox drained {:?} after the flood", drained.elapsed());
     assert!(!bridge.worker.as_ref().unwrap().is_finished(), "worker died");
-    assert!(bridge.stop() < Duration::from_secs(1));
+    // Disconnect the stuck reader before stopping: while it is connected, dropping the
+    // bridge's Zenoh session blocks in close(2) on its lingering TCP socket (SO_LINGER
+    // 10 s in zenoh-link-tcp; ~2.1 s here). That is Zenoh's teardown, not the worker.
+    drop(sub);
+    let took = bridge.stop();
+    println!("slow subscriber: stop took {took:?} (reader disconnected first)");
+    assert!(took < Duration::from_secs(1), "stop took {took:?}");
 }
 
 /// Output that takes 200 ms per message: a worker stuck behind its publisher.
@@ -359,7 +378,7 @@ fn stuck_output_drops_oldest_and_push_stays_fast() {
     let worker = spawn_worker(BridgeConfig::default(), inbox.clone(), Box::new(StuckOutput), stop.clone());
     inbox.push("pose".to_owned(), odom(0.0, 0.0, 0.0));
 
-    let f = flood_clouds(&inbox, Duration::from_secs(2));
+    let f = flood_clouds(&inbox, Duration::from_secs(2), 20_000);
     println!(
         "stuck output: max push {:?} ({} of {} preempted, not timed), dropped {}",
         f.max_push,
