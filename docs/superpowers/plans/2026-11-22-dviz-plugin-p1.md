@@ -23,6 +23,7 @@
 
 - **分支和提交：** 分支 `feat/dviz-plugin`，只在本地，不推送。提交身份 `bobdingai <dingxinmin@gmail.com>`，结尾 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`。
 - **构建：**
+  - **这台 Orin 上**链接 `dorobot-flex` 缺 `-lpulse`、`-lXcursor`、`-lxkbcommon` 的开发版符号链接，又不能用 apt / dpkg 装 `-dev` 包。所以所有 cargo 命令前都加环境变量 `LIBRARY_PATH=$HOME/nvme/dora-lab/linkshim`：这个目录里是指向系统运行时库（`.so.0` / `.so.1`）的软链接，2026-11-22 建好。它不改 rustc 参数，不会触发重编；其他机器不需要。
   - 一律 `--locked`。新增成员或依赖时，先不带 `--locked` 跑一次 `cargo build -p <crate>` 更新 `Cargo.lock`，再提交 `Cargo.lock`。
   - 不引入 Rust 1.95 之后的特性。
 - **版本：** Makepad 用工作区固定的修订；Zenoh `=1.10.2`，`default-features = false, features = ["transport_tcp"]`，和 `dorobot-studio-core` 相同；Rerun 用工作区的 `rerun`（0.28，`default-features = false, features = ["sdk"]`）。
