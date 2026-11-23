@@ -25,18 +25,31 @@ if grep -q '@[A-Z_]*@' "$YML"; then echo "run_replay: unreplaced tokens in $YML"
 echo "run_replay: rendered $YML"
 [ "${RENDER_ONLY:-0}" = 1 ] && exit 0
 
+die() { echo "run_replay: $*" >&2; exit 1; }
+ENV_SH=${ENV_SH:-$HOME/dora-lab/env.sh}
+[ -r "$ENV_SH" ] || die "cannot read $ENV_SH"
+set +u   # env.sh is not -u clean
 # shellcheck disable=SC1090
-source "$HOME/dora-lab/env.sh" >/dev/null 2>&1
+source "$ENV_SH" >/dev/null 2>&1 || { set -u; die "sourcing $ENV_SH failed"; }
+set -u
 export TMPDIR=${TMPDIR:-$HOME/nvme/dora-lab/tmp}
-if dora list 2>/dev/null | grep -qw tracer-nav; then
-  echo "run_replay: the live dataflow tracer-nav is running; stop it first (apps/tracer/autostop.sh), then run this again" >&2
-  exit 1
+command -v dora >/dev/null 2>&1 || die "dora is not on PATH after sourcing $ENV_SH"
+command -v ss >/dev/null 2>&1 || die "ss not found; cannot check the ports"
+
+# Dataflow names from `dora list` (any field equal to the name). A failing list is never read as "nothing running".
+list_dataflows() { dora list 2>&1; }
+if ! LIST=$(list_dataflows); then
+  dora up >/dev/null 2>&1 || true   # the coordinator may just not be up yet
+  LIST=$(list_dataflows) || die "dora list fails even after dora up; cannot tell whether tracer-nav runs: $LIST"
 fi
-if dora list 2>/dev/null | grep -qw nav-replay; then
-  echo "run_replay: nav-replay is already running (dora stop --name nav-replay)" >&2
-  exit 1
-fi
+has_name() { printf '%s\n' "$LIST" | awk -v n="$1" '{for(i=1;i<=NF;i++) if($i==n) f=1} END{exit !f}'; }
+has_name tracer-nav && die "the live dataflow tracer-nav is running; stop it first (apps/tracer/autostop.sh), then run this again"
+has_name nav-replay && die "nav-replay is already running (dora stop --name nav-replay)"
+
+bound() { ss "$1" 2>/dev/null | awk -v p=":$2" '{for(i=1;i<=NF;i++) if(substr($i,length($i)-length(p)+1)==p) f=1} END{exit !f}'; }
+bound -lun 9998 && die "UDP port 9998 is already bound (navcmd of the live dataflow?); refusing"
+bound -ltn 7450 && die "TCP port 7450 is already bound (another bridge?); refusing"
+
 cd "$WORK"   # dora writes the node logs to ./out/<dataflow_id>/ next to the yaml (the bridge follows them there)
-dora up >/dev/null 2>&1 || true
 dora start "$YML" --name nav-replay --detach
 echo "run_replay: started nav-replay; stop it with: dora stop --name nav-replay"
