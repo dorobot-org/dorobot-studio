@@ -28,6 +28,17 @@ For Nano's beta, the entire three-object task must succeed on at least 45 of 50 
 
 Existing Data workspace handles episode curation and replay. The full product links AISLE episode IDs to LeRobot datasets, training selections, checkpoints and subsequent evaluations. The existing SO-101 ACT pipeline supplies the integration pattern.
 
+## Functional acceptance by operator action
+
+| Action | Required behavior | Evidence of acceptance |
+| --- | --- | --- |
+| Author from spatial language | An operator can request a visible target by relative location. Record the actual camera exposure, calibration and worksheet of robot-frame estimates supplied to the chosen provider. Bind the resulting program to the observed scene. | An identical instruction selects different colors when the camera sees different arrangements. Changing the scene invalidates the previous program before actuation. [Measured Nano approaches](validation/onboard-authoring/README.md) |
+| Transfer authorship | An evaluator can take a selected, measured controller to a second provider. Preserve the task, parent hash, robot profile, model identifier and signed quantities. | Codex to DeepSeek G1 handoff, with the revised displacement measured after execution. [Native handoff](validation/provider-comparison.md) |
+| Lose a live sensor | The local runtime can brake, wait for usable observations and recover, or stop the trial with the reason visible in Evidence. Record capture time separately from receive time. | Fresh, delayed and persistently frozen approach packets exercise the same Nano controller. [Timing experiment](validation/camera-timing/README.md) |
+| Inspect a release claim | The operator opens a preregistered cohort, verifies all disclosed trials, sees sample size and interval, and drills into individual problems. Include missing traces and failed trials in the denominator. | The native archive reader independently checks the hashed inputs, disclosed layouts and motor envelopes. It restores the verified result after restart. [Batch verification](validation/nano-qualification.md) |
+| Promote to hardware | A lab operator selects a matching physical adapter, validates calibration and monitored stop, dry-runs the exact program and retains its measured outcome beside the simulated one. | Requires measured-device evidence for each profile. Device access and the G1 disturbance envelope remain outstanding. |
+| Scale or train | A researcher can schedule profile-compatible workers, recover a lease after disconnection, and link a dataset and trained checkpoint to a held-out evaluation. | Measure concurrent end-to-end throughput and matched checkpoint outcomes on the selected hosts. Current simulation evidence covers single-host runs and episode export/replay. |
+
 ## Execution and integration requirements
 
 1. AISLE owns experiment definitions, task evaluation and the provider interface. Use the actual AISLE Nexus adapter for local simulation. Expose model and engine identity, timing and artifacts to Studio. Makepad receives asynchronous results and never waits for inference or physics on its event thread.
@@ -74,7 +85,7 @@ The comparison uses the official [release](https://developers.googleblog.com/gem
 | Gate | Evidence |
 | --- | --- |
 | DeepSeek through Octos as the outer author | The same Nano program interface accepts either provider and records the model identity and generated controller. Five matched authoring requests and independently executed retry programs passed for both providers. Native Studio also handed a measured Codex G1 trial to DeepSeek, preserving the parent controller digest. [Provider comparison](validation/provider-comparison.md) |
-| G1 development disturbance | An independent 0.25 kg block contacted the torso and pelvis. Native headless Studio recorded 2,000 two-foot support steps, final shoulder error under 0.000001 rad and a 0.50 s stable recovery. Positive actuator work is a PD estimate with the raw joint trace retained. The owner-approved G1 holdout is open. [Trial](validation/g1-standing.md) |
+| G1 development disturbance | An independent 0.25 kg block contacted the torso and pelvis. Native headless Studio recorded 2,000 two-foot support steps, final shoulder error under 0.000001 rad and a 0.50 s stable recovery. Positive actuator work is a PD estimate with the raw joint trace retained. The G1 qualification awaits an owner-agreed disturbance envelope. [Trial](validation/g1-standing.md) |
 | Scene revision | Import a surveyed image, validate floor scale and collision boxes, edit an object's center and height, and bind the selected revision to a Nano run. The reference test exercises import, rejected and accepted edits, replay and restart. [Scene authoring](validation/room-survey/README.md) |
 
 The native Evidence page opens batch archives, independently replays motor traces and shows the success interval and each failed layout. [Qualification protocol and results](validation/nano-qualification.md)

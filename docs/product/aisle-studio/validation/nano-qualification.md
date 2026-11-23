@@ -45,3 +45,5 @@ Set `MANIFEST_SHA256` to the published digest printed by `prepare`. The runner e
 ### Cohort A
 
 32 of 50 complete tasks passed (64%, 95% Wilson interval 50.1–75.9%). All 50 motor traces verified. The audit counted zero measured guard bypasses. This version missed the 45-success threshold. The full report discloses every seed and salt and retains all 18 failures. [Scored report](nano-holdout-a/report.json) · [Raw evidence for independent verification](nano-holdout-a/evidence.zip)
+
+[Native 50-case verification and restart](nano-holdout-a/native-verification.json) · [Studio Evidence screenshot](nano-holdout-a/studio.png)
