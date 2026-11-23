@@ -74,7 +74,7 @@ impl Backend for MockBackend {
     fn dispatch(&mut self, intent: Intent) {
         match intent {
             Intent::SetCapturePreferences {..} | Intent::SelectSimulation(_) | Intent::StartSimulation | Intent::StopSimulation | Intent::SimulationCapture {..} | Intent::OpenSavedRecording | Intent::CreateRig {..} => {},
-            Intent::Nexus(_)
+            Intent::Aisle(_) | Intent::Nexus(_)
             | Intent::ConfigureRig(_)
             | Intent::SelectNanoBase(_)
             | Intent::ConnectNanoBase { .. }

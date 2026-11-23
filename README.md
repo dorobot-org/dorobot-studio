@@ -3,6 +3,8 @@
 Adora Nano simulation, SO-100/SO-101 LeRobot data collection and dataset review
 with the **Makepad** UI framework.
 
+**AISLE Studio** · [Nano and G1 simulation workbench, requirements, UX and verification](docs/product/aisle-studio/README.md)
+
 **SO-101 on Linux:** [live follower mirror](#physical-teleop-and-live-follower-mirror) ·
 [Nexus collection, training and inference](#leader-driven-nexus-collection-training-and-inference)
 

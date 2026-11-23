@@ -20,6 +20,7 @@ pub mod files;
 pub mod live;
 pub mod mock;
 pub mod nexus;
+pub mod aisle;
 pub mod scene;
 pub mod supported;
 pub mod telemetry;
@@ -473,6 +474,7 @@ impl Screen {
 #[derive(Clone, Debug)]
 pub enum Intent {
     Nexus(nexus::NexusIntent),
+    Aisle(aisle::Action),
     Navigate(Screen),
     ConfigureRig(PathBuf),
     SelectSimulation(bool),
@@ -538,6 +540,7 @@ pub enum Intent {
 /// What every screen reads and writes. Implemented by [`mock::MockBackend`]
 /// today; real backends drop in per screen without UI changes.
 pub trait Backend {
+    fn aisle(&self) -> Option<&aisle::Workbench> { None }
     fn nexus(&self) -> Option<&nexus::NexusState> { None }
     fn telemetry(&self) -> Option<&telemetry::TelemetryState> {
         None

@@ -11,5 +11,6 @@ pub fn builtin_plugins() -> PluginRegistry {
     registry
         .register(Box::new(dorobot_plugin_policy::PolicyPlugin))
         .expect("训练与推理插件注册失败");
+    registry.register(Box::new(dorobot_plugin_aisle::AislePlugin)).expect("AISLE plugin registration");
     registry
 }

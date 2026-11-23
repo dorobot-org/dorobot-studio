@@ -55,3 +55,16 @@ Score designs before implementation and actual UI separately. Each item is worth
 | Fleet | Remote workers, quotas, cancellation, reconnect and live view | End-to-end throughput with inference, streams and recording active |
 
 Studio owns pages and artifact navigation. AISLE owns execution and scoring. Robot adapters own units, calibration and physical stop behavior. An unmet hardware or qualification gate remains visible in the release record.
+
+## Capability comparison and release decisions
+
+| Workflow | Google Robotics Plugin reference | DoRobot and AISLE starting point | Acceptance for parity |
+| --- | --- | --- | --- |
+| Author and revise | Task-specific skills, code generation and iterative controller tests | Task page stores constrained Codex and reference controllers by robot. Evidence compares matching inspection trials | Feed the recorded failure and public sensor observations into the next revision, retain the diff, run a matched holdout and show whether success improved |
+| Build a scene | MuJoCo Studio sidecar and scene generation from reference images | Native URDF preview, mesh inspection, adjustable fixture and Nexus simulation | Load a room recipe or reference photo, edit geometry, validate scale and collisions, persist scene and camera revisions, reproduce the run |
+| Observe and manipulate | RGB localization, visual servoing and motion planning | The inspection exposes a separate operator camera and measured shoulder angle. The existing Nano collection and three-cube examples provide room and capture assets | Establish camera calibration and RGB-only policy I/O, localize a moving object, plan a reachable collision-free grasp, detect a miss and recover |
+| Evaluate | Iteration tooling, simulated perturbations and sim-to-real comparisons | Recorded source and model hashes, joint tracking verdicts, revision history and two gain profiles | Batch matched seeds, show success counts with failures and uncertainty, replay the first divergence and compare controller revisions |
+| Bring up hardware | Device-specific calibration, control processes and shared sim/real bridges | Existing Studio hardware workflows and robot-specific reference URDFs | Qualify calibration, watchdog, stop and command units on each real adapter, deploy the exact approved revision and retain a paired sim/real report |
+| Handoff to datasets | Example sharing and reusable controller programs | Existing AISLE Nano collection to LeRobot and Studio replay | Launch export from a selected trial, preserve cameras and timestamps, link the dataset revision to later policy evaluation |
+
+The comparison uses the official [release](https://developers.googleblog.com/gemini-hydrogen-for-robotics/), [plugin skills at the reviewed revision](https://github.com/google-deepmind/robotics-antigravity-plugin/tree/3dde33820355c70fe8d8e33e42707cdcb742ceb4/plugins/robotics/skills), [repository license](https://github.com/google-deepmind/robotics-antigravity-plugin/blob/3dde33820355c70fe8d8e33e42707cdcb742ceb4/LICENSE) and [Antigravity feature documentation](https://antigravity.google/docs/features). The deliverable here is the reference workbench. The hardware gate requires physical devices, measured calibration and an operator.

@@ -1,0 +1,420 @@
+use dorobot_studio_core::{
+    api::{
+        aisle::{Action, Robot, Workbench, REFERENCE},
+        Backend, Intent,
+    },
+    data::robot_model::RobotModelLoader,
+    ui::frame::{self, Themed},
+    widgets::video_player::VideoPlayerWidgetRefExt,
+};
+use dorobot_studio_plugin::*;
+use dorobot_ux::kit::SparkWidgetRefExt;
+use makepad_urdf_player::robot_view::RobotViewWidgetRefExt;
+use std::path::PathBuf;
+
+pub struct AislePlugin;
+const PAGES: &[PanelDescriptor] = &[
+    PanelDescriptor {
+        id: "aisle_task",
+        title: "Task",
+        legacy_screen: None,
+    },
+    PanelDescriptor {
+        id: "aisle_scene",
+        title: "Scene",
+        legacy_screen: None,
+    },
+    PanelDescriptor {
+        id: "aisle_run",
+        title: "Run",
+        legacy_screen: None,
+    },
+    PanelDescriptor {
+        id: "aisle_evidence",
+        title: "Evidence",
+        legacy_screen: None,
+    },
+];
+impl StudioPlugin for AislePlugin {
+    fn descriptor(&self) -> PluginDescriptor {
+        PluginDescriptor {
+            id: "dorobot.aisle",
+            title: "AISLE Studio",
+            api_version: API_VERSION,
+            panels: PAGES,
+        }
+    }
+    fn register(&self, vm: &mut ScriptVm) {
+        script_mod(vm);
+    }
+    fn create(&self, panel: &str, vm: &mut ScriptVm) -> Result<Box<dyn PluginPanel>, String> {
+        let value = match panel {
+            "aisle_task" => script_eval!(vm,{use mod.widgets.* AisleTask{}}),
+            "aisle_scene" => script_eval!(vm,{use mod.widgets.* AisleScene{}}),
+            "aisle_run" => script_eval!(vm,{use mod.widgets.* AisleRun{}}),
+            "aisle_evidence" => script_eval!(vm,{use mod.widgets.* AisleEvidence{}}),
+            _ => return Err(format!("Unknown workbench page {panel}")),
+        };
+        Ok(Box::new(Panel {
+            root: WidgetRef::script_from_value(vm, value),
+            page: panel.into(),
+            model: Default::default(),
+            light: None,
+            frame: None,
+            draft: None,
+        }))
+    }
+    fn can_disable(&self, b: &dyn Backend) -> Result<(), String> {
+        if b.aisle().is_some_and(|w| w.busy()) {
+            Err("Stop the active AISLE job first".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
+    let Title=Label{width:Fill text:"" draw_text +:{text_style:mod.widgets.ux.TEXT_TITLE{}}}
+    let Section=Label{width:Fill text:"" draw_text +:{text_style:mod.widgets.ux.TEXT_META{}}}
+    let Body=Label{width:Fill max_lines:12 text:""}
+    let Card=mod.widgets.ux.Card{padding:16.0 spacing:10.0 flow:Down}
+    let Bar=View{width:Fill height:Fit flow:Right spacing:8.0 align:Align{y:0.5}}
+    let Page=View{width:Fill height:Fill flow:Down padding:16.0 spacing:12.0}
+    mod.widgets.AisleTask=Page{
+        Title{text:"Inspection task"}
+        context_label := Section{}
+        row := View{width:Fill height:Fill flow:Right spacing:12.0
+            editor := Card{width:Fill height:Fill
+                Section{text:"Robot profile"}
+                Bar{nano := mod.widgets.ux.ToolButton{text:"Adora Nano"} g1 := mod.widgets.ux.ToolButton{text:"Unitree G1"}}
+                Section{text:"Task instruction"}
+                instruction := TextInput{width:Fill height:54 empty_text:"Describe a shoulder inspection"}
+                Bar{reference := mod.widgets.ux.PrimaryButton{text:"Use reference task"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
+                Section{text:"Prepared controller"} detail := Body{}
+                Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
+            }
+            model_card := Card{width:Fill height:Fill Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
+        }
+        status := Body{}
+    }
+    mod.widgets.AisleScene=Page{
+        Title{text:"Robot model"} context_label := Section{}
+        row := View{width:Fill height:Fill flow:Right spacing:12.0
+            model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
+            inspector := Card{width:285 height:Fill Section{text:"Inspection fixture"} Body{text:"Fixed base · gravity compensated"}
+                Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
+                fixture := Body{}
+                inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
+            }
+        }
+        status := Body{}
+    }
+    mod.widgets.AisleRun=Page{
+        Title{text:"Live simulation"} context_label := Section{}
+        row := View{width:Fill height:Fill flow:Right spacing:12.0
+            viewport := Card{width:Fill height:Fill Section{text:"External operator camera"} camera := VideoPlayer{width:Fill height:Fill}}
+            inspector := Card{width:275 height:Fill Section{text:"Measured joint response"} detail := Body{}
+                start_run := mod.widgets.ux.PrimaryButton{text:"Start run"} stop_run := mod.widgets.ux.StopButton{text:"Stop"}
+            }
+        }
+        status := Body{}
+    }
+    mod.widgets.AisleEvidence=Page{
+        Title{text:"Run evidence"} context_label := Section{}
+        summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
+        plot := Card{width:Fill height:Fill Section{text:"Measured joint angle · radians"} trace := Spark{width:Fill height:Fill} scale := Section{}}
+        Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
+            folder := mod.widgets.ux.PrimaryButton{text:"Open run folder"}}
+        status := Body{}
+    }
+}
+struct Panel {
+    root: WidgetRef,
+    page: String,
+    model: RobotModelLoader,
+    light: Option<f64>,
+    frame: Option<(PathBuf, u64)>,
+    draft: Option<(Robot, Option<PathBuf>)>,
+}
+impl Panel {
+    fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
+        self.root.label(cx, id).set_text(cx, s);
+    }
+    fn model(&mut self, cx: &mut Cx, w: &Workbench) {
+        let p = w.robot.model();
+        let viewer = self.root.robot_view(cx, ids!(robot));
+        if self
+            .model
+            .request(Some((p.clone(), p.parent().unwrap().into())))
+        {
+            viewer.clear_robot(cx);
+        }
+        if let Some(result) = self.model.take_ready() {
+            match result {
+                Ok(robot) => {
+                    if let Some(mut v) = viewer.borrow_mut() {
+                        v.set_robot(cx, robot);
+                    }
+                }
+                Err(error) => self.label(cx, ids!(status), &error),
+            }
+        }
+    }
+    fn run(&mut self, cx: &mut Cx, w: &Workbench) {
+        let current = w
+            .live
+            .as_ref()
+            .zip(w.progress["step"].as_u64())
+            .map(|(p, i)| (p.clone(), i));
+        if self.frame != current {
+            let camera = self.root.video_player(cx, ids!(camera));
+            if let Some((dir, step)) = &current {
+                if let Ok(raw) = std::fs::read(dir.join("preview.rgb")) {
+                    if raw.len() == 4 + 480 * 320 * 3
+                        && u32::from_be_bytes(raw[..4].try_into().unwrap()) as u64 + 1 == *step
+                    {
+                        camera.set_frame(cx, 480, 320, &raw[4..]);
+                        self.frame = current;
+                    }
+                }
+            } else {
+                camera.clear(cx);
+                self.frame = None;
+            }
+        }
+        let text = if let Some(angle) = w.progress["measured_rad"].as_f64() {
+            format!("{angle:+.5} rad\nPhysics step {} / 121", w.progress["step"])
+        } else {
+            "Waiting for a measurement".into()
+        };
+        self.label(cx, ids!(detail), &text);
+        self.root
+            .button(cx, ids!(start_run))
+            .set_enabled(cx, !w.busy() && w.prepared.is_some());
+        self.root
+            .widget(cx, ids!(stop_run))
+            .set_visible(cx, w.busy());
+    }
+}
+impl PluginPanel for Panel {
+    fn root(&self) -> WidgetRef {
+        self.root.clone()
+    }
+    fn sync(&mut self, cx: &mut Cx, context: &PanelContext<'_>) {
+        let Some(w) = context.backend.aisle() else {
+            self.label(
+                cx,
+                ids!(status),
+                "Open a local Studio workspace to run AISLE",
+            );
+            return;
+        };
+        let light = frame::light_mode();
+        if self.light != Some(light) {
+            frame::apply_light(
+                cx,
+                &self.root,
+                &[
+                    (ids!(editor), Themed::Bg),
+                    (ids!(inspector), Themed::Bg),
+                    (ids!(model_card), Themed::Bg),
+                    (ids!(viewport), Themed::Bg),
+                    (ids!(summary), Themed::Bg),
+                    (ids!(plot), Themed::Bg),
+                ],
+                light,
+            );
+            self.light = Some(light);
+        }
+        self.label(
+            cx,
+            ids!(context_label),
+            &format!(
+                "{}   /   AISLE · Nexus   /   Fixed-base simulation",
+                if self.page == "aisle_evidence" {
+                    w.evidence["robot"].as_str().unwrap_or("Run history")
+                } else {
+                    w.robot.name()
+                }
+            ),
+        );
+        self.label(cx, ids!(status), &w.status);
+        match self.page.as_str() {
+            "aisle_task" => {
+                let draft = (w.robot, w.prepared.clone());
+                if self.draft.as_ref() != Some(&draft) {
+                    self.root
+                        .text_input(cx, ids!(instruction))
+                        .set_text(cx, &w.task);
+                    self.draft = Some(draft);
+                }
+                let detail = if w.plan.is_null() {
+                    "Choose a reference task or ask Codex to prepare one.".into()
+                } else {
+                    format!(
+                        "{}   ·   {}\n{:+.3} rad   ·   {}   ·   revision {}/{}",
+                        w.robot.name(),
+                        w.plan["joint"].as_str().unwrap_or(""),
+                        w.plan["delta_rad"].as_f64().unwrap_or_default(),
+                        w.plan["provider"].as_str().unwrap_or(""),
+                        w.revision_index().unwrap_or(0) + 1,
+                        w.revisions.len()
+                    )
+                };
+                self.label(cx, ids!(detail), &detail);
+                let index = w.revision_index();
+                self.root
+                    .button(cx, ids!(older))
+                    .set_enabled(cx, !w.busy() && index.is_some_and(|i| i > 0));
+                self.root.button(cx, ids!(newer)).set_enabled(
+                    cx,
+                    !w.busy() && index.is_some_and(|i| i + 1 < w.revisions.len()),
+                );
+                self.model(cx, w);
+                for id in [ids!(nano), ids!(g1), ids!(reference), ids!(codex)] {
+                    self.root.button(cx, id).set_enabled(cx, !w.busy());
+                }
+            }
+            "aisle_scene" => {
+                self.label(
+                    cx,
+                    ids!(fixture),
+                    if w.compliant {
+                        "Compliant · position gain 18"
+                    } else {
+                        "Standard · position gain 28"
+                    },
+                );
+                self.root
+                    .button(cx, ids!(standard))
+                    .set_enabled(cx, !w.busy() && w.compliant);
+                self.root
+                    .button(cx, ids!(compliant))
+                    .set_enabled(cx, !w.busy() && !w.compliant);
+                self.model(cx, w);
+                self.root
+                    .button(cx, ids!(inspect))
+                    .set_enabled(cx, !w.busy());
+                let info = if w.scene.is_null() {
+                    "Inspect the URDF to verify its meshes and joint limits.".into()
+                } else {
+                    let mut rows = vec![format!(
+                        "{} movable joints\n{} mesh assets",
+                        w.scene["joint_count"], w.scene["mesh_count"]
+                    )];
+                    for joint in w.scene["allowed_joints"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|v| v.as_str())
+                    {
+                        rows.push(format!("{}\n{} rad", joint, w.scene["limits"][joint]));
+                    }
+                    rows.join("\n\n")
+                };
+                self.label(cx, ids!(detail), &info);
+            }
+            "aisle_run" => self.run(cx, w),
+            _ => {
+                let verdict = match w.evidence["task_success"].as_bool() {
+                    Some(true) => "Passed",
+                    Some(false) => "Failed",
+                    None => {
+                        if w.selected.is_some() {
+                            w.evidence["outcome"].as_str().unwrap_or("Unscored")
+                        } else {
+                            "No runs yet"
+                        }
+                    }
+                };
+                self.label(cx, ids!(verdict), verdict);
+                let text = if let Some(angle) = w.evidence["measured_delta"].as_f64() {
+                    format!("{} · {} · {} fixture\nRequested {:+.3} rad    Measured {:+.5} rad    {} observations\nLimits {} over {} physics steps.",
+                            w.evidence["robot"].as_str().unwrap_or(""), w.evidence["joint"].as_str().unwrap_or(""),
+                            w.evidence["fixture"].as_str().unwrap_or("standard"), w.evidence["requested_delta"].as_f64().unwrap_or_default(), angle, w.evidence["frames"],
+                            if w.evidence["within_limits"].as_bool()==Some(true) { "respected" } else { "exceeded" }, w.evidence["steps"])
+                } else {
+                    w.evidence["reason"]
+                        .as_str()
+                        .unwrap_or("Run a prepared controller to record its outcome.")
+                        .to_owned()
+                };
+                let status = if let Some(diff) = w.comparison {
+                    format!("Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png.")
+                } else if w.evidence["task_success"].is_boolean() {
+                    "Open the run folder for controller.json, trajectory.json and frame.png."
+                        .to_owned()
+                } else {
+                    String::new()
+                };
+                self.label(cx, ids!(status), &status);
+                self.label(cx, ids!(detail), &text);
+                let trace: Vec<_> = w.trace.iter().map(|&x| x as f64).collect();
+                self.root
+                    .widget(cx, ids!(trace))
+                    .set_visible(cx, !trace.is_empty());
+                let scale = if let (Some(start), Some(end)) = (trace.first(), trace.last()) {
+                    format!("0.01 s   {start:+.5} rad                             1.21 s   {end:+.5} rad")
+                } else {
+                    "Awaiting completed trajectory".into()
+                };
+                self.label(cx, ids!(scale), &scale);
+                self.root
+                    .spark(cx, ids!(trace))
+                    .set(cx, &trace, None, 3, light as f32);
+                let pos = w
+                    .history
+                    .iter()
+                    .position(|p| Some(p) == w.selected.as_ref());
+                self.root
+                    .button(cx, ids!(previous))
+                    .set_enabled(cx, !w.busy() && pos.is_some_and(|i| i > 0));
+                self.root.button(cx, ids!(next)).set_enabled(
+                    cx,
+                    !w.busy() && pos.is_some_and(|i| i + 1 < w.history.len()),
+                );
+                self.root
+                    .button(cx, ids!(folder))
+                    .set_enabled(cx, !w.busy() && w.selected.is_some());
+            }
+        }
+    }
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, b: &mut dyn Backend) -> bool {
+        let Some(_) = b.aisle() else {
+            return false;
+        };
+        for (id, act) in [
+            (ids!(nano) as &[LiveId], Action::Select(Robot::Nano)),
+            (ids!(g1), Action::Select(Robot::G1)),
+            (ids!(inspect), Action::Inspect),
+            (ids!(standard), Action::Fixture(false)),
+            (ids!(compliant), Action::Fixture(true)),
+            (ids!(older), Action::OlderPlan),
+            (ids!(newer), Action::NewerPlan),
+            (ids!(start_run), Action::Run),
+            (ids!(stop_run), Action::Stop),
+            (ids!(previous), Action::Previous),
+            (ids!(next), Action::Next),
+            (ids!(folder), Action::Open),
+        ] {
+            if self.root.button(cx, id).clicked(actions) {
+                b.dispatch(Intent::Aisle(act));
+                return true;
+            }
+        }
+        let reference = self.root.button(cx, ids!(reference)).clicked(actions);
+        if reference || self.root.button(cx, ids!(codex)).clicked(actions) {
+            let input = self.root.text_input(cx, ids!(instruction));
+            if reference {
+                input.set_text(cx, REFERENCE);
+            }
+            b.dispatch(Intent::Aisle(Action::Prepare {
+                task: input.text(),
+                codex: !reference,
+            }));
+            return true;
+        }
+        false
+    }
+}

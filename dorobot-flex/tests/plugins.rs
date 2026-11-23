@@ -220,10 +220,11 @@ fn toolbox_has_one_entry_per_plugin_instead_of_one_per_panel() {
     });
     registry.mount_toolbox(&mut cx, &container).unwrap();
     let children = container.borrow::<View>().unwrap().children.clone();
-    assert_eq!(children.len(), 3, "侧栏应按插件分组，不逐个展开面板");
+    assert_eq!(children.len(), 4, "侧栏应按插件分组，不逐个展开面板");
     assert_eq!(children[0].1.text(), "Robot control");
     assert_eq!(children[1].1.text(), "Data collection");
     assert_eq!(children[2].1.text(), "Training & inference");
+    assert_eq!(children[3].1.text(), "AISLE Studio");
 }
 
 #[test]
