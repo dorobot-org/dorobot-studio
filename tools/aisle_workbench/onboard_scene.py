@@ -11,6 +11,7 @@ from worker import digest, save
 PACKET = "onboard-scene.npz"
 CALIBRATION = "onboard-calibration.json"
 SUMMARY = "onboard-scene.json"
+PREVIEW = "onboard-head.rgb"
 
 
 def interpret(payload, calibration, model):
@@ -58,9 +59,10 @@ def capture(output, meta, seed, room_hash, obstacles, settings):
     sim = approach_scene(model, seed, obstacles, settings)
     config = camera_config(sim, model)
     config.pop("model")
-    payload, _ = sensor_packet(sim, output, save_frame=False)
+    payload, head = sensor_packet(sim, output, save_frame=False)
     public = interpret(payload, config, model)
     (output / PACKET).write_bytes(payload)
+    (output / PREVIEW).write_bytes(head.tobytes())
     save(output / CALIBRATION, config)
     save(output / SUMMARY, public)
     binding = dict(
@@ -68,7 +70,10 @@ def capture(output, meta, seed, room_hash, obstacles, settings):
         source_sha256=source_hashes(),
         room_revision_sha256=room_hash,
         visible=sum(v["status"] == "localized" for v in public["objects"].values()),
-        files={name: digest(output / name) for name in (PACKET, CALIBRATION, SUMMARY)},
+        files={
+            name: digest(output / name)
+            for name in (PACKET, CALIBRATION, SUMMARY, PREVIEW)
+        },
     )
     return public, binding
 
@@ -84,7 +89,10 @@ def bind(source, output, binding, seed, room_hash):
     if binding.get("source_sha256") != source_hashes():
         raise ValueError("Scene or camera code changed; capture a fresh onboard view")
     files = binding.get("files", {})
-    if set(files) != {PACKET, CALIBRATION, SUMMARY}:
+    if set(files) not in (
+        {PACKET, CALIBRATION, SUMMARY},
+        {PACKET, CALIBRATION, SUMMARY, PREVIEW},
+    ):
         raise ValueError("Onboard observation receipt is incomplete")
     for name, expected in files.items():
         if digest(source / name) != expected:

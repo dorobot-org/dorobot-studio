@@ -90,14 +90,14 @@ script_mod! {
                 Section{text:"Robot profile"}
                 Bar{nano := mod.widgets.ux.ToolButton{text:"Adora Nano"} g1 := mod.widgets.ux.ToolButton{text:"Unitree G1"}}
                 Section{text:"Task instruction"}
-                instruction := TextInput{width:Fill height:54 empty_text:"Inspect a shoulder or approach a colored cube with Nano"}
+                instruction := TextInput{width:Fill height:64 is_multiline:true empty_text:"Inspect a shoulder or approach a colored cube with Nano"}
                 Bar{reference := mod.widgets.ux.ToolButton{text:"Use reference task"} onboard := mod.widgets.ux.ToolButton{text:"Onboard RGB off"}}
                 Bar{octos := mod.widgets.ux.PrimaryButton{text:"DeepSeek via Octos"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
                 Section{text:"Prepared controller"} detail := Body{}
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
                 revision_actions := Bar{revise := mod.widgets.ux.ToolButton{text:"Revise with DeepSeek"} revise_codex := mod.widgets.ux.ToolButton{text:"Revise with Codex"}}
             }
-            model_card := Card{width:Fill height:Fill Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
+            model_card := Card{width:Fill height:Fill preview_title := Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false} onboard_photo := VideoPlayer{width:Fill height:Fill}}
         }
         status := Body{}
     }
@@ -351,11 +351,38 @@ impl PluginPanel for Panel {
         self.label(cx, ids!(status), &w.status);
         match self.page.as_str() {
             "aisle_task" => {
+                let capture = w.plan["scene_observation"]["files"]["onboard-head.rgb"].is_string();
+                self.root.widget(cx, ids!(robot)).set_visible(cx, !capture);
+                self.root
+                    .widget(cx, ids!(onboard_photo))
+                    .set_visible(cx, capture);
+                self.label(
+                    cx,
+                    ids!(preview_title),
+                    if capture {
+                        "Head camera at task authoring"
+                    } else {
+                        "Robot preview"
+                    },
+                );
                 let draft = (w.robot, w.prepared.clone());
                 if self.draft.as_ref() != Some(&draft) {
                     self.root
                         .text_input(cx, ids!(instruction))
                         .set_text(cx, &w.task);
+                    let photo = self.root.video_player(cx, ids!(onboard_photo));
+                    photo.clear(cx);
+                    if capture {
+                        if let Some(raw) = w
+                            .prepared
+                            .as_ref()
+                            .and_then(|p| std::fs::read(p.with_file_name("onboard-head.rgb")).ok())
+                        {
+                            if raw.len() == 480 * 360 * 3 {
+                                photo.set_frame(cx, 480, 360, &raw);
+                            }
+                        }
+                    }
                     self.draft = Some(draft);
                 }
                 let detail = if w.plan.is_null() {
