@@ -32,6 +32,12 @@ def visible_in_jaws(rgb, color):
     return float(opening.mean()) >= 0.14 and float(mask.mean()) >= 0.04
 
 
+# Reserve lateral space for rolling after the open finger withdraws. Moving the
+# elevated base closer keeps the desired release point within the arm workspace.
+RELEASE_INSET = 0.085
+DOCK_DISTANCE = 0.385 - RELEASE_INSET
+
+
 class Controller:
     def __init__(self, config):
         self.input = sys.stdin.buffer
@@ -194,7 +200,7 @@ class Controller:
                 if not self.held_in_wrist_view(color):
                     return None
                 elevated = True
-            if elevated and abs(angle) < 0.04 and abs(distance - 0.335) < 0.012:
+            if elevated and abs(angle) < 0.04 and abs(distance - DOCK_DISTANCE) < 0.010:
                 self.drive()
                 self.drive()
                 final = self.table()
@@ -203,7 +209,7 @@ class Controller:
                 self.drive()
                 continue
             speed = (
-                np.clip((distance - 0.333) * 0.55, -0.025, 0.055)
+                np.clip((distance - DOCK_DISTANCE) * 0.55, -0.025, 0.055)
                 if abs(angle) < 0.09
                 else 0.0
             )
@@ -296,7 +302,7 @@ class Controller:
                 edge["span"][0] + 0.009,
                 edge["span"][1] - 0.009,
             )
-            place = (edge["distance"] + 0.05) * edge["normal"] + side * t
+            place = (edge["distance"] + RELEASE_INSET) * edge["normal"] + side * t
             z = edge["height"]
             self.reach(np.r_[place, z + 0.078], 340, 12, supported=True)
             self.phase("release", color)

@@ -96,4 +96,7 @@ class TransferTests(unittest.TestCase):
         judge.tick(sim)
         _, supported, held, _ = judge.tail["red"][-1]
         self.assertTrue(supported and held)
+        self.assertEqual(judge.grasped["red"], 0)
+        normal[0] = 0
+        judge.tick(sim)
         self.assertEqual(judge.grasped["red"], 1)

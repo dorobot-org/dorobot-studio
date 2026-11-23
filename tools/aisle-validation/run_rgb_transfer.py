@@ -19,6 +19,7 @@ from aisle import kinematics
 from aisle.sim.nexus_backend import quat_wxyz_to_matrix
 from verify_arm_reach import ArmModel
 
+from nano_actuator_audit import MotorEnvelope, MotorWriter, replay
 from nano_living import (
     CAMERAS,
     NAVIGATION_POSTURE,
@@ -91,6 +92,7 @@ class Judge:
         fingers = {c: set() for c in self.colors}
         touching_gripper = set()
         table_support = set()
+        other_support = set()
         impact = set()
         state, viewer = sim.scene.state, sim.engine.viewer
         # Contact manifolds in Nexus 0.2.1 may persist after separation.
@@ -102,6 +104,7 @@ class Judge:
                 self.object_ids.get(row["body_a"]),
                 self.object_ids.get(row["body_b"]),
             }
+            other_support.update(pair.intersection(self.colors))
             if "coffee_table" in pair:
                 table_support.update(pair.intersection(self.colors))
         for row in state.debug_multibody_contact_impulses(viewer):
@@ -116,6 +119,8 @@ class Judge:
             elif obj in fingers and link in ("left_finger_a", "left_finger_b"):
                 fingers[obj].add(link)
                 touching_gripper.add(obj)
+            elif obj in fingers:
+                other_support.add(obj)
             elif obj and obj not in COLORS and obj != "floor":
                 impact.add((link, obj))
         # Keep even unloaded furniture manifolds in the conservative collision audit.
@@ -145,7 +150,11 @@ class Judge:
             pos = np.asarray(cube.get_pos()).copy()
             if not np.isfinite(pos).all():
                 raise ValueError("Nonfinite cube state")
-            if len(fingers[n]) == 2 and pos[2] - self.initial[n][2] > 0.05:
+            if (
+                n not in other_support
+                and len(fingers[n]) == 2
+                and pos[2] - self.initial[n][2] > 0.05
+            ):
                 self.grasped[n] += 1
             gap = min(
                 finger_gap(pos, p, r, bounds, self.radii[n]) for p, r, bounds in jaws
@@ -166,9 +175,10 @@ class Judge:
             detached = min_gap > 0.001 and all(not held for _, _, held, _ in tail)
             pos = positions[-1]
             # A 40 mm cube can project half its space diagonal onto either horizontal axis.
-            inside = bool(
-                np.all(np.abs(pos[:2] - table[:2]) + 0.035 < self.size[:2] / 2)
+            edge_clearance = float(
+                np.min(self.size[:2] / 2 - np.abs(pos[:2] - table[:2]))
             )
+            inside = edge_clearance > 0.035
             travel = float(np.linalg.norm(np.ptp(positions, axis=0)))
             passed = (
                 self.grasped[n] >= 20
@@ -186,6 +196,8 @@ class Judge:
                 detached=detached,
                 min_finger_clearance_tail_m=min_gap,
                 cube_center_over_table=inside,
+                nearest_table_edge_m=edge_clearance,
+                required_table_inset_m=0.035,
                 settle_motion_m=travel,
             )
         return dict(
@@ -222,6 +234,8 @@ def execute(out, seed, colors, record=False):
     }
     guard = WheelGuard()
     judge = Judge(sim, colors)
+    envelope = MotorEnvelope(MODEL, sim.names)
+    journal = out / "motor-targets.f64"
     policy = HERE / "nano_rgb_transfer_policy.py"
     source_path = out / "source.json"
     source = json.loads(source_path.read_text()) if source_path.exists() else {}
@@ -237,6 +251,8 @@ def execute(out, seed, colors, record=False):
                 f.name: worker.digest(f)
                 for f in (
                     HERE / "nano_rgb_table.py",
+                    HERE / "nano_actuator_audit.py",
+                    HERE / "nano_visuals.py",
                     HERE / "verify_arm_reach.py",
                     HERE / "nano_rgb_policy.py",
                     HERE / "nano_living.py",
@@ -297,7 +313,7 @@ def execute(out, seed, colors, record=False):
     def step():
         if sim.tick >= 60000:
             raise ValueError("episode step budget exhausted")
-        sim.robot.control_dofs_position(sim.targets.tolist(), sim.dofs)
+        motors.apply(sim.robot, sim.dofs, sim.targets)
         sim.scene.step()
         sim.tick += 1
         judge.tick(sim)
@@ -354,10 +370,12 @@ def execute(out, seed, colors, record=False):
     finished = False
     frame_count = 0
     with (
+        journal.open("wb") as motor_log,
         (out / "actions.jsonl").open("w") as log,
         (out / "policy.log").open("w") as err,
         tempfile.TemporaryDirectory() as empty,
     ):
+        motors = MotorWriter(motor_log, envelope, sim.targets)
         with subprocess.Popen(
             [sys.executable, str(policy)],
             cwd=empty,
@@ -454,6 +472,7 @@ def execute(out, seed, colors, record=False):
         )
     if error and (out / "policy.log").stat().st_size:
         error = (out / "policy.log").read_text().strip().splitlines()[-1][-350:]
+    audit = replay(journal, envelope, sim.tick)
     result = judge.result(sim)
     passed = (
         finished
@@ -463,6 +482,8 @@ def execute(out, seed, colors, record=False):
         and judge.supported == sim.tick
         and result["max_joint_excursion_rad"] <= 0.005
         and not sim.root_pose_writes
+        and audit["passed"]
+        and not motors.rejected
     )
     return result | dict(
         passed=bool(passed),
@@ -470,6 +491,8 @@ def execute(out, seed, colors, record=False):
         requested=colors,
         phase=judge.phase,
         onboard_observations=frame_count,
+        actuator_audit=audit,
+        rejected_motor_writes=motors.rejected,
         frames=len(samples),
         recording=bool(samples),
         seed=seed,
