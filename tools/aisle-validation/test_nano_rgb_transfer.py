@@ -80,6 +80,7 @@ class TransferTests(unittest.TestCase):
             debug_contacts=lambda _: [dict(body_a=i, body_b=2) for i in (1, 23, 24)],
         )
         sim = SimpleNamespace(
+            tick=1,
             scene=SimpleNamespace(state=state),
             engine=SimpleNamespace(viewer=None),
             robot=SimpleNamespace(get_qpos=lambda: []),
@@ -97,6 +98,8 @@ class TransferTests(unittest.TestCase):
             Counter(),
         )
         judge.supported = 0
+        judge.unsupported_ranges = []
+        judge.phase = "place"
         judge.initial = {"red": np.zeros(3)}
         judge.cubes, judge.radii = {"red": body(0.56)}, {"red": 0.035}
         judge.jaws = [(body(1), (np.zeros(3), np.full(3, 0.01)))]
@@ -106,6 +109,7 @@ class TransferTests(unittest.TestCase):
         self.assertFalse(supported or held)
         self.assertGreater(gap, 0.001)
         self.assertEqual(judge.grasped["red"], 0)
+        sim.tick += 1
         normal[0] = 0.0004
         for row in rows:
             row["impulse"] = 0.001
@@ -113,6 +117,11 @@ class TransferTests(unittest.TestCase):
         _, supported, held, _ = judge.tail["red"][-1]
         self.assertTrue(supported and held)
         self.assertEqual(judge.grasped["red"], 0)
+        sim.tick += 1
         normal[0] = 0
         judge.tick(sim)
+        self.assertEqual(
+            judge.unsupported_ranges,
+            [dict(phase=judge.phase, first_step=1, last_step=3)],
+        )
         self.assertEqual(judge.grasped["red"], 1)

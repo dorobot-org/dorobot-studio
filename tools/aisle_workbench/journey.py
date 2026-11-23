@@ -244,6 +244,23 @@ def main():
             done(lambda w: w["failure_index"] == 0, "First failed layout reopened")
         if not a.recover:
             grab("layout-evaluation")
+            missing = a.evaluation.with_name("missing-archive-for-ui-check.zip")
+            assert not missing.exists()
+            click("aisle_evidence.archive_path")
+            remote(
+                "key",
+                "w=0",
+                "c=KeyA",
+                "logo=1" if sys.platform == "darwin" else "ctrl=1",
+                "wait=1",
+            )
+            remote("text", "w=0", "t=" + str(missing), "wait=1")
+            click("aisle_evidence.verify_archive")
+            rejected = done(
+                lambda w: not w["busy"] and missing.name in w["status"],
+                "Unreadable archive rejected",
+            )
+            assert rejected["evaluation"] == evaluation
         name = "recovery.json" if a.recover else "journey.json"
         (a.out / name).write_text(json.dumps(checks, indent=2))
         return
