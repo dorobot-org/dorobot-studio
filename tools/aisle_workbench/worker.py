@@ -283,6 +283,10 @@ def octos_controller(prompt, schema, directory, output):
 def request_controller(provider, prompt, schema, output):
     output = output.resolve()
     save(output / "schema.json", schema)
+    save(
+        output / "controller-request.json",
+        {"provider": provider, "instruction": prompt, "output_schema": schema},
+    )
     model_name = None
     started = time.monotonic()
     usage = {}

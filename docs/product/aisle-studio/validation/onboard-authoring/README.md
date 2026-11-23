@@ -4,7 +4,7 @@ Enable **Onboard RGB** on the Nano Task page, select the development layout on S
 
 ![DeepSeek selecting the blue cube from the actual head-camera exposure](task.png)
 
-Nano captures all three RGB cameras and 17 joint encoders. The local detector uses the calibrated camera rays, encoder-derived camera poses and the nominal floor-cube height to estimate horizontal range and left/right position in the robot frame. The model receives the resulting measurements and visibility for red, green and blue. Studio retains the original pixels for inspection. The model receives no layout number, engine object coordinates, depth image or segmentation labels. Changing the selected layout, surveyed room or relevant source code invalidates the observation-bound controller.
+Nano captures all three RGB cameras and 17 joint encoders. The local detector uses the calibrated camera rays, encoder-derived camera poses and the nominal floor-cube height to estimate horizontal range and left/right position in the robot frame. The model receives the resulting measurements and visibility for red, green and blue. Studio retains the original pixels for inspection. New preparation jobs also retain the exact workbench instruction and output schema in `controller-request.json`. The model receives no layout number, engine object coordinates, depth image or segmentation labels. Changing the selected layout, surveyed room or relevant source code invalidates the observation-bound controller.
 
 | Layout | Both providers selected | Independent final range | Grounded physics steps |
 | --- | --- | ---: | ---: |
