@@ -57,6 +57,11 @@ def main():
         type=Path,
         help="Verify a batch archive in Evidence and reopen it after restart",
     )
+    parser.add_argument(
+        "--train-reach",
+        action="store_true",
+        help="Train and run a correction from the exported G1 episode",
+    )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
@@ -69,6 +74,8 @@ def main():
     args = parser.parse_args()
     if args.survey and not args.transfer:
         parser.error("--survey requires --transfer")
+    if args.train_reach and not args.standing:
+        parser.error("--train-reach requires --standing")
     if args.impact and not args.standing:
         parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
@@ -184,6 +191,8 @@ def main():
                     check.append("--handoff")
                 if args.evaluation:
                     check.extend(["--evaluation", str(args.evaluation.resolve())])
+                if args.train_reach:
+                    check.append("--train-reach")
                 if args.standing:
                     check.append("--standing")
                     if args.impact:

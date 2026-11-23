@@ -27,6 +27,8 @@ FILES = (
     "impact-contacts.json",
     "wrist-trace.npz",
     "motor-work.npz",
+    "reach-checkpoint.json",
+    "training.json",
 )
 MODEL = Path(describe("G1")["model"])
 
@@ -54,6 +56,7 @@ def inputs():
                 Path(__file__),
                 HERE / "g1_stand.py",
                 HERE / "worker.py",
+                HERE / "g1_reach_checkpoint.py",
                 Path(kinematics.__file__),
                 Path(nexus_backend.__file__),
             )
@@ -68,15 +71,7 @@ def inputs():
     }
 
 
-def prepare(directory, controller):
-    plan = read(controller)
-    meta = describe("G1")
-    if (
-        plan.get("robot") != "G1"
-        or plan.get("model_hash") != meta["model_hash"]
-        or validate(plan, meta).get("kind") != "standing-inspection"
-    ):
-        raise ValueError("Select a G1 standing reach controller")
+def random_openings():
     # Eight corners exercise all combinations of endpoints. Twelve interiors stay sealed.
     samples = list(product((200, 300), (1100, 1300), (-15, 15)))
     while len(samples) < 20:
@@ -87,23 +82,56 @@ def prepare(directory, controller):
         )
         if sample not in samples:
             samples.append(sample)
-    openings = [
+    return [
         dict(
             salt=secrets.token_hex(24),
             recipe=dict(mass_kg=m / 1000, speed_m_s=v / 1000, lateral_m=y / 1000),
         )
         for m, v, y in samples
     ]
+
+
+def prepare(directory, controller, match=None):
+    plan = read(controller)
+    meta = describe("G1")
+    if (
+        plan.get("robot") != "G1"
+        or plan.get("model_hash") != meta["model_hash"]
+        or validate(plan, meta).get("kind") != "standing-inspection"
+    ):
+        raise ValueError("Select a G1 standing reach controller")
+    if "reach_checkpoint" in plan:
+        from g1_reach_checkpoint import load
+
+        load(controller.parent, plan)
+    if match:
+        old = read(match / "suite.json")
+        referenced = digest(match / "suite.json")
+        report = read(match / "report.json")
+        openings = [{k: r[k] for k in ("salt", "recipe")} for r in report["rows"]]
+        if (
+            old.get("profile") != "g1-standing-reach-v1"
+            or len(openings) != 20
+            or report["manifest_sha256"] != referenced
+            or [commitment(x) for x in openings] != old["commitments"]
+        ):
+            raise ValueError("The matching report does not open the published G1 cases")
+    else:
+        openings = random_openings()
     directory.mkdir(parents=True, exist_ok=False)
     private = directory / "openings.json"
     private.touch(mode=0o600, exist_ok=False)
     save(private, openings)
     private.chmod(0o600)
     (directory / "controller.json").write_bytes(controller.read_bytes())
+    if "reach_checkpoint" in plan:
+        for name in ("reach-checkpoint.json", "training.json"):
+            (directory / name).write_bytes((controller.parent / name).read_bytes())
     save(
         directory / "suite.json",
         dict(
             profile="g1-standing-reach-v1",
+            **({"matched_manifest_sha256": referenced} if match else {}),
             cases=20,
             required=20,
             boundary_cases=8,
@@ -281,6 +309,32 @@ def score(case, m, opening):
     bypasses = int(
         np.count_nonzero((targets < lo - 1e-6) | (targets > hi + 1e-6))
     ) + int(np.count_nonzero(abs(np.diff(targets, axis=0)) > speed * 0.005 + 1e-6))
+    if "reach_checkpoint" in plan:
+        from g1_reach_checkpoint import features, load
+
+        weights = load(case, plan)
+        if (
+            result.get("reach_checkpoint") != plan["reach_checkpoint"]
+            or result.get("training_dataset") != plan["training_dataset"]
+        ):
+            raise ValueError("G1 measured trial has different checkpoint lineage")
+        j = names.index(plan["joint"])
+        initial = a["q_before"][0, j]
+        phase = np.minimum((np.arange(2000) + 1) * 0.005, 1)
+        ref = initial + phase * plan["delta_rad"]
+        corrections = np.array(
+            [
+                weights @ features(t, e)
+                for t, e in zip(phase, ref - a["q_before"][:, j], strict=True)
+            ]
+        )
+        goal = np.clip(ref + np.clip(corrections, -0.04, 0.04), lo[j], hi[j])
+        previous = np.r_[0.0, targets[:-1, j]]
+        expected = previous + np.clip(
+            goal - previous, -speed[j] * 0.005, speed[j] * 0.005
+        )
+        if not np.allclose(expected, targets[:, j], atol=2e-7, rtol=0):
+            raise ValueError("Recorded motor targets differ from checkpoint inference")
     torque = np.clip(
         a["kp"] * (targets - a["q_before"]) - a["kd"] * a["velocity_before"],
         -effort,
@@ -430,6 +484,7 @@ def verify(archive, expected):
             p = directory / name
             p.parent.mkdir(exist_ok=True)
             p.write_bytes(z.read(name))
+        read_matched = "matched_manifest_sha256" in read(directory / "suite.json")
         reported = read(directory / "report.json")
         openings = [{k: r[k] for k in ("salt", "recipe")} for r in reported["rows"]]
         actual = summarize(directory, expected, openings)
@@ -438,7 +493,7 @@ def verify(archive, expected):
     rows = actual.pop("rows")
     return dict(
         **actual,
-        split="bounded-impact",
+        split="matched" if read_matched else "bounded-impact",
         requirement=20,
         archive_sha256=digest(archive),
         failures=[r for r in rows if not r["passed"]],
@@ -451,6 +506,11 @@ def main():
     prep = sub.add_parser("prepare")
     prep.add_argument("directory", type=Path)
     prep.add_argument("controller", type=Path)
+    prep.add_argument(
+        "--match",
+        type=Path,
+        help="Use the disclosed recipes from a prior suite and report",
+    )
     trial = sub.add_parser("run")
     trial.add_argument("directory", type=Path)
     trial.add_argument("manifest")
@@ -463,7 +523,7 @@ def main():
     audit.add_argument("manifest")
     args = p.parse_args()
     if args.operation == "prepare":
-        print(prepare(args.directory, args.controller))
+        print(prepare(args.directory, args.controller, args.match))
     elif args.operation == "run":
         result = run(args.directory.resolve(), args.manifest, args.jobs)
         print(json.dumps({k: v for k, v in result.items() if k != "rows"}))

@@ -156,7 +156,7 @@ script_mod! {
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
         trial_bar := Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
             folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
-            export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"}}
+            export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"} train_reach := mod.widgets.ux.ToolButton{text:"Train shoulder correction"}}
         status := Body{}
     }
 }
@@ -413,10 +413,14 @@ impl PluginPanel for Panel {
                         w.robot.name(),
                         w.plan["joint"].as_str().unwrap_or(""),
                         w.plan["delta_rad"].as_f64().unwrap_or_default(),
-                        w.plan["policy_model"]
-                            .as_str()
-                            .or_else(|| w.plan["provider"].as_str())
-                            .unwrap_or(""),
+                        if w.plan["reach_checkpoint"].is_string() {
+                            "Trained shoulder correction"
+                        } else {
+                            w.plan["policy_model"]
+                                .as_str()
+                                .or_else(|| w.plan["provider"].as_str())
+                                .unwrap_or("")
+                        },
                         w.revision_index().unwrap_or(0) + 1,
                         w.revisions.len()
                     )
@@ -663,6 +667,8 @@ impl PluginPanel for Panel {
                     let (title, detail) = if result["cases"].is_number() {
                         let title = if result["split"] == "development" {
                             "Development results"
+                        } else if result["split"] == "matched" {
+                            "Matched evaluation"
                         } else if result["qualified"] == true {
                             "Qualified"
                         } else {
@@ -841,6 +847,9 @@ impl PluginPanel for Panel {
                             error * 1000.
                         ));
                     }
+                    if w.evidence["reach_checkpoint"].is_string() {
+                        summary.push_str("\nController uses the trained shoulder correction");
+                    }
                     let impact = &w.evidence["disturbance"];
                     if impact.is_object() {
                         let recovery = impact["recovery_s"]
@@ -904,6 +913,17 @@ impl PluginPanel for Panel {
                     .set_visible(cx, w.dataset.is_some());
                 self.root
                     .button(cx, ids!(replay))
+                    .set_enabled(cx, !w.busy());
+                let can_train = w.robot == Robot::G1
+                    && w.evidence["kind"] == "standing-inspection"
+                    && w.evidence["task_success"] == true
+                    && w.evidence["reach_checkpoint"].is_null()
+                    && w.dataset.is_some();
+                self.root
+                    .widget(cx, ids!(train_reach))
+                    .set_visible(cx, can_train);
+                self.root
+                    .button(cx, ids!(train_reach))
                     .set_enabled(cx, !w.busy());
                 self.label(cx, ids!(detail), &text);
                 let trace: Vec<_> = w.trace.iter().map(|&x| x as f64).collect();
@@ -1006,6 +1026,7 @@ impl PluginPanel for Panel {
             (ids!(next), Action::Next),
             (ids!(folder), Action::Open),
             (ids!(export), Action::Export),
+            (ids!(train_reach), Action::TrainReach),
         ] {
             if self.root.button(cx, id).clicked(actions) {
                 b.dispatch(Intent::Aisle(act));

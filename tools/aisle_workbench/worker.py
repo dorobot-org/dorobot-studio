@@ -545,13 +545,31 @@ def simulate(args, meta):
     if standing:
         from g1_stand import simulate as standing_trial
 
+        weights = None
+        if "reach_checkpoint" in plan:
+            from g1_reach_checkpoint import load
+
+            weights = load(args.controller.parent, plan)
+            for name in ("reach-checkpoint.json", "training.json"):
+                (args.out / name).write_bytes(
+                    (args.controller.parent / name).read_bytes()
+                )
         return standing_trial(
             args.out,
             Path(meta["model"]),
             control,
             impact=impact,
+            reach_weights=weights,
             parameters=json.loads(impact_recipe.read_text()) if impact_recipe else None,
         ) | dict(
+            **(
+                {
+                    "reach_checkpoint": plan["reach_checkpoint"],
+                    "training_dataset": plan["training_dataset"],
+                }
+                if weights is not None
+                else {}
+            ),
             robot=args.robot,
             controller_hash=hashlib.sha256(original).hexdigest(),
             model_hash=meta["model_hash"],
@@ -706,7 +724,16 @@ def simulate(args, meta):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
-        "operation", choices=["scene", "prepare", "run", "export", "room", "evaluate"]
+        "operation",
+        choices=[
+            "scene",
+            "prepare",
+            "run",
+            "export",
+            "room",
+            "evaluate",
+            "train-reach",
+        ],
     )
     p.add_argument("--robot", choices=MODELS, required=True)
     p.add_argument("--out", type=Path, required=True)
@@ -720,6 +747,7 @@ def main():
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
     p.add_argument("--archive", type=Path)
+    p.add_argument("--dataset", type=Path)
     p.add_argument("--onboard-context", action="store_true")
     p.add_argument(
         "--rgb-timing",
@@ -802,6 +830,13 @@ def main():
                 parent=args.room_hash if args.room_source is None else None,
                 model_sha=describe("Nano")["model_hash"],
             )
+            return
+        if args.operation == "train-reach":
+            if args.robot != "G1" or args.dataset is None or args.trial is None:
+                raise ValueError("Choose a G1 standing reach episode to train")
+            from g1_reach_checkpoint import train
+
+            train(args.dataset, args.trial, args.out)
             return
         if args.operation == "export":
             from replay import export
