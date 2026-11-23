@@ -1,8 +1,10 @@
 # AISLE Studio
 
-Open **AISLE Studio** in the DoRobot Studio sidebar. The four pages take an inspection from a written instruction to a measured robot response. Both the Adora Nano and Unitree G1 use their repository URDFs. Nexus advances the physics and renders the operator camera through AISLE's Python adapter. The Studio worker evaluates the retained measurements.
+Open **AISLE Studio** in the DoRobot Studio sidebar. The four pages take an inspection from a written instruction to a measured robot response. Adora Nano also supports driving to a named floor cube using its three onboard RGB cameras and stopping at the requested distance. Both the Adora Nano and Unitree G1 use their repository URDFs. Nexus advances the physics and renders the operator camera through AISLE's Python adapter. The Studio worker evaluates the retained measurements.
 
 [Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
+
+[Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
 
 ## Run from a Studio source checkout
 
@@ -42,4 +44,4 @@ cargo build --locked -p dorobot-flex --bin dorobot-flex
 
 Use `--remote /path/to/makepad-remote` for a locally built client. Omit `--codex` to use reference controllers throughout. The driver sends pointer and keyboard events to the running application, restarts it with the same state directory and reads the saved trial files. The offscreen run also captures pixels. Both modes still use real Nexus physics and sensor rendering.
 
-Use `--octos-deepseek` in place of `--codex` in the native verification command to run both G1 authoring turns through Octos. See the [measured provider comparison](validation/provider-comparison.md).
+Use `--octos-deepseek` in place of `--codex` in the native verification command to run the Nano approach and both G1 authoring turns through Octos. See the [measured provider comparison](validation/provider-comparison.md).

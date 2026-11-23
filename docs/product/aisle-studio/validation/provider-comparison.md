@@ -12,3 +12,5 @@ Both providers received the same tasks on this Mac and used the same guarded Nex
 Times measure one CLI authoring call per provider per task, including process startup and network time. The reported models were `deepseek-v4-flash` and `gpt-6.2-astra`. This sample tests signed command generation, one evidence-informed revision and capability rejection. Both successful paths execute the same deterministic low-level commands. The full application journeys also exercised export, replay, stop and restart.
 
 [Raw timing and outcome records](provider-comparison.json) · [Native DeepSeek Task page](octos-deepseek-task.png)
+
+The subsequent floating-base trial exercised a separate Nano wheel controller. Both providers approached the red cube in Nexus and reproduced the same command and measurement trace. [RGB approach comparison, live view and replay](nano-rgb-approach.md)
