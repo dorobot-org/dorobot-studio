@@ -10,7 +10,21 @@ from PIL import Image
 from worker import digest, save
 
 
-def simulate(out, model, plan, impact=False):
+def impact_parameters(values):
+    bounds = {
+        "mass_kg": (0.20, 0.30),
+        "speed_m_s": (1.10, 1.30),
+        "lateral_m": (-0.015, 0.015),
+    }
+    if not isinstance(values, dict) or set(values) != set(bounds):
+        raise ValueError("Expected block mass, launch speed and lateral offset")
+    for name, (low, high) in bounds.items():
+        if type(values[name]) not in (float, int) or not low <= values[name] <= high:
+            raise ValueError(f"Impact {name} must be between {low} and {high}")
+    return values
+
+
+def simulate(out, model, plan, impact=False, parameters=None):
     from aisle.kinematics import load_urdf_chain
     from aisle.sim import nexus_backend as nx
 
@@ -34,7 +48,12 @@ def simulate(out, model, plan, impact=False):
     floor = scene.add_box(
         "floor", [5, 5, 0.10], [0, 0, floor_z - 0.05], fixed=True, friction=0.8
     )
-    block_side, block_mass = 0.065, 0.25
+    parameters = impact_parameters(
+        parameters
+        if parameters is not None
+        else {"mass_kg": 0.25, "speed_m_s": 1.20, "lateral_m": 0.0}
+    )
+    block_side, block_mass = 0.065, parameters["mass_kg"]
     block = None
     if impact:
         block = scene.add_box(
@@ -89,7 +108,14 @@ def simulate(out, model, plan, impact=False):
     initial_xy = robot.get_pos()[:2].copy()
     block_id = scene.gpu_index(0, block.handles[0]) if block is not None else None
     launch_at = 600  # Three seconds into the scored trial.
-    launch_pos, launch_velocity = [0.29, 0, 0.16], [-1.2, 0, 0]
+    launch_pos = [0.29, parameters["lateral_m"], 0.16]
+    launch_velocity = [-parameters["speed_m_s"], 0, 0]
+    wrist_name = plan["joint"].split("_", 1)[0] + "_wrist_yaw_link"
+    wrist = robot.get_link(wrist_name)
+    chain = load_urdf_chain(model, "pelvis", wrist_name)
+    chain_dofs = [dofs[names.index(j)] for j in chain.joint_names]
+    wrist_rows, balance_rows = [], []
+    wrist_start = wrist_goal = None
     previous_pitch = 0.0
     warmup, scored = 200, 2000
     both = 0
@@ -109,15 +135,17 @@ def simulate(out, model, plan, impact=False):
             gravity_m_s2=-9.81,
             warmup_steps=warmup,
             floor_z_m=float(floor_z),
-            disturbance=dict(
-                mass_kg=block_mass,
-                side_m=block_side,
-                initial_position_m=launch_pos,
-                initial_velocity_m_s=launch_velocity,
-                launch_step=launch_at + 1,
-            )
-            if impact
-            else None,
+            disturbance=(
+                dict(
+                    mass_kg=block_mass,
+                    side_m=block_side,
+                    initial_position_m=launch_pos,
+                    initial_velocity_m_s=launch_velocity,
+                    launch_step=launch_at + 1,
+                )
+                if impact
+                else None
+            ),
         ),
     )
     correction = 0.0
@@ -135,6 +163,17 @@ def simulate(out, model, plan, impact=False):
             angle = float(robot.get_qpos()[dofs[shoulder]])
             if initial_angle is None:
                 initial_angle = angle
+                # The evaluator freezes a world-frame goal against the warmed-up pose.
+                chain_q = robot.get_qpos()[chain_dofs].copy()
+                relative_start = chain.forward(chain_q)[0]
+                chain_q[chain.joint_names.index(plan["joint"])] += plan["delta_rad"]
+                relative_delta = chain.forward(chain_q)[0] - relative_start
+                wrist_start = wrist.get_pos().astype(float).copy()
+                initial_root_quat = robot.get_quat().copy()
+                wrist_goal = (
+                    wrist_start
+                    + nx.quat_wxyz_to_matrix(initial_root_quat) @ relative_delta
+                )
             reference = initial_angle + plan["delta_rad"] * min(
                 1, (i - warmup + 1) * dt
             )
@@ -182,6 +221,20 @@ def simulate(out, model, plan, impact=False):
         both += int(feet.issubset(loaded))
         other_links.update(loaded - feet)
         step = i - warmup + 1
+        wrist_xyz = wrist.get_pos().astype(float)
+        wrist_error = float(np.linalg.norm(wrist_xyz - wrist_goal))
+        if not np.isfinite(wrist_error):
+            raise ValueError("Invalid G1 wrist position")
+        wrist_rows.append(wrist_xyz.copy())
+        balance_rows.append(
+            (
+                feet.issubset(loaded),
+                bool(loaded - feet),
+                tilt,
+                np.linalg.norm(pos[:2] - initial_xy),
+                q[shoulder] - initial_angle,
+            )
+        )
         if block is not None and step > launch_at:
             hits = [
                 c
@@ -205,6 +258,7 @@ def simulate(out, model, plan, impact=False):
                 stable = (
                     feet.issubset(loaded)
                     and not (loaded - feet)
+                    and wrist_error <= 0.010
                     and tilt < np.deg2rad(4)
                     and np.linalg.norm(pos[:2] - initial_xy) < 0.03
                     and abs(q[shoulder] - initial_angle - plan["delta_rad"]) < 0.015
@@ -232,6 +286,31 @@ def simulate(out, model, plan, impact=False):
             save(out / "progress.json", row)
     Image.fromarray(rgb).save(out / "frame.png")
     save(out / "trajectory.json", rows)
+    wrist_rows = np.asarray(wrist_rows)
+    reach = dict(
+        link=wrist_name,
+        frame="world",
+        start_m=wrist_start.tolist(),
+        target_m=wrist_goal.tolist(),
+        final_m=wrist_rows[-1].tolist(),
+        requested_travel_m=float(np.linalg.norm(wrist_goal - wrist_start)),
+        final_error_m=wrist_error,
+        max_final_100_error_m=float(
+            np.linalg.norm(wrist_rows[-100:] - wrist_goal, axis=1).max()
+        ),
+        tolerance_m=0.010,
+    )
+    reach["passed"] = reach["max_final_100_error_m"] <= reach["tolerance_m"]
+    np.savez_compressed(
+        out / "wrist-trace.npz",
+        measured_m=wrist_rows,
+        target_m=wrist_goal,
+        start_m=wrist_start,
+        initial_root_quat=initial_root_quat,
+        balance=np.asarray(balance_rows),
+        dt=dt,
+    )
+    reach["trace_sha256"] = digest(out / "wrist-trace.npz")
     energy = np.asarray(energy_rows)
     np.savez_compressed(
         out / "motor-work.npz",
@@ -265,7 +344,7 @@ def simulate(out, model, plan, impact=False):
     )
     measured = float(q[shoulder] - initial_angle)
     passed = (
-        (not impact or disturbance["passed"])
+        (not impact or (disturbance["passed"] and reach["passed"]))
         and both == scored
         and not other_links
         and drift < 0.10
@@ -279,6 +358,7 @@ def simulate(out, model, plan, impact=False):
         task_success=bool(passed),
         fixture="standing-impact-development" if impact else "standing-development",
         disturbance=disturbance,
+        wrist_reach=reach,
         estimated_positive_joint_work_j=positive_work,
         estimated_negative_joint_work_j=negative_work,
         motor_work_sha256=digest(out / "motor-work.npz"),

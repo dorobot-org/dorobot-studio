@@ -7,7 +7,7 @@ The preregistered simulation qualification requires 45 whole-task successes in 5
 ## Examine a completed evaluation
 
 1. Obtain the archived evidence and the separately published `suite.json` from the same cohort directory. Keep them beside each other.
-2. In Studio, open **AISLE Studio → Evidence → Layout evaluation**. Enter the absolute path to `evidence.zip` and click **Verify evaluation**.
+2. In Studio, open **AISLE Studio → Evidence → Batch evaluation**. Enter the absolute path to `evidence.zip` and click **Verify evaluation**.
 3. Studio checks the manifest and controller hashes, opens each salted layout commitment, replays the recorded motor targets against the Nano URDF limits, recomputes the cube verdicts and checks the entire report. It shows the number of full successes, the denominator, the 95% Wilson interval, verified traces and measured guard bypasses.
 4. Use **Next failure** and **Previous failure** to inspect the retained seed, cube or contact details. Reopening Studio restores the latest successfully verified evaluation.
 

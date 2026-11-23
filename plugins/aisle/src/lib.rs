@@ -1,7 +1,7 @@
 use dorobot_studio_core::{
     api::{
+        aisle::{Action, Planner, RgbTiming, Robot, Workbench, REFERENCE},
         Backend, Intent,
-        aisle::{Action, Planner, REFERENCE, RgbTiming, Robot, Workbench},
     },
     data::robot_model::RobotModelLoader,
     ui::frame::{self, Themed},
@@ -145,7 +145,7 @@ script_mod! {
     }
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
-        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Layout evaluation"}}
+        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"}}
         cohort := Card{width:Fill height:Fill
             Section{text:"Evaluation archive"} archive_path := TextInput{width:Fill height:38 empty_text:"Path to the ZIP beside its preregistered suite.json"}
             verify_archive := mod.widgets.ux.PrimaryButton{text:"Verify evaluation"}
@@ -486,12 +486,10 @@ impl PluginPanel for Panel {
                     self.root.widget(cx, id).set_visible(cx, editing);
                 }
                 if editing {
-                    let mut text = vec![
-                        w.room_info["description"]
-                            .as_str()
-                            .unwrap_or("Default living room")
-                            .to_string(),
-                    ];
+                    let mut text = vec![w.room_info["description"]
+                        .as_str()
+                        .unwrap_or("Default living room")
+                        .to_string()];
                     for b in w.room_info["obstacles"].as_array().into_iter().flatten() {
                         let name = b["name"].as_str().unwrap_or("").trim_start_matches("room_");
                         text.push(format!(
@@ -635,15 +633,22 @@ impl PluginPanel for Panel {
                     .button(cx, ids!(evaluation_mode))
                     .set_enabled(cx, !w.busy() && !w.show_evaluation);
                 if w.show_evaluation {
+                    let result = &w.evaluation;
+                    let g1 = result["profile"] == "g1-standing-reach-v1";
                     self.label(
                         cx,
                         ids!(context_label),
-                        "Adora Nano   /   Nexus simulation   /   Batch evaluation",
+                        if g1 {
+                            "Unitree G1   /   Nexus simulation   /   Standing reach"
+                        } else if result["cases"].is_number() {
+                            "Adora Nano   /   Nexus simulation   /   Batch evaluation"
+                        } else {
+                            "Nexus simulation   /   Batch evaluation"
+                        },
                     );
                     self.root
                         .button(cx, ids!(verify_archive))
                         .set_enabled(cx, !w.busy());
-                    let result = &w.evaluation;
                     let failures = result["failures"].as_array();
                     let count = failures.map_or(0, Vec::len);
                     self.root
@@ -665,7 +670,11 @@ impl PluginPanel for Panel {
                         };
                         (
                             title,
-                            format!(
+                            if g1 {
+                                format!("{} of {} standing reaches · {} verified traces\n{} measured guard bypasses · all 20 required",
+                                    result["successes"], result["cases"], result["verified"], result["verified_guard_bypasses"])
+                            } else {
+                                format!(
                                 "{} of {} complete transfers · 95% Wilson interval {:.1}–{:.1}%\n{} verified trials · {} measured guard bypasses{}",
                                 result["successes"],
                                 result["cases"],
@@ -677,7 +686,8 @@ impl PluginPanel for Panel {
                                     .as_u64()
                                     .map(|n| format!(" · {n} required"))
                                     .unwrap_or_default()
-                            ),
+                            )
+                            },
                         )
                     } else {
                         ("No evaluation selected", String::new())
@@ -694,12 +704,20 @@ impl PluginPanel for Panel {
                                 .filter_map(|v| v.as_str())
                                 .collect::<Vec<_>>()
                                 .join("\n");
-                            format!(
-                                "Failure {} of {count} · layout {} · seed {}\n{reasons}",
-                                w.failure_index + 1,
-                                row["index"],
-                                row["seed"]
-                            )
+                            if g1 {
+                                format!(
+                                    "Failure {} of {count} · impact case {}\n{reasons}",
+                                    w.failure_index + 1,
+                                    row["index"]
+                                )
+                            } else {
+                                format!(
+                                    "Failure {} of {count} · layout {} · seed {}\n{reasons}",
+                                    w.failure_index + 1,
+                                    row["index"],
+                                    row["seed"]
+                                )
+                            }
                         })
                         .unwrap_or_default();
                     self.label(cx, ids!(failure_detail), &failure);
@@ -815,6 +833,13 @@ impl PluginPanel for Panel {
                     );
                     if let Some(joules) = w.evidence["estimated_positive_joint_work_j"].as_f64() {
                         summary.push_str(&format!("\nEstimated positive joint work {joules:.2} J"));
+                    }
+                    if let Some(error) = w.evidence["wrist_reach"]["max_final_100_error_m"].as_f64()
+                    {
+                        summary.push_str(&format!(
+                            "\nWrist error in final 0.50 s · {:.1} mm",
+                            error * 1000.
+                        ));
                     }
                     let impact = &w.evidence["disturbance"];
                     if impact.is_object() {
