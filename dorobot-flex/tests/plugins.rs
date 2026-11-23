@@ -241,6 +241,41 @@ fn dviz_panel_is_registered_and_creates_independent_views() {
 }
 
 #[test]
+fn dviz_panel_syncs_in_both_themes_without_script_errors() {
+    let (mut cx, registry) = setup();
+    let mut panel = cx
+        .with_vm(|vm| registry.create_instance("dviz_view", vm))
+        .unwrap();
+    let backend = MockBackend::new();
+    for light in [1.0, 0.0] {
+        dorobot_flex::ui::frame::set_light_mode(light);
+        panel.sync(
+            &mut cx,
+            &PanelContext {
+                backend: &backend,
+                rig_editing: false,
+                show_help: false,
+                show_details: false,
+                live_controls: false,
+            },
+        );
+    }
+    let root = panel.root();
+    for path in [ids!(connect), ids!(disconnect), ids!(open_viewer)] {
+        assert!(!root.button(&mut cx, path).is_empty(), "{path:?}");
+    }
+    assert_eq!(root.text_input(&mut cx, ids!(mode)).text(), "peer");
+    assert_eq!(root.text_input(&mut cx, ids!(endpoint)).text(), "");
+    assert_eq!(root.text_input(&mut cx, ids!(prefix)).text(), "dviz");
+    let status = root.widget(&mut cx, ids!(status)).text();
+    assert!(status.starts_with("Not connected"), "{status}");
+    cx.with_vm(|vm| {
+        let errors = vm.take_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    });
+}
+
+#[test]
 fn plugin_tabs_follow_navigation_and_group_entries_restore_the_last_tab() {
     use dorobot_flex::api::Screen;
     let (mut cx, mut registry) = setup();

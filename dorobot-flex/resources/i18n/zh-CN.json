@@ -431,5 +431,18 @@
   "Data collection": "数据采集",
   "Data workspace": "数据工作区",
   "Loading robot model…": "正在加载机器人模型…",
-  "Could not load robot model: {0}": "机器人模型加载失败：{0}"
+  "Could not load robot model: {0}": "机器人模型加载失败：{0}",
+  "3D visualization": "3D 可视化",
+  "Visualization": "可视化",
+  "Mode": "模式",
+  "Endpoint": "地址",
+  "Prefix": "话题前缀",
+  "tcp/192.168.1.186:7447 · empty for multicast discovery": "tcp/192.168.1.186:7447 · 留空则组播发现",
+  "Open 3D window": "打开 3D 窗口",
+  "Displays": "显示列表",
+  "No displays yet": "暂无显示项",
+  "Logs": "日志",
+  "No log messages": "暂无日志",
+  "Nodes": "节点",
+  "No nodes": "暂无节点"
 }

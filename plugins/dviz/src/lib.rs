@@ -5,11 +5,13 @@ use dorobot_studio_plugin::*;
 mod rerun_sink;
 mod route;
 mod session;
+mod view_panel;
 
 #[cfg(feature = "rerun")]
 pub use rerun_sink::RerunSink;
 pub use route::{route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP};
 pub use session::{DvizSession, SessionOptions, SessionSnapshot, RING_CAP};
+pub use view_panel::DvizViewPanel;
 
 /// Opens the Rerun 3D viewer and routes every visual message into it.
 #[cfg(feature = "rerun")]
@@ -45,45 +47,13 @@ impl StudioPlugin for DvizPlugin {
 
     fn create(&self, panel: &str, vm: &mut ScriptVm) -> Result<Box<dyn PluginPanel>, String> {
         match panel {
-            "dviz_view" => Ok(Box::new(DvizViewPanel::create(vm))),
+            "dviz_view" => Ok(Box::new(DvizViewPanel::create(vm, DvizSession::global()))),
             _ => Err(format!("Unknown dviz panel {panel}")),
         }
     }
 
     fn can_disable(&self, _: &dyn Backend) -> Result<(), String> {
         Ok(())
-    }
-}
-
-/// Placeholder panel: only a title until the real view lands.
-struct DvizViewPanel {
-    root: WidgetRef,
-}
-
-impl DvizViewPanel {
-    fn create(vm: &mut ScriptVm) -> Self {
-        let value = script_eval!(vm, {
-            use mod.prelude.widgets.*
-            use mod.widgets.*
-            View{width: Fill height: Fill flow: Down padding: 16.0
-                Label{text: "Visualization"}
-            }
-        });
-        Self {
-            root: WidgetRef::script_from_value(vm, value),
-        }
-    }
-}
-
-impl PluginPanel for DvizViewPanel {
-    fn root(&self) -> WidgetRef {
-        self.root.clone()
-    }
-
-    fn sync(&mut self, _: &mut Cx, _: &PanelContext<'_>) {}
-
-    fn handle_actions(&mut self, _: &mut Cx, _: &Actions, _: &mut dyn Backend) -> bool {
-        false
     }
 }
 
