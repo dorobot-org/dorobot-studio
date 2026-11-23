@@ -96,7 +96,7 @@ def prepare(directory, controller, seeds=None):
         raise ValueError("Layouts must have distinct nonnegative seeds")
     members = [dict(seed=seed, salt=secrets.token_hex(24)) for seed in seeds]
     public = dict(
-        version=1,
+        version=2,
         split="hidden" if hidden else "development",
         cases=len(seeds),
         success_requirement=45 if hidden else None,
@@ -155,6 +155,11 @@ def receipt(case, member, plan):
         or calib["colors"] != r["requested"]
     ):
         raise ValueError("Controller, scene or seed differs from preregistration")
+    if plan["version"] >= 2 and (
+        worker.digest(case / "controller.json") != plan["controller_sha256"]
+        or src.get("controller_sha256") != plan["controller_sha256"]
+    ):
+        raise ValueError("Episode controller differs from the frozen artifact")
     retained = src["support_code_hashes"]
     expected_files = {Path(path).name: value for path, value in files.items()}
     for name in (
@@ -173,7 +178,7 @@ def receipt(case, member, plan):
             raise ValueError(f"Episode used a different {name}")
     audit = replay(
         case / "motor-targets.f64",
-        MotorEnvelope(MODEL, calib["joint_names"]),
+        MotorEnvelope(MODEL, calib["joint_names"], calib.get("physics_dt_s", 0.01)),
         r["physics_ticks"],
     )
     if audit != r["actuator_audit"]:
@@ -282,8 +287,8 @@ def run(directory, expected, jobs):
                         str(HERE / "run_rgb_transfer.py"),
                         "--seed",
                         str(members[i]["seed"]),
-                        "--colors",
-                        *plan["color_order"],
+                        "--controller",
+                        str(directory / "controller.json"),
                         "--out",
                         str(case),
                     ]
@@ -305,7 +310,11 @@ def run(directory, expected, jobs):
                 if process.poll() is None:
                     os.killpg(process.pid, signal.SIGTERM)
             for process in active.values():
-                process.wait()
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
         if inputs() != plan["inputs"]:
             raise ValueError("Inputs changed during the run")
         return summarize(directory, manifest_sha, plan, members)

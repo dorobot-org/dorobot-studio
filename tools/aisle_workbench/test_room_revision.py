@@ -47,9 +47,9 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(result["obstacles"][0]["position"][:2], [1.38, -0.45])
         self.assertEqual(digest(self.saved / "room.json"), parent)
         self.assertEqual(
-            load_revision(edit / "room.json", digest(edit / "room.json"), SCENE)[
-                "obstacles"
-            ],
+            load_revision(
+                edit / "room.json", digest(edit / "room.json"), SCENE, MODEL_SHA
+            )["obstacles"],
             result["obstacles"],
         )
 

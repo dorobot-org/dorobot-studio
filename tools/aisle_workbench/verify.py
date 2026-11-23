@@ -74,6 +74,27 @@ def main():
     changed = subprocess.check_output(
         ["git", "-C", str(studio_root), "status", "--porcelain"], text=True
     ).splitlines()
+    source_hashes = {
+        str(path.relative_to(studio_root)): hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        for path in sorted(
+            [
+                *Path(__file__).resolve().parent.glob("*.py"),
+                *(studio_root / "tools/aisle-validation").glob("*.py"),
+                *(studio_root / "tools/nano-three-cubes").glob("*.py"),
+                *(
+                    studio_root / f
+                    for f in (
+                        "Cargo.lock",
+                        "plugins/aisle/src/lib.rs",
+                        "crates/dorobot-studio-core/src/api/aisle.rs",
+                        "dorobot-flex/src/bin/dorobot-flex.rs",
+                    )
+                ),
+            ]
+        )
+    }
     sessions = []
     for stage in ["journey", "recovery"]:
         report.unlink(missing_ok=True)
@@ -153,6 +174,7 @@ def main():
         provider=args.provider or "reference",
         native_binary_sha256=binary_hash,
         studio_source_commit=revision,
+        source_files_sha256=source_hashes,
         workspace_changes_at_launch=changed,
         sessions=sessions,
         trials=sorted(p.name for p in (output / "state/aisle").glob("*-run")),

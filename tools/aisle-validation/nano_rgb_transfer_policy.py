@@ -11,10 +11,10 @@ import cv2
 import numpy as np
 
 from nano_rgb_policy import CAMERAS, CUBE_CENTRE_Z, VisualServo
-from nano_rgb_table import table_edge
+from nano_rgb_table import occupied_table_points, table_edge
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "nano-three-cubes"))
-from model import Kinematics  # noqa: E402
+from model import Kinematics, UnreachableGrasp  # noqa: E402
 
 
 def visible_in_jaws(rgb, color):
@@ -52,6 +52,7 @@ class Controller:
         self.grip = "left_j6_gripper"
         self.wheel_pair = [self.names.index(f"wheel_{i}_joint") for i in (2, 3)]
         self.wheel_radius = config["rolling_radius_m"]
+        self.last_rim_distance = None
 
     def send(self, op, **fields):
         print(json.dumps(dict(op=op, **fields), allow_nan=False), flush=True)
@@ -157,12 +158,10 @@ class Controller:
     def pick(self, xy):
         self.reach(np.r_[xy, 0.115], 250, 1, True)
         self.reach(np.r_[xy, CUBE_CENTRE_Z + 0.004], 250, 8, True)
-        self.joints({self.grip: 0.55}, 180)
+        self.joints({self.grip: 0.70}, 200)
         self.reach(np.r_[xy, 0.085], 320, 8, True)
 
-    def table(self, data=None):
-        if data is None:
-            data = self.sense()
+    def table_views(self, data):
         views = []
         for name in ("head", "right_wrist"):
             chain, indices, mount, k, _ = self.servo.cameras[name]
@@ -170,9 +169,13 @@ class Controller:
             pose = np.eye(4)
             pose[:3, 3], pose[:3, :3] = p, r
             views.append((data[name], pose @ mount, k))
-        return table_edge(views)
+        return views
+
+    def table(self, data=None):
+        return table_edge(self.table_views(self.sense() if data is None else data))
 
     def dock(self, color):
+        self.last_rim_distance = None
         consecutive = 0
         elevated = False
         for _ in range(200):
@@ -220,6 +223,8 @@ class Controller:
         raise ValueError("Stereo table docking timed out")
 
     def back_away(self, color, exposure=None):
+        if self.last_rim_distance is None:
+            raise ValueError("Retreat requires a rim observed during this approach")
         self.phase("back away", color)
         # Never lower the arm over the table when a wrist or cube occludes its rim.
         # Opposed wheel displacements cancel yaw during the straight retreat.
@@ -295,7 +300,7 @@ class Controller:
                         right_j2_pitch=-0.55,
                         right_j3_pitch=0.35,
                         right_j4_pitch=-1.0,
-                        left_j6_gripper=0.72,
+                        left_j6_gripper=0.84,
                     ),
                     320,
                 )
@@ -316,9 +321,34 @@ class Controller:
                 edge["span"][0] + 0.009,
                 edge["span"][1] - 0.009,
             )
-            place = (edge["distance"] + RELEASE_INSET) * edge["normal"] + side * t
+            occupied = []
+            if index:
+                self.drive()
+                views = self.table_views(self.sense())
+                occupied = occupied_table_points(views, edge, self.colors[:index])
             z = edge["height"]
-            self.reach(np.r_[place, z + 0.078], 340, 12, supported=True)
+            for shift in (0, 0.08, -0.08, 0.115, -0.115, 0.15, -0.15):
+                along = side + shift
+                if not edge["span"][0] <= along <= edge["span"][1]:
+                    continue
+                place = (edge["distance"] + RELEASE_INSET) * edge["normal"] + along * t
+                if any(np.linalg.norm(place - p) < 0.078 for p in occupied):
+                    continue
+                # reach preflights every waypoint before sending the first target.
+                try:
+                    self.reach(np.r_[place, z + 0.078], 340, 12, supported=True)
+                except UnreachableGrasp:
+                    continue
+                self.act(
+                    "table observation",
+                    release_xy_m=place.tolist(),
+                    observed_occupants=len(occupied),
+                )
+                break
+            else:
+                raise ValueError(
+                    "No reachable clear release point on the visible tabletop"
+                )
             self.phase("release", color)
             self.joints({self.grip: -0.25}, 180)
             self.reach(np.r_[place - [0.07, 0], z + 0.10], 240, 9, supported=True)

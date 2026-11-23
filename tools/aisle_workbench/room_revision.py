@@ -87,6 +87,7 @@ def sensor_settings(sheet, source, model_sha):
         validate_rig(spec["cameras"], (480, 360))
         sheet["camera_calibration"] = spec
         values["cameras"] = spec["cameras"]
+        values["calibration_source"] = str(spec["source"])
     return values
 
 
@@ -232,6 +233,7 @@ def import_room(source, out, scene, edit=None, parent=None, model_sha=None):
     revision = dict(
         version=1,
         description=sheet["description"],
+        model_sha256=model_sha,
         survey_sha256=hashlib.sha256(raw).hexdigest(),
         archived_survey_sha256=digest(out / "survey.json"),
         reference_sha256=hashlib.sha256(photo).hexdigest(),
@@ -250,7 +252,7 @@ def import_room(source, out, scene, edit=None, parent=None, model_sha=None):
     return revision
 
 
-def load_revision(path, expected_hash, scene):
+def load_revision(path, expected_hash, scene, model_sha=None):
     raw = path.read_bytes()
     if hashlib.sha256(raw).hexdigest() != expected_hash:
         raise ValueError("Room revision differs from the selected hash")
@@ -264,6 +266,17 @@ def load_revision(path, expected_hash, scene):
         or digest(path.with_name("reference-image")) != data["reference_sha256"]
     ):
         raise ValueError("Room revision reference changed")
+    if data.get("settings", {}).get("cameras") is not None:
+        archived = json.loads(path.with_name("survey.json").read_text())
+        calibration = archived["camera_calibration"]
+        if (
+            not model_sha
+            or calibration["model_sha256"] != model_sha
+            or data.get("model_sha256", model_sha) != model_sha
+        ):
+            raise ValueError(
+                "Selected camera revision belongs to a different Nano model"
+            )
     specs = data["obstacles"]
     validate_spec(specs, scene)
     return data

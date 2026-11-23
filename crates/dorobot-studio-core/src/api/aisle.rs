@@ -164,6 +164,16 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
             continue;
         }
         let label = previous.file_name()?.to_string_lossy();
+        let Some(previous_count) = settled(&prior) else {
+            continue;
+        };
+        let code = if source["policy_sha256"] == old["policy_sha256"]
+            && source["support_code_hashes"] == old["support_code_hashes"]
+        {
+            "Same local policy and support code."
+        } else {
+            "Local policy or support code changed."
+        };
         let trace =
             compare_actions(previous, path).unwrap_or_else(|_| "Action trace unavailable.".into());
         let outcome = |v: &Value| {
@@ -173,8 +183,8 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
                 "failed"
             }
         };
-        return Some(format!("Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {trace}",
-            current["seed"],outcome(&prior),settled(&prior)?,outcome(current),settled(current)?));
+        return Some(format!("Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {trace}",
+            current["seed"],outcome(&prior),previous_count,outcome(current),settled(current)?));
     }
     None
 }
@@ -290,6 +300,9 @@ impl Workbench {
             w.history.sort();
             if let Some(path) = w.history.last().cloned() {
                 w.select_run(path);
+                if w.evidence["robot"] == "G1" {
+                    w.robot = Robot::G1;
+                }
             }
         }
         if let Some(selection) = read(&w.root, "selected-room.json") {

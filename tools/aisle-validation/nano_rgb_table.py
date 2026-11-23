@@ -111,3 +111,30 @@ def table_edge(views):
         height=level,
         span=(min(i[0] for i in intervals), max(i[1] for i in intervals)),
     )
+
+
+def occupied_table_points(views, edge, colors):
+    """Intersect RGB cube centroids with their measured supporting tabletop plane."""
+    points = []
+    for rgb, pose, intrinsics in views:
+        for color in colors:
+            channel = ("red", "green", "blue").index(color)
+            intensity = rgb[:, :, channel].astype(float)
+            others = np.delete(rgb, channel, axis=2).max(axis=2)
+            mask = ((intensity > 75) & (intensity > 1.4 * others + 15)).astype(np.uint8)
+            _, _, components, centres = cv2.connectedComponentsWithStats(mask)
+            for (x, y, w, h, area), (u, v) in zip(components[1:], centres[1:]):
+                if area < 12 or min(w, h) < 3 or max(w, h) > 3 * min(w, h):
+                    continue
+                if x == 0 or y == 0 or x + w >= rgb.shape[1] or y + h >= rgb.shape[0]:
+                    continue
+                ray = rays(np.array([[u, v]]), pose, intrinsics)[0]
+                if abs(ray[2]) < 0.035:
+                    continue
+                depth = (edge["height"] + 0.02 - pose[2, 3]) / ray[2]
+                if depth <= 0 or not 0.018 < w * depth / intrinsics[0, 0] < 0.10:
+                    continue
+                point = (pose[:3, 3] + depth * ray)[:2]
+                if -0.03 <= edge["normal"] @ point - edge["distance"] <= 0.48:
+                    points.append(point)
+    return points

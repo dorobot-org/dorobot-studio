@@ -121,6 +121,17 @@ def main():
             assert row["result"]["task_success"] and (
                 a.standing or row["result"]["requested"] == wanted
             )
+            assert (
+                row["robot"]
+                == row["result"]["robot"]
+                == ("G1" if a.standing else "Nano")
+            )
+            checks[-1].update(
+                restored_robot=row["result"]["robot"],
+                controller_hash=row["result"]["controller_hash"],
+                fixture=row["result"]["fixture"],
+                outcome=row["result"]["task_success"],
+            )
             if a.survey:
                 assert row["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
                 assert row["result"]["room_revision_sha256"]

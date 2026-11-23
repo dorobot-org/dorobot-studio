@@ -17,6 +17,10 @@ def vector(element, key, default="0 0 0"):
     return np.fromstring(element.get(key, default), sep=" ")
 
 
+class UnreachableGrasp(ValueError):
+    """A requested supported grasp has no feasible bounded arm pose."""
+
+
 class Kinematics:
     def __init__(self, path=MODEL):
         self.root = ET.parse(path).getroot()
@@ -191,6 +195,6 @@ class Kinematics:
                 and rotation[0, 2] < -0.6
             ):
                 return q.copy()
-        raise ValueError(
+        raise UnreachableGrasp(
             f"No level, upward-supported grasp reaches {np.asarray(target).tolist()}"
         )

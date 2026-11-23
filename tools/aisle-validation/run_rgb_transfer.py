@@ -233,6 +233,10 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         cameras=calibration,
         colors=colors,
         rolling_radius_m=WHEEL_RADIUS,
+        physics_dt_s=sim.scene.dt,
+        optical_calibration_source=(room_settings or {}).get(
+            "calibration_source", "Nominal URDF-mounted simulation optics"
+        ),
     )
     worker.save(out / "calibration.json", config)
     metadata = worker.describe("Nano")
@@ -243,7 +247,7 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
     }
     guard = WheelGuard()
     judge = Judge(sim, colors)
-    envelope = MotorEnvelope(MODEL, sim.names)
+    envelope = MotorEnvelope(MODEL, sim.names, sim.scene.dt)
     journal = out / "motor-targets.f64"
     policy = HERE / "nano_rgb_transfer_policy.py"
     source_path = out / "source.json"
@@ -512,13 +516,34 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--colors", choices=COLORS, nargs="+", default=list(COLORS))
+    delivery = parser.add_mutually_exclusive_group()
+    delivery.add_argument("--colors", choices=COLORS, nargs="+")
+    delivery.add_argument("--controller", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    if len(args.colors) != len(set(args.colors)):
+    colors = args.colors or list(COLORS)
+    frozen = None
+    if args.controller is not None:
+        frozen = args.controller.read_bytes()
+        plan = json.loads(frozen)
+        profile = worker.describe("Nano")
+        if (
+            plan.get("model_hash") != profile["model_hash"]
+            or plan.get("robot") != "Nano"
+            or worker.validate(plan, profile).get("kind") != "table-transfer"
+        ):
+            parser.error("Choose a prepared Nano transfer artifact for this URDF")
+        colors = plan["color_order"].split(",")
+    if len(colors) != len(set(colors)):
         parser.error("select distinct cubes")
     args.out.mkdir(parents=True, exist_ok=False)
-    result = execute(args.out, args.seed, args.colors)
+    if frozen is not None:
+        (args.out / "controller.json").write_bytes(frozen)
+        worker.save(
+            args.out / "source.json",
+            {"controller_sha256": worker.digest(args.out / "controller.json")},
+        )
+    result = execute(args.out, args.seed, colors)
     worker.save(args.out / "result.json", result)
     print(json.dumps(result, indent=2))
     sys.exit(0 if result["passed"] else 1)

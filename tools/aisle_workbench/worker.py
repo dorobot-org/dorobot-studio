@@ -103,6 +103,39 @@ def validate(plan, meta):
     )
 
 
+def onboard_transfer_feedback(log, requested):
+    """Summarize the controller's own sensor-derived readings for its outer author."""
+    observations = {}
+    color = None
+    if not log.is_file():
+        return observations
+    with log.open() as stream:
+        for line in stream:
+            row = json.loads(line)
+            if row.get("op") == "phase" and row.get("color") in requested:
+                color = row["color"]
+            if color is None or type(row.get("tick")) is not int:
+                continue
+            if (
+                row["op"] == "jaw observation"
+                and row.get("color") == color
+                and type(row.get("visible")) is bool
+            ):
+                observations.setdefault(color, {})["last_wrist_jaw"] = {
+                    "tick": row["tick"],
+                    "cube_visible": row["visible"],
+                }
+            elif row["op"] == "table observation" and all(
+                type(row.get(key)) in (int, float) and math.isfinite(row[key])
+                for key in ("distance_m", "height_m", "angle_rad")
+            ):
+                observations.setdefault(color, {})["last_rgb_table_rim"] = {
+                    key: row[key]
+                    for key in ("tick", "distance_m", "height_m", "angle_rad")
+                }
+    return observations
+
+
 def measured_feedback(path, meta):
     previous = json.loads((path / "result.json").read_text())
     parent = path / "controller.json"
@@ -130,7 +163,12 @@ def measured_feedback(path, meta):
                 "task_success",
                 "controller_hash",
             )
-        } | {"settled": verdicts}
+        } | {
+            "settled": verdicts,
+            "onboard_observations": onboard_transfer_feedback(
+                path / "actions.jsonl", previous["requested"]
+            ),
+        }
     if previous.get("kind") == "visual-approach":
         return {
             k: previous[k]
@@ -443,7 +481,9 @@ def simulate(args, meta):
             from run_rgb_approach import scene_recipe
             import shutil
 
-            revision = load_revision(room_path, args.room_hash, scene_recipe(args.seed))
+            revision = load_revision(
+                room_path, args.room_hash, scene_recipe(args.seed), meta["model_hash"]
+            )
             room_objects = revision["obstacles"]
             room_settings = revision.get("settings")
             for artifact in (
