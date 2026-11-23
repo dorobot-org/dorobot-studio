@@ -1,0 +1,22 @@
+{
+  "method": "g1-shoulder-ridge-v1",
+  "robot": "G1",
+  "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+  "joint": "right_shoulder_pitch_joint",
+  "delta_rad": -0.08,
+  "parent_controller_sha256": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+  "dataset_sha256": "f34937b46945a1bc3e429961790f100ca96bc77094d1852d3c8cf8270f27d3c4",
+  "teacher_trial": "1795476563193091000-G1-run",
+  "frames": 100,
+  "files": {
+    "data/chunk-000/episode_000000.parquet": "3512e6e8b20d6f7f9f461ddb8dc2a934966f337e6c6d56ee789681f58b8404b5",
+    "meta/aisle.json": "0f2462cad809428a178331a51aba961f5de7c9908fd20786652481d9732d473e",
+    "meta/episodes.jsonl": "159cf4c331517434676966853dffc5a360dc2154957f6e9ba497bf114f6129cd",
+    "meta/episodes_stats.jsonl": "7787fbda6e3cea4ed42633940509880b567425f8aee0ed8b83a0a148217312f5",
+    "meta/info.json": "fdc6eba55824147b33f32971c1ccfb46c0daea4e205d8b913013bdae9c76b73d",
+    "meta/tasks.jsonl": "8be78983dc14a3c6f0a8a629204822e84985ee51cb6eb905605e74a3daf15634",
+    "videos/chunk-000/observation.images.operator/episode_000000.mp4": "10afe36fcc50f4d9a0503a7685653fb65ed0b978f4c0896d90e4e190240afaab"
+  },
+  "ridge": 1e-05,
+  "training_rmse_rad": 0.00048053586640865487
+}

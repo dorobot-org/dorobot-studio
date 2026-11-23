@@ -91,6 +91,7 @@ pub enum Action {
     Next,
     Open,
     Export,
+    TrainReach,
 }
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
@@ -233,7 +234,7 @@ impl Job {
             "room" => "room-ref.json",
             "evaluate" => "evaluation.json",
             "run" => "result.json",
-            "prepare" => "controller.json",
+            "prepare" | "train-reach" => "controller.json",
             _ => "scene.json",
         }
     }
@@ -397,14 +398,17 @@ impl Workbench {
     }
     fn restore_profile(&mut self) {
         let suffix = format!("-{}-prepare", self.robot.name());
+        let trained_suffix = format!("-{}-train-reach", self.robot.name());
         self.revisions = fs::read_dir(&self.root)
             .into_iter()
             .flatten()
             .flatten()
             .map(|e| e.path())
             .filter(|p| {
-                p.file_name()
-                    .is_some_and(|n| n.to_string_lossy().ends_with(&suffix))
+                p.file_name().is_some_and(|n| {
+                    let name = n.to_string_lossy();
+                    name.ends_with(&suffix) || name.ends_with(&trained_suffix)
+                })
             })
             .map(|p| p.join("controller.json"))
             .filter(|p| p.is_file())
@@ -590,7 +594,14 @@ impl Workbench {
                 );
             }
         }
-        if op == "export" {
+        if op == "train-reach" {
+            cmd.arg("--dataset").arg(
+                self.dataset
+                    .as_ref()
+                    .ok_or_else(|| io::Error::other("Export the selected G1 episode first"))?,
+            );
+        }
+        if op == "export" || op == "train-reach" {
             cmd.arg("--trial").arg(
                 self.selected
                     .as_ref()
@@ -754,6 +765,7 @@ impl Workbench {
                 }
                 Ok(())
             }
+            Action::TrainReach => self.launch("train-reach", Planner::Reference, None),
             Action::Export => self.launch("export", Planner::Reference, None),
             Action::Inspect => self.launch("scene", Planner::Reference, None),
             Action::Run => self.launch("run", Planner::Reference, None),
@@ -842,7 +854,7 @@ impl Workbench {
                 }
                 self.dataset = Some(dataset);
             }
-            if job.op == "prepare" {
+            if job.op == "prepare" || job.op == "train-reach" {
                 let p = job.dir.join(artifact);
                 self.revisions.push(p.clone());
                 self.load_plan(Some(p));
@@ -850,7 +862,16 @@ impl Workbench {
             if job.op == "run" {
                 self.select_run(job.dir);
             }
-            self.status = format!("Completed · {} · {}", self.robot.name(), job.op);
+            self.status = if job.op == "evaluate" {
+                let profile = if self.evaluation["profile"] == "g1-standing-reach-v1" {
+                    "G1"
+                } else {
+                    "Nano"
+                };
+                format!("Evaluation verified · {profile}")
+            } else {
+                format!("Completed · {} · {}", self.robot.name(), job.op)
+            };
         } else {
             self.status = read(&job.dir, "error.json")
                 .and_then(|v| v["message"].as_str().map(str::to_owned))
@@ -926,11 +947,9 @@ mod tests {
             runs.push(run);
         }
         let comparison = || compare_transfer(&runs, &runs[1], &result);
-        assert!(
-            comparison()
-                .unwrap()
-                .contains("All 1 recorded actions match")
-        );
+        assert!(comparison()
+            .unwrap()
+            .contains("All 1 recorded actions match"));
         fs::write(runs[1].join("actions.jsonl"), r#"{"op":"wheel","tick":20}"#).unwrap();
         assert!(comparison().unwrap().contains("First change at action 1"));
         let mut changed = result.clone();

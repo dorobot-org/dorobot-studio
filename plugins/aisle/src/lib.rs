@@ -1,7 +1,7 @@
 use dorobot_studio_core::{
     api::{
+        aisle::{Action, Planner, RgbTiming, Robot, Workbench, REFERENCE},
         Backend, Intent,
-        aisle::{Action, Planner, REFERENCE, RgbTiming, Robot, Workbench},
     },
     data::robot_model::RobotModelLoader,
     ui::frame::{self, Themed},
@@ -145,7 +145,7 @@ script_mod! {
     }
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
-        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Layout evaluation"}}
+        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"}}
         cohort := Card{width:Fill height:Fill
             Section{text:"Evaluation archive"} archive_path := TextInput{width:Fill height:38 empty_text:"Path to the ZIP beside its preregistered suite.json"}
             verify_archive := mod.widgets.ux.PrimaryButton{text:"Verify evaluation"}
@@ -156,7 +156,7 @@ script_mod! {
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
         trial_bar := Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
             folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
-            export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"}}
+            export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"} train_reach := mod.widgets.ux.ToolButton{text:"Train shoulder correction"}}
         status := Body{}
     }
 }
@@ -413,10 +413,14 @@ impl PluginPanel for Panel {
                         w.robot.name(),
                         w.plan["joint"].as_str().unwrap_or(""),
                         w.plan["delta_rad"].as_f64().unwrap_or_default(),
-                        w.plan["policy_model"]
-                            .as_str()
-                            .or_else(|| w.plan["provider"].as_str())
-                            .unwrap_or(""),
+                        if w.plan["reach_checkpoint"].is_string() {
+                            "Trained shoulder correction"
+                        } else {
+                            w.plan["policy_model"]
+                                .as_str()
+                                .or_else(|| w.plan["provider"].as_str())
+                                .unwrap_or("")
+                        },
                         w.revision_index().unwrap_or(0) + 1,
                         w.revisions.len()
                     )
@@ -486,12 +490,10 @@ impl PluginPanel for Panel {
                     self.root.widget(cx, id).set_visible(cx, editing);
                 }
                 if editing {
-                    let mut text = vec![
-                        w.room_info["description"]
-                            .as_str()
-                            .unwrap_or("Default living room")
-                            .to_string(),
-                    ];
+                    let mut text = vec![w.room_info["description"]
+                        .as_str()
+                        .unwrap_or("Default living room")
+                        .to_string()];
                     for b in w.room_info["obstacles"].as_array().into_iter().flatten() {
                         let name = b["name"].as_str().unwrap_or("").trim_start_matches("room_");
                         text.push(format!(
@@ -635,15 +637,22 @@ impl PluginPanel for Panel {
                     .button(cx, ids!(evaluation_mode))
                     .set_enabled(cx, !w.busy() && !w.show_evaluation);
                 if w.show_evaluation {
+                    let result = &w.evaluation;
+                    let g1 = result["profile"] == "g1-standing-reach-v1";
                     self.label(
                         cx,
                         ids!(context_label),
-                        "Adora Nano   /   Nexus simulation   /   Batch evaluation",
+                        if g1 {
+                            "Unitree G1   /   Nexus simulation   /   Standing reach"
+                        } else if result["cases"].is_number() {
+                            "Adora Nano   /   Nexus simulation   /   Batch evaluation"
+                        } else {
+                            "Nexus simulation   /   Batch evaluation"
+                        },
                     );
                     self.root
                         .button(cx, ids!(verify_archive))
                         .set_enabled(cx, !w.busy());
-                    let result = &w.evaluation;
                     let failures = result["failures"].as_array();
                     let count = failures.map_or(0, Vec::len);
                     self.root
@@ -658,6 +667,8 @@ impl PluginPanel for Panel {
                     let (title, detail) = if result["cases"].is_number() {
                         let title = if result["split"] == "development" {
                             "Development results"
+                        } else if result["split"] == "matched" {
+                            "Matched evaluation"
                         } else if result["qualified"] == true {
                             "Qualified"
                         } else {
@@ -665,7 +676,11 @@ impl PluginPanel for Panel {
                         };
                         (
                             title,
-                            format!(
+                            if g1 {
+                                format!("{} of {} standing reaches · {} verified traces\n{} measured guard bypasses · all 20 required",
+                                    result["successes"], result["cases"], result["verified"], result["verified_guard_bypasses"])
+                            } else {
+                                format!(
                                 "{} of {} complete transfers · 95% Wilson interval {:.1}–{:.1}%\n{} verified trials · {} measured guard bypasses{}",
                                 result["successes"],
                                 result["cases"],
@@ -677,7 +692,8 @@ impl PluginPanel for Panel {
                                     .as_u64()
                                     .map(|n| format!(" · {n} required"))
                                     .unwrap_or_default()
-                            ),
+                            )
+                            },
                         )
                     } else {
                         ("No evaluation selected", String::new())
@@ -694,12 +710,20 @@ impl PluginPanel for Panel {
                                 .filter_map(|v| v.as_str())
                                 .collect::<Vec<_>>()
                                 .join("\n");
-                            format!(
-                                "Failure {} of {count} · layout {} · seed {}\n{reasons}",
-                                w.failure_index + 1,
-                                row["index"],
-                                row["seed"]
-                            )
+                            if g1 {
+                                format!(
+                                    "Failure {} of {count} · impact case {}\n{reasons}",
+                                    w.failure_index + 1,
+                                    row["index"]
+                                )
+                            } else {
+                                format!(
+                                    "Failure {} of {count} · layout {} · seed {}\n{reasons}",
+                                    w.failure_index + 1,
+                                    row["index"],
+                                    row["seed"]
+                                )
+                            }
                         })
                         .unwrap_or_default();
                     self.label(cx, ids!(failure_detail), &failure);
@@ -816,6 +840,16 @@ impl PluginPanel for Panel {
                     if let Some(joules) = w.evidence["estimated_positive_joint_work_j"].as_f64() {
                         summary.push_str(&format!("\nEstimated positive joint work {joules:.2} J"));
                     }
+                    if let Some(error) = w.evidence["wrist_reach"]["max_final_100_error_m"].as_f64()
+                    {
+                        summary.push_str(&format!(
+                            "\nWrist error in final 0.50 s · {:.1} mm",
+                            error * 1000.
+                        ));
+                    }
+                    if w.evidence["reach_checkpoint"].is_string() {
+                        summary.push_str("\nController uses the trained shoulder correction");
+                    }
                     let impact = &w.evidence["disturbance"];
                     if impact.is_object() {
                         let recovery = impact["recovery_s"]
@@ -879,6 +913,17 @@ impl PluginPanel for Panel {
                     .set_visible(cx, w.dataset.is_some());
                 self.root
                     .button(cx, ids!(replay))
+                    .set_enabled(cx, !w.busy());
+                let can_train = w.robot == Robot::G1
+                    && w.evidence["kind"] == "standing-inspection"
+                    && w.evidence["task_success"] == true
+                    && w.evidence["reach_checkpoint"].is_null()
+                    && w.dataset.is_some();
+                self.root
+                    .widget(cx, ids!(train_reach))
+                    .set_visible(cx, can_train);
+                self.root
+                    .button(cx, ids!(train_reach))
                     .set_enabled(cx, !w.busy());
                 self.label(cx, ids!(detail), &text);
                 let trace: Vec<_> = w.trace.iter().map(|&x| x as f64).collect();
@@ -981,6 +1026,7 @@ impl PluginPanel for Panel {
             (ids!(next), Action::Next),
             (ids!(folder), Action::Open),
             (ids!(export), Action::Export),
+            (ids!(train_reach), Action::TrainReach),
         ] {
             if self.root.button(cx, id).clicked(actions) {
                 b.dispatch(Intent::Aisle(act));
