@@ -1,10 +1,13 @@
-//! DORA_NAV to dviz bridge: pure logic (parsing, geometry, maps, trail, status, encoding).
+//! DORA_NAV to dviz bridge: pure logic (parsing, geometry, maps, trail, status, encoding),
+//! the bounded inbox and worker thread, and the Zenoh publisher.
 
 pub mod config;
 pub mod encode;
 pub mod formats;
 pub mod geom;
 pub mod map;
+pub mod publish;
 pub mod rate;
 pub mod status;
 pub mod trail;
+pub mod worker;
