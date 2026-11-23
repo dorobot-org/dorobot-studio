@@ -117,6 +117,93 @@ def main():
         )
         (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
         return
+    if a.provider:
+        page("task")
+        click("aisle_task.nano")
+        click("aisle_task.instruction")
+        remote(
+            "key",
+            "w=0",
+            "c=KeyA",
+            "logo=1" if sys.platform == "darwin" else "ctrl=1",
+            "wait=1",
+        )
+        remote(
+            "text",
+            "w=0",
+            "t=Drive within 45 cm of the red floor cube and stop.",
+            "wait=1",
+        )
+        click(
+            "aisle_task.octos" if a.provider == "octos-deepseek" else "aisle_task.codex"
+        )
+        done(
+            lambda w: w["controller"]
+            and w["controller"].get("kind") == "visual-approach"
+            and w["controller"]["provider"] == a.provider
+            and not w["busy"],
+            "Nano RGB approach authored",
+            180,
+        )
+        page("scene")
+        grab("Nano-approach-scene")
+        page("run")
+        click("aisle_run.start_run")
+        live = done(
+            lambda w: w["busy"]
+            and w.get("progress")
+            and w["progress"].get("kind") == "visual-approach"
+            and w["progress"]["state"] == "approaching",
+            "Nano live RGB feedback while wheels move",
+            120,
+        )
+        first_step = live["progress"]["step"]
+        done(
+            lambda w: w["busy"]
+            and w.get("progress")
+            and w["progress"]["step"] > first_step,
+            "Nano streamed a second onboard observation",
+            30,
+        )
+        grab("Nano-approach-moving")
+        row = done(
+            lambda w: w["result"]
+            and w["result"].get("kind") == "visual-approach"
+            and not w["busy"],
+            "Nano RGB approach completed",
+            140,
+        )
+        result = row["result"]
+        assert result["task_success"] and result["controller"]["provider"] == a.provider
+        assert result["color"] == "red" and result["standoff_m"] == 0.45
+        assert (
+            result["obstacle_contact_ticks"] == 0
+            and result["wheel_supported_ticks"] == result["physics_ticks"]
+        )
+        assert abs(result["final_distance_m"] - 0.45) < 0.035
+        assert (
+            Path(row["selected"]) / "preview.rgb"
+        ).stat().st_size == 4 + 480 * 360 * 3
+        run_dir = Path(row["selected"])
+        import numpy as np
+
+        packets = sorted((run_dir / "observations").glob("*.npz"))
+        assert len(packets) == result["decisions"]
+        for packet in packets:
+            with np.load(packet, allow_pickle=False) as samples:
+                assert set(samples) == {
+                    "head",
+                    "left_wrist",
+                    "right_wrist",
+                    "encoders",
+                    "stamp_ns",
+                }
+                assert samples["encoders"].shape == (17,)
+                assert samples["head"].shape == (360, 480, 3)
+        grab("Nano-approach-run")
+        page("evidence")
+        grab("Nano-approach-evidence")
+        checks.append(dict(check="Nano RGB approach independently measured", **result))
     for robot, joints in [("Nano", 17), ("G1", 29)]:
         page("task")
         click("aisle_task." + robot.lower())

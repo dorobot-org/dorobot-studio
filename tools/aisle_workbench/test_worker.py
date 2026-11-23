@@ -40,6 +40,21 @@ class InspectionTests(unittest.TestCase):
             -0.06,
         )
 
+    def test_approach_envelope_and_robot_binding(self):
+        plan = dict(kind="visual-approach", color="red", standoff_m=0.45)
+        self.assertEqual(worker.validate(plan, self.profile), plan)
+        for edit in [
+            dict(color="yellow"),
+            dict(standoff_m=True),
+            dict(standoff_m=0.39),
+            dict(standoff_m=float("nan")),
+            dict(kind="pick"),
+        ]:
+            with self.subTest(edit=edit), self.assertRaises(ValueError):
+                worker.validate(plan | edit, self.profile)
+        with self.assertRaises(ValueError):
+            worker.validate(plan, self.profile | {"robot": "G1"})
+
     def test_feedback_is_bound_to_retained_controller_and_robot(self):
         with tempfile.TemporaryDirectory() as root:
             run = Path(root)

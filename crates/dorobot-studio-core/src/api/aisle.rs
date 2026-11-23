@@ -276,7 +276,12 @@ impl Workbench {
             .and_then(|v| v.as_array().cloned())
             .unwrap_or_default()
             .iter()
-            .filter_map(|r| r["measured_rad"].as_f64().map(|x| x as f32))
+            .filter_map(|r| {
+                r["measured_rad"]
+                    .as_f64()
+                    .or_else(|| r["distance_m"].as_f64())
+                    .map(|x| x as f32)
+            })
             .collect();
         self.selected = Some(path);
     }
@@ -571,9 +576,9 @@ impl Drop for Workbench {
 mod tests {
     use super::*;
 
-    fn fixture() -> PathBuf {
+    fn fixture(case: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
-            "aisle-job-{}-{}",
+            "aisle-job-{case}-{}-{}",
             std::process::id(),
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -586,7 +591,7 @@ mod tests {
 
     #[test]
     fn failed_prepare_keeps_runnable_revision() {
-        let dir = fixture();
+        let dir = fixture("failed-prepare");
         let plan = dir.join("controller.json");
         fs::write(&plan, r#"{"joint":"left_j2_pitch","task":"inspection"}"#).unwrap();
         let mut w = Workbench::with_root(dir.clone());
@@ -607,7 +612,7 @@ mod tests {
 
     #[test]
     fn stopping_after_result_publication_retains_only_the_committed_outcome() {
-        let dir = fixture();
+        let dir = fixture("stop");
         fs::write(
             dir.join("result.json"),
             r#"{"robot":"Nano","task_success":true}"#,

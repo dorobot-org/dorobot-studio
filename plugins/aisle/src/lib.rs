@@ -82,14 +82,14 @@ script_mod! {
     let Bar=View{width:Fill height:Fit flow:Right spacing:8.0 align:Align{y:0.5}}
     let Page=View{width:Fill height:Fill flow:Down padding:16.0 spacing:12.0}
     mod.widgets.AisleTask=Page{
-        Title{text:"Inspection task"}
+        Title{text:"Robot task"}
         context_label := Section{}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             editor := Card{width:Fill height:Fill
                 Section{text:"Robot profile"}
                 Bar{nano := mod.widgets.ux.ToolButton{text:"Adora Nano"} g1 := mod.widgets.ux.ToolButton{text:"Unitree G1"}}
                 Section{text:"Task instruction"}
-                instruction := TextInput{width:Fill height:54 empty_text:"Describe a shoulder inspection"}
+                instruction := TextInput{width:Fill height:54 empty_text:"Inspect a shoulder or approach a colored cube with Nano"}
                 reference := mod.widgets.ux.ToolButton{text:"Use reference task"}
                 Bar{octos := mod.widgets.ux.PrimaryButton{text:"DeepSeek via Octos"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
                 Section{text:"Prepared controller"} detail := Body{}
@@ -104,7 +104,7 @@ script_mod! {
         Title{text:"Robot model"} context_label := Section{}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
-            inspector := Card{width:285 height:Fill Section{text:"Inspection fixture"} Body{text:"Fixed base · zero gravity"}
+            inspector := Card{width:285 height:Fill Section{text:"Simulation fixture"} fixture_kind := Body{}
                 Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
                 fixture := Body{}
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
@@ -115,8 +115,8 @@ script_mod! {
     mod.widgets.AisleRun=Page{
         Title{text:"Live simulation"} context_label := Section{}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
-            viewport := Card{width:Fill height:Fill Section{text:"External operator camera"} camera := VideoPlayer{width:Fill height:Fill}}
-            inspector := Card{width:275 height:Fill Section{text:"Measured joint response"} detail := Body{}
+            viewport := Card{width:Fill height:Fill camera_label := Section{} camera := VideoPlayer{width:Fill height:Fill}}
+            inspector := Card{width:275 height:Fill measure_label := Section{} detail := Body{}
                 start_run := mod.widgets.ux.PrimaryButton{text:"Start run"} stop_run := mod.widgets.ux.StopButton{text:"Stop"}
             }
         }
@@ -125,7 +125,7 @@ script_mod! {
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
         summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
-        plot := Card{width:Fill height:Fill Section{text:"Measured joint angle · radians"} trace := Spark{width:Fill height:Fill} scale := Section{}}
+        plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
         Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
             folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
             export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"}}
@@ -170,14 +170,34 @@ impl Panel {
             .as_ref()
             .zip(w.progress["step"].as_u64())
             .map(|(p, i)| (p.clone(), i));
+        let mobile = w.progress["kind"] == "visual-approach";
+        let height = if mobile { 360 } else { 320 };
+        self.label(
+            cx,
+            ids!(camera_label),
+            if mobile {
+                "Onboard head camera · RGB"
+            } else {
+                "External operator camera"
+            },
+        );
+        self.label(
+            cx,
+            ids!(measure_label),
+            if mobile {
+                "Cube approach"
+            } else {
+                "Measured joint response"
+            },
+        );
         if self.frame != current {
             let camera = self.root.video_player(cx, ids!(camera));
             if let Some((dir, step)) = &current {
                 if let Ok(raw) = std::fs::read(dir.join("preview.rgb")) {
-                    if raw.len() == 4 + 480 * 320 * 3
+                    if raw.len() == 4 + 480 * height * 3
                         && u32::from_be_bytes(raw[..4].try_into().unwrap()) as u64 + 1 == *step
                     {
-                        camera.set_frame(cx, 480, 320, &raw[4..]);
+                        camera.set_frame(cx, 480, height, &raw[4..]);
                         self.frame = current;
                     }
                 }
@@ -186,7 +206,21 @@ impl Panel {
                 self.frame = None;
             }
         }
-        let text = if let Some(angle) = w.progress["measured_rad"].as_f64() {
+        let text = if mobile {
+            let distance = w.progress["distance_m"]
+                .as_f64()
+                .map(|v| format!("{v:.3} m"))
+                .unwrap_or_else(|| "Target out of view".into());
+            format!(
+                "{} cube · {}
+RGB distance {}
+Requested {:.2} m",
+                w.progress["color"].as_str().unwrap_or(""),
+                w.progress["state"].as_str().unwrap_or(""),
+                distance,
+                w.progress["standoff_m"].as_f64().unwrap_or_default()
+            )
+        } else if let Some(angle) = w.progress["measured_rad"].as_f64() {
             format!("{angle:+.5} rad\nPhysics step {} / 121", w.progress["step"])
         } else {
             "Waiting for a measurement".into()
@@ -230,15 +264,25 @@ impl PluginPanel for Panel {
             );
             self.light = Some(light);
         }
+        let mobile = match self.page.as_str() {
+            "aisle_evidence" => w.evidence["kind"] == "visual-approach",
+            "aisle_run" if !w.progress.is_null() => w.progress["kind"] == "visual-approach",
+            _ => w.plan["kind"] == "visual-approach",
+        };
         self.label(
             cx,
             ids!(context_label),
             &format!(
-                "{}   /   AISLE · Nexus   /   Fixed-base simulation",
+                "{}   /   AISLE · Nexus   /   {}",
                 if self.page == "aisle_evidence" {
                     w.evidence["robot"].as_str().unwrap_or("Run history")
                 } else {
                     w.robot.name()
+                },
+                if mobile {
+                    "Living room · grounded Nano"
+                } else {
+                    "Fixed-base simulation"
                 }
             ),
         );
@@ -254,6 +298,15 @@ impl PluginPanel for Panel {
                 }
                 let detail = if w.plan.is_null() {
                     "Choose a reference task or use an agent to prepare a controller.".into()
+                } else if mobile {
+                    format!(
+                        "Approach {} cube · stop at {:.2} m\n{} · revision {}/{}",
+                        w.plan["color"].as_str().unwrap_or(""),
+                        w.plan["standoff_m"].as_f64().unwrap_or_default(),
+                        w.plan["policy_model"].as_str().unwrap_or(""),
+                        w.revision_index().unwrap_or(0) + 1,
+                        w.revisions.len()
+                    )
                 } else {
                     format!(
                         "{}   ·   {}\n{:+.3} rad   ·   {}   ·   revision {}/{}",
@@ -299,8 +352,22 @@ impl PluginPanel for Panel {
             "aisle_scene" => {
                 self.label(
                     cx,
+                    ids!(fixture_kind),
+                    if mobile {
+                        "Living room · gravity 9.81 m/s²"
+                    } else {
+                        "Fixed base · zero gravity"
+                    },
+                );
+                for id in [ids!(standard), ids!(compliant)] {
+                    self.root.widget(cx, id).set_visible(cx, !mobile);
+                }
+                self.label(
+                    cx,
                     ids!(fixture),
-                    if w.compliant {
+                    if mobile {
+                        "Three floor cubes · head and two wrist RGB cameras · wheel drive"
+                    } else if w.compliant {
                         "Compliant · position gain 18"
                     } else {
                         "Standard · position gain 28"
@@ -349,7 +416,10 @@ impl PluginPanel for Panel {
                     }
                 };
                 self.label(cx, ids!(verdict), verdict);
-                let text = if let Some(angle) = w.evidence["measured_delta"].as_f64() {
+                let text = if mobile {
+                    format!("{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
+                      w.evidence["color"].as_str().unwrap_or(""),w.evidence["standoff_m"].as_f64().unwrap_or_default(),w.evidence["final_distance_m"].as_f64().unwrap_or_default(),w.evidence["wheel_supported_ticks"],w.evidence["physics_ticks"],w.evidence["obstacle_contact_ticks"])
+                } else if let Some(angle) = w.evidence["measured_delta"].as_f64() {
                     format!("{} · {} · {} fixture\nRequested {:+.3} rad    Measured {:+.5} rad    {} observations\nLimits {} over {} physics steps.",
                             w.evidence["robot"].as_str().unwrap_or(""), w.evidence["joint"].as_str().unwrap_or(""),
                             w.evidence["fixture"].as_str().unwrap_or("standard"), w.evidence["requested_delta"].as_f64().unwrap_or_default(), angle, w.evidence["frames"],
@@ -391,7 +461,22 @@ impl PluginPanel for Panel {
                 self.root
                     .widget(cx, ids!(trace))
                     .set_visible(cx, !trace.is_empty());
-                let scale = if let (Some(start), Some(end)) = (trace.first(), trace.last()) {
+                self.label(
+                    cx,
+                    ids!(trace_label),
+                    if mobile {
+                        "RGB-estimated range · metres"
+                    } else {
+                        "Measured joint angle · radians"
+                    },
+                );
+                let scale = if mobile && !trace.is_empty() {
+                    format!(
+                        "First {:.3} m                         Last {:.3} m",
+                        trace[0],
+                        trace[trace.len() - 1]
+                    )
+                } else if let (Some(start), Some(end)) = (trace.first(), trace.last()) {
                     format!("0.01 s   {start:+.5} rad                             1.21 s   {end:+.5} rad")
                 } else {
                     "Awaiting completed trajectory".into()

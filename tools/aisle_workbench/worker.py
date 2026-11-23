@@ -7,6 +7,7 @@ import math
 import os
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
@@ -57,6 +58,19 @@ def describe(robot):
 
 
 def validate(plan, meta):
+    if plan.get("kind") == "visual-approach":
+        if (
+            meta["robot"] != "Nano"
+            or plan.get("color") not in ("red", "green", "blue")
+            or type(plan.get("standoff_m")) not in (int, float)
+            or not 0.4 <= plan["standoff_m"] <= 0.55
+        ):
+            raise ValueError(
+                "Visual approach requires Nano, one cube color and 0.40–0.55 m standoff"
+            )
+        return {k: plan[k] for k in ("kind", "color", "standoff_m")}
+    if plan.get("kind", "joint-inspection") != "joint-inspection":
+        raise ValueError("Unknown controller capability")
     joint = plan["joint"]
     if joint not in meta["allowed_joints"]:
         raise ValueError("Select a shoulder belonging to this robot")
@@ -85,6 +99,19 @@ def measured_feedback(path, meta):
         raise ValueError(
             "The selected run and controller must match the current robot model"
         )
+    if previous.get("kind") == "visual-approach":
+        return {
+            k: previous[k]
+            for k in (
+                "robot",
+                "kind",
+                "color",
+                "standoff_m",
+                "rgb_distance_m",
+                "last_state",
+                "controller_hash",
+            )
+        }
     return {
         k: previous[k]
         for k in (
@@ -149,15 +176,15 @@ def octos_controller(prompt, schema, directory, output):
         )
     envelope = json.loads(reply.stdout)
     actual = envelope.get("model")
-    if not isinstance(actual, str) or not actual.startswith("deepseek-"):
-        raise ValueError("Octos did not report a DeepSeek model for this controller")
+    if actual != model:
+        raise ValueError("Octos did not report the requested DeepSeek model")
     plan = json.loads(envelope["text"])
     if (
         not isinstance(plan, dict)
         or set(plan) != set(schema["required"])
         or type(plan["supported"]) is not bool
     ):
-        raise ValueError("DeepSeek returned an invalid inspection controller")
+        raise ValueError("DeepSeek returned invalid controller fields")
     save(output / "reply.json", plan)
     usage = {
         key: envelope[key]
@@ -165,6 +192,62 @@ def octos_controller(prompt, schema, directory, output):
         if type(envelope.get(key)) is int
     }
     return actual, usage
+
+
+def request_controller(provider, prompt, schema, output):
+    output = output.resolve()
+    save(output / "schema.json", schema)
+    model_name = None
+    started = time.monotonic()
+    usage = {}
+    if provider == "octos-deepseek":
+        with tempfile.TemporaryDirectory() as empty:
+            model_name, usage = octos_controller(prompt, schema, empty, output)
+    elif provider == "codex":
+        with (
+            tempfile.TemporaryDirectory() as empty,
+            (output / "provider.log").open("w+") as log,
+        ):
+            subprocess.run(
+                [
+                    "codex",
+                    "exec",
+                    "--ephemeral",
+                    "--skip-git-repo-check",
+                    "--sandbox",
+                    "read-only",
+                    "--output-schema",
+                    str(output / "schema.json"),
+                    "-o",
+                    str(output / "reply.json"),
+                    "-",
+                ],
+                cwd=empty,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                input=prompt,
+                text=True,
+                check=True,
+                timeout=150,
+            )
+            log.seek(0)
+            for line in log:
+                if line.startswith("model: "):
+                    model_name = line.removeprefix("model: ").strip()
+                    break
+    else:
+        raise ValueError(f"Unknown controller provider: {provider}")
+    save(
+        output / "provider-metrics.json",
+        dict(
+            provider=provider,
+            model=model_name,
+            wall_seconds=time.monotonic() - started,
+            **usage,
+        ),
+    )
+    plan = json.loads((output / "reply.json").read_text())
+    return plan, model_name
 
 
 def prepare(args, meta):
@@ -187,7 +270,6 @@ def prepare(args, meta):
                 supported=dict(type="boolean"),
             ),
         )
-        save(args.out / "schema.json", schema)
         prompt = (
             "Translate the instruction into one supported fixed-base simulated shoulder inspection. "
             "Use radians, displacement magnitude 0.03–0.15. Set supported=false for unrelated or ambiguous "
@@ -198,56 +280,27 @@ def prepare(args, meta):
             + ". Instruction: "
             + args.task
         )
+        if args.robot == "Nano":
+            schema["properties"].update(
+                kind=dict(type="string", enum=["joint-inspection", "visual-approach"]),
+                color=dict(type="string", enum=["red", "green", "blue"]),
+                standoff_m=dict(type="number"),
+            )
+            schema["required"] += ["kind", "color", "standoff_m"]
+            prompt = (
+                "Select one of two Nano capabilities. For joint-inspection use a fixed-base shoulder "
+                "displacement of 0.03–0.15 rad in magnitude, within limits "
+                + json.dumps({j: meta["limits"][j] for j in meta["allowed_joints"]})
+                + ". For visual-approach use the floating base to approach one named red, green or blue "
+                "floor cube and stop 0.40–0.55 metres from it (default 0.45 m). Use only onboard "
+                "RGB and encoders. Picking, placing, unspecified targets, excessive displacements "
+                "and other motions are unsupported. Set supported=false for these. Fill unused "
+                "fields with legal defaults. Operator instruction: " + args.task
+            )
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
-        started = time.monotonic()
-        usage = {}
-        if args.provider == "octos-deepseek":
-            with tempfile.TemporaryDirectory() as empty:
-                model_name, usage = octos_controller(prompt, schema, empty, args.out)
-        else:
-            with (
-                tempfile.TemporaryDirectory() as empty,
-                (args.out / "provider.log").open("w+") as log,
-            ):
-                subprocess.run(
-                    [
-                        "codex",
-                        "exec",
-                        "--ephemeral",
-                        "--skip-git-repo-check",
-                        "--sandbox",
-                        "read-only",
-                        "--output-schema",
-                        str(args.out / "schema.json"),
-                        "-o",
-                        str(args.out / "reply.json"),
-                        "-",
-                    ],
-                    cwd=empty,
-                    stdout=log,
-                    stderr=subprocess.STDOUT,
-                    input=prompt,
-                    text=True,
-                    check=True,
-                    timeout=150,
-                )
-                log.seek(0)
-                for line in log:
-                    if line.startswith("model: "):
-                        model_name = line.removeprefix("model: ").strip()
-                        break
-        save(
-            args.out / "provider-metrics.json",
-            dict(
-                provider=args.provider,
-                model=model_name,
-                wall_seconds=time.monotonic() - started,
-                **usage,
-            ),
-        )
-        plan = json.loads((args.out / "reply.json").read_text())
+        plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
     return dict(
@@ -277,7 +330,12 @@ def simulate(args, meta):
         raise ValueError("Controller and robot model differ")
     control = validate(plan, meta)
     (args.out / "controller.json").write_bytes(original)
-    fixture = "fixed-base, zero-gravity inspection"
+    mobile = control.get("kind") == "visual-approach"
+    fixture = (
+        "floating base, wheel contact under gravity"
+        if mobile
+        else "fixed-base, zero-gravity inspection"
+    )
     repo = Path(nx.__file__).resolve().parents[3]
     revision = (
         subprocess.check_output(
@@ -293,12 +351,28 @@ def simulate(args, meta):
             adapter=nx.__name__,
             aisle_revision=revision,
             backend=engine.backend_name,
-            fixture_profile=args.fixture,
+            fixture_profile="living-room" if mobile else args.fixture,
             adapter_hash=digest(Path(nx.__file__)),
             nexus=version("dimforge-nexus3d"),
             fixture=fixture,
         ),
     )
+    if mobile:
+        sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+        from run_rgb_approach import trial
+
+        result = trial(args.out, getattr(args, "seed", 0), plan)
+        return dict(
+            **result,
+            robot=args.robot,
+            fixture="living-room",
+            controller_hash=hashlib.sha256(original).hexdigest(),
+            model_hash=meta["model_hash"],
+            kind=control["kind"],
+            task_success=result["passed"],
+            color=plan["color"],
+            standoff_m=plan["standoff_m"],
+        )
     scene = nx._new_scene(
         engine, {"sim": {"dt": 0.01, "gravity": [0, 0, 0]}}, 1, [0.82] * 3
     )

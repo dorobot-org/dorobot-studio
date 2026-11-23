@@ -13,7 +13,7 @@ git clone https://github.com/moxin-org/AISLE.git ../aisle-workbench-runtime
 git -C ../aisle-workbench-runtime checkout --detach dbd34a71b6f82a011541b433306ca7e6a705e823
 export DOROBOT_AISLE_ROOT="$(cd ../aisle-workbench-runtime && pwd)"
 uv venv --python 3.13 .venv-aisle
-uv pip install --python .venv-aisle/bin/python numpy==2.5.5 pillow==13.0.0 dimforge-nexus3d==0.2.1 pyarrow==26.0.1 pyyaml==6.0.3
+uv pip install --python .venv-aisle/bin/python numpy==2.5.5 pillow==13.0.0 dimforge-nexus3d==0.2.1 pyarrow==26.0.1 pyyaml==6.0.3 opencv-python-headless==5.1.0.95
 python3 tools/fetch_robot_meshes.py g1
 cargo run --locked -p dorobot-flex --bin dorobot-flex -- --screen aisle-task
 ```
