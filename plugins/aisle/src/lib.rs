@@ -91,7 +91,7 @@ script_mod! {
                 Bar{nano := mod.widgets.ux.ToolButton{text:"Adora Nano"} g1 := mod.widgets.ux.ToolButton{text:"Unitree G1"}}
                 Section{text:"Task instruction"}
                 instruction := TextInput{width:Fill height:54 empty_text:"Inspect a shoulder or approach a colored cube with Nano"}
-                reference := mod.widgets.ux.ToolButton{text:"Use reference task"}
+                Bar{reference := mod.widgets.ux.ToolButton{text:"Use reference task"} onboard := mod.widgets.ux.ToolButton{text:"Onboard RGB off"}}
                 Bar{octos := mod.widgets.ux.PrimaryButton{text:"DeepSeek via Octos"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
                 Section{text:"Prepared controller"} detail := Body{}
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
@@ -394,7 +394,26 @@ impl PluginPanel for Panel {
                         w.revisions.len()
                     )
                 };
+                let mut detail = detail;
+                if let Some(n) = w.plan["scene_observation"]["visible"].as_u64() {
+                    detail.push_str(&format!(
+                        "\nAuthored from onboard RGB · {n} cubes localized"
+                    ));
+                }
                 self.label(cx, ids!(detail), &detail);
+                self.root
+                    .widget(cx, ids!(onboard))
+                    .set_visible(cx, w.robot == Robot::Nano);
+                let onboard = self.root.button(cx, ids!(onboard));
+                onboard.set_enabled(cx, !w.busy());
+                onboard.set_text(
+                    cx,
+                    if w.onboard_context {
+                        "Onboard RGB on"
+                    } else {
+                        "Onboard RGB off"
+                    },
+                );
                 let index = w.revision_index();
                 self.root
                     .button(cx, ids!(older))
@@ -490,7 +509,9 @@ impl PluginPanel for Panel {
                         "Fixed base · zero gravity"
                     },
                 );
-                self.root.widget(cx, ids!(layouts)).set_visible(cx, mobile);
+                self.root
+                    .widget(cx, ids!(layouts))
+                    .set_visible(cx, mobile || (w.robot == Robot::Nano && w.onboard_context));
                 self.root
                     .widget(cx, ids!(rgb_delivery))
                     .set_visible(cx, kind == "visual-approach");
@@ -914,6 +935,7 @@ impl PluginPanel for Panel {
             (ids!(compliant), Action::Fixture(true)),
             (ids!(level), Action::Impact(false)),
             (ids!(impact), Action::Impact(true)),
+            (ids!(onboard), Action::ToggleOnboardContext),
             (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
             (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
             (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),

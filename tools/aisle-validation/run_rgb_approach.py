@@ -93,6 +93,31 @@ def evaluate_pose(sim, cube):
     return base, xy
 
 
+def approach_scene(model, seed, room_objects, room_settings):
+    return LivingSimulation(
+        model,
+        specs=[*scene_recipe(seed), *room_objects],
+        room_settings=room_settings,
+        resolution=(480, 360),
+        posture=NAVIGATION_POSTURE | dict(head_pan_joint=0, head_tilt_joint=0.35),
+    )
+
+
+def camera_config(sim, model):
+    cameras = {
+        name: {
+            k: sim.camera_specs[name][k]
+            for k in ("resolution", "intrinsics", "parent_link", "link_from_camera_gl")
+        }
+        for name in CAMERAS
+    }
+    return dict(
+        cameras=cameras,
+        model=str(model),
+        joint_names=sim.names,
+    )
+
+
 MAX_OBSERVATION_AGE_NS = 250_000_000
 MAX_MISSING_OBSERVATIONS = 10
 
@@ -112,13 +137,7 @@ def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="norm
         raise ValueError("Unknown RGB timing fixture")
     meta = worker.describe("Nano")
     model = Path(meta["model"])
-    sim = LivingSimulation(
-        model,
-        specs=[*scene_recipe(seed), *room_objects],
-        room_settings=room_settings,
-        resolution=(480, 360),
-        posture=NAVIGATION_POSTURE | dict(head_pan_joint=0, head_tilt_joint=0.35),
-    )
+    sim = approach_scene(model, seed, room_objects, room_settings)
     by_name = {spec["name"]: body for spec, body in zip(sim.specs, sim.bodies)}
     cube = by_name[plan["color"]]
     initial_cube = np.array(cube.get_pos())
@@ -135,19 +154,8 @@ def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="norm
     wheels = {links[f"wheel_{i}"] for i in (1, 2, 3)}
     robot_ids = set(links.values())
     obstacles = {body_id(body) for name, body in by_name.items() if name != "floor"}
-    cameras = {
-        name: {
-            k: sim.camera_specs[name][k]
-            for k in ("resolution", "intrinsics", "parent_link", "link_from_camera_gl")
-        }
-        for name in CAMERAS
-    }
-    config = dict(
-        color=plan["color"],
-        standoff_m=plan["standoff_m"],
-        cameras=cameras,
-        model=str(model),
-        joint_names=sim.names,
+    config = camera_config(sim, model) | dict(
+        color=plan["color"], standoff_m=plan["standoff_m"]
     )
     worker.save(out / "calibration.json", config)
     (out / "observations").mkdir()
