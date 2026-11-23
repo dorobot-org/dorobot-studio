@@ -38,6 +38,11 @@ def main():
         help="Run and score a Nano floor-to-table journey",
     )
     scenario.add_argument(
+        "--camera-faults",
+        action="store_true",
+        help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
+    )
+    scenario.add_argument(
         "--handoff",
         action="store_true",
         help="Revise a measured Codex trial using DeepSeek via Octos",
@@ -63,7 +68,7 @@ def main():
         parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
         parser.error("--layout requires a Nano transfer scenario")
-    if (args.standing or args.transfer) and not args.provider:
+    if (args.standing or args.transfer or args.camera_faults) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -140,6 +145,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.camera_faults:
+                    check.append("--camera-faults")
                 if args.handoff:
                     check.append("--handoff")
                 if args.evaluation:
