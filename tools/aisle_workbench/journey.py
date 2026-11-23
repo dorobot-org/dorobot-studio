@@ -416,6 +416,43 @@ def main():
                     and result["disturbance"]["contacts"] > 0
                 )
                 assert result["estimated_positive_joint_work_j"] > 0
+            click("aisle_evidence.export")
+            saved = done(
+                lambda w: w["dataset"] and not w["busy"],
+                "G1 standing episode exported",
+                120,
+            )
+            import numpy as np
+            import pyarrow.parquet as pq
+
+            dataset = Path(saved["dataset"])
+            trial = Path(saved["selected"])
+            info = json.loads((dataset / "meta/info.json").read_text())
+            lineage = json.loads((dataset / "meta/aisle.json").read_text())
+            assert (
+                lineage["first_physics_step"] == 20
+                and lineage["physics_step_s"] == 0.005
+            )
+            assert info["total_frames"] == 100 and info["fps"] == 10
+            assert (
+                info["features"]["action"]["shape"] == [29]
+                and lineage["controller_hash"] == result["controller_hash"]
+            )
+            table = pq.read_table(next(dataset.glob("data/*/*.parquet"))).to_pydict()
+            with np.load(trial / "motor-work.npz", allow_pickle=False) as motors:
+                np.testing.assert_allclose(
+                    table["action"], motors["target"][19::20], atol=1e-7
+                )
+                np.testing.assert_allclose(
+                    table["observation.state"], motors["q_after"][19::20], atol=1e-7
+                )
+            click("aisle_evidence.replay")
+            wait(
+                lambda j: j["state"]["screen"] == "Replay"
+                and j["state"]["frames"] == 100,
+                "G1 standing episode opened in native Replay",
+            )
+            grab("standing-replay")
         else:
             if a.survey:
                 assert result["room_revision_sha256"] and result["room_obstacles"] == [

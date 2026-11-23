@@ -48,6 +48,12 @@ def simulate(out, model, plan, impact=False, parameters=None):
     floor = scene.add_box(
         "floor", [5, 5, 0.10], [0, 0, floor_z - 0.05], fixed=True, friction=0.8
     )
+    # Batch archives retain the full-rate numerical traces, while operator trials
+    # additionally save the camera and joint/action samples for native Replay.
+    record_episode = parameters is None
+    samples = []
+    if record_episode:
+        (out / "camera").mkdir()
     parameters = impact_parameters(
         parameters
         if parameters is not None
@@ -280,12 +286,22 @@ def simulate(out, model, plan, impact=False, parameters=None):
             )
             rows.append(row)
             rgb = np.asarray(camera.render()[0], dtype=np.uint8)
+            if record_episode and step % 20 == 0:
+                Image.fromarray(rgb).save(out / "camera" / f"{len(samples):04d}.png")
+                samples.append(
+                    dict(step=step, state=q.tolist(), action=targets.tolist())
+                )
             tmp = out / "preview.tmp"
             tmp.write_bytes((step - 1).to_bytes(4, "big") + rgb.tobytes())
             tmp.replace(out / "preview.rgb")
             save(out / "progress.json", row)
     Image.fromarray(rgb).save(out / "frame.png")
     save(out / "trajectory.json", rows)
+    if record_episode:
+        save(
+            out / "recording.json",
+            dict(joints=names, samples=samples, fps=10, cameras=["operator"]),
+        )
     wrist_rows = np.asarray(wrist_rows)
     reach = dict(
         link=wrist_name,
@@ -369,6 +385,8 @@ def simulate(out, model, plan, impact=False, parameters=None):
         max_joint_excursion_rad=excursion,
         steps=scored,
         frames=len(rows),
+        recording=record_episode,
+        recorded_frames=len(samples),
         both_feet_loaded_steps=both,
         floor_contact_links_other_than_feet=sorted(other_links),
         peak_tilt_deg=float(np.degrees(peak_tilt)),

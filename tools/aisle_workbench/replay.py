@@ -23,6 +23,7 @@ def export(trial: Path, job: Path):
     rows, names = record["samples"], record["joints"]
     count, width = len(rows), len(names)
     transfer = result.get("kind") == "table-transfer"
+    standing = result.get("kind") == "standing-inspection"
     if transfer:
         cameras = {
             name: trial / "camera" / name
@@ -34,13 +35,19 @@ def export(trial: Path, job: Path):
             raise ValueError(
                 "Camera manifest differs from the three-camera Nano recording"
             )
+    elif standing:
+        cameras = {"operator": trial / "camera"}
+        fps, dims = 10, (480, 320)
+        expected_steps = range(20, result["steps"] + 1, 20)
+        if record["cameras"] != list(cameras) or record["fps"] != fps:
+            raise ValueError("G1 recording requires one synchronized operator camera")
     else:
         cameras = {"operator": trial / "camera"}
         fps, dims = 20, (480, 320)
         expected_steps = range(1, 122, 5)
     if (
         not count
-        or count != result["frames"]
+        or count != result.get("recorded_frames", result["frames"])
         or [r["step"] for r in rows] != list(expected_steps)
     ):
         raise ValueError("Incomplete or unsynchronized trial")
@@ -157,7 +164,7 @@ def export(trial: Path, job: Path):
         "aisle.json",
         dict(
             trial=trial.name,
-            physics_step_s=0.01,
+            physics_step_s=0.005 if standing else 0.01,
             first_physics_step=rows[0]["step"],
             **(
                 dict(
