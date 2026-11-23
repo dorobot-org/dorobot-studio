@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 import subprocess
 import time
@@ -115,7 +116,13 @@ def main():
         done(lambda w: w["robot"] == robot, robot + " profile")
         if a.codex and robot == "G1":
             click("aisle_task.instruction")
-            remote("key", "w=0", "c=KeyA", "logo=1", "wait=1")
+            remote(
+                "key",
+                "w=0",
+                "c=KeyA",
+                "logo=1" if sys.platform == "darwin" else "ctrl=1",
+                "wait=1",
+            )
             remote(
                 "text",
                 "w=0",
@@ -181,6 +188,19 @@ def main():
             lambda w: w["dataset"] and not w["busy"], robot + " episode exported", 60
         )
         dataset = Path(saved["dataset"])
+        assert dataset.parent != path and not (path / "dataset").exists()
+        import pyarrow.parquet as pq
+        import numpy as np
+
+        source = json.loads((path / "recording.json").read_text())
+        table = pq.read_table(next(dataset.glob("data/*/*.parquet"))).to_pydict()
+        for name, raw in [("observation.state", "state"), ("action", "action")]:
+            np.testing.assert_allclose(
+                table[name], [r[raw] for r in source["samples"]], atol=1e-7, rtol=0
+            )
+        np.testing.assert_allclose(
+            table["timestamp"], np.arange(25) / 20, atol=1e-7, rtol=0
+        )
         info = json.loads((dataset / "meta/info.json").read_text())
         assert info["total_frames"] == 25 and info["features"]["observation.state"][
             "shape"
@@ -217,7 +237,13 @@ def main():
     page("task")
     if a.codex:
         click("aisle_task.instruction")
-        remote("key", "w=0", "c=KeyA", "logo=1", "wait=1")
+        remote(
+            "key",
+            "w=0",
+            "c=KeyA",
+            "logo=1" if sys.platform == "darwin" else "ctrl=1",
+            "wait=1",
+        )
         remote(
             "text",
             "w=0",

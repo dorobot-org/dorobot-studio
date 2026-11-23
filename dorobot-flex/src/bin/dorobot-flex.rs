@@ -442,7 +442,7 @@ impl App {
 
     fn display_status(&self) -> &str {
         if self.plugins.selected().is_some_and(|p| p.starts_with("aisle_")) {
-            return "AISLE · Nexus simulation";
+            return self.backend.status().filter(|s| !s.is_empty() && !s.starts_with("Choose Simulation or Real robot")).unwrap_or("AISLE · Nexus simulation");
         }
         if matches!(self.plugins.selected(), Some("hardware_live_mirror" | "nexus_setup" | "nexus_train" | "nexus_rollout"))
             || (self.backend.screen() == Screen::Record && self.nexus_record())

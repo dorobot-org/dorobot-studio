@@ -1,6 +1,8 @@
 """Launch a fresh native Studio, exercise the pages and verify evidence after restart."""
 
 import argparse
+import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -28,6 +30,7 @@ def main():
         "DOROBOT_UX_REPORT": str(report),
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
+    sessions = []
     for stage in ["journey", "recovery"]:
         report.unlink(missing_ok=True)
         command = [str(args.studio.resolve()), "--remote", "--screen", "aisle-task"]
@@ -65,10 +68,46 @@ def main():
                     if args.backend == "offscreen":
                         check.append("--screenshots")
                 subprocess.run(check, check=True, timeout=330)
+                status = subprocess.check_output(
+                    [args.remote, "app", str(process.pid), "status"], text=True
+                )
+                windows = [
+                    w
+                    for line in status.splitlines()
+                    for w in json.loads(line).get("w", [])
+                    if w.get("i") == 0
+                ]
+                state = json.loads(report.read_text())["state"]
+                assert state["dark"] == args.dark
+                sessions.append(
+                    dict(
+                        stage=stage,
+                        pid=process.pid,
+                        observed_dark=state["dark"],
+                        windows=[w.get("sz") for w in windows],
+                    )
+                )
             finally:
                 if process.poll() is None:
                     process.terminate()
                 process.wait(timeout=15)
+
+    directory = output / "verified"
+    with args.studio.open("rb") as binary:
+        binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
+    manifest = dict(
+        backend=args.backend,
+        requested_size=args.size,
+        provider="codex" if args.codex else "reference",
+        native_binary_sha256=binary_hash,
+        sessions=sessions,
+        trials=sorted(p.name for p in (output / "state/aisle").glob("*-run")),
+        files={
+            p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(directory.iterdir())
+        },
+    )
+    (directory / "mode-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,9 @@
 """Check constraints at the boundary between agent output and the simulator."""
 
+import os
+import subprocess
+import sys
+import time
 import json
 from pathlib import Path
 import tempfile
@@ -61,3 +65,60 @@ class InspectionTests(unittest.TestCase):
             controller.write_text(json.dumps({"joint": "other"}))
             with self.assertRaises(ValueError):
                 worker.measured_feedback(run, self.profile)
+
+    @unittest.skipUnless(os.name == "posix", "Studio process groups require POSIX")
+    def test_lost_studio_pipe_stops_the_worker_and_its_codex_child(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            out = root / "job"
+            out.mkdir()
+            (out / "worker.log").touch()
+            child = root / "codex"
+            child.write_text('#!/bin/sh\necho $$ > "$AISLE_TEST_PID"\nexec sleep 30\n')
+            child.chmod(0o700)
+            marker = root / "child.pid"
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    worker.__file__,
+                    "prepare",
+                    "--robot",
+                    "Nano",
+                    "--out",
+                    str(out),
+                    "--provider",
+                    "codex",
+                    "--reserved",
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                env=os.environ
+                | {
+                    "PATH": str(root) + os.pathsep + os.environ["PATH"],
+                    "AISLE_TEST_PID": str(marker),
+                },
+            )
+            try:
+                deadline = time.monotonic() + 8
+                while not marker.is_file() and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                self.assertTrue(marker.exists())
+                process.stdin.close()
+                self.assertLess(process.wait(timeout=5), 0)
+                pid = marker.read_text().strip()
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline:
+                    state = subprocess.run(
+                        ["ps", "-o", "stat=", "-p", pid], capture_output=True, text=True
+                    ).stdout.strip()
+                    if not state or state.startswith("Z"):
+                        break
+                    time.sleep(0.05)
+                self.assertTrue(not state or state.startswith("Z"))
+                self.assertFalse((out / "controller.json").exists())
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, 9)
+                    process.wait()

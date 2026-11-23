@@ -19,9 +19,7 @@ def export(trial: Path, job: Path):
         read("controller.json"),
         read("recording.json"),
     )
-    dataset = trial / "dataset"
-    if (dataset / "meta/info.json").is_file():
-        return dict(dataset=str(dataset))
+    dataset = job / "dataset"
     rows, names = record["samples"], record["joints"]
     count, width = len(rows), len(names)
     if count != result["frames"] or [r["step"] for r in rows] != list(range(1, 122, 5)):
@@ -166,4 +164,4 @@ def export(trial: Path, job: Path):
         ),
     )
     staging.rename(dataset)
-    return dict(dataset=str(dataset))
+    return dict(trial=trial.name, dataset="dataset")

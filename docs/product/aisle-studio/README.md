@@ -21,13 +21,13 @@ cargo run --locked -p dorobot-flex --bin dorobot-flex -- --screen aisle-task
 An existing checkout at `../AISLE` and a Studio-local `.venv-aisle/bin/python` are discovered automatically. Override the interpreter with `DOROBOT_AISLE_PYTHON`. **Ask Codex** requires an authenticated Codex CLI on PATH. **Use reference task** works locally without an inference service. The source workbench uses external Python and a GPU. Desktop release bundles require separate integration.
 
 1. **Task** — select a robot. Use the reference task or enter “Inspect the right shoulder with a displacement of minus 0.08 rad” and choose **Ask Codex**. Read the joint, signed displacement, provider and revision. Select an earlier controller to repeat it. After a scored run, select it on Evidence, update the task text and choose **Revise using selected run**. Codex receives the measured outcome and signed displacement. The new controller records the previous controller hash and measurements.
-2. **Scene** — inspect the mesh inventory, movable joint count and limits. Standard and Compliant select reproducible position gains of 28 and 18 respectively. Both fixtures anchor the root and compensate gravity.
+2. **Scene** — inspect the mesh inventory, movable joint count and limits. Standard and Compliant select reproducible position gains of 28 and 18 respectively. Both fixtures anchor the root and disable gravity.
 3. **Run** — start the prepared controller. The operator camera and position feedback come from the active simulation. Stop cancels the job and retains a receipt. Each run has its own directory.
 4. **Evidence** — read the requested and measured displacement, guard verdict and trace. Navigate older runs or open the run folder. A prior run with the same robot, URDF hash, fixture, joint and displacement supplies a comparison. Choose **Export episode** to encode the 25 synchronized RGB frames and all measured joints and commands as a LeRobot episode. **Open in Replay** opens it in the existing Studio player. After restarting Studio, saved controllers and completed or stopped trials appear again.
 
-The inspection lasts 1.21 seconds of simulated time. It tests the selected shoulder against its URDF bounds at all 121 physics steps and saves 25 sampled angles. Success requires an absolute endpoint error below 0.025 rad. The external camera is an operator view. Autonomous RGB perception, floating-base contact and hardware qualification have separate requirements in the PRD.
+The inspection lasts 1.21 seconds of simulated time. It tests the selected shoulder against its URDF bounds at all 121 physics steps and saves 25 sampled angles. Success requires an absolute endpoint error below the smaller of 0.025 rad and 15% of the requested movement. The external camera is an operator view. Autonomous RGB perception, floating-base contact and hardware qualification have separate requirements in the PRD.
 
-Files live under the Studio user data directory in `aisle/`. On macOS the default is `~/Library/Application Support/DoRobot Studio/aisle/`. Each completed run retains the controller, model metadata, adapter and model hashes, operator RGB sequence, sampled encoder and command vectors, trajectory and verdict. The exported `dataset/` contains 20 FPS MP4, Parquet, feature statistics and `meta/aisle.json` with the trial ID, controller and model hashes. Set `DOROBOT_STUDIO_STATE_DIR` to isolate an experiment.
+Files live under the Studio user data directory in `aisle/`. On macOS the default is `~/Library/Application Support/DoRobot Studio/aisle/`. Each completed run retains the controller, model metadata, adapter and model hashes, operator RGB sequence, sampled encoder and command vectors, trajectory and verdict. The separate export job’s `dataset/` contains 20 FPS MP4, Parquet, feature statistics and `meta/aisle.json` with the trial ID, controller and model hashes. Set `DOROBOT_STUDIO_STATE_DIR` to isolate an experiment.
 
 ## Reproduce the native checks
 
@@ -36,8 +36,8 @@ Build the remote input client from the Makepad revision pinned in Cargo.lock, th
 ```sh
 cargo install --locked --git https://github.com/OctoSense-org/makepad.git --rev 44d8220f12acfa46157019267e119e0866dd6b05 makepad-remote
 cargo build --locked -p dorobot-flex --bin dorobot-flex
-python3 tools/aisle_workbench/verify.py --studio target/debug/dorobot-flex --backend headless --dark --size 1024x768 --codex --out /tmp/aisle-headless-proof
-python3 tools/aisle_workbench/verify.py --studio target/debug/dorobot-flex --backend offscreen --size 1440x900 --codex --out /tmp/aisle-offscreen-proof
+.venv-aisle/bin/python tools/aisle_workbench/verify.py --studio target/debug/dorobot-flex --backend headless --dark --size 1024x768 --codex --out /tmp/aisle-headless-proof
+.venv-aisle/bin/python tools/aisle_workbench/verify.py --studio target/debug/dorobot-flex --backend offscreen --size 1440x900 --codex --out /tmp/aisle-offscreen-proof
 ```
 
 Use `--remote /path/to/makepad-remote` for a locally built client. Omit `--codex` to use reference controllers throughout. The driver sends pointer and keyboard events to the running application, restarts it with the same state directory and reads the saved trial files. The offscreen run also captures pixels. Both modes still use real Nexus physics and sensor rendering.

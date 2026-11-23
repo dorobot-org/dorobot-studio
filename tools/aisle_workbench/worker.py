@@ -4,6 +4,8 @@ import argparse
 import hashlib
 import json
 import math
+import os
+import signal
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
@@ -99,6 +101,7 @@ def measured_feedback(path, meta):
 
 def prepare(args, meta):
     feedback = measured_feedback(args.feedback, meta) if args.feedback else None
+    model_name = None
     if args.provider == "reference":
         if args.task.strip() != REFERENCE:
             raise ValueError(
@@ -130,7 +133,10 @@ def prepare(args, meta):
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
-        with tempfile.TemporaryDirectory() as empty:
+        with (
+            tempfile.TemporaryDirectory() as empty,
+            (args.out / "provider.log").open("w+") as log,
+        ):
             subprocess.run(
                 [
                     "codex",
@@ -146,11 +152,18 @@ def prepare(args, meta):
                     "-",
                 ],
                 cwd=empty,
+                stdout=log,
+                stderr=subprocess.STDOUT,
                 input=prompt,
                 text=True,
                 check=True,
                 timeout=150,
             )
+            log.seek(0)
+            for line in log:
+                if line.startswith("model: "):
+                    model_name = line.removeprefix("model: ").strip()
+                    break
         plan = json.loads((args.out / "reply.json").read_text())
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
@@ -160,6 +173,7 @@ def prepare(args, meta):
         robot=args.robot,
         task=args.task,
         provider=args.provider,
+        **({"policy_model": model_name} if model_name else {}),
         model_hash=meta["model_hash"],
     )
 
@@ -175,12 +189,21 @@ def simulate(args, meta):
         raise ValueError("Controller and robot model differ")
     control = validate(plan, meta)
     save(args.out / "controller.json", plan)
-    fixture = "fixed-base, gravity-compensated inspection"
+    fixture = "fixed-base, zero-gravity inspection"
+    repo = Path(nx.__file__).resolve().parents[3]
+    revision = (
+        subprocess.check_output(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True
+        ).strip()
+        if (repo / ".git").exists()
+        else None
+    )
     engine = nx._ensure_nexus()
     save(
         args.out / "source.json",
         dict(
             adapter=nx.__name__,
+            aisle_revision=revision,
             backend=engine.backend_name,
             fixture_profile=args.fixture,
             adapter_hash=digest(Path(nx.__file__)),
@@ -253,11 +276,13 @@ def simulate(args, meta):
     save(args.out / "trajectory.json", rows)
     save(args.out / "recording.json", dict(joints=names, samples=recording))
     actual = rows[-1]["measured_rad"] - float(initial[dof])
-    passed = abs(actual - control["delta_rad"]) < 0.025 and in_bounds
+    tolerance = min(0.025, 0.15 * abs(control["delta_rad"]))
+    passed = abs(actual - control["delta_rad"]) < tolerance and in_bounds
     return dict(
         robot=args.robot,
         recording=True,
         task_success=passed,
+        tolerance_rad=tolerance,
         frames=len(rows),
         steps=121,
         joint=control["joint"],
@@ -285,6 +310,17 @@ def main():
     args = p.parse_args()
     args.out = args.out.resolve()
     if args.reserved:
+        # Studio alone holds the write end. A separate observer can terminate the
+        # owned group even while the physics engine blocks inside native code.
+        if os.name == "posix":
+            if os.getpgrp() != os.getpid():
+                raise RuntimeError("Studio workers require their own process group")
+            if os.fork() == 0:
+                try:
+                    os.read(0, 1)
+                    os.killpg(os.getpgrp(), signal.SIGKILL)
+                finally:
+                    os._exit(0)
         if {p.name for p in args.out.iterdir()} != {"worker.log"}:
             raise ValueError("Studio job directory already in use")
     else:

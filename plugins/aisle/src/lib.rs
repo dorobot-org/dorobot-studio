@@ -103,7 +103,7 @@ script_mod! {
         Title{text:"Robot model"} context_label := Section{}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
-            inspector := Card{width:285 height:Fill Section{text:"Inspection fixture"} Body{text:"Fixed base · gravity compensated"}
+            inspector := Card{width:285 height:Fill Section{text:"Inspection fixture"} Body{text:"Fixed base · zero gravity"}
                 Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
                 fixture := Body{}
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
@@ -259,7 +259,10 @@ impl PluginPanel for Panel {
                         w.robot.name(),
                         w.plan["joint"].as_str().unwrap_or(""),
                         w.plan["delta_rad"].as_f64().unwrap_or_default(),
-                        w.plan["provider"].as_str().unwrap_or(""),
+                        w.plan["policy_model"]
+                            .as_str()
+                            .or_else(|| w.plan["provider"].as_str())
+                            .unwrap_or(""),
                         w.revision_index().unwrap_or(0) + 1,
                         w.revisions.len()
                     )

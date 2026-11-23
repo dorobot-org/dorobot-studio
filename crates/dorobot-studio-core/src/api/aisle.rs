@@ -58,6 +58,14 @@ struct Job {
     last: Instant,
 }
 impl Job {
+    fn artifact(&self) -> &'static str {
+        match self.op {
+            "export" => "export.json",
+            "run" => "result.json",
+            "prepare" => "controller.json",
+            _ => "scene.json",
+        }
+    }
     fn stop(&mut self) {
         // The worker may own a Codex CLI child. Stop only the group created by launch().
         #[cfg(unix)]
@@ -87,6 +95,7 @@ pub struct Workbench {
     pub compliant: bool,
     pub comparison: Option<f64>,
     pub dataset: Option<PathBuf>,
+    exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     job: Option<Job>,
     root: PathBuf,
 }
@@ -111,19 +120,24 @@ impl Default for Workbench {
             compliant: false,
             comparison: None,
             dataset: None,
+            exports: Default::default(),
             job: None,
             root,
         };
         if let Ok(entries) = fs::read_dir(&w.root) {
-            w.history = entries
-                .flatten()
-                .map(|e| e.path())
-                .filter(|p| {
-                    p.is_dir()
-                        && p.file_name()
-                            .is_some_and(|n| n.to_string_lossy().ends_with("-run"))
-                })
-                .collect();
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.ends_with("-run") && path.is_dir() {
+                    w.history.push(path);
+                } else if name.ends_with("-export") {
+                    let export = read(&path, "export.json");
+                    if let Some(trial) = export.as_ref().and_then(|v| v["trial"].as_str()) {
+                        w.exports.insert(w.root.join(trial), path.join("dataset"));
+                    }
+                }
+            }
             w.history.sort();
             if let Some(path) = w.history.last().cloned() {
                 w.select_run(path);
@@ -206,7 +220,10 @@ impl Workbench {
         serde_json::json!({"robot":robot,"outcome":outcome,"reason":reason})
     }
     fn select_run(&mut self, path: PathBuf) {
-        self.dataset = Some(path.join("dataset")).filter(|p| p.join("meta/info.json").is_file());
+        self.dataset = self.exports.get(&path).cloned().or_else(|| {
+            let legacy = path.join("dataset");
+            legacy.join("meta/info.json").is_file().then_some(legacy)
+        });
         self.evidence = Self::receipt(&path);
         self.comparison = self
             .history
@@ -322,7 +339,7 @@ impl Workbench {
         #[cfg(unix)]
         cmd.process_group(0);
         let child = cmd
-            .stdin(Stdio::null())
+            .stdin(Stdio::piped())
             .stdout(log.try_clone()?)
             .stderr(log)
             .spawn()
@@ -351,10 +368,16 @@ impl Workbench {
         if matches!(action, Action::Stop) {
             if let Some(mut j) = self.job.take() {
                 j.stop();
-                self.status = "Stopped by operator".into();
-                let _ = fs::write(j.dir.join("stopped.json"), "{\"stopped\":true}");
-                if j.op == "run" {
-                    self.select_run(j.dir);
+                if j.dir.join(j.artifact()).is_file() {
+                    self.finish(j, true);
+                } else if j.dir.join("error.json").is_file() {
+                    self.finish(j, false);
+                } else {
+                    self.status = "Stopped by operator".into();
+                    let _ = fs::write(j.dir.join("stopped.json"), "{\"stopped\":true}");
+                    if j.op == "run" {
+                        self.select_run(j.dir);
+                    }
                 }
             }
             return;
@@ -379,8 +402,6 @@ impl Workbench {
                 revise,
             } => {
                 self.task = task;
-                self.prepared = None;
-                self.plan = Value::Null;
                 self.launch(
                     "prepare",
                     codex,
@@ -461,20 +482,20 @@ impl Workbench {
             r => r,
         };
         let job = self.job.take().unwrap();
+        self.finish(job, status.is_ok_and(|s| s.is_some_and(|c| c.success())));
+    }
+    fn finish(&mut self, job: Job, success: bool) {
         if let Some(m) = read(&job.dir, "scene.json") {
             self.scene = m;
         }
-        let artifact = match job.op {
-            "export" => "export.json",
-            "run" => "result.json",
-            "prepare" => "controller.json",
-            _ => "scene.json",
-        };
-        if status.is_ok_and(|s| s.is_some_and(|c| c.success())) && job.dir.join(artifact).is_file()
-        {
+        let artifact = job.artifact();
+        if success && job.dir.join(artifact).is_file() {
             if job.op == "export" {
-                self.dataset =
-                    read(&job.dir, artifact).and_then(|v| v["dataset"].as_str().map(PathBuf::from));
+                let dataset = job.dir.join("dataset");
+                if let Some(path) = &self.selected {
+                    self.exports.insert(path.clone(), dataset.clone());
+                }
+                self.dataset = Some(dataset);
             }
             if job.op == "prepare" {
                 let p = job.dir.join(artifact);
@@ -511,7 +532,75 @@ impl Drop for Workbench {
     fn drop(&mut self) {
         if let Some(j) = &mut self.job {
             j.stop();
-            let _ = fs::write(j.dir.join("stopped.json"), "{\"stopped\":true}");
+            if !j.dir.join(j.artifact()).is_file() && !j.dir.join("error.json").is_file() {
+                let _ = fs::write(j.dir.join("stopped.json"), "{\"stopped\":true}");
+            }
         }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    fn fixture() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "aisle-job-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn failed_prepare_keeps_runnable_revision() {
+        let dir = fixture();
+        let plan = dir.join("controller.json");
+        fs::write(&plan, r#"{"joint":"left_j2_pitch","task":"inspection"}"#).unwrap();
+        let mut w = Workbench::default();
+        w.root = plan.clone(); // A file at the job root makes launch fail deterministically.
+        w.revisions = vec![plan.clone()];
+        w.load_plan(Some(plan.clone()));
+        w.dispatch(Action::Prepare {
+            task: "new instruction".into(),
+            codex: true,
+            revise: false,
+        });
+        assert!(w.error.is_some());
+        assert_eq!(w.prepared.as_ref(), Some(&plan));
+        assert_eq!(w.revision_index(), Some(0));
+        assert_eq!(w.plan["joint"], "left_j2_pitch");
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn stopping_after_result_publication_retains_only_the_committed_outcome() {
+        let dir = fixture();
+        fs::write(
+            dir.join("result.json"),
+            r#"{"robot":"Nano","task_success":true}"#,
+        )
+        .unwrap();
+        let child = Command::new("sleep")
+            .arg("15")
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let mut w = Workbench::default();
+        w.job = Some(Job {
+            child,
+            dir: dir.clone(),
+            op: "run",
+            last: Instant::now(),
+        });
+        w.dispatch(Action::Stop);
+        assert!(w.status.starts_with("Completed"));
+        assert_eq!(w.evidence["task_success"], true);
+        assert!(!dir.join("stopped.json").exists());
+        fs::remove_dir_all(dir).unwrap();
     }
 }
