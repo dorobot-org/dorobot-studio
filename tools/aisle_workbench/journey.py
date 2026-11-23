@@ -33,6 +33,7 @@ def main():
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     p.add_argument("--impact", action="store_true")
+    p.add_argument("--survey", type=Path)
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
@@ -120,6 +121,9 @@ def main():
             assert row["result"]["task_success"] and (
                 a.standing or row["result"]["requested"] == wanted
             )
+            if a.survey:
+                assert row["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
+                assert row["result"]["room_revision_sha256"]
             (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
             return
         page("task")
@@ -155,6 +159,44 @@ def main():
         ) and row["controller"]["provider"] == a.provider
         grab(label + "-task")
         page("scene")
+        if a.survey:
+            click("aisle_scene.room_mode")
+            done(lambda w: w["room_editor"], "Room survey editor opened")
+
+            def fill_survey(field, text):
+                click("aisle_scene." + field)
+                remote(
+                    "key",
+                    "w=0",
+                    "c=KeyA",
+                    "logo=1" if sys.platform == "darwin" else "ctrl=1",
+                    "wait=1",
+                )
+                remote("text", "w=0", "t=" + text, "wait=1")
+
+            fill_survey("survey_path", str(a.survey))
+            click("aisle_scene.import_survey")
+            saved = done(
+                lambda w: w["room_path"] and not w["busy"],
+                "Surveyed footprint imported",
+            )
+            first = saved["room_path"]
+            fill_survey("geometry", "ottoman 0 0 0.35")
+            click("aisle_scene.save_geometry")
+            failed = done(
+                lambda w: "conflicts with Nano" in w["status"] and not w["busy"],
+                "Overlapping edit rejected",
+            )
+            assert failed["room_path"] == first
+            fill_survey("geometry", "ottoman 1.38 -0.45 0.35")
+            click("aisle_scene.save_geometry")
+            saved = done(
+                lambda w: w["room_path"] != first and not w["busy"],
+                "Edited geometry saved as a revision",
+            )
+            assert saved["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
+            grab("survey-edited")
+            click("aisle_scene.robot_mode")
         if a.impact:
             click("aisle_scene.impact")
             done(lambda w: w["impact"], "G1 impact selected")
@@ -207,6 +249,19 @@ def main():
                 )
                 assert result["estimated_positive_joint_work_j"] > 0
         else:
+            if a.survey:
+                assert result["room_revision_sha256"] and result["room_obstacles"] == [
+                    "room_ottoman"
+                ]
+                measured = result["measured_room_bodies"]["room_ottoman"]["center_m"]
+                assert all(
+                    abs(x - y) < 1e-5
+                    for x, y in zip(measured, [1.38, -0.45, 0.1407], strict=True)
+                )
+                run = Path(row["selected"])
+                calibration = json.loads((run / "calibration.json").read_text())
+                scene = json.loads((run / "room.json").read_text())
+                assert calibration["cameras"] == scene["settings"]["cameras"]
             assert result["seed"] == a.layout
             assert all(result["cubes"][c]["passed"] for c in wanted)
             import numpy as np

@@ -62,6 +62,7 @@ impl StudioPlugin for AislePlugin {
             light: None,
             frame: None,
             draft: None,
+            room_preview: None,
         }))
     }
     fn can_disable(&self, b: &dyn Backend) -> Result<(), String> {
@@ -101,9 +102,19 @@ script_mod! {
         status := Body{}
     }
     mod.widgets.AisleScene=Page{
-        Title{text:"Robot model"} context_label := Section{}
+        Title{text:"Simulation scene"} context_label := Section{}
+        scene_modes := Bar{robot_mode := mod.widgets.ux.ToolButton{text:"Robot model"} room_mode := mod.widgets.ux.ToolButton{text:"Room survey"}}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
+            photo_card := Card{width:Fill height:Fill Section{text:"Surveyed floor footprint"} photo := VideoPlayer{width:Fill height:Fill}}
+            survey_card := Card{width:295 height:Fill
+                Section{text:"Room survey file"} survey_path := TextInput{width:Fill height:38 empty_text:"Absolute path to survey.json"}
+                import_survey := mod.widgets.ux.PrimaryButton{text:"Import survey"}
+                room_detail := Body{}
+                Section{text:"Edit obstacle · metres"} geometry := TextInput{width:Fill height:38 empty_text:"name x y height"}
+                save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
+                default_room := mod.widgets.ux.ToolButton{text:"Use default room"}
+            }
             inspector := Card{width:285 height:Fill Section{text:"Simulation fixture"} fixture_kind := Body{}
                 Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
                 standing_fixtures := Bar{
@@ -146,6 +157,7 @@ struct Panel {
     light: Option<f64>,
     frame: Option<(PathBuf, u64)>,
     draft: Option<(Robot, Option<PathBuf>)>,
+    room_preview: Option<PathBuf>,
 }
 impl Panel {
     fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
@@ -289,6 +301,8 @@ impl PluginPanel for Panel {
                     (ids!(inspector), Themed::Bg),
                     (ids!(model_card), Themed::Bg),
                     (ids!(viewport), Themed::Bg),
+                    (ids!(photo_card), Themed::Bg),
+                    (ids!(survey_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
                 ],
@@ -398,6 +412,60 @@ impl PluginPanel for Panel {
                 }
             }
             "aisle_scene" => {
+                let editing = mobile && w.room_editor;
+                self.root
+                    .widget(cx, ids!(scene_modes))
+                    .set_visible(cx, mobile);
+                self.root
+                    .button(cx, ids!(room_mode))
+                    .set_enabled(cx, !w.busy() && !editing);
+                self.root
+                    .button(cx, ids!(robot_mode))
+                    .set_enabled(cx, !w.busy() && editing);
+                for id in [ids!(model_card), ids!(inspector)] {
+                    self.root.widget(cx, id).set_visible(cx, !editing);
+                }
+                for id in [ids!(photo_card), ids!(survey_card)] {
+                    self.root.widget(cx, id).set_visible(cx, editing);
+                }
+                if editing {
+                    let mut text = vec![w.room_info["description"]
+                        .as_str()
+                        .unwrap_or("Default living room")
+                        .to_string()];
+                    for b in w.room_info["obstacles"].as_array().into_iter().flatten() {
+                        let name = b["name"].as_str().unwrap_or("").trim_start_matches("room_");
+                        text.push(format!(
+                            "{name} · x {:.2}, y {:.2}, height {:.2}",
+                            b["position"][0].as_f64().unwrap_or_default(),
+                            b["position"][1].as_f64().unwrap_or_default(),
+                            b["size"][2].as_f64().unwrap_or_default()
+                        ));
+                    }
+                    self.label(cx, ids!(room_detail), &text.join("\n"));
+                    self.root
+                        .button(cx, ids!(import_survey))
+                        .set_enabled(cx, !w.busy());
+                    for id in [ids!(save_geometry), ids!(default_room)] {
+                        self.root
+                            .button(cx, id)
+                            .set_enabled(cx, !w.busy() && w.room_path.is_some());
+                    }
+                    if self.room_preview != w.room_path {
+                        let player = self.root.video_player(cx, ids!(photo));
+                        player.clear(cx);
+                        if let Some(raw) = w
+                            .room_path
+                            .as_ref()
+                            .and_then(|p| std::fs::read(p.with_file_name("room-preview.rgb")).ok())
+                        {
+                            if raw.len() == 480 * 320 * 3 {
+                                player.set_frame(cx, 480, 320, &raw);
+                            }
+                        }
+                        self.room_preview = w.room_path.clone();
+                    }
+                }
                 self.label(
                     cx,
                     ids!(fixture_kind),
@@ -693,6 +761,9 @@ impl PluginPanel for Panel {
             (ids!(compliant), Action::Fixture(true)),
             (ids!(level), Action::Impact(false)),
             (ids!(impact), Action::Impact(true)),
+            (ids!(room_mode), Action::EditRoom(true)),
+            (ids!(robot_mode), Action::EditRoom(false)),
+            (ids!(default_room), Action::DefaultRoom),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
             (ids!(start_run), Action::Run),
@@ -706,6 +777,21 @@ impl PluginPanel for Panel {
                 b.dispatch(Intent::Aisle(act));
                 return true;
             }
+        }
+        let importing = self.root.button(cx, ids!(import_survey)).clicked(actions);
+        if importing || self.root.button(cx, ids!(save_geometry)).clicked(actions) {
+            let source = if importing {
+                self.root.text_input(cx, ids!(survey_path)).text()
+            } else {
+                String::new()
+            };
+            let edit = if importing {
+                String::new()
+            } else {
+                self.root.text_input(cx, ids!(geometry)).text()
+            };
+            b.dispatch(Intent::Aisle(Action::ImportRoom { source, edit }));
+            return true;
         }
         let reference = self.root.button(cx, ids!(reference)).clicked(actions);
         let revise = self.root.button(cx, ids!(revise)).clicked(actions);

@@ -41,7 +41,14 @@ def main():
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
     )
+    parser.add_argument(
+        "--survey",
+        type=Path,
+        help="Import and edit the Nano reference survey during a transfer",
+    )
     args = parser.parse_args()
+    if args.survey and not args.transfer:
+        parser.error("--survey requires --transfer")
     if args.impact and not args.standing:
         parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
@@ -101,6 +108,8 @@ def main():
                     check.append("--standing")
                     if args.impact:
                         check.append("--impact")
+                if args.survey:
+                    check.extend(["--survey", str(args.survey.resolve())])
                 if args.transfer:
                     check.extend(
                         ["--transfer", args.transfer, "--layout", str(args.layout)]

@@ -435,6 +435,29 @@ def simulate(args, meta):
         )
     if mobile:
         sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+        room_objects = []
+        room_settings = None
+        room_path = getattr(args, "room_revision", None)
+        if room_path is not None:
+            from room_revision import load_revision
+            from run_rgb_approach import scene_recipe
+            import shutil
+
+            revision = load_revision(room_path, args.room_hash, scene_recipe(args.seed))
+            room_objects = revision["obstacles"]
+            room_settings = revision.get("settings")
+            for artifact in (
+                "room.json",
+                "reference-image",
+                "survey.json",
+                "room-preview.rgb",
+            ):
+                shutil.copyfile(room_path.with_name(artifact), args.out / artifact)
+            source = json.loads((args.out / "source.json").read_text())
+            save(
+                args.out / "source.json",
+                source | {"room_revision_sha256": args.room_hash},
+            )
         if control["kind"] == "table-transfer":
             from run_rgb_transfer import execute
 
@@ -443,6 +466,8 @@ def simulate(args, meta):
                 getattr(args, "seed", 0),
                 control["color_order"].split(","),
                 record=True,
+                room_objects=room_objects,
+                room_settings=room_settings,
             )
             return result | dict(
                 robot=args.robot,
@@ -450,11 +475,19 @@ def simulate(args, meta):
                 controller_hash=hashlib.sha256(original).hexdigest(),
                 model_hash=meta["model_hash"],
                 kind=control["kind"],
+                room_revision_sha256=getattr(args, "room_hash", None),
+                room_obstacles=[b["name"] for b in room_objects],
                 task_success=result["passed"],
             )
         from run_rgb_approach import trial
 
-        result = trial(args.out, getattr(args, "seed", 0), plan)
+        result = trial(
+            args.out,
+            getattr(args, "seed", 0),
+            plan,
+            room_objects=room_objects,
+            room_settings=room_settings,
+        )
         return dict(
             **result,
             robot=args.robot,
@@ -463,6 +496,8 @@ def simulate(args, meta):
             model_hash=meta["model_hash"],
             kind=control["kind"],
             task_success=result["passed"],
+            room_revision_sha256=getattr(args, "room_hash", None),
+            room_obstacles=[b["name"] for b in room_objects],
             color=plan["color"],
             standoff_m=plan["standoff_m"],
         )
@@ -552,7 +587,7 @@ def simulate(args, meta):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("operation", choices=["scene", "prepare", "run", "export"])
+    p.add_argument("operation", choices=["scene", "prepare", "run", "export", "room"])
     p.add_argument("--robot", choices=MODELS, required=True)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument(
@@ -564,6 +599,10 @@ def main():
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
+    p.add_argument("--room-source", type=Path)
+    p.add_argument("--room-revision", type=Path)
+    p.add_argument("--room-hash")
+    p.add_argument("--room-edit")
     p.add_argument("--seed", type=int, default=0, help="Living-room layout seed")
     p.add_argument(
         "--fixture", choices=["standard", "compliant", "impact"], default="standard"
@@ -590,6 +629,27 @@ def main():
     else:
         args.out.mkdir(parents=True, exist_ok=False)
     try:
+        if args.operation == "room":
+            if args.robot != "Nano":
+                raise ValueError("A floor survey requires the Nano living-room profile")
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from run_rgb_approach import scene_recipe
+            from room_revision import import_room
+
+            source = args.room_source
+            if source is None and args.room_revision is not None:
+                source = args.room_revision.with_name("survey.json")
+            if source is None:
+                raise ValueError("Choose a room survey JSON file")
+            import_room(
+                source.resolve(),
+                args.out,
+                scene_recipe(args.seed),
+                args.room_edit,
+                parent=args.room_hash if args.room_source is None else None,
+                model_sha=describe("Nano")["model_hash"],
+            )
+            return
         if args.operation == "export":
             from replay import export
 

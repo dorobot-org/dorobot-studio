@@ -299,12 +299,17 @@ class LivingSimulation:
         *,
         specs=None,
         posture=None,
+        room_settings=None,
     ):
         from aisle.sim.nexus_backend import _ensure_nexus, _new_scene, NexusRobot
 
+        room_settings = room_settings or {}
         self.engine = _ensure_nexus("metal")
         self.scene = _new_scene(
-            self.engine, {"sim": {"dt": 0.01, "gravity": [0, 0, -9.81]}}, 1, [0.6] * 3
+            self.engine,
+            {"sim": {"dt": 0.01, "gravity": [0, 0, -9.81]}},
+            1,
+            room_settings.get("ambient_rgb", [0.6] * 3),
         )
         self.specs = room_specs(seed) if specs is None else specs
         self.bodies = [
@@ -313,7 +318,9 @@ class LivingSimulation:
                 s["size"],
                 s["position"],
                 fixed=s["fixed"],
-                friction=0.7,
+                friction=room_settings.get("floor_friction", 0.7)
+                if s["name"] == "floor"
+                else 0.7,
                 density=500,
                 color=s["color"],
             )
@@ -349,7 +356,10 @@ class LivingSimulation:
             from nano_cameras import create_rig
 
             self.rig, self.camera_specs = create_rig(
-                self.scene, self.robot, resolution=resolution
+                self.scene,
+                self.robot,
+                resolution=resolution,
+                calibration=room_settings.get("cameras"),
             )
             for spec in self.camera_specs.values():
                 spec["fps"] = 1 / CONTROL_DT
@@ -365,6 +375,17 @@ class LivingSimulation:
         self.targets = parked.copy()
         self.cube_start = self.object_positions()
         self.root_pose_writes = 0
+
+    def room_readback(self):
+        """Read imported fixed bodies from Nexus after physics has settled."""
+        return {
+            spec["name"]: dict(
+                physics_body=int(self.scene.gpu_index(0, body.handles[0])),
+                center_m=body.get_pos().tolist(),
+            )
+            for spec, body in zip(self.specs, self.bodies, strict=True)
+            if spec["name"].startswith("room_")
+        }
 
     def object_positions(self):
         return [np.asarray(b.get_pos()).tolist() for b in self.bodies]

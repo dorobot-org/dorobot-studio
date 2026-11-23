@@ -212,9 +212,13 @@ class Judge:
         )
 
 
-def execute(out, seed, colors, record=False):
+def execute(out, seed, colors, record=False, room_objects=(), room_settings=None):
     sim = LivingSimulation(
-        MODEL, specs=scene_recipe(seed), resolution=(480, 360), posture=POSTURE
+        MODEL,
+        specs=[*scene_recipe(seed), *room_objects],
+        resolution=(480, 360),
+        posture=POSTURE,
+        room_settings=room_settings,
     )
     dof = sim.robot.get_joint("left_j6_gripper").dofs_idx_local
     sim.robot.set_dofs_kp([5.0], dof)
@@ -496,6 +500,7 @@ def execute(out, seed, colors, record=False):
         requested=colors,
         phase=judge.phase,
         onboard_observations=frame_count,
+        measured_room_bodies=sim.room_readback(),
         actuator_audit=audit,
         rejected_motor_writes=motors.rejected,
         frames=len(samples),

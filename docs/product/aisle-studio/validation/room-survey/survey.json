@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "description": "Ottoman beside the Nano test area",
+  "image": "reference.png",
+  "floor_marks": [
+    {
+      "pixel": [
+        230.03,
+        342.87
+      ],
+      "metres": [
+        -0.4,
+        -1
+      ]
+    },
+    {
+      "pixel": [
+        489.97,
+        445.36
+      ],
+      "metres": [
+        1.7,
+        -1
+      ]
+    },
+    {
+      "pixel": [
+        546.1,
+        339.44
+      ],
+      "metres": [
+        1.7,
+        0.25
+      ]
+    },
+    {
+      "pixel": [
+        329.11,
+        279.4
+      ],
+      "metres": [
+        -0.4,
+        0.25
+      ]
+    },
+    {
+      "pixel": [
+        341.3,
+        315.16
+      ],
+      "metres": [
+        0.1,
+        -0.24
+      ]
+    },
+    {
+      "pixel": [
+        504.44,
+        371.68
+      ],
+      "metres": [
+        1.55,
+        -0.3
+      ]
+    }
+  ],
+  "obstacles": [
+    {
+      "name": "ottoman",
+      "height_m": 0.33,
+      "rgb": [
+        92,
+        122,
+        120
+      ],
+      "footprint_pixels": [
+        [
+          424.72,
+          374.97
+        ],
+        [
+          478.86,
+          393.82
+        ],
+        [
+          495.39,
+          367.9
+        ],
+        [
+          444.19,
+          351.63
+        ]
+      ]
+    }
+  ],
+  "camera_calibration": "camera-fixture.json",
+  "environment": {
+    "ambient_rgb": [
+      0.58,
+      0.6,
+      0.62
+    ],
+    "floor_friction": 0.65
+  }
+}

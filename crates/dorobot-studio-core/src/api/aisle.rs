@@ -56,6 +56,12 @@ pub enum Action {
     Inspect,
     Fixture(bool),
     Impact(bool),
+    EditRoom(bool),
+    ImportRoom {
+        source: String,
+        edit: String,
+    },
+    DefaultRoom,
     Layout(u8),
     OlderPlan,
     NewerPlan,
@@ -134,9 +140,10 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
         let Some(old_cal) = read(previous, "calibration.json") else {
             continue;
         };
-        if !["recipe", "nexus", "adapter_hash", "backend"]
-            .iter()
-            .all(|k| !source[*k].is_null() && source[*k] == old[*k])
+        if source["room_revision_sha256"] != old["room_revision_sha256"]
+            || !["recipe", "nexus", "adapter_hash", "backend"]
+                .iter()
+                .all(|k| !source[*k].is_null() && source[*k] == old[*k])
             || ![
                 "nano_living.py",
                 "run_rgb_approach.py",
@@ -182,6 +189,7 @@ impl Job {
     fn artifact(&self) -> &'static str {
         match self.op {
             "export" => "export.json",
+            "room" => "room-ref.json",
             "run" => "result.json",
             "prepare" => "controller.json",
             _ => "scene.json",
@@ -215,6 +223,11 @@ pub struct Workbench {
     pub revisions: Vec<PathBuf>,
     pub compliant: bool,
     pub impact: bool,
+    pub room_editor: bool,
+    pub room_info: Value,
+    pub room_path: Option<PathBuf>,
+    room_selection: Value,
+    room_request: Option<(String, String)>,
     pub layout_seed: u8,
     pub comparison: Option<f64>,
     pub transfer_comparison: Option<String>,
@@ -247,6 +260,11 @@ impl Workbench {
             revisions: Vec::new(),
             compliant: false,
             impact: false,
+            room_editor: false,
+            room_info: Value::Null,
+            room_path: None,
+            room_selection: Value::Null,
+            room_request: None,
             layout_seed: 0,
             comparison: None,
             transfer_comparison: None,
@@ -274,6 +292,9 @@ impl Workbench {
                 w.select_run(path);
             }
         }
+        if let Some(selection) = read(&w.root, "selected-room.json") {
+            w.select_room(selection);
+        }
         w.restore_profile();
         w
     }
@@ -295,6 +316,29 @@ impl Workbench {
     }
     pub fn busy(&self) -> bool {
         self.job.is_some()
+    }
+    fn select_room(&mut self, selection: Value) {
+        self.room_path = selection["revision"]
+            .as_str()
+            .filter(|name| {
+                name.ends_with("-Nano-room") && Path::new(name).components().count() == 1
+            })
+            .map(|name| self.root.join(name).join("room.json"));
+        self.room_info = self
+            .room_path
+            .as_deref()
+            .and_then(|p| read(p.parent()?, "room.json"))
+            .unwrap_or_default();
+        self.room_selection = selection;
+    }
+    fn save_room(&mut self, selection: Value) -> io::Result<()> {
+        fs::create_dir_all(&self.root)?;
+        let path = self.root.join("selected-room.json");
+        let temp = path.with_extension(format!("{}.tmp", std::process::id()));
+        fs::write(&temp, serde_json::to_vec(&selection)?)?;
+        fs::rename(temp, path)?;
+        self.select_room(selection);
+        Ok(())
     }
     fn restore_profile(&mut self) {
         let suffix = format!("-{}-prepare", self.robot.name());
@@ -455,6 +499,30 @@ impl Workbench {
         if let Some(run) = feedback {
             cmd.arg("--feedback").arg(run);
         }
+        if op == "room" {
+            let (source, edit) = self
+                .room_request
+                .as_ref()
+                .ok_or_else(|| io::Error::other("Choose a survey or edit the selected room"))?;
+            if !source.trim().is_empty() {
+                cmd.arg("--room-source").arg(source.trim());
+            }
+            if !edit.trim().is_empty() {
+                cmd.arg("--room-edit").arg(edit.trim());
+            }
+            cmd.arg("--seed").arg(self.layout_seed.to_string());
+        }
+        let mobile =
+            self.plan["kind"] == "table-transfer" || self.plan["kind"] == "visual-approach";
+        if op == "room" || (op == "run" && mobile) {
+            if let Some(path) = &self.room_path {
+                cmd.arg("--room-revision").arg(path).arg("--room-hash").arg(
+                    self.room_selection["sha256"]
+                        .as_str()
+                        .ok_or_else(|| io::Error::other("Missing room revision hash"))?,
+                );
+            }
+        }
         if op == "export" {
             cmd.arg("--trial").arg(
                 self.selected
@@ -558,6 +626,15 @@ impl Workbench {
                     if revise { self.selected.clone() } else { None },
                 )
             }
+            Action::EditRoom(value) => {
+                self.room_editor = value;
+                Ok(())
+            }
+            Action::DefaultRoom => self.save_room(Value::Null),
+            Action::ImportRoom { source, edit } => {
+                self.room_request = Some((source, edit));
+                self.launch("room", Planner::Reference, None)
+            }
             Action::Impact(value) => {
                 self.impact = value;
                 Ok(())
@@ -649,6 +726,16 @@ impl Workbench {
         }
         let artifact = job.artifact();
         if success && job.dir.join(artifact).is_file() {
+            if job.op == "room" {
+                if let Err(error) = read(&job.dir, artifact)
+                    .ok_or_else(|| io::Error::other("Missing room receipt"))
+                    .and_then(|s| self.save_room(s))
+                {
+                    self.error = Some(error.to_string());
+                    self.status = error.to_string();
+                    return;
+                }
+            }
             if job.op == "export" {
                 let dataset = job.dir.join("dataset");
                 if let Some(path) = &self.selected {
