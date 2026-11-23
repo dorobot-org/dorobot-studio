@@ -119,8 +119,20 @@ def main():
             ]
         )
     }
+
+    def check_sources():
+        for name, expected in source_hashes.items():
+            if (
+                hashlib.sha256((studio_root / name).read_bytes()).hexdigest()
+                != expected
+            ):
+                raise RuntimeError(
+                    f"Native verification source changed during the run: {name}"
+                )
+
     sessions = []
     for stage in ["journey", "recovery"]:
+        check_sources()
         with args.studio.open("rb") as binary:
             if hashlib.file_digest(binary, "sha256").hexdigest() != binary_hash:
                 raise RuntimeError(
@@ -215,6 +227,7 @@ def main():
                     process.terminate()
                 process.wait(timeout=15)
 
+    check_sources()
     directory = output / "verified"
     manifest = dict(
         backend=args.backend,

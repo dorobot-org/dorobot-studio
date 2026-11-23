@@ -518,6 +518,7 @@ def simulate(args, meta):
         args.out / "source.json",
         dict(
             adapter=nx.__name__,
+            controller_sha256=hashlib.sha256(original).hexdigest(),
             aisle_revision=revision,
             backend=engine.backend_name,
             fixture_profile=(

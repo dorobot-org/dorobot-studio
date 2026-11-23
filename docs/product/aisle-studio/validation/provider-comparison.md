@@ -41,3 +41,8 @@ In the native Task page, **Revise with DeepSeek** can use a selected Codex, refe
 In the headless G1 inspection, Codex requested −0.080 rad and Nexus measured −0.079959 rad. DeepSeek received that result and the instruction “Repeat the preceding inspection at three quarters of its signed displacement.” It selected the same right shoulder, requested −0.060 rad and Nexus measured −0.059967 rad. Restarting Studio restored the scored G1 trial. [Requests, controller lineage, measurements and native build](provider-handoff.json)
 
 To repeat this handoff, follow the workbench setup and run the native verifier with `--handoff`. To run a new simulation using DeepSeek alone, author it with **DeepSeek via Octos** and revise with **Revise with DeepSeek**.
+
+
+A further matched spatial test gave each provider the same instruction on two different robot-camera observations. Each selected red and then blue and reached both targets under the hardware-model limits. The head camera and the estimated floor positions are retained with the measured outcomes. [How to use onboard perception](onboard-authoring/README.md)
+
+One additional DeepSeek authoring call during camera-fault testing returned an unreadable controller. The draft failed before a robot run started. A fresh call produced a valid plan and the complete camera-timing test passed. Studio now retains malformed text for inspection and accepts a single JSON object in a Markdown code fence. The five-request comparison above counts the original fixed set of prompts.

@@ -1,0 +1,407 @@
+{
+  "task": "Place all three cubes from the robot\u2019s left to right as seen before moving.",
+  "before": {
+    "octos-deepseek": {
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "blue,green,red",
+        "scene_observation": {
+          "layout": 1,
+          "source_sha256": {
+            "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+            "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+            "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+            "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60"
+          },
+          "room_revision_sha256": null,
+          "visible": 3,
+          "files": {
+            "onboard-scene.npz": "cc64b116f661754e125a50d30add1cd1ab361d0b7c484b8b06977939fc168382",
+            "onboard-calibration.json": "9a41c2a7690b5a58cfcab58ac4213112de9a1a4d72c81498b5ba9a6741c0be8a",
+            "onboard-scene.json": "1a1a5c3beecffc478ae28706d311209b44056a9e87dd13980304386a4dc9763b"
+          }
+        },
+        "robot": "Nano",
+        "task": "Use the current onboard view to place all three floor cubes on the coffee table, from the robot's left to right as seen before moving.",
+        "provider": "octos-deepseek",
+        "policy_model": "deepseek-v4-flash",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "observation": {
+        "frame": "base_link",
+        "capture_ns": 0,
+        "objects": {
+          "red": {
+            "status": "localized",
+            "x_forward_m": 0.703,
+            "y_left_m": -0.2837,
+            "distance_m": 0.7581,
+            "views": [
+              "head"
+            ]
+          },
+          "green": {
+            "status": "localized",
+            "x_forward_m": 0.74,
+            "y_left_m": -0.0453,
+            "distance_m": 0.7414,
+            "views": [
+              "head"
+            ]
+          },
+          "blue": {
+            "status": "localized",
+            "x_forward_m": 0.8528,
+            "y_left_m": 0.2151,
+            "distance_m": 0.8795,
+            "views": [
+              "head"
+            ]
+          }
+        }
+      },
+      "authoring": {
+        "provider": "octos-deepseek",
+        "model": "deepseek-v4-flash",
+        "wall_seconds": 2.1282089170999825,
+        "input_tokens": 6537,
+        "output_tokens": 218
+      },
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3123,
+            "final_position_m": [
+              0.3217151165008545,
+              0.6720027923583984,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.04944519068968811,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.07200279235839846,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 3404,
+            "final_position_m": [
+              0.27868521213531494,
+              0.5837206244468689,
+              0.6261266469955444
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": false,
+            "min_finger_clearance_tail_m": -0.03268912214674313,
+            "cube_center_over_table": false,
+            "nearest_table_edge_m": -0.01627937555313108,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.00224467646330595
+          },
+          "red": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 0,
+            "final_position_m": [
+              0.7017152309417725,
+              -0.28410792350769043,
+              -0.014301072806119919
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": true,
+            "min_finger_clearance_tail_m": 1.0412189772329288,
+            "cube_center_over_table": false,
+            "nearest_table_edge_m": -0.8841079235076904,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 3.725290298461914e-09
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 17024,
+        "physics_ticks": 17024,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": "ValueError: No reachable clear release point on the visible tabletop",
+        "requested": [
+          "blue",
+          "green",
+          "red"
+        ],
+        "phase": "place",
+        "onboard_observations": 339,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 17024,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "283ae3ca69cff55164a66b562a2be62d8ce86262d242c2fb2190d52259c29f4c",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 851,
+        "recording": true,
+        "seed": 1,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "ad20562fd5e4a63e0d125e6296de4211a4223fe3b5eb074f3b8c8ed0849ea191",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": false
+      },
+      "source": {
+        "adapter": "aisle.sim.nexus_backend",
+        "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+        "backend": "metal",
+        "fixture_profile": "living-room",
+        "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+        "nexus": "0.2.1",
+        "fixture": "floating base, wheel contact under gravity",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 1,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "0489a3d5c32e30af2bd893fb52ddc209cf86551bb73d0ef285465de25c595c77",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "1771394001b68ae8652073fed8a9309037a68197c4edfb33a3bfd5ea24604f7c"
+        }
+      }
+    },
+    "codex": {
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "blue,green,red",
+        "scene_observation": {
+          "layout": 1,
+          "source_sha256": {
+            "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+            "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+            "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+            "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60"
+          },
+          "room_revision_sha256": null,
+          "visible": 3,
+          "files": {
+            "onboard-scene.npz": "cc64b116f661754e125a50d30add1cd1ab361d0b7c484b8b06977939fc168382",
+            "onboard-calibration.json": "9a41c2a7690b5a58cfcab58ac4213112de9a1a4d72c81498b5ba9a6741c0be8a",
+            "onboard-scene.json": "1a1a5c3beecffc478ae28706d311209b44056a9e87dd13980304386a4dc9763b"
+          }
+        },
+        "robot": "Nano",
+        "task": "Use the current onboard view to place all three floor cubes on the coffee table, from the robot's left to right as seen before moving.",
+        "provider": "codex",
+        "policy_model": "gpt-6.2-astra",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "observation": {
+        "frame": "base_link",
+        "capture_ns": 0,
+        "objects": {
+          "red": {
+            "status": "localized",
+            "x_forward_m": 0.703,
+            "y_left_m": -0.2837,
+            "distance_m": 0.7581,
+            "views": [
+              "head"
+            ]
+          },
+          "green": {
+            "status": "localized",
+            "x_forward_m": 0.74,
+            "y_left_m": -0.0453,
+            "distance_m": 0.7414,
+            "views": [
+              "head"
+            ]
+          },
+          "blue": {
+            "status": "localized",
+            "x_forward_m": 0.8528,
+            "y_left_m": 0.2151,
+            "distance_m": 0.8795,
+            "views": [
+              "head"
+            ]
+          }
+        }
+      },
+      "authoring": {
+        "provider": "codex",
+        "model": "gpt-6.2-astra",
+        "wall_seconds": 6.819431415991858
+      },
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3123,
+            "final_position_m": [
+              0.3217151165008545,
+              0.6720027923583984,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.04944519068968811,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.07200279235839846,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 3404,
+            "final_position_m": [
+              0.27868521213531494,
+              0.5837206244468689,
+              0.6261266469955444
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": false,
+            "min_finger_clearance_tail_m": -0.03268912214674313,
+            "cube_center_over_table": false,
+            "nearest_table_edge_m": -0.01627937555313108,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.00224467646330595
+          },
+          "red": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 0,
+            "final_position_m": [
+              0.7017152309417725,
+              -0.28410792350769043,
+              -0.014301072806119919
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": true,
+            "min_finger_clearance_tail_m": 1.0412189772329288,
+            "cube_center_over_table": false,
+            "nearest_table_edge_m": -0.8841079235076904,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 3.725290298461914e-09
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 17024,
+        "physics_ticks": 17024,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": "ValueError: No reachable clear release point on the visible tabletop",
+        "requested": [
+          "blue",
+          "green",
+          "red"
+        ],
+        "phase": "place",
+        "onboard_observations": 339,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 17024,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "283ae3ca69cff55164a66b562a2be62d8ce86262d242c2fb2190d52259c29f4c",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 851,
+        "recording": true,
+        "seed": 1,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "fcae4d0daa6e792e18f0a85455c104ac4b1ea551ee02fd695734cd748805fd16",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": false
+      },
+      "source": {
+        "adapter": "aisle.sim.nexus_backend",
+        "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+        "backend": "metal",
+        "fixture_profile": "living-room",
+        "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+        "nexus": "0.2.1",
+        "fixture": "floating base, wheel contact under gravity",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 1,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "0489a3d5c32e30af2bd893fb52ddc209cf86551bb73d0ef285465de25c595c77",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "1771394001b68ae8652073fed8a9309037a68197c4edfb33a3bfd5ea24604f7c"
+        }
+      }
+    }
+  },
+  "diagnostic_request": {
+    "request": {
+      "prompt": "Review a Nano floor-to-table controller after an RGB-guided trial stopped while holding green. The calibrated head and wrist pixels and 17 encoders gave the following approximate body-frame measurements: rim distance 0.3075 m, tangent span [-0.1867,0.2318] m, prior blue center [0.3375,0.1217] m, desired tangent 0.1610 m, desired inset 0.085 m. Current candidate tangent offsets in metres are [0,0.08,-0.08,0.115,-0.115,0.15,-0.15]. No existing candidate was both reachable and at least 0.078 m from the previously placed cube. The box is 40 mm wide. How should the program discretize the visible free space after its normal candidates fail? Propose a fallback lateral grid spacing between 5 and 35 millimetres and an optional extra depth between 0 and 30 millimetres, with a brief rationale. Keep clearance, original minimum inset, URDF limits, motor guard and all scoring rules unchanged. Proposals are checked with IK before motion.",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "spacing_mm",
+          "extra_inset_mm",
+          "rationale",
+          "supported"
+        ],
+        "properties": {
+          "spacing_mm": {
+            "type": "integer"
+          },
+          "extra_inset_mm": {
+            "type": "integer"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "supported": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "provider": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 106.91418912494555,
+      "input_tokens": 6336,
+      "output_tokens": 21916
+    },
+    "proposal": {
+      "spacing_mm": 20,
+      "extra_inset_mm": 20,
+      "rationale": "Use a 20 mm lateral lattice (half the 40 mm cube width), anchored on the nominal tangent, so the unsampled 35 mm gaps and the just-missed 78 mm clearance boundary are covered without an excessive number of IK checks. Add one optional 20 mm deeper inset ring: relative to the prior cube at 30 mm inset, radial separation rises from 55 mm to 75 mm, giving about 84.7 mm center distance at the nominal tangent and clearing 78 mm. The original 85 mm minimum inset is only increased, and every grid point is still subject to the unchanged URDF, motor-guard, and IK checks before motion.",
+      "supported": true
+    }
+  }
+}
