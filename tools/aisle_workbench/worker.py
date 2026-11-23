@@ -527,6 +527,7 @@ def simulate(args, meta):
             args.out,
             getattr(args, "seed", 0),
             plan,
+            rgb_timing=getattr(args, "rgb_timing", "normal"),
             room_objects=room_objects,
             room_settings=room_settings,
         )
@@ -644,6 +645,11 @@ def main():
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
     p.add_argument("--archive", type=Path)
+    p.add_argument(
+        "--rgb-timing",
+        choices=["normal", "intermittent", "disconnected"],
+        default="normal",
+    )
     p.add_argument("--room-source", type=Path)
     p.add_argument("--room-revision", type=Path)
     p.add_argument("--room-hash")

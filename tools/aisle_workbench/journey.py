@@ -36,6 +36,7 @@ def main():
     p.add_argument("--survey", type=Path)
     p.add_argument("--evaluation", type=Path)
     p.add_argument("--handoff", action="store_true")
+    p.add_argument("--camera-faults", action="store_true")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
@@ -109,6 +110,11 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.camera_faults:
+        from sensor_timing_check import native_journey
+
+        native_journey(a, checks, page, click, remote, done, grab)
+        return
     if a.handoff:
 
         def enter_task(instruction):

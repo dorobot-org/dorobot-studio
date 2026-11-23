@@ -1,7 +1,7 @@
 use dorobot_studio_core::{
     api::{
         Backend, Intent,
-        aisle::{Action, Planner, REFERENCE, Robot, Workbench},
+        aisle::{Action, Planner, REFERENCE, RgbTiming, Robot, Workbench},
     },
     data::robot_model::RobotModelLoader,
     ui::frame::{self, Themed},
@@ -124,6 +124,9 @@ script_mod! {
                 fixture := Body{}
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
                     Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
+                }
+                rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Onboard camera timing"}
+                    Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}
                 }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
             }
@@ -489,6 +492,18 @@ impl PluginPanel for Panel {
                 );
                 self.root.widget(cx, ids!(layouts)).set_visible(cx, mobile);
                 self.root
+                    .widget(cx, ids!(rgb_delivery))
+                    .set_visible(cx, kind == "visual-approach");
+                for (id, timing) in [
+                    (ids!(on_time) as &[LiveId], RgbTiming::Normal),
+                    (ids!(late_rgb), RgbTiming::Intermittent),
+                    (ids!(frozen_rgb), RgbTiming::Disconnected),
+                ] {
+                    self.root
+                        .button(cx, id)
+                        .set_enabled(cx, !w.busy() && w.rgb_timing != timing);
+                }
+                self.root
                     .widget(cx, ids!(standing_fixtures))
                     .set_visible(cx, standing);
                 self.root
@@ -713,7 +728,7 @@ impl PluginPanel for Panel {
                     }
                     lines.join("\n")
                 } else if mobile {
-                    format!(
+                    let mut detail = format!(
                         "{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
                         w.evidence["color"].as_str().unwrap_or(""),
                         w.evidence["standoff_m"].as_f64().unwrap_or_default(),
@@ -721,7 +736,21 @@ impl PluginPanel for Panel {
                         w.evidence["wheel_supported_ticks"],
                         w.evidence["physics_ticks"],
                         w.evidence["obstacle_contact_ticks"]
-                    )
+                    );
+                    let timing = &w.evidence["sensor_timing"];
+                    if let Some(fixture) = timing["fixture"].as_str() {
+                        let held: u64 = timing["rejected"]
+                            .as_object()
+                            .into_iter()
+                            .flat_map(|m| m.values())
+                            .filter_map(|n| n.as_u64())
+                            .sum();
+                        detail.push_str(&format!("\nCamera timing {fixture} · {held} withheld observations · {} recoveries", timing["recoveries"]));
+                        if timing["timed_out"] == true {
+                            detail.push_str(" · stopped after timeout");
+                        }
+                    }
+                    detail
                 } else if standing {
                     let mut summary = format!(
                         "{} · requested {:+.3} rad · measured {:+.4} rad\nBoth feet loaded {}/{} steps\nPeak tilt {:.1}° · maximum pelvis drift {:.1} cm",
@@ -885,6 +914,9 @@ impl PluginPanel for Panel {
             (ids!(compliant), Action::Fixture(true)),
             (ids!(level), Action::Impact(false)),
             (ids!(impact), Action::Impact(true)),
+            (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
+            (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
+            (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),
             (ids!(trial_mode), Action::ShowEvaluation(false)),
             (ids!(evaluation_mode), Action::ShowEvaluation(true)),
             (ids!(earlier_failure), Action::SelectFailure(false)),

@@ -45,6 +45,21 @@ impl Planner {
         }
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RgbTiming {
+    Normal,
+    Intermittent,
+    Disconnected,
+}
+impl RgbTiming {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Intermittent => "intermittent",
+            Self::Disconnected => "disconnected",
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub enum Action {
     Select(Robot),
@@ -56,6 +71,7 @@ pub enum Action {
     Inspect,
     Fixture(bool),
     Impact(bool),
+    RgbTiming(RgbTiming),
     EditRoom(bool),
     ImportRoom {
         source: String,
@@ -248,6 +264,7 @@ pub struct Workbench {
     pub revisions: Vec<PathBuf>,
     pub compliant: bool,
     pub impact: bool,
+    pub rgb_timing: RgbTiming,
     pub room_editor: bool,
     pub show_evaluation: bool,
     pub evaluation: Value,
@@ -289,6 +306,7 @@ impl Workbench {
             revisions: Vec::new(),
             compliant: false,
             impact: false,
+            rgb_timing: RgbTiming::Normal,
             room_editor: false,
             show_evaluation: false,
             evaluation: Value::Null,
@@ -571,6 +589,9 @@ impl Workbench {
             cmd.args(["--provider", planner.name(), "--task", &self.task]);
         }
         if op == "run" {
+            if self.plan["kind"] == "visual-approach" {
+                cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
+            }
             cmd.arg("--seed").arg(self.layout_seed.to_string());
             cmd.args([
                 "--fixture",
@@ -688,6 +709,10 @@ impl Workbench {
             Action::ImportRoom { source, edit } => {
                 self.room_request = Some((source, edit));
                 self.launch("room", Planner::Reference, None)
+            }
+            Action::RgbTiming(value) => {
+                self.rgb_timing = value;
+                Ok(())
             }
             Action::Impact(value) => {
                 self.impact = value;
