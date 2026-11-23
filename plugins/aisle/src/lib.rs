@@ -1,6 +1,6 @@
 use dorobot_studio_core::{
     api::{
-        aisle::{Action, Robot, Workbench, REFERENCE},
+        aisle::{Action, Planner, Robot, Workbench, REFERENCE},
         Backend, Intent,
     },
     data::robot_model::RobotModelLoader,
@@ -90,7 +90,8 @@ script_mod! {
                 Bar{nano := mod.widgets.ux.ToolButton{text:"Adora Nano"} g1 := mod.widgets.ux.ToolButton{text:"Unitree G1"}}
                 Section{text:"Task instruction"}
                 instruction := TextInput{width:Fill height:54 empty_text:"Describe a shoulder inspection"}
-                Bar{reference := mod.widgets.ux.PrimaryButton{text:"Use reference task"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
+                reference := mod.widgets.ux.ToolButton{text:"Use reference task"}
+                Bar{octos := mod.widgets.ux.PrimaryButton{text:"DeepSeek via Octos"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
                 Section{text:"Prepared controller"} detail := Body{}
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
                 revise := mod.widgets.ux.ToolButton{text:"Revise using selected run"}
@@ -252,7 +253,7 @@ impl PluginPanel for Panel {
                     self.draft = Some(draft);
                 }
                 let detail = if w.plan.is_null() {
-                    "Choose a reference task or ask Codex to prepare one.".into()
+                    "Choose a reference task or use an agent to prepare a controller.".into()
                 } else {
                     format!(
                         "{}   ·   {}\n{:+.3} rad   ·   {}   ·   revision {}/{}",
@@ -285,7 +286,13 @@ impl PluginPanel for Panel {
                     .button(cx, ids!(revise))
                     .set_enabled(cx, !w.busy());
                 self.model(cx, w);
-                for id in [ids!(nano), ids!(g1), ids!(reference), ids!(codex)] {
+                for id in [
+                    ids!(nano),
+                    ids!(g1),
+                    ids!(reference),
+                    ids!(codex),
+                    ids!(octos),
+                ] {
                     self.root.button(cx, id).set_enabled(cx, !w.busy());
                 }
             }
@@ -442,14 +449,23 @@ impl PluginPanel for Panel {
         }
         let reference = self.root.button(cx, ids!(reference)).clicked(actions);
         let revise = self.root.button(cx, ids!(revise)).clicked(actions);
-        if reference || revise || self.root.button(cx, ids!(codex)).clicked(actions) {
+        let octos = self.root.button(cx, ids!(octos)).clicked(actions);
+        if reference || revise || octos || self.root.button(cx, ids!(codex)).clicked(actions) {
             let input = self.root.text_input(cx, ids!(instruction));
             if reference {
                 input.set_text(cx, REFERENCE);
             }
             b.dispatch(Intent::Aisle(Action::Prepare {
                 task: input.text(),
-                codex: !reference,
+                planner: if reference {
+                    Planner::Reference
+                } else if octos {
+                    Planner::OctosDeepSeek
+                } else if revise {
+                    b.aisle().unwrap().revision_planner()
+                } else {
+                    Planner::Codex
+                },
                 revise,
             }));
             return true;

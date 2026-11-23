@@ -29,12 +29,27 @@ impl Robot {
         })
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Planner {
+    Reference,
+    Codex,
+    OctosDeepSeek,
+}
+impl Planner {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Reference => "reference",
+            Self::Codex => "codex",
+            Self::OctosDeepSeek => "octos-deepseek",
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub enum Action {
     Select(Robot),
     Prepare {
         task: String,
-        codex: bool,
+        planner: Planner,
         revise: bool,
     },
     Inspect,
@@ -152,6 +167,17 @@ impl Workbench {
     }
 }
 impl Workbench {
+    pub fn revision_planner(&self) -> Planner {
+        let origin = self
+            .selected
+            .as_ref()
+            .and_then(|p| read(p, "controller.json"));
+        if origin.as_ref().and_then(|v| v["provider"].as_str()) == Some("octos-deepseek") {
+            Planner::OctosDeepSeek
+        } else {
+            Planner::Codex
+        }
+    }
     pub fn worker_pid(&self) -> Option<u32> {
         self.job.as_ref().map(|j| j.child.id())
     }
@@ -257,7 +283,7 @@ impl Workbench {
     fn launch(
         &mut self,
         op: &'static str,
-        codex: bool,
+        planner: Planner,
         feedback: Option<PathBuf>,
     ) -> io::Result<()> {
         fs::create_dir_all(&self.root)?;
@@ -318,12 +344,7 @@ impl Workbench {
             );
         }
         if op == "prepare" {
-            cmd.args([
-                "--provider",
-                if codex { "codex" } else { "reference" },
-                "--task",
-                &self.task,
-            ]);
+            cmd.args(["--provider", planner.name(), "--task", &self.task]);
         }
         if op == "run" {
             cmd.args([
@@ -405,13 +426,13 @@ impl Workbench {
             }
             Action::Prepare {
                 task,
-                codex,
+                planner,
                 revise,
             } => {
                 self.task = task;
                 self.launch(
                     "prepare",
-                    codex,
+                    planner,
                     if revise { self.selected.clone() } else { None },
                 )
             }
@@ -430,9 +451,9 @@ impl Workbench {
                 }
                 Ok(())
             }
-            Action::Export => self.launch("export", false, None),
-            Action::Inspect => self.launch("scene", false, None),
-            Action::Run => self.launch("run", false, None),
+            Action::Export => self.launch("export", Planner::Reference, None),
+            Action::Inspect => self.launch("scene", Planner::Reference, None),
+            Action::Run => self.launch("run", Planner::Reference, None),
             Action::Previous | Action::Next => {
                 if let Some(i) = self
                     .history
@@ -574,7 +595,7 @@ mod tests {
         w.load_plan(Some(plan.clone()));
         w.dispatch(Action::Prepare {
             task: "new instruction".into(),
-            codex: true,
+            planner: Planner::Codex,
             revise: false,
         });
         assert!(w.error.is_some());

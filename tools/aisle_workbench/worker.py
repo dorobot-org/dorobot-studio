@@ -8,6 +8,7 @@ import os
 import signal
 import subprocess
 import tempfile
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -99,13 +100,80 @@ def measured_feedback(path, meta):
     }
 
 
+def octos_controller(prompt, schema, directory, output):
+    model = os.environ.get("DOROBOT_OCTOS_MODEL", "deepseek-v4-flash")
+    if not model.startswith("deepseek-"):
+        raise ValueError("Choose a DeepSeek model for the Octos provider")
+    profile = os.environ.get("DOROBOT_OCTOS_PROFILE")
+    command = ["octos", "chat"]
+    if profile:
+        command.extend(["--profile", profile])
+    command.extend(
+        [
+            "--provider",
+            "deepseek",
+            "--model",
+            model,
+            "--base-url",
+            "https://api.deepseek.com/v1",
+            "--api-type",
+            "openai",
+            "--sandbox",
+            "read-only",
+            "--ask-for-approval",
+            "never",
+            "--no-session-persistence",
+            "--max-iterations",
+            "1",
+            "--no-retry",
+            "--json",
+            "-m",
+            prompt
+            + "\nReturn exactly one JSON object matching this schema. No markdown or tool calls.\n"
+            + json.dumps(schema),
+        ]
+    )
+    with (output / "provider.log").open("w") as log:
+        reply = subprocess.run(
+            command,
+            cwd=directory,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=log,
+            text=True,
+            timeout=150,
+        )
+    if reply.returncode:
+        raise RuntimeError(
+            "Octos could not complete DeepSeek inference. Check the selected Octos profile and provider.log"
+        )
+    envelope = json.loads(reply.stdout)
+    actual = envelope.get("model")
+    if not isinstance(actual, str) or not actual.startswith("deepseek-"):
+        raise ValueError("Octos did not report a DeepSeek model for this controller")
+    plan = json.loads(envelope["text"])
+    if (
+        not isinstance(plan, dict)
+        or set(plan) != set(schema["required"])
+        or type(plan["supported"]) is not bool
+    ):
+        raise ValueError("DeepSeek returned an invalid inspection controller")
+    save(output / "reply.json", plan)
+    usage = {
+        key: envelope[key]
+        for key in ("input_tokens", "output_tokens")
+        if type(envelope.get(key)) is int
+    }
+    return actual, usage
+
+
 def prepare(args, meta):
     feedback = measured_feedback(args.feedback, meta) if args.feedback else None
     model_name = None
     if args.provider == "reference":
         if args.task.strip() != REFERENCE:
             raise ValueError(
-                "Use Codex for custom instructions or restore the reference task"
+                "Choose an agent for custom instructions or restore the reference task"
             )
         plan = dict(joint=meta["allowed_joints"][0], delta_rad=0.10)
     else:
@@ -133,37 +201,52 @@ def prepare(args, meta):
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
-        with (
-            tempfile.TemporaryDirectory() as empty,
-            (args.out / "provider.log").open("w+") as log,
-        ):
-            subprocess.run(
-                [
-                    "codex",
-                    "exec",
-                    "--ephemeral",
-                    "--skip-git-repo-check",
-                    "--sandbox",
-                    "read-only",
-                    "--output-schema",
-                    str(args.out / "schema.json"),
-                    "-o",
-                    str(args.out / "reply.json"),
-                    "-",
-                ],
-                cwd=empty,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                input=prompt,
-                text=True,
-                check=True,
-                timeout=150,
-            )
-            log.seek(0)
-            for line in log:
-                if line.startswith("model: "):
-                    model_name = line.removeprefix("model: ").strip()
-                    break
+        started = time.monotonic()
+        usage = {}
+        if args.provider == "octos-deepseek":
+            with tempfile.TemporaryDirectory() as empty:
+                model_name, usage = octos_controller(prompt, schema, empty, args.out)
+        else:
+            with (
+                tempfile.TemporaryDirectory() as empty,
+                (args.out / "provider.log").open("w+") as log,
+            ):
+                subprocess.run(
+                    [
+                        "codex",
+                        "exec",
+                        "--ephemeral",
+                        "--skip-git-repo-check",
+                        "--sandbox",
+                        "read-only",
+                        "--output-schema",
+                        str(args.out / "schema.json"),
+                        "-o",
+                        str(args.out / "reply.json"),
+                        "-",
+                    ],
+                    cwd=empty,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    input=prompt,
+                    text=True,
+                    check=True,
+                    timeout=150,
+                )
+                log.seek(0)
+                for line in log:
+                    if line.startswith("model: "):
+                        model_name = line.removeprefix("model: ").strip()
+                        break
+        save(
+            args.out / "provider-metrics.json",
+            dict(
+                provider=args.provider,
+                model=model_name,
+                wall_seconds=time.monotonic() - started,
+                **usage,
+            ),
+        )
         plan = json.loads((args.out / "reply.json").read_text())
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
@@ -175,7 +258,7 @@ def prepare(args, meta):
         provider=args.provider,
         **(
             {"policy_model": model_name or "Codex (model unreported)"}
-            if args.provider == "codex"
+            if args.provider != "reference"
             else {}
         ),
         model_hash=meta["model_hash"],
@@ -305,7 +388,11 @@ def main():
     p.add_argument("operation", choices=["scene", "prepare", "run", "export"])
     p.add_argument("--robot", choices=MODELS, required=True)
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--provider", choices=["reference", "codex"], default="reference")
+    p.add_argument(
+        "--provider",
+        choices=["reference", "codex", "octos-deepseek"],
+        default="reference",
+    )
     p.add_argument("--task", default=REFERENCE)
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)

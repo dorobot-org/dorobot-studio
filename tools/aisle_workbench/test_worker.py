@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import worker
 
@@ -65,6 +66,27 @@ class InspectionTests(unittest.TestCase):
             controller.write_text(json.dumps({"joint": "other"}))
             with self.assertRaises(ValueError):
                 worker.measured_feedback(run, self.profile)
+
+    def test_octos_rejects_provider_fallback_or_invalid_schema(self):
+        template = {"joint": "shoulder", "delta_rad": -0.06, "supported": True}
+        schema = {"required": list(template)}
+        with tempfile.TemporaryDirectory() as directory:
+            for model, plan in [
+                ("different-model", template),
+                ("deepseek-v4-flash", template | {"extra": 1}),
+                ("deepseek-v4-flash", template | {"supported": "yes"}),
+            ]:
+                result = subprocess.CompletedProcess(
+                    [], 0, stdout=json.dumps({"model": model, "text": json.dumps(plan)})
+                )
+                with (
+                    patch("worker.subprocess.run", return_value=result),
+                    self.assertRaises(ValueError),
+                ):
+                    worker.octos_controller(
+                        "inspect", schema, directory, Path(directory)
+                    )
+            self.assertFalse((Path(directory) / "reply.json").exists())
 
     @unittest.skipUnless(os.name == "posix", "Studio process groups require POSIX")
     def test_lost_studio_pipe_stops_the_worker_and_its_codex_child(self):

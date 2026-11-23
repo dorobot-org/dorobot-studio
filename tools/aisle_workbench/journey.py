@@ -15,7 +15,14 @@ def main():
     p.add_argument("--report", type=Path, required=True)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--screenshots", action="store_true")
-    p.add_argument("--codex", action="store_true")
+    models = p.add_mutually_exclusive_group()
+    models.add_argument("--codex", dest="provider", action="store_const", const="codex")
+    models.add_argument(
+        "--octos-deepseek",
+        dest="provider",
+        action="store_const",
+        const="octos-deepseek",
+    )
     p.add_argument("--size", choices=["1024x768", "1440x900"])
     p.add_argument(
         "--recover",
@@ -114,7 +121,7 @@ def main():
         page("task")
         click("aisle_task." + robot.lower())
         done(lambda w: w["robot"] == robot, robot + " profile")
-        if a.codex and robot == "G1":
+        if a.provider and robot == "G1":
             click("aisle_task.instruction")
             remote(
                 "key",
@@ -129,7 +136,11 @@ def main():
                 "t=Inspect the right shoulder with a displacement of minus 0.08 rad",
                 "wait=1",
             )
-            click("aisle_task.codex")
+            click(
+                "aisle_task.octos"
+                if a.provider == "octos-deepseek"
+                else "aisle_task.codex"
+            )
         else:
             click("aisle_task.reference")
         row = done(
@@ -139,9 +150,9 @@ def main():
             robot + " prepare",
             180,
         )
-        if a.codex and robot == "G1":
+        if a.provider and robot == "G1":
             assert (
-                row["controller"]["provider"] == "codex"
+                row["controller"]["provider"] == a.provider
                 and row["controller"]["delta_rad"] < 0
             )
         grab(robot + "-task")
@@ -235,7 +246,7 @@ def main():
     click("aisle_evidence.next")
     done(lambda w: w["result"] and w["result"]["robot"] == "G1", "next evidence")
     page("task")
-    if a.codex:
+    if a.provider:
         click("aisle_task.instruction")
         remote(
             "key",
@@ -256,8 +267,9 @@ def main():
     revision = done(
         lambda w: not w["busy"] and w["revision"] == 1, "G1 second revision", 180
     )
-    if a.codex:
+    if a.provider:
         plan = revision["controller"]
+        assert plan["provider"] == a.provider
         assert plan["previous_trial"]["controller_hash"] == result["controller_hash"]
         assert plan["joint"] == result["joint"] and abs(plan["delta_rad"] + 0.06) < 1e-6
         page("run")

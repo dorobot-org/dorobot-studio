@@ -20,7 +20,14 @@ def main():
     )
     parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
     parser.add_argument("--dark", action="store_true")
-    parser.add_argument("--codex", action="store_true")
+    models = parser.add_mutually_exclusive_group()
+    models.add_argument("--codex", dest="provider", action="store_const", const="codex")
+    models.add_argument(
+        "--octos-deepseek",
+        dest="provider",
+        action="store_const",
+        const="octos-deepseek",
+    )
     args = parser.parse_args()
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -63,8 +70,8 @@ def main():
                 if stage == "recovery":
                     check.append("--recover")
                 else:
-                    if args.codex:
-                        check.append("--codex")
+                    if args.provider:
+                        check.append("--" + args.provider)
                     if args.backend == "offscreen":
                         check.append("--screenshots")
                 subprocess.run(check, check=True, timeout=330)
@@ -98,7 +105,7 @@ def main():
     manifest = dict(
         backend=args.backend,
         requested_size=args.size,
-        provider="codex" if args.codex else "reference",
+        provider=args.provider or "reference",
         native_binary_sha256=binary_hash,
         studio_source_commit=subprocess.check_output(
             [
