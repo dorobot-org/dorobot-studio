@@ -37,8 +37,30 @@ def main():
         choices=["red", "three"],
         help="Run and score a Nano floor-to-table journey",
     )
+    scenario.add_argument(
+        "--handoff",
+        action="store_true",
+        help="Revise a measured Codex trial using DeepSeek via Octos",
+    )
+    scenario.add_argument(
+        "--evaluation",
+        type=Path,
+        help="Verify a batch archive in Evidence and reopen it after restart",
+    )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
+    parser.add_argument(
+        "--impact", action="store_true", help="Select the G1 development impact fixture"
+    )
+    parser.add_argument(
+        "--survey",
+        type=Path,
+        help="Import and edit the Nano reference survey during a transfer",
+    )
     args = parser.parse_args()
+    if args.survey and not args.transfer:
+        parser.error("--survey requires --transfer")
+    if args.impact and not args.standing:
+        parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
         parser.error("--layout requires a Nano transfer scenario")
     if (args.standing or args.transfer) and not args.provider:
@@ -62,8 +84,34 @@ def main():
     changed = subprocess.check_output(
         ["git", "-C", str(studio_root), "status", "--porcelain"], text=True
     ).splitlines()
+    source_hashes = {
+        str(path.relative_to(studio_root)): hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        for path in sorted(
+            [
+                *Path(__file__).resolve().parent.glob("*.py"),
+                *(studio_root / "tools/aisle-validation").glob("*.py"),
+                *(studio_root / "tools/nano-three-cubes").glob("*.py"),
+                *(
+                    studio_root / f
+                    for f in (
+                        "Cargo.lock",
+                        "plugins/aisle/src/lib.rs",
+                        "crates/dorobot-studio-core/src/api/aisle.rs",
+                        "dorobot-flex/src/bin/dorobot-flex.rs",
+                    )
+                ),
+            ]
+        )
+    }
     sessions = []
     for stage in ["journey", "recovery"]:
+        with args.studio.open("rb") as binary:
+            if hashlib.file_digest(binary, "sha256").hexdigest() != binary_hash:
+                raise RuntimeError(
+                    "Studio executable changed between journey and recovery"
+                )
         report.unlink(missing_ok=True)
         command = [str(args.studio.resolve()), "--remote", "--screen", "aisle-task"]
         if args.dark:
@@ -92,8 +140,16 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.handoff:
+                    check.append("--handoff")
+                if args.evaluation:
+                    check.extend(["--evaluation", str(args.evaluation.resolve())])
                 if args.standing:
                     check.append("--standing")
+                    if args.impact:
+                        check.append("--impact")
+                if args.survey:
+                    check.extend(["--survey", str(args.survey.resolve())])
                 if args.transfer:
                     check.extend(
                         ["--transfer", args.transfer, "--layout", str(args.layout)]
@@ -134,9 +190,12 @@ def main():
     manifest = dict(
         backend=args.backend,
         requested_size=args.size,
-        provider=args.provider or "reference",
+        provider=(
+            "codex+octos-deepseek" if args.handoff else args.provider or "reference"
+        ),
         native_binary_sha256=binary_hash,
         studio_source_commit=revision,
+        source_files_sha256=source_hashes,
         workspace_changes_at_launch=changed,
         sessions=sessions,
         trials=sorted(p.name for p in (output / "state/aisle").glob("*-run")),

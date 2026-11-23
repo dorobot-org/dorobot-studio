@@ -94,12 +94,13 @@ def evaluate_pose(sim, cube):
     return base, xy
 
 
-def trial(out, seed, plan):
+def trial(out, seed, plan, room_objects=(), room_settings=None):
     meta = worker.describe("Nano")
     model = Path(meta["model"])
     sim = LivingSimulation(
         model,
-        specs=scene_recipe(seed),
+        specs=[*scene_recipe(seed), *room_objects],
+        room_settings=room_settings,
         resolution=(480, 360),
         posture=NAVIGATION_POSTURE | dict(head_pan_joint=0, head_tilt_joint=0.35),
     )
@@ -239,6 +240,7 @@ def trial(out, seed, plan):
         recipe=RECIPE,
         seed=seed,
         split="development",
+        measured_room_bodies=sim.room_readback(),
         task="visual approach",
         passed=passed,
         controller=plan,

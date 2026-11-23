@@ -163,6 +163,9 @@ def export(trial: Path, job: Path):
                 dict(
                     onboard_cameras=list(cameras),
                     calibration=read("calibration.json")["cameras"],
+                    optical_calibration_source=read("calibration.json").get(
+                        "optical_calibration_source", "Nominal simulation optics"
+                    ),
                 )
                 if transfer
                 else dict(operator_camera="observation.images.operator")

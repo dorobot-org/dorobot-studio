@@ -1,7 +1,7 @@
 use dorobot_studio_core::{
     api::{
-        aisle::{Action, Planner, Robot, Workbench, REFERENCE},
         Backend, Intent,
+        aisle::{Action, Planner, REFERENCE, Robot, Workbench},
     },
     data::robot_model::RobotModelLoader,
     ui::frame::{self, Themed},
@@ -62,6 +62,7 @@ impl StudioPlugin for AislePlugin {
             light: None,
             frame: None,
             draft: None,
+            room_preview: None,
         }))
     }
     fn can_disable(&self, b: &dyn Backend) -> Result<(), String> {
@@ -94,18 +95,32 @@ script_mod! {
                 Bar{octos := mod.widgets.ux.PrimaryButton{text:"DeepSeek via Octos"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
                 Section{text:"Prepared controller"} detail := Body{}
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
-                revise := mod.widgets.ux.ToolButton{text:"Revise using selected run"}
+                revision_actions := Bar{revise := mod.widgets.ux.ToolButton{text:"Revise with DeepSeek"} revise_codex := mod.widgets.ux.ToolButton{text:"Revise with Codex"}}
             }
             model_card := Card{width:Fill height:Fill Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
         }
         status := Body{}
     }
     mod.widgets.AisleScene=Page{
-        Title{text:"Robot model"} context_label := Section{}
+        Title{text:"Simulation scene"} context_label := Section{}
+        scene_modes := Bar{robot_mode := mod.widgets.ux.ToolButton{text:"Robot model"} room_mode := mod.widgets.ux.ToolButton{text:"Room survey"}}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
+            photo_card := Card{width:Fill height:Fill Section{text:"Surveyed floor footprint"} photo := VideoPlayer{width:Fill height:Fill}}
+            survey_card := Card{width:295 height:Fill
+                Section{text:"Room survey file"} survey_path := TextInput{width:Fill height:38 empty_text:"Absolute path to survey.json"}
+                import_survey := mod.widgets.ux.PrimaryButton{text:"Import survey"}
+                room_detail := Body{}
+                Section{text:"Edit obstacle · metres"} geometry := TextInput{width:Fill height:38 empty_text:"name x y height"}
+                save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
+                default_room := mod.widgets.ux.ToolButton{text:"Use default room"}
+            }
             inspector := Card{width:285 height:Fill Section{text:"Simulation fixture"} fixture_kind := Body{}
                 Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
+                standing_fixtures := Bar{
+                    level := mod.widgets.ux.ToolButton{text:"Level floor"}
+                    impact := mod.widgets.ux.ToolButton{text:"Impact test"}
+                }
                 fixture := Body{}
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
                     Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
@@ -127,9 +142,16 @@ script_mod! {
     }
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
+        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Layout evaluation"}}
+        cohort := Card{width:Fill height:Fill
+            Section{text:"Evaluation archive"} archive_path := TextInput{width:Fill height:38 empty_text:"Path to the ZIP beside its preregistered suite.json"}
+            verify_archive := mod.widgets.ux.PrimaryButton{text:"Verify evaluation"}
+            cohort_verdict := Title{} cohort_detail := Body{} failure_detail := Body{}
+            failure_bar := Bar{earlier_failure := mod.widgets.ux.ToolButton{text:"Previous failure"} later_failure := mod.widgets.ux.ToolButton{text:"Next failure"}}
+        }
         summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
-        Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
+        trial_bar := Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
             folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
             export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"}}
         status := Body{}
@@ -142,6 +164,7 @@ struct Panel {
     light: Option<f64>,
     frame: Option<(PathBuf, u64)>,
     draft: Option<(Robot, Option<PathBuf>)>,
+    room_preview: Option<PathBuf>,
 }
 impl Panel {
     fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
@@ -285,6 +308,9 @@ impl PluginPanel for Panel {
                     (ids!(inspector), Themed::Bg),
                     (ids!(model_card), Themed::Bg),
                     (ids!(viewport), Themed::Bg),
+                    (ids!(photo_card), Themed::Bg),
+                    (ids!(cohort), Themed::Bg),
+                    (ids!(survey_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
                 ],
@@ -374,14 +400,14 @@ impl PluginPanel for Panel {
                     cx,
                     !w.busy() && index.is_some_and(|i| i + 1 < w.revisions.len()),
                 );
-                self.root.widget(cx, ids!(revise)).set_visible(
+                self.root.widget(cx, ids!(revision_actions)).set_visible(
                     cx,
                     w.evidence["robot"].as_str() == Some(w.robot.name())
                         && w.evidence["task_success"].is_boolean(),
                 );
-                self.root
-                    .button(cx, ids!(revise))
-                    .set_enabled(cx, !w.busy());
+                for id in [ids!(revise), ids!(revise_codex)] {
+                    self.root.button(cx, id).set_enabled(cx, !w.busy());
+                }
                 self.model(cx, w);
                 for id in [
                     ids!(nano),
@@ -394,6 +420,62 @@ impl PluginPanel for Panel {
                 }
             }
             "aisle_scene" => {
+                let editing = mobile && w.room_editor;
+                self.root
+                    .widget(cx, ids!(scene_modes))
+                    .set_visible(cx, mobile);
+                self.root
+                    .button(cx, ids!(room_mode))
+                    .set_enabled(cx, !w.busy() && !editing);
+                self.root
+                    .button(cx, ids!(robot_mode))
+                    .set_enabled(cx, !w.busy() && editing);
+                for id in [ids!(model_card), ids!(inspector)] {
+                    self.root.widget(cx, id).set_visible(cx, !editing);
+                }
+                for id in [ids!(photo_card), ids!(survey_card)] {
+                    self.root.widget(cx, id).set_visible(cx, editing);
+                }
+                if editing {
+                    let mut text = vec![
+                        w.room_info["description"]
+                            .as_str()
+                            .unwrap_or("Default living room")
+                            .to_string(),
+                    ];
+                    for b in w.room_info["obstacles"].as_array().into_iter().flatten() {
+                        let name = b["name"].as_str().unwrap_or("").trim_start_matches("room_");
+                        text.push(format!(
+                            "{name} · x {:.2}, y {:.2}, height {:.2}",
+                            b["position"][0].as_f64().unwrap_or_default(),
+                            b["position"][1].as_f64().unwrap_or_default(),
+                            b["size"][2].as_f64().unwrap_or_default()
+                        ));
+                    }
+                    self.label(cx, ids!(room_detail), &text.join("\n"));
+                    self.root
+                        .button(cx, ids!(import_survey))
+                        .set_enabled(cx, !w.busy());
+                    for id in [ids!(save_geometry), ids!(default_room)] {
+                        self.root
+                            .button(cx, id)
+                            .set_enabled(cx, !w.busy() && w.room_path.is_some());
+                    }
+                    if self.room_preview != w.room_path {
+                        let player = self.root.video_player(cx, ids!(photo));
+                        player.clear(cx);
+                        if let Some(raw) = w
+                            .room_path
+                            .as_ref()
+                            .and_then(|p| std::fs::read(p.with_file_name("room-preview.rgb")).ok())
+                        {
+                            if raw.len() == 480 * 320 * 3 {
+                                player.set_frame(cx, 480, 320, &raw);
+                            }
+                        }
+                        self.room_preview = w.room_path.clone();
+                    }
+                }
                 self.label(
                     cx,
                     ids!(fixture_kind),
@@ -406,6 +488,15 @@ impl PluginPanel for Panel {
                     },
                 );
                 self.root.widget(cx, ids!(layouts)).set_visible(cx, mobile);
+                self.root
+                    .widget(cx, ids!(standing_fixtures))
+                    .set_visible(cx, standing);
+                self.root
+                    .button(cx, ids!(level))
+                    .set_enabled(cx, !w.busy() && w.impact);
+                self.root
+                    .button(cx, ids!(impact))
+                    .set_enabled(cx, !w.busy() && !w.impact);
                 for (id, seed) in [
                     (ids!(layout0) as &[LiveId], 0),
                     (ids!(layout1), 1),
@@ -426,7 +517,11 @@ impl PluginPanel for Panel {
                     if mobile {
                         "Three floor cubes · head and two wrist RGB cameras · wheel drive"
                     } else if standing {
-                        "Free pelvis · ankle feedback · both feet monitored"
+                        if w.impact {
+                            "0.25 kg block at 1.2 m/s · both feet and recovery monitored"
+                        } else {
+                            "Free pelvis · ankle feedback · both feet monitored"
+                        }
                     } else if w.compliant {
                         "Compliant · position gain 18"
                     } else {
@@ -464,6 +559,89 @@ impl PluginPanel for Panel {
             }
             "aisle_run" => self.run(cx, w),
             _ => {
+                for id in [ids!(summary), ids!(plot), ids!(trial_bar)] {
+                    self.root.widget(cx, id).set_visible(cx, !w.show_evaluation);
+                }
+                self.root
+                    .widget(cx, ids!(cohort))
+                    .set_visible(cx, w.show_evaluation);
+                self.root
+                    .button(cx, ids!(trial_mode))
+                    .set_enabled(cx, !w.busy() && w.show_evaluation);
+                self.root
+                    .button(cx, ids!(evaluation_mode))
+                    .set_enabled(cx, !w.busy() && !w.show_evaluation);
+                if w.show_evaluation {
+                    self.label(
+                        cx,
+                        ids!(context_label),
+                        "Adora Nano   /   Nexus simulation   /   Batch evaluation",
+                    );
+                    self.root
+                        .button(cx, ids!(verify_archive))
+                        .set_enabled(cx, !w.busy());
+                    let result = &w.evaluation;
+                    let failures = result["failures"].as_array();
+                    let count = failures.map_or(0, Vec::len);
+                    self.root
+                        .widget(cx, ids!(failure_bar))
+                        .set_visible(cx, count > 1);
+                    self.root
+                        .button(cx, ids!(earlier_failure))
+                        .set_enabled(cx, w.failure_index > 0);
+                    self.root
+                        .button(cx, ids!(later_failure))
+                        .set_enabled(cx, w.failure_index + 1 < count);
+                    let (title, detail) = if result["cases"].is_number() {
+                        let title = if result["split"] == "development" {
+                            "Development results"
+                        } else if result["qualified"] == true {
+                            "Qualified"
+                        } else {
+                            "Qualification failed"
+                        };
+                        (
+                            title,
+                            format!(
+                                "{} of {} complete transfers · 95% Wilson interval {:.1}–{:.1}%\n{} verified trials · {} measured guard bypasses{}",
+                                result["successes"],
+                                result["cases"],
+                                result["interval_95"][0].as_f64().unwrap_or(0.) * 100.,
+                                result["interval_95"][1].as_f64().unwrap_or(0.) * 100.,
+                                result["verified"],
+                                result["verified_guard_bypasses"],
+                                result["requirement"]
+                                    .as_u64()
+                                    .map(|n| format!(" · {n} required"))
+                                    .unwrap_or_default()
+                            ),
+                        )
+                    } else {
+                        ("No evaluation selected", String::new())
+                    };
+                    self.label(cx, ids!(cohort_verdict), title);
+                    self.label(cx, ids!(cohort_detail), &detail);
+                    let failure = failures
+                        .and_then(|v| v.get(w.failure_index))
+                        .map(|row| {
+                            let reasons = row["reasons"]
+                                .as_array()
+                                .into_iter()
+                                .flatten()
+                                .filter_map(|v| v.as_str())
+                                .collect::<Vec<_>>()
+                                .join("\n");
+                            format!(
+                                "Failure {} of {count} · layout {} · seed {}\n{reasons}",
+                                w.failure_index + 1,
+                                row["index"],
+                                row["seed"]
+                            )
+                        })
+                        .unwrap_or_default();
+                    self.label(cx, ids!(failure_detail), &failure);
+                    return;
+                }
                 let verdict = match w.evidence["task_success"].as_bool() {
                     Some(true) => "Passed",
                     Some(false) => "Failed",
@@ -485,53 +663,122 @@ impl PluginPanel for Panel {
                         .filter_map(|s| s.as_str())
                     {
                         let record = &w.evidence["cubes"][color];
+                        let contacts = record["table_contact_tail_ticks"].as_u64().unwrap_or(0);
+                        let state = if record["passed"] == true {
+                            "settled"
+                        } else {
+                            "incomplete"
+                        };
+                        let inset = record["nearest_table_edge_m"]
+                            .as_f64()
+                            .map_or_else(String::new, |m| {
+                                format!(" · {:.0} mm inside rim", m * 1000.0)
+                            });
                         lines.push(format!(
-                            "{} cube · {} · {} / 100 final table-contact steps",
-                            color,
-                            if record["passed"] == true {
-                                "settled"
-                            } else {
-                                "incomplete"
-                            },
-                            record["table_contact_tail_ticks"]
-                                .as_u64()
-                                .unwrap_or_default()
+                            "{color} · {state} · {contacts}/100 table contacts{inset}"
                         ));
                     }
-                    lines.push(format!("Living-room layout {}", w.evidence["seed"]));
                     lines.push(format!(
-                        "Wheel support {}/{} steps · {} furniture contact pairs",
+                        "Layout {} · wheel support {}/{} steps",
+                        w.evidence["seed"],
                         w.evidence["wheel_supported_ticks"],
-                        w.evidence["physics_ticks"],
-                        w.evidence["robot_furniture_contacts"]
-                            .as_object()
-                            .map_or(0, |x| x.len())
+                        w.evidence["physics_ticks"]
                     ));
+                    let audit = &w.evidence["actuator_audit"];
+                    if audit.is_object() {
+                        lines.push(format!(
+                            "Motor audit {} · {} recorded writes",
+                            if audit["passed"] == true {
+                                "passed"
+                            } else {
+                                "failed"
+                            },
+                            audit["applied_rows"],
+                        ));
+                    }
+                    if let Some(contacts) = w.evidence["robot_furniture_contacts"].as_object() {
+                        if contacts.is_empty() {
+                            lines.push("No furniture contacts".into());
+                        } else {
+                            for (pair, ticks) in contacts {
+                                lines.push(format!(
+                                    "Contact during {} · {ticks} steps",
+                                    pair.replace('/', " / ")
+                                ));
+                            }
+                        }
+                    }
                     if let Some(reason) = w.evidence["error"].as_str() {
                         lines.push(reason.to_owned());
                     }
                     lines.join("\n")
                 } else if mobile {
-                    format!("{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
-                      w.evidence["color"].as_str().unwrap_or(""),w.evidence["standoff_m"].as_f64().unwrap_or_default(),w.evidence["final_distance_m"].as_f64().unwrap_or_default(),w.evidence["wheel_supported_ticks"],w.evidence["physics_ticks"],w.evidence["obstacle_contact_ticks"])
+                    format!(
+                        "{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
+                        w.evidence["color"].as_str().unwrap_or(""),
+                        w.evidence["standoff_m"].as_f64().unwrap_or_default(),
+                        w.evidence["final_distance_m"].as_f64().unwrap_or_default(),
+                        w.evidence["wheel_supported_ticks"],
+                        w.evidence["physics_ticks"],
+                        w.evidence["obstacle_contact_ticks"]
+                    )
                 } else if standing {
-                    format!("{} · requested {:+.3} rad · measured {:+.4} rad\nBoth feet loaded {}/{} steps\nPeak tilt {:.1}° · maximum pelvis drift {:.1} cm",
-                        w.evidence["joint"].as_str().unwrap_or("Shoulder"), w.evidence["requested_delta"].as_f64().unwrap_or_default(),
-                        w.evidence["measured_delta"].as_f64().unwrap_or_default(),w.evidence["both_feet_loaded_steps"], w.evidence["steps"],
-                        w.evidence["peak_tilt_deg"].as_f64().unwrap_or_default(),w.evidence["max_pelvis_drift_m"].as_f64().unwrap_or_default()*100.)
+                    let mut summary = format!(
+                        "{} · requested {:+.3} rad · measured {:+.4} rad\nBoth feet loaded {}/{} steps\nPeak tilt {:.1}° · maximum pelvis drift {:.1} cm",
+                        w.evidence["joint"].as_str().unwrap_or("Shoulder"),
+                        w.evidence["requested_delta"].as_f64().unwrap_or_default(),
+                        w.evidence["measured_delta"].as_f64().unwrap_or_default(),
+                        w.evidence["both_feet_loaded_steps"],
+                        w.evidence["steps"],
+                        w.evidence["peak_tilt_deg"].as_f64().unwrap_or_default(),
+                        w.evidence["max_pelvis_drift_m"]
+                            .as_f64()
+                            .unwrap_or_default()
+                            * 100.
+                    );
+                    if let Some(joules) = w.evidence["estimated_positive_joint_work_j"].as_f64() {
+                        summary.push_str(&format!("\nEstimated positive joint work {joules:.2} J"));
+                    }
+                    let impact = &w.evidence["disturbance"];
+                    if impact.is_object() {
+                        let recovery = impact["recovery_s"]
+                            .as_f64()
+                            .map(|t| format!("stable after {t:.2} s"))
+                            .unwrap_or_else(|| "recovery unconfirmed".into());
+                        summary.push_str(&format!(
+                            "\nImpact {:.3} N·s · {recovery}",
+                            impact["normal_impulse_sum_ns"].as_f64().unwrap_or(0.0)
+                        ));
+                    }
+                    summary
                 } else if let Some(angle) = w.evidence["measured_delta"].as_f64() {
-                    format!("{} · {} · {} fixture\nRequested {:+.3} rad    Measured {:+.5} rad    {} observations\nLimits {} over {} physics steps.",
-                            w.evidence["robot"].as_str().unwrap_or(""), w.evidence["joint"].as_str().unwrap_or(""),
-                            w.evidence["fixture"].as_str().unwrap_or("standard"), w.evidence["requested_delta"].as_f64().unwrap_or_default(), angle, w.evidence["frames"],
-                            if w.evidence["within_limits"].as_bool()==Some(true) { "respected" } else { "exceeded" }, w.evidence["steps"])
+                    format!(
+                        "{} · {} · {} fixture\nRequested {:+.3} rad    Measured {:+.5} rad    {} observations\nLimits {} over {} physics steps.",
+                        w.evidence["robot"].as_str().unwrap_or(""),
+                        w.evidence["joint"].as_str().unwrap_or(""),
+                        w.evidence["fixture"].as_str().unwrap_or("standard"),
+                        w.evidence["requested_delta"].as_f64().unwrap_or_default(),
+                        angle,
+                        w.evidence["frames"],
+                        if w.evidence["within_limits"].as_bool() == Some(true) {
+                            "respected"
+                        } else {
+                            "exceeded"
+                        },
+                        w.evidence["steps"]
+                    )
                 } else {
                     w.evidence["reason"]
                         .as_str()
                         .unwrap_or("Run a prepared controller to record its outcome.")
                         .to_owned()
                 };
-                let status = if let Some(diff) = w.comparison {
-                    format!("Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png.")
+                let status = if let Some(comparison) = &w.transfer_comparison {
+                    comparison.clone()
+                } else if let Some(diff) = w.comparison {
+                    format!(
+                        "Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png."
+                    )
                 } else if w.evidence["task_success"].is_boolean() {
                     "Open the run folder for controller.json, trajectory.json and frame.png."
                         .to_owned()
@@ -590,7 +837,9 @@ impl PluginPanel for Panel {
                         trace[trace.len() - 1]
                     )
                 } else if let (Some(start), Some(end)) = (trace.first(), trace.last()) {
-                    format!("0.01 s   {start:+.5} rad                             1.21 s   {end:+.5} rad")
+                    format!(
+                        "0.01 s   {start:+.5} rad                             1.21 s   {end:+.5} rad"
+                    )
                 } else {
                     "Awaiting completed trajectory".into()
                 };
@@ -634,6 +883,15 @@ impl PluginPanel for Panel {
             (ids!(layout2), Action::Layout(2)),
             (ids!(standard), Action::Fixture(false)),
             (ids!(compliant), Action::Fixture(true)),
+            (ids!(level), Action::Impact(false)),
+            (ids!(impact), Action::Impact(true)),
+            (ids!(trial_mode), Action::ShowEvaluation(false)),
+            (ids!(evaluation_mode), Action::ShowEvaluation(true)),
+            (ids!(earlier_failure), Action::SelectFailure(false)),
+            (ids!(later_failure), Action::SelectFailure(true)),
+            (ids!(room_mode), Action::EditRoom(true)),
+            (ids!(robot_mode), Action::EditRoom(false)),
+            (ids!(default_room), Action::DefaultRoom),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
             (ids!(start_run), Action::Run),
@@ -648,8 +906,29 @@ impl PluginPanel for Panel {
                 return true;
             }
         }
+        if self.root.button(cx, ids!(verify_archive)).clicked(actions) {
+            let path = self.root.text_input(cx, ids!(archive_path)).text();
+            b.dispatch(Intent::Aisle(Action::Evaluate(path.trim().to_owned())));
+            return true;
+        }
+        let importing = self.root.button(cx, ids!(import_survey)).clicked(actions);
+        if importing || self.root.button(cx, ids!(save_geometry)).clicked(actions) {
+            let source = if importing {
+                self.root.text_input(cx, ids!(survey_path)).text()
+            } else {
+                String::new()
+            };
+            let edit = if importing {
+                String::new()
+            } else {
+                self.root.text_input(cx, ids!(geometry)).text()
+            };
+            b.dispatch(Intent::Aisle(Action::ImportRoom { source, edit }));
+            return true;
+        }
         let reference = self.root.button(cx, ids!(reference)).clicked(actions);
-        let revise = self.root.button(cx, ids!(revise)).clicked(actions);
+        let revise_deepseek = self.root.button(cx, ids!(revise)).clicked(actions);
+        let revise = revise_deepseek || self.root.button(cx, ids!(revise_codex)).clicked(actions);
         let octos = self.root.button(cx, ids!(octos)).clicked(actions);
         if reference || revise || octos || self.root.button(cx, ids!(codex)).clicked(actions) {
             let input = self.root.text_input(cx, ids!(instruction));
@@ -660,10 +939,8 @@ impl PluginPanel for Panel {
                 task: input.text(),
                 planner: if reference {
                     Planner::Reference
-                } else if octos {
+                } else if octos || revise_deepseek {
                     Planner::OctosDeepSeek
-                } else if revise {
-                    b.aisle().unwrap().revision_planner()
                 } else {
                     Planner::Codex
                 },

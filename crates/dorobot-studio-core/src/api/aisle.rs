@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::os::unix::process::CommandExt;
 use std::{
     fs, io,
+    io::BufRead,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -54,6 +55,16 @@ pub enum Action {
     },
     Inspect,
     Fixture(bool),
+    Impact(bool),
+    EditRoom(bool),
+    ImportRoom {
+        source: String,
+        edit: String,
+    },
+    DefaultRoom,
+    ShowEvaluation(bool),
+    Evaluate(String),
+    SelectFailure(bool),
     Layout(u8),
     OlderPlan,
     NewerPlan,
@@ -67,6 +78,131 @@ pub enum Action {
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
 }
+fn compare_actions(previous: &Path, current: &Path) -> io::Result<String> {
+    let stream = |p: &Path| {
+        Ok::<_, io::Error>(io::BufReader::new(fs::File::open(p.join("actions.jsonl"))?).lines())
+    };
+    let (mut left, mut right) = (stream(previous)?, stream(current)?);
+    for index in 1usize.. {
+        let (a, b) = (left.next().transpose()?, right.next().transpose()?);
+        match (a, b) {
+            (None, None) => return Ok(format!("All {} recorded actions match.", index - 1)),
+            (Some(a), Some(b)) => {
+                let a: Value = serde_json::from_str(&a)?;
+                let b: Value = serde_json::from_str(&b)?;
+                if !a.is_object() || !b.is_object() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Invalid action row",
+                    ));
+                }
+                if a != b {
+                    return Ok(format!(
+                        "First change at action {index} · previous {} at step {}, current {} at step {}.",
+                        a["op"].as_str().unwrap_or("unknown"),
+                        a["tick"],
+                        b["op"].as_str().unwrap_or("unknown"),
+                        b["tick"]
+                    ));
+                }
+            }
+            (None, _) => return Ok(format!("Previous trace ends before action {index}.")),
+            (_, None) => return Ok(format!("Current trace ends before action {index}.")),
+        }
+    }
+    unreachable!()
+}
+
+fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option<String> {
+    if current["kind"] != "table-transfer" || !current["task_success"].is_boolean() {
+        return None;
+    }
+    let source = read(path, "source.json")?;
+    let calibration = read(path, "calibration.json")?;
+    let settled = |v: &Value| {
+        v["cubes"]
+            .as_object()
+            .map(|c| c.values().filter(|r| r["passed"] == true).count())
+    };
+    for previous in history.iter().rev().filter(|p| p.as_path() < path) {
+        let Some(prior) = read(previous, "result.json") else {
+            continue;
+        };
+        if !prior["task_success"].is_boolean()
+            || ![
+                "kind",
+                "robot",
+                "model_hash",
+                "fixture",
+                "requested",
+                "seed",
+            ]
+            .iter()
+            .all(|k| !current[*k].is_null() && current[*k] == prior[*k])
+        {
+            continue;
+        }
+        let Some(old) = read(previous, "source.json") else {
+            continue;
+        };
+        let Some(old_cal) = read(previous, "calibration.json") else {
+            continue;
+        };
+        if source["room_revision_sha256"] != old["room_revision_sha256"]
+            || !["recipe", "nexus", "adapter_hash", "backend"]
+                .iter()
+                .all(|k| !source[*k].is_null() && source[*k] == old[*k])
+            || ![
+                "nano_living.py",
+                "run_rgb_approach.py",
+                "run_rgb_transfer.py",
+                "nano_cameras.py",
+                "nano_visuals.py",
+            ]
+            .iter()
+            .all(|k| {
+                source["support_code_hashes"][*k].is_string()
+                    && source["support_code_hashes"][*k] == old["support_code_hashes"][*k]
+            })
+            || !["cameras", "joint_names", "rolling_radius_m"]
+                .iter()
+                .all(|k| calibration[*k] == old_cal[*k])
+            || !calibration["cameras"].is_object()
+        {
+            continue;
+        }
+        let label = previous.file_name()?.to_string_lossy();
+        let Some(previous_count) = settled(&prior) else {
+            continue;
+        };
+        let code = if source["policy_sha256"] == old["policy_sha256"]
+            && source["support_code_hashes"] == old["support_code_hashes"]
+        {
+            "Same local policy and support code."
+        } else {
+            "Local policy or support code changed."
+        };
+        let trace =
+            compare_actions(previous, path).unwrap_or_else(|_| "Action trace unavailable.".into());
+        let outcome = |v: &Value| {
+            if v["task_success"] == true {
+                "passed"
+            } else {
+                "failed"
+            }
+        };
+        return Some(format!(
+            "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {trace}",
+            current["seed"],
+            outcome(&prior),
+            previous_count,
+            outcome(current),
+            settled(current)?
+        ));
+    }
+    None
+}
+
 struct Job {
     child: Child,
     dir: PathBuf,
@@ -77,6 +213,8 @@ impl Job {
     fn artifact(&self) -> &'static str {
         match self.op {
             "export" => "export.json",
+            "room" => "room-ref.json",
+            "evaluate" => "evaluation.json",
             "run" => "result.json",
             "prepare" => "controller.json",
             _ => "scene.json",
@@ -109,8 +247,19 @@ pub struct Workbench {
     pub live: Option<PathBuf>,
     pub revisions: Vec<PathBuf>,
     pub compliant: bool,
+    pub impact: bool,
+    pub room_editor: bool,
+    pub show_evaluation: bool,
+    pub evaluation: Value,
+    pub failure_index: usize,
+    evaluation_archive: String,
+    pub room_info: Value,
+    pub room_path: Option<PathBuf>,
+    room_selection: Value,
+    room_request: Option<(String, String)>,
     pub layout_seed: u8,
     pub comparison: Option<f64>,
+    pub transfer_comparison: Option<String>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     job: Option<Job>,
@@ -139,20 +288,37 @@ impl Workbench {
             live: None,
             revisions: Vec::new(),
             compliant: false,
+            impact: false,
+            room_editor: false,
+            show_evaluation: false,
+            evaluation: Value::Null,
+            failure_index: 0,
+            evaluation_archive: String::new(),
+            room_info: Value::Null,
+            room_path: None,
+            room_selection: Value::Null,
+            room_request: None,
             layout_seed: 0,
             comparison: None,
+            transfer_comparison: None,
             dataset: None,
             exports: Default::default(),
             job: None,
             root,
         };
         if let Ok(entries) = fs::read_dir(&w.root) {
+            let mut last_evaluation = None;
             for entry in entries.flatten() {
                 let path = entry.path();
                 let name = entry.file_name();
                 let name = name.to_string_lossy();
                 if name.ends_with("-run") && path.is_dir() {
                     w.history.push(path);
+                } else if name.ends_with("-evaluate")
+                    && path.join("evaluation.json").is_file()
+                    && last_evaluation.as_ref().is_none_or(|p| &path > p)
+                {
+                    last_evaluation = Some(path);
                 } else if name.ends_with("-export") {
                     let export = read(&path, "export.json");
                     if let Some(trial) = export.as_ref().and_then(|v| v["trial"].as_str()) {
@@ -160,32 +326,53 @@ impl Workbench {
                     }
                 }
             }
+            if let Some(path) = last_evaluation {
+                w.evaluation = read(&path, "evaluation.json").unwrap_or_default();
+            }
             w.history.sort();
             if let Some(path) = w.history.last().cloned() {
                 w.select_run(path);
+                if w.evidence["robot"] == "G1" {
+                    w.robot = Robot::G1;
+                }
             }
+        }
+        if let Some(selection) = read(&w.root, "selected-room.json") {
+            w.select_room(selection);
         }
         w.restore_profile();
         w
     }
 }
 impl Workbench {
-    pub fn revision_planner(&self) -> Planner {
-        let origin = self
-            .selected
-            .as_ref()
-            .and_then(|p| read(p, "controller.json"));
-        if origin.as_ref().and_then(|v| v["provider"].as_str()) == Some("octos-deepseek") {
-            Planner::OctosDeepSeek
-        } else {
-            Planner::Codex
-        }
-    }
     pub fn worker_pid(&self) -> Option<u32> {
         self.job.as_ref().map(|j| j.child.id())
     }
     pub fn busy(&self) -> bool {
         self.job.is_some()
+    }
+    fn select_room(&mut self, selection: Value) {
+        self.room_path = selection["revision"]
+            .as_str()
+            .filter(|name| {
+                name.ends_with("-Nano-room") && Path::new(name).components().count() == 1
+            })
+            .map(|name| self.root.join(name).join("room.json"));
+        self.room_info = self
+            .room_path
+            .as_deref()
+            .and_then(|p| read(p.parent()?, "room.json"))
+            .unwrap_or_default();
+        self.room_selection = selection;
+    }
+    fn save_room(&mut self, selection: Value) -> io::Result<()> {
+        fs::create_dir_all(&self.root)?;
+        let path = self.root.join("selected-room.json");
+        let temp = path.with_extension(format!("{}.tmp", std::process::id()));
+        fs::write(&temp, serde_json::to_vec(&selection)?)?;
+        fs::rename(temp, path)?;
+        self.select_room(selection);
+        Ok(())
     }
     fn restore_profile(&mut self) {
         let suffix = format!("-{}-prepare", self.robot.name());
@@ -261,6 +448,7 @@ impl Workbench {
             legacy.join("meta/info.json").is_file().then_some(legacy)
         });
         self.evidence = Self::receipt(&path);
+        self.transfer_comparison = compare_transfer(&self.history, &path, &self.evidence);
         self.comparison = self
             .history
             .iter()
@@ -345,6 +533,33 @@ impl Workbench {
         if let Some(run) = feedback {
             cmd.arg("--feedback").arg(run);
         }
+        if op == "evaluate" {
+            cmd.arg("--archive").arg(&self.evaluation_archive);
+        }
+        if op == "room" {
+            let (source, edit) = self
+                .room_request
+                .as_ref()
+                .ok_or_else(|| io::Error::other("Choose a survey or edit the selected room"))?;
+            if !source.trim().is_empty() {
+                cmd.arg("--room-source").arg(source.trim());
+            }
+            if !edit.trim().is_empty() {
+                cmd.arg("--room-edit").arg(edit.trim());
+            }
+            cmd.arg("--seed").arg(self.layout_seed.to_string());
+        }
+        let mobile =
+            self.plan["kind"] == "table-transfer" || self.plan["kind"] == "visual-approach";
+        if op == "room" || (op == "run" && mobile) {
+            if let Some(path) = &self.room_path {
+                cmd.arg("--room-revision").arg(path).arg("--room-hash").arg(
+                    self.room_selection["sha256"]
+                        .as_str()
+                        .ok_or_else(|| io::Error::other("Missing room revision hash"))?,
+                );
+            }
+        }
         if op == "export" {
             cmd.arg("--trial").arg(
                 self.selected
@@ -359,7 +574,9 @@ impl Workbench {
             cmd.arg("--seed").arg(self.layout_seed.to_string());
             cmd.args([
                 "--fixture",
-                if self.compliant {
+                if self.plan["kind"] == "standing-inspection" && self.impact {
+                    "impact"
+                } else if self.compliant {
                     "compliant"
                 } else {
                     "standard"
@@ -445,6 +662,36 @@ impl Workbench {
                     planner,
                     if revise { self.selected.clone() } else { None },
                 )
+            }
+            Action::ShowEvaluation(value) => {
+                self.show_evaluation = value;
+                Ok(())
+            }
+            Action::SelectFailure(next) => {
+                let count = self.evaluation["failures"].as_array().map_or(0, Vec::len);
+                self.failure_index = if next {
+                    (self.failure_index + 1).min(count.saturating_sub(1))
+                } else {
+                    self.failure_index.saturating_sub(1)
+                };
+                Ok(())
+            }
+            Action::Evaluate(path) => {
+                self.evaluation_archive = path;
+                self.launch("evaluate", Planner::Reference, None)
+            }
+            Action::EditRoom(value) => {
+                self.room_editor = value;
+                Ok(())
+            }
+            Action::DefaultRoom => self.save_room(Value::Null),
+            Action::ImportRoom { source, edit } => {
+                self.room_request = Some((source, edit));
+                self.launch("room", Planner::Reference, None)
+            }
+            Action::Impact(value) => {
+                self.impact = value;
+                Ok(())
             }
             Action::Fixture(value) => {
                 self.compliant = value;
@@ -533,6 +780,20 @@ impl Workbench {
         }
         let artifact = job.artifact();
         if success && job.dir.join(artifact).is_file() {
+            if job.op == "evaluate" {
+                self.evaluation = read(&job.dir, artifact).unwrap_or_default();
+                self.failure_index = 0;
+            }
+            if job.op == "room" {
+                if let Err(error) = read(&job.dir, artifact)
+                    .ok_or_else(|| io::Error::other("Missing room receipt"))
+                    .and_then(|s| self.save_room(s))
+                {
+                    self.error = Some(error.to_string());
+                    self.status = error.to_string();
+                    return;
+                }
+            }
             if job.op == "export" {
                 let dataset = job.dir.join("dataset");
                 if let Some(path) = &self.selected {
@@ -597,6 +858,46 @@ mod tests {
         ));
         fs::create_dir(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn pair_requires_matching_layout_and_reports_first_action_change() {
+        let dir = fixture("matched-layout");
+        let mut runs = Vec::new();
+        let result = serde_json::json!({"kind":"table-transfer","robot":"Nano","model_hash":"model",
+            "fixture":"living-room","requested":["red"],"seed":3,"task_success":true,
+            "cubes":{"red":{"passed":true}}});
+        let source = serde_json::json!({"recipe":"room","backend":"native","nexus":"engine",
+            "adapter_hash":"adapter","support_code_hashes":{"nano_living.py":"physics",
+            "run_rgb_approach.py":"recipe","run_rgb_transfer.py":"judge","nano_cameras.py":"rig",
+            "nano_visuals.py":"mesh"}});
+        for name in ["01-Nano-run", "02-Nano-run"] {
+            let run = dir.join(name);
+            fs::create_dir(&run).unwrap();
+            fs::write(run.join("source.json"), source.to_string()).unwrap();
+            fs::write(run.join("result.json"), result.to_string()).unwrap();
+            fs::write(
+                run.join("calibration.json"),
+                r#"{"cameras":{"head":{}},"joint_names":["wheel"]}"#,
+            )
+            .unwrap();
+            fs::write(run.join("actions.jsonl"), "{\"op\":\"sense\",\"tick\":0}\n").unwrap();
+            runs.push(run);
+        }
+        let comparison = || compare_transfer(&runs, &runs[1], &result);
+        assert!(
+            comparison()
+                .unwrap()
+                .contains("All 1 recorded actions match")
+        );
+        fs::write(runs[1].join("actions.jsonl"), r#"{"op":"wheel","tick":20}"#).unwrap();
+        assert!(comparison().unwrap().contains("First change at action 1"));
+        let mut changed = result.clone();
+        changed["seed"] = serde_json::json!(2);
+        assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
+        fs::remove_file(runs[0].join("calibration.json")).unwrap();
+        assert!(comparison().is_none());
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

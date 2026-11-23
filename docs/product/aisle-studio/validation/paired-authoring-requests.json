@@ -1,0 +1,550 @@
+{
+  "cases": [
+    [
+      "ordered",
+      "Nano",
+      "Move three floor cubes to the coffee table. First green, then blue, then red.",
+      {
+        "kind": "table-transfer",
+        "color_order": "green,blue,red"
+      }
+    ],
+    [
+      "range",
+      "Nano",
+      "Approach the blue cube and stop with its centre 0.52 metres away. Keep it on the floor.",
+      {
+        "kind": "visual-approach",
+        "color": "blue",
+        "standoff_m": 0.52
+      }
+    ],
+    [
+      "balance",
+      "G1",
+      "Stand on both feet and track a positive 0.10 rad displacement of the left shoulder pitch joint.",
+      {
+        "kind": "standing-inspection",
+        "joint": "left_shoulder_pitch_joint",
+        "delta_rad": 0.1
+      }
+    ],
+    [
+      "unsupported",
+      "G1",
+      "Walk across the room and open the balcony door.",
+      null
+    ],
+    [
+      "retry",
+      "Nano",
+      "Use the selected run. Prepare a new transfer trial that retries only the cube that failed the prior settled-placement check. Place it on the coffee table.",
+      {
+        "kind": "table-transfer",
+        "color_order": "blue"
+      }
+    ]
+  ],
+  "authoring": [
+    {
+      "case": "ordered",
+      "provider": "octos-deepseek",
+      "expectation": {
+        "kind": "table-transfer",
+        "color_order": "green,blue,red"
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "octos-deepseek",
+        "model": "deepseek-v4-flash",
+        "wall_seconds": 2.974452791037038,
+        "input_tokens": 6319,
+        "output_tokens": 369
+      },
+      "elapsed_s": 3.014,
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "green,blue,red",
+        "robot": "Nano",
+        "task": "Move three floor cubes to the coffee table. First green, then blue, then red.",
+        "provider": "octos-deepseek",
+        "policy_model": "deepseek-v4-flash",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "error": null
+    },
+    {
+      "case": "ordered",
+      "provider": "codex",
+      "expectation": {
+        "kind": "table-transfer",
+        "color_order": "green,blue,red"
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "codex",
+        "model": "gpt-6.2-astra",
+        "wall_seconds": 6.6974057499319315
+      },
+      "elapsed_s": 6.737,
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "green,blue,red",
+        "robot": "Nano",
+        "task": "Move three floor cubes to the coffee table. First green, then blue, then red.",
+        "provider": "codex",
+        "policy_model": "gpt-6.2-astra",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "error": null
+    },
+    {
+      "case": "range",
+      "provider": "codex",
+      "expectation": {
+        "kind": "visual-approach",
+        "color": "blue",
+        "standoff_m": 0.52
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "codex",
+        "model": "gpt-6.2-astra",
+        "wall_seconds": 5.976797207957134
+      },
+      "elapsed_s": 6.018,
+      "controller": {
+        "kind": "visual-approach",
+        "color": "blue",
+        "standoff_m": 0.52,
+        "robot": "Nano",
+        "task": "Approach the blue cube and stop with its centre 0.52 metres away. Keep it on the floor.",
+        "provider": "codex",
+        "policy_model": "gpt-6.2-astra",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "error": null
+    },
+    {
+      "case": "range",
+      "provider": "octos-deepseek",
+      "expectation": {
+        "kind": "visual-approach",
+        "color": "blue",
+        "standoff_m": 0.52
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "octos-deepseek",
+        "model": "deepseek-v4-flash",
+        "wall_seconds": 2.212278125109151,
+        "input_tokens": 6324,
+        "output_tokens": 197
+      },
+      "elapsed_s": 2.252,
+      "controller": {
+        "kind": "visual-approach",
+        "color": "blue",
+        "standoff_m": 0.52,
+        "robot": "Nano",
+        "task": "Approach the blue cube and stop with its centre 0.52 metres away. Keep it on the floor.",
+        "provider": "octos-deepseek",
+        "policy_model": "deepseek-v4-flash",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "error": null
+    },
+    {
+      "case": "balance",
+      "provider": "octos-deepseek",
+      "expectation": {
+        "kind": "standing-inspection",
+        "joint": "left_shoulder_pitch_joint",
+        "delta_rad": 0.1
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "octos-deepseek",
+        "model": "deepseek-v4-flash",
+        "wall_seconds": 1.8853572919033468,
+        "input_tokens": 6095,
+        "output_tokens": 74
+      },
+      "elapsed_s": 1.926,
+      "controller": {
+        "joint": "left_shoulder_pitch_joint",
+        "delta_rad": 0.1,
+        "kind": "standing-inspection",
+        "robot": "G1",
+        "task": "Stand on both feet and track a positive 0.10 rad displacement of the left shoulder pitch joint.",
+        "provider": "octos-deepseek",
+        "policy_model": "deepseek-v4-flash",
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+      },
+      "error": null
+    },
+    {
+      "case": "balance",
+      "provider": "codex",
+      "expectation": {
+        "kind": "standing-inspection",
+        "joint": "left_shoulder_pitch_joint",
+        "delta_rad": 0.1
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "codex",
+        "model": "gpt-6.2-astra",
+        "wall_seconds": 4.991349874995649
+      },
+      "elapsed_s": 5.031,
+      "controller": {
+        "joint": "left_shoulder_pitch_joint",
+        "delta_rad": 0.1,
+        "kind": "standing-inspection",
+        "robot": "G1",
+        "task": "Stand on both feet and track a positive 0.10 rad displacement of the left shoulder pitch joint.",
+        "provider": "codex",
+        "policy_model": "gpt-6.2-astra",
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+      },
+      "error": null
+    },
+    {
+      "case": "unsupported",
+      "provider": "codex",
+      "expectation": null,
+      "matched": true,
+      "metrics": {
+        "provider": "codex",
+        "model": "gpt-6.2-astra",
+        "wall_seconds": 6.390829584095627
+      },
+      "elapsed_s": 6.434,
+      "controller": {},
+      "error": "Requested task exceeds this controller's capabilities"
+    },
+    {
+      "case": "unsupported",
+      "provider": "octos-deepseek",
+      "expectation": null,
+      "matched": true,
+      "metrics": {
+        "provider": "octos-deepseek",
+        "model": "deepseek-v4-flash",
+        "wall_seconds": 2.1448721669148654,
+        "input_tokens": 6083,
+        "output_tokens": 103
+      },
+      "elapsed_s": 2.188,
+      "controller": {},
+      "error": "Requested task exceeds this controller's capabilities"
+    },
+    {
+      "case": "retry",
+      "provider": "octos-deepseek",
+      "expectation": {
+        "kind": "table-transfer",
+        "color_order": "blue"
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "octos-deepseek",
+        "model": "deepseek-v4-flash",
+        "wall_seconds": 1.5644115840550512,
+        "input_tokens": 6700,
+        "output_tokens": 147
+      },
+      "elapsed_s": 1.607,
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "blue",
+        "previous_trial": {
+          "robot": "Nano",
+          "kind": "table-transfer",
+          "requested": [
+            "red",
+            "green",
+            "blue"
+          ],
+          "phase": "back away",
+          "task_success": false,
+          "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+          "settled": {
+            "red": true,
+            "green": true,
+            "blue": false
+          },
+          "onboard_observations": {
+            "red": {
+              "last_wrist_jaw": {
+                "tick": 5948,
+                "cube_visible": false
+              },
+              "last_rgb_table_rim": {
+                "tick": 4498,
+                "distance_m": 0.3469465633897941,
+                "height_m": 0.5399308385024063,
+                "angle_rad": -0.004980345700452397
+              }
+            },
+            "green": {
+              "last_wrist_jaw": {
+                "tick": 14416,
+                "cube_visible": false
+              },
+              "last_rgb_table_rim": {
+                "tick": 12966,
+                "distance_m": 0.3462060320274492,
+                "height_m": 0.540052311860972,
+                "angle_rad": -0.015487663028560751
+              }
+            },
+            "blue": {
+              "last_wrist_jaw": {
+                "tick": 28082,
+                "cube_visible": false
+              },
+              "last_rgb_table_rim": {
+                "tick": 26632,
+                "distance_m": 0.3465700985972756,
+                "height_m": 0.5403150131973322,
+                "angle_rad": -0.016142792655579198
+              }
+            }
+          }
+        },
+        "robot": "Nano",
+        "task": "Use the selected run. Prepare a new transfer trial that retries only the cube that failed the prior settled-placement check. Place it on the coffee table.",
+        "provider": "octos-deepseek",
+        "policy_model": "deepseek-v4-flash",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "error": null
+    },
+    {
+      "case": "retry",
+      "provider": "codex",
+      "expectation": {
+        "kind": "table-transfer",
+        "color_order": "blue"
+      },
+      "matched": true,
+      "metrics": {
+        "provider": "codex",
+        "model": "gpt-6.2-astra",
+        "wall_seconds": 5.141063750023022
+      },
+      "elapsed_s": 5.184,
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "blue",
+        "previous_trial": {
+          "robot": "Nano",
+          "kind": "table-transfer",
+          "requested": [
+            "red",
+            "green",
+            "blue"
+          ],
+          "phase": "back away",
+          "task_success": false,
+          "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+          "settled": {
+            "red": true,
+            "green": true,
+            "blue": false
+          },
+          "onboard_observations": {
+            "red": {
+              "last_wrist_jaw": {
+                "tick": 5948,
+                "cube_visible": false
+              },
+              "last_rgb_table_rim": {
+                "tick": 4498,
+                "distance_m": 0.3469465633897941,
+                "height_m": 0.5399308385024063,
+                "angle_rad": -0.004980345700452397
+              }
+            },
+            "green": {
+              "last_wrist_jaw": {
+                "tick": 14416,
+                "cube_visible": false
+              },
+              "last_rgb_table_rim": {
+                "tick": 12966,
+                "distance_m": 0.3462060320274492,
+                "height_m": 0.540052311860972,
+                "angle_rad": -0.015487663028560751
+              }
+            },
+            "blue": {
+              "last_wrist_jaw": {
+                "tick": 28082,
+                "cube_visible": false
+              },
+              "last_rgb_table_rim": {
+                "tick": 26632,
+                "distance_m": 0.3465700985972756,
+                "height_m": 0.5403150131973322,
+                "angle_rad": -0.016142792655579198
+              }
+            }
+          }
+        },
+        "robot": "Nano",
+        "task": "Use the selected run. Prepare a new transfer trial that retries only the cube that failed the prior settled-placement check. Place it on the coffee table.",
+        "provider": "codex",
+        "policy_model": "gpt-6.2-astra",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "error": null
+    }
+  ],
+  "paired_retry": {
+    "codex": {
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3470,
+            "final_position_m": [
+              0.3238360285758972,
+              0.7203351855278015,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2896112431396715,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.12033518552780154,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 7268,
+        "physics_ticks": 7268,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 149,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 7268,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "ed05bf21101a6871b2fce9eaff10eb0860d42852dddf14c2939ea14729b4c540",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 0,
+        "recording": false,
+        "seed": 2
+      },
+      "command_log_sha256": "933783d553eb140eb6b8a87311d75b08723b507e47857261fc1308ccf8e2fb76",
+      "declared_controller_sha256": "8d468a736b14af5b1a4976d1dbdb533d4b1df9c4ef9583c068f968dc675a9129",
+      "executed_source": {
+        "controller_sha256": "8d468a736b14af5b1a4976d1dbdb533d4b1df9c4ef9583c068f968dc675a9129",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 2,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "0489a3d5c32e30af2bd893fb52ddc209cf86551bb73d0ef285465de25c595c77",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "020f40365dab9ff2c768a0f2cba01f457db4d484f7ec24b5127c83387ce995f0",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "1771394001b68ae8652073fed8a9309037a68197c4edfb33a3bfd5ea24604f7c"
+        },
+        "nexus": "0.2.1"
+      }
+    },
+    "octos-deepseek": {
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3470,
+            "final_position_m": [
+              0.3238360285758972,
+              0.7203351855278015,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2896112431396715,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.12033518552780154,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 7268,
+        "physics_ticks": 7268,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 149,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 7268,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "ed05bf21101a6871b2fce9eaff10eb0860d42852dddf14c2939ea14729b4c540",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 0,
+        "recording": false,
+        "seed": 2
+      },
+      "command_log_sha256": "933783d553eb140eb6b8a87311d75b08723b507e47857261fc1308ccf8e2fb76",
+      "declared_controller_sha256": "476dddb1b351bccdd943057775896bf990ef76c2109e887e051daaa83dde5328",
+      "executed_source": {
+        "controller_sha256": "476dddb1b351bccdd943057775896bf990ef76c2109e887e051daaa83dde5328",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 2,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "0489a3d5c32e30af2bd893fb52ddc209cf86551bb73d0ef285465de25c595c77",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "020f40365dab9ff2c768a0f2cba01f457db4d484f7ec24b5127c83387ce995f0",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "1771394001b68ae8652073fed8a9309037a68197c4edfb33a3bfd5ea24604f7c"
+        },
+        "nexus": "0.2.1"
+      }
+    }
+  }
+}

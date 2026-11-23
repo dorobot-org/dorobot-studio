@@ -10,7 +10,7 @@ from PIL import Image
 from worker import digest, save
 
 
-def simulate(out, model, plan):
+def simulate(out, model, plan, impact=False):
     from aisle.kinematics import load_urdf_chain
     from aisle.sim import nexus_backend as nx
 
@@ -34,6 +34,16 @@ def simulate(out, model, plan):
     floor = scene.add_box(
         "floor", [5, 5, 0.10], [0, 0, floor_z - 0.05], fixed=True, friction=0.8
     )
+    block_side, block_mass = 0.065, 0.25
+    block = None
+    if impact:
+        block = scene.add_box(
+            "disturbance_block",
+            [block_side] * 3,
+            [1, 0, floor_z + block_side],
+            density=block_mass / block_side**3,
+            color=(0.94, 0.56, 0.12),
+        )
     native = scene.state.load_urdf_robot(
         0,
         str(model),
@@ -60,28 +70,35 @@ def simulate(out, model, plan):
     max_force = np.array(native.max_force)
     max_force[dofs] = effort
     native.max_force = max_force.tolist()
-    robot.set_dofs_kp(
+    kp = np.array(
         [
             180 if "knee" in n or "hip" in n else 65 if "ankle" in n else 70
             for n in names
-        ],
-        dofs,
+        ]
     )
-    robot.set_dofs_kv(
-        [5 if any(j in n for j in ("knee", "hip", "ankle")) else 3 for n in names], dofs
+    kd = np.array(
+        [5 if any(j in n for j in ("knee", "hip", "ankle")) else 3 for n in names]
     )
+    robot.set_dofs_kp(kp.tolist(), dofs)
+    robot.set_dofs_kv(kd.tolist(), dofs)
     scene.build()
     floor_id = scene.gpu_index(0, floor.handles[0])
     ankles = [names.index(f"{s}_ankle_pitch_joint") for s in ("left", "right")]
     shoulder = names.index(plan["joint"])
     targets = np.zeros(len(names))
     initial_xy = robot.get_pos()[:2].copy()
+    block_id = scene.gpu_index(0, block.handles[0]) if block is not None else None
+    launch_at = 600  # Three seconds into the scored trial.
+    launch_pos, launch_velocity = [0.29, 0, 0.16], [-1.2, 0, 0]
     previous_pitch = 0.0
     warmup, scored = 200, 2000
     both = 0
     peak_tilt = drift = excursion = 0.0
     other_links = set()
     rows = []
+    impact_rows, energy_rows = [], []
+    last_contact = recovery_start = recovery_step = None
+    positive_work = negative_work = 0.0
     source = json.loads((out / "source.json").read_text())
     save(
         out / "source.json",
@@ -92,6 +109,15 @@ def simulate(out, model, plan):
             gravity_m_s2=-9.81,
             warmup_steps=warmup,
             floor_z_m=float(floor_z),
+            disturbance=dict(
+                mass_kg=block_mass,
+                side_m=block_side,
+                initial_position_m=launch_pos,
+                initial_velocity_m_s=launch_velocity,
+                launch_step=launch_at + 1,
+            )
+            if impact
+            else None,
         ),
     )
     correction = 0.0
@@ -117,6 +143,12 @@ def simulate(out, model, plan):
             )
             desired[shoulder] = reference + correction
         targets += np.clip(np.clip(desired, lo, hi) - targets, -speed * dt, speed * dt)
+        if block is not None and i == warmup + launch_at:
+            # Only the independent fixture body receives an initial pose and velocity.
+            scene.set_body_pose(0, block.handles[0], launch_pos, [1, 0, 0, 0])
+            scene.set_body_velocity(0, block.handles[0], launch_velocity)
+        before = robot.get_qpos()[dofs].astype(float)
+        velocity = robot.get_dofs_velocity()[dofs].astype(float)
         robot.control_dofs_position(targets.tolist(), dofs)
         scene.step()
         q = robot.get_qpos()[dofs]
@@ -127,6 +159,15 @@ def simulate(out, model, plan):
         excursion = max(excursion, float(np.maximum(lo - q, q - hi).max()))
         if i < warmup:
             continue
+        # Nexus exposes joint states and configured PD gains through this API.
+        # Estimate joint work from capped PD demand and measured travel per step.
+        torque = np.clip(kp * (targets - before) - kd * velocity, -effort, effort)
+        work = torque * (q - before)
+        if not np.isfinite(work).all():
+            raise ValueError("Nonfinite estimated G1 motor work")
+        positive_work += float(np.maximum(work, 0).sum())
+        negative_work += float(np.minimum(work, 0).sum())
+        energy_rows.append((before, velocity, targets.copy(), q.copy()))
         tilt = float(np.arccos(np.clip(rotation[2, 2], -1, 1)))
         peak_tilt = max(peak_tilt, tilt)
         drift = max(drift, float(np.linalg.norm(pos[:2] - initial_xy)))
@@ -141,6 +182,40 @@ def simulate(out, model, plan):
         both += int(feet.issubset(loaded))
         other_links.update(loaded - feet)
         step = i - warmup + 1
+        if block is not None and step > launch_at:
+            hits = [
+                c
+                for c in impulses
+                if c["kind"] == "normal"
+                and c["impulse"] > 1e-6
+                and c["free_body"] == block_id
+            ]
+            if hits:
+                last_contact = step
+                recovery_start = recovery_step = None
+                impact_rows.extend(
+                    dict(
+                        step=step,
+                        link=robot.links[c["link"]].name,
+                        normal_impulse_ns=c["impulse"],
+                    )
+                    for c in hits
+                )
+            elif last_contact is not None and recovery_step is None:
+                stable = (
+                    feet.issubset(loaded)
+                    and not (loaded - feet)
+                    and tilt < np.deg2rad(4)
+                    and np.linalg.norm(pos[:2] - initial_xy) < 0.03
+                    and abs(q[shoulder] - initial_angle - plan["delta_rad"]) < 0.015
+                )
+                if stable:
+                    if recovery_start is None:
+                        recovery_start = step
+                    if step - recovery_start + 1 >= 100:
+                        recovery_step = step
+                else:
+                    recovery_start = None
         if step % 20 == 0 or step == 1:
             row = dict(
                 kind="standing-inspection",
@@ -157,9 +232,41 @@ def simulate(out, model, plan):
             save(out / "progress.json", row)
     Image.fromarray(rgb).save(out / "frame.png")
     save(out / "trajectory.json", rows)
+    energy = np.asarray(energy_rows)
+    np.savez_compressed(
+        out / "motor-work.npz",
+        joints=names,
+        q_before=energy[:, 0],
+        velocity_before=energy[:, 1],
+        target=energy[:, 2],
+        q_after=energy[:, 3],
+        kp=kp,
+        kd=kd,
+        effort_limit=effort,
+        dt=dt,
+    )
+    if impact:
+        save(out / "impact-contacts.json", impact_rows)
+    recovery_s = (
+        (recovery_step - last_contact) * dt if recovery_step is not None else None
+    )
+    disturbance = (
+        dict(
+            contacts=len(impact_rows),
+            normal_impulse_sum_ns=sum(r["normal_impulse_ns"] for r in impact_rows),
+            links=sorted({r["link"] for r in impact_rows}),
+            recovery_s=recovery_s,
+            last_contact_step=last_contact,
+            recovered_step=recovery_step,
+            passed=bool(impact_rows and recovery_s is not None and recovery_s <= 2),
+        )
+        if impact
+        else None
+    )
     measured = float(q[shoulder] - initial_angle)
     passed = (
-        both == scored
+        (not impact or disturbance["passed"])
+        and both == scored
         and not other_links
         and drift < 0.10
         and peak_tilt < np.deg2rad(12)
@@ -170,7 +277,11 @@ def simulate(out, model, plan):
     return dict(
         kind="standing-inspection",
         task_success=bool(passed),
-        fixture="standing-development",
+        fixture="standing-impact-development" if impact else "standing-development",
+        disturbance=disturbance,
+        estimated_positive_joint_work_j=positive_work,
+        estimated_negative_joint_work_j=negative_work,
+        motor_work_sha256=digest(out / "motor-work.npz"),
         joint=plan["joint"],
         requested_delta=plan["delta_rad"],
         measured_delta=measured,

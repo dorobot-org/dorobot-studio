@@ -11,10 +11,10 @@ import cv2
 import numpy as np
 
 from nano_rgb_policy import CAMERAS, CUBE_CENTRE_Z, VisualServo
-from nano_rgb_table import table_edge
+from nano_rgb_table import occupied_table_points, table_edge
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "nano-three-cubes"))
-from model import Kinematics  # noqa: E402
+from model import Kinematics, UnreachableGrasp  # noqa: E402
 
 
 def visible_in_jaws(rgb, color):
@@ -32,6 +32,12 @@ def visible_in_jaws(rgb, color):
     return float(opening.mean()) >= 0.14 and float(mask.mean()) >= 0.04
 
 
+# Reserve lateral space for rolling after the open finger withdraws. Moving the
+# elevated base closer keeps the desired release point within the arm workspace.
+RELEASE_INSET = 0.085
+DOCK_DISTANCE = 0.385 - RELEASE_INSET
+
+
 class Controller:
     def __init__(self, config):
         self.input = sys.stdin.buffer
@@ -44,6 +50,9 @@ class Controller:
         self.targets = None
         self.last_stamp = -1
         self.grip = "left_j6_gripper"
+        self.wheel_pair = [self.names.index(f"wheel_{i}_joint") for i in (2, 3)]
+        self.wheel_radius = config["rolling_radius_m"]
+        self.last_rim_distance = None
 
     def send(self, op, **fields):
         print(json.dumps(dict(op=op, **fields), allow_nan=False), flush=True)
@@ -149,12 +158,10 @@ class Controller:
     def pick(self, xy):
         self.reach(np.r_[xy, 0.115], 250, 1, True)
         self.reach(np.r_[xy, CUBE_CENTRE_Z + 0.004], 250, 8, True)
-        self.joints({self.grip: 0.55}, 180)
+        self.joints({self.grip: 0.70}, 200)
         self.reach(np.r_[xy, 0.085], 320, 8, True)
 
-    def table(self, data=None):
-        if data is None:
-            data = self.sense()
+    def table_views(self, data):
         views = []
         for name in ("head", "right_wrist"):
             chain, indices, mount, k, _ = self.servo.cameras[name]
@@ -162,9 +169,13 @@ class Controller:
             pose = np.eye(4)
             pose[:3, 3], pose[:3, :3] = p, r
             views.append((data[name], pose @ mount, k))
-        return table_edge(views)
+        return views
+
+    def table(self, data=None):
+        return table_edge(self.table_views(self.sense() if data is None else data))
 
     def dock(self, color):
+        self.last_rim_distance = None
         consecutive = 0
         elevated = False
         for _ in range(200):
@@ -178,7 +189,7 @@ class Controller:
                 self.drive()
                 continue
             angle = math.atan2(edge["normal"][1], edge["normal"][0])
-            distance = edge["distance"]
+            distance = self.last_rim_distance = edge["distance"]
             self.act(
                 "table observation",
                 distance_m=float(distance),
@@ -194,16 +205,17 @@ class Controller:
                 if not self.held_in_wrist_view(color):
                     return None
                 elevated = True
-            if elevated and abs(angle) < 0.04 and abs(distance - 0.335) < 0.012:
+            if elevated and abs(angle) < 0.04 and abs(distance - DOCK_DISTANCE) < 0.010:
                 self.drive()
                 self.drive()
                 final = self.table()
                 if final is not None:
+                    self.last_rim_distance = final["distance"]
                     return final
                 self.drive()
                 continue
             speed = (
-                np.clip((distance - 0.333) * 0.55, -0.025, 0.055)
+                np.clip((distance - DOCK_DISTANCE) * 0.55, -0.025, 0.055)
                 if abs(angle) < 0.09
                 else 0.0
             )
@@ -211,14 +223,27 @@ class Controller:
         raise ValueError("Stereo table docking timed out")
 
     def back_away(self, color, exposure=None):
+        if self.last_rim_distance is None:
+            raise ValueError("Retreat requires a rim observed during this approach")
         self.phase("back away", color)
+        # Never lower the arm over the table when a wrist or cube occludes its rim.
+        # Opposed wheel displacements cancel yaw during the straight retreat.
+        packet = self.sense() if exposure is None else exposure
+        start = packet["encoders"][self.wheel_pair]
+        required = max(0.0, 0.57 - self.last_rim_distance)
         for _ in range(65):
-            edge = self.table(exposure)
-            exposure = None
-            if edge is None or edge["distance"] > 0.57:
+            edge = self.table(packet)
+            delta = packet["encoders"][self.wheel_pair] - start
+            retreat = self.wheel_radius * (delta[1] - delta[0]) / math.sqrt(3)
+            if (
+                edge is not None
+                and edge["distance"] > 0.57
+                and retreat >= required - 0.07
+            ) or (edge is None and retreat >= required + 0.06):
                 self.drive()
                 break
             self.drive(-0.065, 0)
+            packet = self.sense()
         else:
             raise ValueError("Table clearance was not recovered")
         self.joints(
@@ -275,7 +300,7 @@ class Controller:
                         right_j2_pitch=-0.55,
                         right_j3_pitch=0.35,
                         right_j4_pitch=-1.0,
-                        left_j6_gripper=0.72,
+                        left_j6_gripper=0.84,
                     ),
                     320,
                 )
@@ -296,9 +321,34 @@ class Controller:
                 edge["span"][0] + 0.009,
                 edge["span"][1] - 0.009,
             )
-            place = (edge["distance"] + 0.05) * edge["normal"] + side * t
+            occupied = []
+            if index:
+                self.drive()
+                views = self.table_views(self.sense())
+                occupied = occupied_table_points(views, edge, self.colors[:index])
             z = edge["height"]
-            self.reach(np.r_[place, z + 0.078], 340, 12, supported=True)
+            for shift in (0, 0.08, -0.08, 0.115, -0.115, 0.15, -0.15):
+                along = side + shift
+                if not edge["span"][0] <= along <= edge["span"][1]:
+                    continue
+                place = (edge["distance"] + RELEASE_INSET) * edge["normal"] + along * t
+                if any(np.linalg.norm(place - p) < 0.078 for p in occupied):
+                    continue
+                # reach preflights every waypoint before sending the first target.
+                try:
+                    self.reach(np.r_[place, z + 0.078], 340, 12, supported=True)
+                except UnreachableGrasp:
+                    continue
+                self.act(
+                    "table observation",
+                    release_xy_m=place.tolist(),
+                    observed_occupants=len(occupied),
+                )
+                break
+            else:
+                raise ValueError(
+                    "No reachable clear release point on the visible tabletop"
+                )
             self.phase("release", color)
             self.joints({self.grip: -0.25}, 180)
             self.reach(np.r_[place - [0.07, 0], z + 0.10], 240, 9, supported=True)

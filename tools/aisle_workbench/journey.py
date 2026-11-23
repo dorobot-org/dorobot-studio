@@ -32,6 +32,10 @@ def main():
     p.add_argument("--standing", action="store_true")
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
+    p.add_argument("--impact", action="store_true")
+    p.add_argument("--survey", type=Path)
+    p.add_argument("--evaluation", type=Path)
+    p.add_argument("--handoff", action="store_true")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
@@ -105,6 +109,132 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.handoff:
+
+        def enter_task(instruction):
+            click("aisle_task.instruction")
+            remote(
+                "key",
+                "w=0",
+                "c=KeyA",
+                "logo=1" if sys.platform == "darwin" else "ctrl=1",
+                "wait=1",
+            )
+            remote("text", "w=0", "t=" + instruction, "wait=1")
+
+        def inspect_with(planner, button, instruction, delta):
+            page("task")
+            if planner == "codex":
+                click("aisle_task.g1")
+            enter_task(instruction)
+            click("aisle_task." + button)
+            row = done(
+                lambda w: not w["busy"]
+                and w["controller"]
+                and w["controller"].get("provider") == planner,
+                planner + " revision prepared",
+                180,
+            )
+            plan = row["controller"]
+            assert (
+                plan["joint"] == "right_shoulder_pitch_joint"
+                and abs(plan["delta_rad"] - delta) < 1e-5
+            )
+            previous = row["selected"]
+            page("run")
+            click("aisle_run.start_run")
+            row = done(
+                lambda w: not w["busy"]
+                and w["selected"] != previous
+                and w["result"]
+                and w["result"].get("task_success"),
+                planner + " shoulder trial scored",
+                120,
+            )
+            return plan, row["result"]
+
+        if a.recover:
+            page("evidence")
+            row = done(
+                lambda w: w["result"]
+                and w["result"].get("task_success")
+                and w["robot"] == "G1",
+                "Revised G1 trial reopened",
+            )
+            saved = json.loads((a.out / "journey.json").read_text())[-1]
+            assert (
+                row["result"]["controller_hash"]
+                == saved["revised_result"]["controller_hash"]
+            )
+            (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
+            return
+        original, measured = inspect_with(
+            "codex",
+            "codex",
+            "Inspect the right shoulder pitch using minus 0.08 rad.",
+            -0.08,
+        )
+        revised, result = inspect_with(
+            "octos-deepseek",
+            "revise",
+            "Repeat the preceding inspection at three quarters of its signed displacement.",
+            -0.06,
+        )
+        assert (
+            revised["previous_trial"]["controller_hash"] == measured["controller_hash"]
+        )
+        assert abs(result["measured_delta"] + 0.06) < 0.003
+        page("evidence")
+        grab("provider-handoff")
+        checks.append(
+            dict(
+                check="Measured cross-provider revision",
+                original=original,
+                original_result=measured,
+                revised=revised,
+                revised_result=result,
+            )
+        )
+        (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
+        return
+    if a.evaluation:
+        import hashlib
+
+        expected = hashlib.sha256(
+            a.evaluation.with_name("suite.json").read_bytes()
+        ).hexdigest()
+        page("evidence")
+        click("aisle_evidence.evaluation_mode")
+        if not a.recover:
+            click("aisle_evidence.archive_path")
+            remote("text", "w=0", "t=" + str(a.evaluation), "wait=1")
+            click("aisle_evidence.verify_archive")
+        row = done(
+            lambda w: not w["busy"]
+            and w["evaluation"]
+            and w["evaluation"]["manifest_sha256"] == expected,
+            "Layout evaluation restored" if a.recover else "Layout archive verified",
+            100,
+        )
+        evaluation = row["evaluation"]
+        assert (
+            len(evaluation["failures"]) + evaluation["successes"] == evaluation["cases"]
+        )
+        assert (
+            evaluation["archive_sha256"]
+            == hashlib.sha256(a.evaluation.read_bytes()).hexdigest()
+        )
+        checks[-1]["evaluation"] = evaluation
+        if len(evaluation["failures"]) > 1 and not a.recover:
+            click("aisle_evidence.later_failure")
+            done(lambda w: w["failure_index"] == 1, "Second failed layout opened")
+            click("aisle_evidence.earlier_failure")
+            done(lambda w: w["failure_index"] == 0, "First failed layout reopened")
+        if not a.recover:
+            grab("layout-evaluation")
+        name = "recovery.json" if a.recover else "journey.json"
+        (a.out / name).write_text(json.dumps(checks, indent=2))
+        return
     if a.standing or a.transfer:
         kind = "standing-inspection" if a.standing else "table-transfer"
         label = "standing" if a.standing else "transfer"
@@ -119,6 +249,20 @@ def main():
             assert row["result"]["task_success"] and (
                 a.standing or row["result"]["requested"] == wanted
             )
+            assert (
+                row["robot"]
+                == row["result"]["robot"]
+                == ("G1" if a.standing else "Nano")
+            )
+            checks[-1].update(
+                restored_robot=row["result"]["robot"],
+                controller_hash=row["result"]["controller_hash"],
+                fixture=row["result"]["fixture"],
+                outcome=row["result"]["task_success"],
+            )
+            if a.survey:
+                assert row["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
+                assert row["result"]["room_revision_sha256"]
             (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
             return
         page("task")
@@ -154,6 +298,47 @@ def main():
         ) and row["controller"]["provider"] == a.provider
         grab(label + "-task")
         page("scene")
+        if a.survey:
+            click("aisle_scene.room_mode")
+            done(lambda w: w["room_editor"], "Room survey editor opened")
+
+            def fill_survey(field, text):
+                click("aisle_scene." + field)
+                remote(
+                    "key",
+                    "w=0",
+                    "c=KeyA",
+                    "logo=1" if sys.platform == "darwin" else "ctrl=1",
+                    "wait=1",
+                )
+                remote("text", "w=0", "t=" + text, "wait=1")
+
+            fill_survey("survey_path", str(a.survey))
+            click("aisle_scene.import_survey")
+            saved = done(
+                lambda w: w["room_path"] and not w["busy"],
+                "Surveyed footprint imported",
+            )
+            first = saved["room_path"]
+            fill_survey("geometry", "ottoman 0 0 0.35")
+            click("aisle_scene.save_geometry")
+            failed = done(
+                lambda w: "conflicts with Nano" in w["status"] and not w["busy"],
+                "Overlapping edit rejected",
+            )
+            assert failed["room_path"] == first
+            fill_survey("geometry", "ottoman 1.38 -0.45 0.35")
+            click("aisle_scene.save_geometry")
+            saved = done(
+                lambda w: w["room_path"] != first and not w["busy"],
+                "Edited geometry saved as a revision",
+            )
+            assert saved["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
+            grab("survey-edited")
+            click("aisle_scene.robot_mode")
+        if a.impact:
+            click("aisle_scene.impact")
+            done(lambda w: w["impact"], "G1 impact selected")
         if a.transfer:
             for seed in [(a.layout + 1) % 3, a.layout]:
                 if report()["state"]["aisle"]["layout_seed"] == seed:
@@ -196,7 +381,26 @@ def main():
         if a.standing:
             assert result["both_feet_loaded_steps"] == result["steps"] == 2000
             assert abs(result["measured_delta"] + 0.08) < 0.012
+            if a.impact:
+                assert (
+                    result["disturbance"]["passed"]
+                    and result["disturbance"]["contacts"] > 0
+                )
+                assert result["estimated_positive_joint_work_j"] > 0
         else:
+            if a.survey:
+                assert result["room_revision_sha256"] and result["room_obstacles"] == [
+                    "room_ottoman"
+                ]
+                measured = result["measured_room_bodies"]["room_ottoman"]["center_m"]
+                assert all(
+                    abs(x - y) < 1e-5
+                    for x, y in zip(measured, [1.38, -0.45, 0.1407], strict=True)
+                )
+                run = Path(row["selected"])
+                calibration = json.loads((run / "calibration.json").read_text())
+                scene = json.loads((run / "room.json").read_text())
+                assert calibration["cameras"] == scene["settings"]["cameras"]
             assert result["seed"] == a.layout
             assert all(result["cubes"][c]["passed"] for c in wanted)
             import numpy as np
@@ -522,7 +726,11 @@ def main():
             "t=Repeat the previous trial on the same shoulder with three quarters of the previously requested signed displacement",
             "wait=1",
         )
-        click("aisle_task.revise")
+        click(
+            "aisle_task.revise"
+            if a.provider == "octos-deepseek"
+            else "aisle_task.revise_codex"
+        )
     else:
         click("aisle_task.reference")
     revision = done(

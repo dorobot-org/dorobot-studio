@@ -123,6 +123,34 @@ class InspectionTests(unittest.TestCase):
             feedback = worker.measured_feedback(run, self.profile)
             self.assertEqual(feedback["settled"], {"red": True, "blue": False})
             self.assertNotIn("final_position_m", json.dumps(feedback))
+            (run / "actions.jsonl").write_text(
+                "\n".join(
+                    json.dumps(row)
+                    for row in [
+                        dict(op="phase", tick=10, color="blue", name="carry"),
+                        dict(
+                            op="jaw observation",
+                            tick=20,
+                            color="blue",
+                            visible=False,
+                            private_pose=[1, 2, 3],
+                        ),
+                        dict(
+                            op="table observation",
+                            tick=30,
+                            distance_m=0.34,
+                            height_m=0.54,
+                            angle_rad=0.02,
+                        ),
+                    ]
+                )
+            )
+            feedback = worker.measured_feedback(run, self.profile)
+            self.assertEqual(
+                feedback["onboard_observations"]["blue"]["last_wrist_jaw"],
+                {"tick": 20, "cube_visible": False},
+            )
+            self.assertNotIn("private_pose", json.dumps(feedback))
 
     def test_octos_rejects_provider_fallback_or_invalid_schema(self):
         template = {"joint": "shoulder", "delta_rad": -0.06, "supported": True}

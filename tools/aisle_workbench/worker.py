@@ -103,6 +103,39 @@ def validate(plan, meta):
     )
 
 
+def onboard_transfer_feedback(log, requested):
+    """Summarize the controller's own sensor-derived readings for its outer author."""
+    observations = {}
+    color = None
+    if not log.is_file():
+        return observations
+    with log.open() as stream:
+        for line in stream:
+            row = json.loads(line)
+            if row.get("op") == "phase" and row.get("color") in requested:
+                color = row["color"]
+            if color is None or type(row.get("tick")) is not int:
+                continue
+            if (
+                row["op"] == "jaw observation"
+                and row.get("color") == color
+                and type(row.get("visible")) is bool
+            ):
+                observations.setdefault(color, {})["last_wrist_jaw"] = {
+                    "tick": row["tick"],
+                    "cube_visible": row["visible"],
+                }
+            elif row["op"] == "table observation" and all(
+                type(row.get(key)) in (int, float) and math.isfinite(row[key])
+                for key in ("distance_m", "height_m", "angle_rad")
+            ):
+                observations.setdefault(color, {})["last_rgb_table_rim"] = {
+                    key: row[key]
+                    for key in ("tick", "distance_m", "height_m", "angle_rad")
+                }
+    return observations
+
+
 def measured_feedback(path, meta):
     previous = json.loads((path / "result.json").read_text())
     parent = path / "controller.json"
@@ -130,7 +163,12 @@ def measured_feedback(path, meta):
                 "task_success",
                 "controller_hash",
             )
-        } | {"settled": verdicts}
+        } | {
+            "settled": verdicts,
+            "onboard_observations": onboard_transfer_feedback(
+                path / "actions.jsonl", previous["requested"]
+            ),
+        }
     if previous.get("kind") == "visual-approach":
         return {
             k: previous[k]
@@ -391,6 +429,9 @@ def simulate(args, meta):
         else "fixed-base, zero-gravity inspection"
     )
     standing = control.get("kind") == "standing-inspection"
+    impact = args.fixture == "impact"
+    if impact and not standing:
+        raise ValueError("Impact fixture requires a G1 standing controller")
     if standing:
         fixture = "floating G1, gravity and loaded feet"
     repo = Path(nx.__file__).resolve().parents[3]
@@ -408,11 +449,15 @@ def simulate(args, meta):
             adapter=nx.__name__,
             aisle_revision=revision,
             backend=engine.backend_name,
-            fixture_profile="standing-development"
-            if standing
-            else "living-room"
-            if mobile
-            else args.fixture,
+            fixture_profile=(
+                "standing-impact-development"
+                if impact
+                else (
+                    "standing-development"
+                    if standing
+                    else "living-room" if mobile else args.fixture
+                )
+            ),
             adapter_hash=digest(Path(nx.__file__)),
             nexus=version("dimforge-nexus3d"),
             fixture=fixture,
@@ -421,13 +466,40 @@ def simulate(args, meta):
     if standing:
         from g1_stand import simulate as standing_trial
 
-        return standing_trial(args.out, Path(meta["model"]), control) | dict(
+        return standing_trial(
+            args.out, Path(meta["model"]), control, impact=impact
+        ) | dict(
             robot=args.robot,
             controller_hash=hashlib.sha256(original).hexdigest(),
             model_hash=meta["model_hash"],
         )
     if mobile:
         sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+        room_objects = []
+        room_settings = None
+        room_path = getattr(args, "room_revision", None)
+        if room_path is not None:
+            from room_revision import load_revision
+            from run_rgb_approach import scene_recipe
+            import shutil
+
+            revision = load_revision(
+                room_path, args.room_hash, scene_recipe(args.seed), meta["model_hash"]
+            )
+            room_objects = revision["obstacles"]
+            room_settings = revision.get("settings")
+            for artifact in (
+                "room.json",
+                "reference-image",
+                "survey.json",
+                "room-preview.rgb",
+            ):
+                shutil.copyfile(room_path.with_name(artifact), args.out / artifact)
+            source = json.loads((args.out / "source.json").read_text())
+            save(
+                args.out / "source.json",
+                source | {"room_revision_sha256": args.room_hash},
+            )
         if control["kind"] == "table-transfer":
             from run_rgb_transfer import execute
 
@@ -436,6 +508,8 @@ def simulate(args, meta):
                 getattr(args, "seed", 0),
                 control["color_order"].split(","),
                 record=True,
+                room_objects=room_objects,
+                room_settings=room_settings,
             )
             return result | dict(
                 robot=args.robot,
@@ -443,11 +517,19 @@ def simulate(args, meta):
                 controller_hash=hashlib.sha256(original).hexdigest(),
                 model_hash=meta["model_hash"],
                 kind=control["kind"],
+                room_revision_sha256=getattr(args, "room_hash", None),
+                room_obstacles=[b["name"] for b in room_objects],
                 task_success=result["passed"],
             )
         from run_rgb_approach import trial
 
-        result = trial(args.out, getattr(args, "seed", 0), plan)
+        result = trial(
+            args.out,
+            getattr(args, "seed", 0),
+            plan,
+            room_objects=room_objects,
+            room_settings=room_settings,
+        )
         return dict(
             **result,
             robot=args.robot,
@@ -456,6 +538,8 @@ def simulate(args, meta):
             model_hash=meta["model_hash"],
             kind=control["kind"],
             task_success=result["passed"],
+            room_revision_sha256=getattr(args, "room_hash", None),
+            room_obstacles=[b["name"] for b in room_objects],
             color=plan["color"],
             standoff_m=plan["standoff_m"],
         )
@@ -545,7 +629,9 @@ def simulate(args, meta):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("operation", choices=["scene", "prepare", "run", "export"])
+    p.add_argument(
+        "operation", choices=["scene", "prepare", "run", "export", "room", "evaluate"]
+    )
     p.add_argument("--robot", choices=MODELS, required=True)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument(
@@ -557,8 +643,15 @@ def main():
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
+    p.add_argument("--archive", type=Path)
+    p.add_argument("--room-source", type=Path)
+    p.add_argument("--room-revision", type=Path)
+    p.add_argument("--room-hash")
+    p.add_argument("--room-edit")
     p.add_argument("--seed", type=int, default=0, help="Living-room layout seed")
-    p.add_argument("--fixture", choices=["standard", "compliant"], default="standard")
+    p.add_argument(
+        "--fixture", choices=["standard", "compliant", "impact"], default="standard"
+    )
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
     if args.seed < 0:
@@ -581,6 +674,41 @@ def main():
     else:
         args.out.mkdir(parents=True, exist_ok=False)
     try:
+        if args.operation == "evaluate":
+            if args.archive is None:
+                raise ValueError(
+                    "Choose an evaluation archive beside its preregistered suite.json"
+                )
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from nano_suite_evidence import verify
+
+            expected = digest(args.archive.with_name("suite.json"))
+            save(
+                args.out / "evaluation.json",
+                verify(args.archive, expected, include_trials=True),
+            )
+            return
+        if args.operation == "room":
+            if args.robot != "Nano":
+                raise ValueError("A floor survey requires the Nano living-room profile")
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from run_rgb_approach import scene_recipe
+            from room_revision import import_room
+
+            source = args.room_source
+            if source is None and args.room_revision is not None:
+                source = args.room_revision.with_name("survey.json")
+            if source is None:
+                raise ValueError("Choose a room survey JSON file")
+            import_room(
+                source.resolve(),
+                args.out,
+                scene_recipe(args.seed),
+                args.room_edit,
+                parent=args.room_hash if args.room_source is None else None,
+                model_sha=describe("Nano")["model_hash"],
+            )
+            return
         if args.operation == "export":
             from replay import export
 
