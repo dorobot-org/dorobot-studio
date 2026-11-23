@@ -1,17 +1,20 @@
-//! The `dviz_view` panel driven through its real widgets, headless (`Cx::new`
-//! without a window). Each test has its own leaked `&'static DvizSession`, its
+//! The `dviz_view` and `dviz_nav` panels driven through their real widgets,
+//! headless (`Cx::new` without a window). Each test has its own leaked `&'static DvizSession`, its
 //! own loopback port and topic prefix, and multicast off, as in `loopback.rs`.
 
 use dorobot_plugin_dviz::{
-    DvizGraphAction, DvizGraphWidgetRefExt, DvizPlugin, DvizSession, DvizViewPanel, SessionOptions,
-    ViewerState,
+    scene_bounds, DvizGraphAction, DvizGraphWidgetRefExt, DvizMap2DRef, DvizMap2DWidgetRefExt,
+    DvizNavPanel, DvizPlugin, DvizSession, DvizViewPanel, GridLayer, MapView, NavLayers, NavScene,
+    Pose2D, SessionOptions, ViewerState,
 };
 use dorobot_studio_core::api::mock::MockBackend;
 use dorobot_studio_plugin::*;
 use dviz_protocol::{serialize_message, MvizMessage};
+use dviz_protocol::{Grid2DHeader, GridKind};
 use serde_json::json;
 use std::{
     net::TcpListener,
+    sync::Arc,
     thread,
     time::{Duration, Instant},
 };
@@ -44,7 +47,7 @@ fn assert_no_script_errors(cx: &mut Cx) {
     });
 }
 
-fn sync(cx: &mut Cx, panel: &mut DvizViewPanel) {
+fn sync(cx: &mut Cx, panel: &mut dyn PluginPanel) {
     let backend = MockBackend::new();
     panel.sync(
         cx,
@@ -58,7 +61,7 @@ fn sync(cx: &mut Cx, panel: &mut DvizViewPanel) {
     );
 }
 
-fn click(cx: &mut Cx, panel: &mut DvizViewPanel, path: &[LiveId]) -> bool {
+fn click(cx: &mut Cx, panel: &mut dyn PluginPanel, path: &[LiveId]) -> bool {
     let button = panel.root().button(cx, path);
     assert!(!button.is_empty(), "no button at {path:?}");
     let actions = cx.capture_actions(|cx| {
@@ -76,7 +79,7 @@ fn fill(cx: &mut Cx, panel: &DvizViewPanel, path: &[LiveId], text: &str) {
     input.set_text(cx, text);
 }
 
-fn text(cx: &mut Cx, panel: &DvizViewPanel, path: &[LiveId]) -> String {
+fn text(cx: &mut Cx, panel: &dyn PluginPanel, path: &[LiveId]) -> String {
     let widget = panel.root().widget(cx, path);
     assert!(!widget.is_empty(), "no widget at {path:?}");
     widget.text()
@@ -602,4 +605,315 @@ fn graph_view_builds_without_script_errors_and_shows_node_detail_on_select() {
     assert!(list.visible() && !graph.visible() && !detail.visible());
     assert_no_script_errors(&mut cx);
     session.disconnect();
+}
+
+/// The instance `id` one draw holds, as its shader reads it.
+fn instance<const N: usize>(cx: &mut Cx, draw: &DrawVars, id: LiveId) -> [f32; N] {
+    let mut value = [f32::NAN; N];
+    draw.get_instance(cx, id, &mut value);
+    value
+}
+
+/// The status line's `stale` (1 grey, 0 ink).
+fn status_grey(cx: &mut Cx, panel: &DvizNavPanel) -> f32 {
+    let status = panel.root().widget(cx, ids!(status));
+    let label = status.borrow::<Label>().expect("status label");
+    instance::<1>(cx, &label.draw_text, live_id!(stale))[0]
+}
+
+fn new_nav_panel(cx: &mut Cx, session: &'static DvizSession) -> DvizNavPanel {
+    let panel = cx.with_vm(|vm| DvizNavPanel::create(vm, session));
+    assert_no_script_errors(cx);
+    panel
+}
+
+/// A message as the nav bridge sends it, with an optional binary part.
+fn nav_message(msg_type: &str, data: serde_json::Value, binary: Option<&[u8]>) -> Vec<u8> {
+    let header = MvizMessage {
+        msg_type: msg_type.to_string(),
+        timestamp: Some(1.0),
+        data,
+        format: None,
+        count: None,
+    };
+    serialize_message(&header, binary)
+}
+
+/// The world rectangle `view` shows, as (min, max).
+fn visible(view: &MapView) -> ([f64; 2], [f64; 2]) {
+    let top_left = view.screen_to_world([0.0, 0.0]);
+    let bottom_right = view.screen_to_world(view.size);
+    (
+        [top_left[0], bottom_right[1]],
+        [bottom_right[0], top_left[1]],
+    )
+}
+
+fn shows(view: &MapView, (min, max): ([f64; 2], [f64; 2])) -> bool {
+    let (seen_min, seen_max) = visible(view);
+    seen_min[0] <= min[0] && seen_min[1] <= min[1] && seen_max[0] >= max[0] && seen_max[1] >= max[1]
+}
+
+#[test]
+fn nav_panel_fit_and_follow_buttons_route() {
+    let (mut cx, session) = setup();
+    let mut panel = new_nav_panel(&mut cx, session);
+    let map = panel.root().dviz_map2_d(&cx, ids!(map));
+    assert!(!map.is_empty(), "no map widget");
+    let (peer, endpoint) = listening_peer();
+    let prefix = "dviz_nav_buttons";
+    session
+        .connect(SessionOptions {
+            mode: "peer".into(),
+            connect_endpoints: vec![endpoint],
+            listen_endpoints: Vec::new(),
+            prefix: prefix.into(),
+        })
+        .unwrap();
+    assert!(wait_until(SETTLE, || session.snapshot().connected));
+
+    // A 10 m x 5 m map from (-5, -2); the robot near its right edge.
+    let grid = matched_publisher(&peer, format!("{prefix}/tracer/map/grid"));
+    let header = json!({"width": 200, "height": 100, "resolution": 0.05,
+                        "origin": [-5.0, -2.0, 0.0], "kind": "occupancy"});
+    grid.put(nav_message("grid2d", header, Some(&vec![0u8; 200 * 100])))
+        .wait()
+        .unwrap();
+    let pose = matched_publisher(&peer, format!("{prefix}/tracer/robot/pose"));
+    pose.put(nav_message(
+        "transform3d",
+        json!({"translation": [4.0, 2.5, 0.0]}),
+        None,
+    ))
+    .wait()
+    .unwrap();
+    assert!(
+        wait_until(SETTLE, || {
+            let nav = session.snapshot().nav;
+            nav.grid.is_some() && nav.pose.is_some()
+        }),
+        "the map and pose never arrived"
+    );
+    sync(&mut cx, &mut panel);
+    let bounds = scene_bounds(&session.snapshot().nav).unwrap();
+    assert_eq!(
+        text(&mut cx, &panel, ids!(status)),
+        "Waiting for nav status"
+    );
+    assert_eq!(status_grey(&mut cx, &panel), 1.0);
+
+    // A fresh status: the line in ink.
+    let status = matched_publisher(&peer, format!("{prefix}/tracer/nav/status"));
+    let state = json!({"loc_ok": true, "loc_reason": "", "armed": false, "estop": false,
+                       "gate_reason": "disarmed", "v": 0.2});
+    status
+        .put(nav_message("status", state, None))
+        .wait()
+        .unwrap();
+    assert!(
+        wait_until(SETTLE, || session.snapshot().nav.status.is_some()),
+        "the status never arrived"
+    );
+    sync(&mut cx, &mut panel);
+    assert_eq!(
+        text(&mut cx, &panel, ids!(status)),
+        "Localization OK · Gate disarmed (disarmed) · 0.20 m/s"
+    );
+    assert_eq!(status_grey(&mut cx, &panel), 0.0);
+
+    // Follow: the robot in the middle, at the zoom the view had.
+    assert!(!map.follow());
+    assert!(click(&mut cx, &mut panel, ids!(follow)));
+    assert!(map.follow());
+    let view = map.view();
+    assert!(
+        (view.center[0] - 4.0).abs() < 1e-6 && (view.center[1] - 2.5).abs() < 1e-6,
+        "{view:?}"
+    );
+    assert!(
+        !shows(&view, bounds),
+        "the map's far side should be out of view: {view:?}"
+    );
+    sync(&mut cx, &mut panel);
+    assert!(map.follow(), "a sync keeps following");
+
+    // Fit map: the whole map in view, and no more following.
+    assert!(click(&mut cx, &mut panel, ids!(fit)));
+    assert!(!map.follow());
+    let view = map.view();
+    assert!(shows(&view, bounds), "{view:?} does not show {bounds:?}");
+    sync(&mut cx, &mut panel);
+    assert!(shows(&map.view(), bounds));
+
+    // The follow button switches following on and off again.
+    assert!(click(&mut cx, &mut panel, ids!(follow)));
+    assert!(map.follow());
+    assert!(click(&mut cx, &mut panel, ids!(follow)));
+    assert!(!map.follow());
+    assert_no_script_errors(&mut cx);
+    session.disconnect();
+}
+
+#[test]
+fn nav_panel_layer_toggles_reach_the_map() {
+    let (mut cx, session) = setup();
+    let mut panel = new_nav_panel(&mut cx, session);
+    sync(&mut cx, &mut panel);
+    let map = panel.root().dviz_map2_d(&cx, ids!(map));
+    assert_eq!(map.layers(), NavLayers::default());
+    let toggle = |cx: &mut Cx, panel: &mut DvizNavPanel, path: &[LiveId], on: bool| {
+        let check = panel.root().widget(cx, path);
+        assert!(!check.is_empty(), "no check box at {path:?}");
+        let actions = cx
+            .capture_actions(|cx| cx.widget_action(check.widget_uid(), CheckBoxAction::Change(on)));
+        assert!(panel.handle_actions(cx, &actions, &mut MockBackend::new()));
+    };
+    toggle(&mut cx, &mut panel, ids!(layer_scan), false);
+    toggle(&mut cx, &mut panel, ids!(layer_map), false);
+    assert_eq!(
+        map.layers(),
+        NavLayers {
+            scan: false,
+            map: false,
+            ..NavLayers::default()
+        }
+    );
+    toggle(&mut cx, &mut panel, ids!(layer_map), true);
+    assert!(map.layers().map && !map.layers().scan);
+    for path in [
+        ids!(layer_footprint),
+        ids!(layer_plan),
+        ids!(layer_trail),
+        ids!(layer_goal),
+    ] {
+        assert!(!panel.root().widget(&cx, path).is_empty(), "{path:?}");
+    }
+    let note = text(&mut cx, &panel, ids!(disclaimer));
+    assert_eq!(
+        note,
+        "Wi-Fi e-stop is not a safety device; switch the remote to RC."
+    );
+    assert_eq!(
+        text(&mut cx, &panel, ids!(status)),
+        "Waiting for nav status"
+    );
+    assert_eq!(status_grey(&mut cx, &panel), 1.0, "no status is shown grey");
+    // Each swatch in its layer's (default) colour.
+    for (path, rgb) in [
+        (ids!(swatch_plan), [0.0, 1.0, 0.0]),
+        (ids!(swatch_trail), [1.0, 140.0 / 255.0, 0.0]),
+        (ids!(swatch_scan), [1.0, 0.0, 0.0]),
+    ] {
+        let swatch = panel.root().widget(&cx, path);
+        let view = swatch.borrow::<View>().expect("swatch");
+        let color = instance::<4>(&mut cx, &view.draw_bg, live_id!(color));
+        assert_eq!(color, [rgb[0], rgb[1], rgb[2], 1.0], "{path:?}");
+    }
+    assert_no_script_errors(&mut cx);
+}
+
+fn grid_scene(cells: Vec<u8>, generation: u64) -> NavScene {
+    let header = Grid2DHeader {
+        width: 4,
+        height: 2,
+        resolution: 0.5,
+        origin: [0.0, 0.0, 0.0],
+        kind: GridKind::Occupancy,
+    };
+    NavScene {
+        grid: Some(GridLayer {
+            header,
+            cells: Arc::new(cells),
+            generation,
+        }),
+        pose: Some(Pose2D {
+            x: 1.0,
+            y: 0.5,
+            yaw: 0.0,
+        }),
+        updated: generation,
+        ..NavScene::default()
+    }
+}
+
+fn new_map(cx: &mut Cx) -> DvizMap2DRef {
+    let map = cx.with_vm(|vm| {
+        let value = script_eval!(vm, {
+            use mod.prelude.widgets.*
+            use mod.widgets.*
+            mod.widgets.DvizMap2D{}
+        });
+        WidgetRef::script_from_value(vm, value)
+    });
+    assert_no_script_errors(cx);
+    map.as_dviz_map2_d()
+}
+
+#[test]
+fn map_texture_is_rebuilt_only_when_the_grid_changes() {
+    let (mut cx, _) = setup();
+    let map = new_map(&mut cx);
+    assert!(!map.is_empty());
+    assert_eq!(map.texture_builds(), 0);
+    let first = grid_scene(vec![0; 8], 1);
+    map.set_scene(&mut cx, &first);
+    assert_eq!(map.texture_builds(), 1);
+    assert!(map.has_texture());
+    // The same scene again, and a newer scene with the same grid: no rebuild.
+    map.set_scene(&mut cx, &first);
+    let mut moved = first.clone();
+    moved.pose = Some(Pose2D {
+        x: 2.0,
+        y: 0.5,
+        yaw: 1.0,
+    });
+    moved.updated += 1;
+    map.set_scene(&mut cx, &moved);
+    assert_eq!(map.texture_builds(), 1);
+    // The bridge sends the static map again: a new generation, same cells.
+    map.set_scene(&mut cx, &grid_scene(vec![0; 8], 2));
+    assert_eq!(map.texture_builds(), 1);
+    // Different cells: rebuilt.
+    map.set_scene(&mut cx, &grid_scene(vec![100; 8], 3));
+    assert_eq!(map.texture_builds(), 2);
+    // A reconnect restarts the generation at 1 with another map: rebuilt,
+    // although the generation went back to one seen before.
+    map.set_scene(&mut cx, &grid_scene(vec![255; 8], 1));
+    assert_eq!(map.texture_builds(), 3);
+    // No grid: the texture goes.
+    map.set_scene(&mut cx, &NavScene::default());
+    assert!(!map.has_texture());
+    assert_no_script_errors(&mut cx);
+}
+
+#[test]
+fn map_view_fits_the_first_scene_until_moved() {
+    let (mut cx, _) = setup();
+    let map = new_map(&mut cx);
+    let scene = grid_scene(vec![0; 8], 1);
+    let bounds = scene_bounds(&scene).unwrap();
+    map.set_scene(&mut cx, &scene);
+    assert!(shows(&map.view(), bounds), "{:?}", map.view());
+    // Following puts the robot in the middle.
+    map.set_follow(&mut cx, true);
+    let view = map.view();
+    assert!((view.center[0] - 1.0).abs() < 1e-9 && (view.center[1] - 0.5).abs() < 1e-9);
+    let mut moved = scene.clone();
+    moved.pose = Some(Pose2D {
+        x: 1.5,
+        y: 0.75,
+        yaw: 0.0,
+    });
+    moved.updated += 1;
+    map.set_scene(&mut cx, &moved);
+    assert_eq!(map.view().center, [1.5, 0.75]);
+    map.fit(&mut cx);
+    assert!(!map.follow());
+    assert!(shows(&map.view(), bounds));
+    let hidden = NavLayers {
+        trail: false,
+        ..NavLayers::default()
+    };
+    map.set_layers(&mut cx, hidden);
+    assert_eq!(map.layers(), hidden);
 }

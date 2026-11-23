@@ -413,6 +413,113 @@ fn dviz_panel_keeps_its_theme_across_the_style_reload() {
 }
 
 #[test]
+fn nav_panel_registered_and_independent() {
+    let (mut cx, registry) = setup();
+    let dviz = registry
+        .descriptors()
+        .into_iter()
+        .find(|plugin| plugin.id == "dorobot.dviz")
+        .unwrap();
+    // The dviz plugin now has two panels: the P1 view and the 2D map.
+    let panels: Vec<_> = dviz.panels.iter().map(|p| (p.id, p.title)).collect();
+    assert_eq!(
+        panels,
+        [("dviz_view", "Visualization"), ("dviz_nav", "Navigation")]
+    );
+    assert!(dviz.panels.iter().all(|p| p.legacy_screen.is_none()));
+    assert_eq!(registry.panel_owner("dviz_nav"), Some("dorobot.dviz"));
+    let first = cx
+        .with_vm(|vm| registry.create_instance("dviz_nav", vm))
+        .unwrap();
+    let second = cx
+        .with_vm(|vm| registry.create_instance("dviz_nav", vm))
+        .unwrap();
+    assert_ne!(first.root().widget_uid(), second.root().widget_uid());
+    cx.with_vm(|vm| {
+        let errors = vm.take_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    });
+}
+
+/// Where the theme reached the nav panel: the legend card and its label, the
+/// heading, the status line, the disclaimer, the two buttons and the map.
+fn nav_theme(cx: &mut Cx, root: &WidgetRef) -> Vec<(&'static str, f32)> {
+    use dorobot_plugin_dviz::DvizMap2DWidgetRefExt;
+    let mut seen = Vec::new();
+    let legend = root.widget(cx, ids!(legend));
+    seen.push((
+        "legend card",
+        light_of(cx, &legend.borrow::<View>().unwrap().draw_bg),
+    ));
+    for (part, path) in [
+        ("heading", ids!(heading)),
+        ("status line", ids!(status)),
+        ("disclaimer", ids!(disclaimer)),
+        ("legend label", ids!(legend_label)),
+    ] {
+        let label = root.widget(cx, path);
+        let label = label
+            .borrow::<Label>()
+            .unwrap_or_else(|| panic!("no label {part}"));
+        seen.push((part, light_of(cx, &label.draw_text)));
+    }
+    for (part, path) in [("fit button", ids!(fit)), ("follow button", ids!(follow))] {
+        let button = root.widget(cx, path);
+        let button = button.borrow::<Button>().unwrap();
+        seen.push((part, light_of(cx, &button.draw_bg)));
+        seen.push((part, light_of(cx, &button.draw_text)));
+    }
+    let map = root.dviz_map2_d(cx, ids!(map));
+    seen.push(("map", map.light()));
+    seen
+}
+
+/// Like the dviz view: the theme is on every part after a switch, and again
+/// after the style reload that replays the panel's source.
+#[test]
+fn nav_panel_syncs_in_both_themes() {
+    let (mut cx, mut registry) = setup();
+    let pages = cx.with_vm(|vm| {
+        let value = script_eval!(vm, { use mod.prelude.widgets.* use mod.widgets.* View{} });
+        WidgetRef::script_from_value(vm, value)
+    });
+    registry.mount(&mut cx, &pages).unwrap();
+    registry.select("dviz_nav").unwrap();
+    let root = pages.widget(&cx, ids!(dviz_nav));
+    assert!(!root.is_empty());
+    let backend = MockBackend::new();
+    let context = PanelContext {
+        backend: &backend,
+        rig_editing: false,
+        show_help: false,
+        show_details: false,
+        live_controls: false,
+    };
+    for light in [1.0, 0.0, 1.0] {
+        dorobot_flex::ui::frame::set_light_mode(light);
+        registry.sync(&mut cx, &context);
+        for (part, value) in nav_theme(&mut cx, &root) {
+            assert_eq!(value, light as f32, "{part} at light {light}");
+        }
+        cx.reload_generation += 1;
+        registry.reapply(&mut cx);
+        registry.sync(&mut cx, &context);
+        for (part, value) in nav_theme(&mut cx, &root) {
+            assert_eq!(
+                value, light as f32,
+                "{part} at light {light} after the reload"
+            );
+        }
+        let status = root.widget(&cx, ids!(status)).text();
+        assert_eq!(status, "Waiting for nav status");
+    }
+    cx.with_vm(|vm| {
+        let errors = vm.take_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    });
+}
+
+#[test]
 fn plugin_tabs_follow_navigation_and_group_entries_restore_the_last_tab() {
     use dorobot_flex::api::Screen;
     let (mut cx, mut registry) = setup();

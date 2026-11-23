@@ -3,7 +3,9 @@ use dorobot_studio_plugin::*;
 
 pub mod fake;
 mod graph;
+mod map2d;
 mod map_view;
+mod nav_panel;
 mod nav_scene;
 #[cfg(feature = "rerun")]
 mod rerun_sink;
@@ -15,7 +17,9 @@ pub use graph::{
     hit_test, layout, DvizGraph, DvizGraphAction, DvizGraphRef, DvizGraphWidgetRefExt, GraphLayout,
     Point,
 };
-pub use map_view::grid_rgba;
+pub use map2d::{DvizMap2D, DvizMap2DRef, DvizMap2DWidgetRefExt};
+pub use map_view::{grid_rgba, layer_color, scene_bounds, MapView, NavLayers};
+pub use nav_panel::{nav_status_text, status_is_stale, DvizNavPanel};
 pub use nav_scene::{nav_layer, GridLayer, NavLayer, NavScene, Pose2D};
 #[cfg(feature = "rerun")]
 pub use rerun_sink::{RerunSink, ViewerOptions};
@@ -58,22 +62,34 @@ impl StudioPlugin for DvizPlugin {
             id: "dorobot.dviz",
             title: "3D visualization",
             api_version: API_VERSION,
-            panels: &[PanelDescriptor {
-                id: "dviz_view",
-                title: "Visualization",
-                legacy_screen: None,
-            }],
+            panels: &[
+                PanelDescriptor {
+                    id: "dviz_view",
+                    title: "Visualization",
+                    legacy_screen: None,
+                },
+                PanelDescriptor {
+                    id: "dviz_nav",
+                    title: "Navigation",
+                    legacy_screen: None,
+                },
+            ],
         }
     }
 
+    /// The panels' own widgets; the nav panel's build on the view panel's
+    /// themed text and on the map, so those come first.
     fn register(&self, vm: &mut ScriptVm) {
         graph::script_mod(vm);
         view_panel::script_mod(vm);
+        map2d::script_mod(vm);
+        nav_panel::script_mod(vm);
     }
 
     fn create(&self, panel: &str, vm: &mut ScriptVm) -> Result<Box<dyn PluginPanel>, String> {
         match panel {
             "dviz_view" => Ok(Box::new(DvizViewPanel::create(vm, DvizSession::global()))),
+            "dviz_nav" => Ok(Box::new(DvizNavPanel::create(vm, DvizSession::global()))),
             _ => Err(format!("Unknown dviz panel {panel}")),
         }
     }
