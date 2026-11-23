@@ -248,7 +248,23 @@ def octos_controller(prompt, schema, directory, output):
     actual = envelope.get("model")
     if actual != model:
         raise ValueError("Octos did not report the requested DeepSeek model")
-    plan = json.loads(envelope["text"])
+    raw = envelope.get("text")
+    if not isinstance(raw, str):
+        raise ValueError("Octos returned no text for the requested DeepSeek controller")
+    save(output / "provider-response.json", {"model": actual, "text": raw})
+    lines = raw.strip().splitlines()
+    if (
+        len(lines) >= 3
+        and lines[0].strip().lower() in ("```", "```json")
+        and lines[-1].strip() == "```"
+    ):
+        raw = "\n".join(lines[1:-1])
+    try:
+        plan = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            "DeepSeek returned an unreadable controller. The response is saved in provider-response.json."
+        ) from exc
     if (
         not isinstance(plan, dict)
         or set(plan) != set(schema["required"])

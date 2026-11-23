@@ -152,6 +152,40 @@ class InspectionTests(unittest.TestCase):
             )
             self.assertNotIn("private_pose", json.dumps(feedback))
 
+    def test_octos_accepts_single_fenced_object_and_retains_malformed_reply(self):
+        template = {"supported": True, "delta_rad": 0.1, "joint": "shoulder"}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            for valid, reply in [
+                (True, "```json\n" + json.dumps(template) + "\n```"),
+                (False, "No plan issued."),
+            ]:
+                response = json.dumps({"model": "deepseek-v4-flash", "text": reply})
+                with patch(
+                    "worker.subprocess.run",
+                    return_value=subprocess.CompletedProcess([], 0, stdout=response),
+                ):
+                    if valid:
+                        worker.octos_controller(
+                            "task", {"required": list(template)}, path, path
+                        )
+                        self.assertEqual(
+                            json.loads((path / "reply.json").read_text()), template
+                        )
+                    else:
+                        with self.assertRaisesRegex(
+                            ValueError, "unreadable controller"
+                        ):
+                            worker.octos_controller(
+                                "task", {"required": list(template)}, path, path
+                            )
+                    self.assertEqual(
+                        json.loads((path / "provider-response.json").read_text())[
+                            "text"
+                        ],
+                        reply,
+                    )
+
     def test_octos_rejects_provider_fallback_or_invalid_schema(self):
         template = {"joint": "shoulder", "delta_rad": -0.06, "supported": True}
         schema = {"required": list(template)}
