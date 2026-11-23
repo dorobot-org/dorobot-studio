@@ -24,7 +24,8 @@ def impact_parameters(values):
     return values
 
 
-def simulate(out, model, plan, impact=False, parameters=None):
+def simulate(out, model, plan, impact=False, parameters=None, reach_weights=None):
+    from g1_reach_checkpoint import features
     from aisle.kinematics import load_urdf_chain
     from aisle.sim import nexus_backend as nx
 
@@ -180,12 +181,14 @@ def simulate(out, model, plan, impact=False, parameters=None):
                     wrist_start
                     + nx.quat_wxyz_to_matrix(initial_root_quat) @ relative_delta
                 )
-            reference = initial_angle + plan["delta_rad"] * min(
-                1, (i - warmup + 1) * dt
-            )
-            correction = float(
-                np.clip(correction + 1.5 * dt * (reference - angle), -0.04, 0.04)
-            )
+            phase = min(1.0, (i - warmup + 1) * dt)
+            reference = initial_angle + plan["delta_rad"] * phase
+            error = reference - angle
+            if reach_weights is None:
+                correction += 1.5 * dt * error
+            else:
+                correction = reach_weights @ features(phase, error)
+            correction = float(np.clip(correction, -0.04, 0.04))
             desired[shoulder] = reference + correction
         targets += np.clip(np.clip(desired, lo, hi) - targets, -speed * dt, speed * dt)
         if block is not None and i == warmup + launch_at:

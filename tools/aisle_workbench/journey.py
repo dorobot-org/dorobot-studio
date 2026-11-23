@@ -33,6 +33,7 @@ def main():
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     p.add_argument("--impact", action="store_true")
+    p.add_argument("--train-reach", action="store_true")
     p.add_argument("--survey", type=Path)
     p.add_argument("--evaluation", type=Path)
     p.add_argument("--handoff", action="store_true")
@@ -289,6 +290,12 @@ def main():
                 fixture=row["result"]["fixture"],
                 outcome=row["result"]["task_success"],
             )
+            if a.train_reach:
+                assert (
+                    row["result"]["reach_checkpoint"]
+                    == row["controller"]["reach_checkpoint"]
+                )
+                checks[-1]["reach_checkpoint"] = row["result"]["reach_checkpoint"]
             if a.survey:
                 assert row["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
                 assert row["result"]["room_revision_sha256"]
@@ -445,6 +452,37 @@ def main():
                 )
                 np.testing.assert_allclose(
                     table["observation.state"], motors["q_after"][19::20], atol=1e-7
+                )
+            if a.train_reach:
+                click("aisle_evidence.train_reach")
+                trained = done(
+                    lambda w: not w["busy"] and w["controller"].get("reach_checkpoint"),
+                    "G1 shoulder correction trained from exported dataset",
+                )
+                checkpoint = trained["controller"]["reach_checkpoint"]
+                assert (
+                    trained["controller"]["parent_controller_sha256"]
+                    == result["controller_hash"]
+                )
+                page("run")
+                click("aisle_run.start_run")
+                learned = done(
+                    lambda w: not w["busy"]
+                    and w["result"].get("reach_checkpoint") == checkpoint,
+                    "G1 checkpoint evaluated in Nexus",
+                    180,
+                )
+                assert learned["result"]["task_success"]
+                assert (
+                    learned["result"]["training_dataset"]
+                    == trained["controller"]["training_dataset"]
+                )
+                checks[-1]["measured"] = learned["result"]
+                page("evidence")
+                grab("standing-checkpoint")
+                click("aisle_evidence.previous")
+                done(
+                    lambda w: w["selected"] == str(trial), "Teacher comparison reopened"
                 )
             click("aisle_evidence.replay")
             wait(
