@@ -557,9 +557,12 @@ def main():
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
+    p.add_argument("--seed", type=int, default=0, help="Living-room layout seed")
     p.add_argument("--fixture", choices=["standard", "compliant"], default="standard")
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
+    if args.seed < 0:
+        p.error("Scene seed must be nonnegative")
     args.out = args.out.resolve()
     if args.reserved:
         # Studio alone holds the write end. A separate observer can terminate the

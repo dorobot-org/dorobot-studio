@@ -560,5 +560,6 @@
     "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": "e90b224cbe8b9a5cbb2a01d1d93f4ba4dfdb31535714be464ea1d0c1916c7d48",
     "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": "027c41890be312cb85ea2b25793ade76da8dd65b5aa83264e104fdc9cda51f43"
   },
-  "preview_sha256": "40537764d342fa4bd3044d491faaf344f2c60e389ed1371a1440f79958d63435"
+  "preview_sha256": "40537764d342fa4bd3044d491faaf344f2c60e389ed1371a1440f79958d63435",
+  "archive_sha256": "fced39864286d96d0c0898e2ff30267fb01e69d0eb19200bb1eaf338fa08c240"
 }

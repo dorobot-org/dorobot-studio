@@ -107,6 +107,9 @@ script_mod! {
             inspector := Card{width:285 height:Fill Section{text:"Simulation fixture"} fixture_kind := Body{}
                 Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
                 fixture := Body{}
+                layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
+                    Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
+                }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
             }
         }
@@ -402,6 +405,16 @@ impl PluginPanel for Panel {
                         "Fixed base · zero gravity"
                     },
                 );
+                self.root.widget(cx, ids!(layouts)).set_visible(cx, mobile);
+                for (id, seed) in [
+                    (ids!(layout0) as &[LiveId], 0),
+                    (ids!(layout1), 1),
+                    (ids!(layout2), 2),
+                ] {
+                    self.root
+                        .button(cx, id)
+                        .set_enabled(cx, !w.busy() && w.layout_seed != seed);
+                }
                 for id in [ids!(standard), ids!(compliant)] {
                     self.root
                         .widget(cx, id)
@@ -485,6 +498,7 @@ impl PluginPanel for Panel {
                                 .unwrap_or_default()
                         ));
                     }
+                    lines.push(format!("Living-room layout {}", w.evidence["seed"]));
                     lines.push(format!(
                         "Wheel support {}/{} steps · {} furniture contact pairs",
                         w.evidence["wheel_supported_ticks"],
@@ -615,6 +629,9 @@ impl PluginPanel for Panel {
             (ids!(nano) as &[LiveId], Action::Select(Robot::Nano)),
             (ids!(g1), Action::Select(Robot::G1)),
             (ids!(inspect), Action::Inspect),
+            (ids!(layout0), Action::Layout(0)),
+            (ids!(layout1), Action::Layout(1)),
+            (ids!(layout2), Action::Layout(2)),
             (ids!(standard), Action::Fixture(false)),
             (ids!(compliant), Action::Fixture(true)),
             (ids!(older), Action::OlderPlan),

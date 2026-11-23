@@ -31,6 +31,7 @@ def main():
     )
     p.add_argument("--standing", action="store_true")
     p.add_argument("--transfer", choices=["red", "three"])
+    p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
@@ -153,6 +154,16 @@ def main():
         ) and row["controller"]["provider"] == a.provider
         grab(label + "-task")
         page("scene")
+        if a.transfer:
+            for seed in [(a.layout + 1) % 3, a.layout]:
+                if report()["state"]["aisle"]["layout_seed"] == seed:
+                    continue
+                click("aisle_scene.layout" + str(seed))
+                done(
+                    lambda w: w["layout_seed"] == seed,
+                    f"Living-room layout {seed} selected",
+                )
+
         click("aisle_scene.inspect")
         done(
             lambda w: not w["busy"] and w["scene_joints"] == (29 if a.standing else 17),
@@ -186,6 +197,7 @@ def main():
             assert result["both_feet_loaded_steps"] == result["steps"] == 2000
             assert abs(result["measured_delta"] + 0.08) < 0.012
         else:
+            assert result["seed"] == a.layout
             assert all(result["cubes"][c]["passed"] for c in wanted)
             import numpy as np
             import pyarrow.parquet as pq

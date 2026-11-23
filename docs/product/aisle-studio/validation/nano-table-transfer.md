@@ -1,6 +1,6 @@
 # Move floor cubes to the coffee table with DeepSeek and Octos
 
-Open **AISLE Studio → Task → Adora Nano**. Enter “Move all three floor cubes onto the coffee table in red, green, blue order” and choose **DeepSeek via Octos**. To run one cube, enter “Move the red floor cube onto the coffee table.” Read the order and model on Task, inspect the grounded living room on Scene, then select **Start run**. Run shows the live head camera and current phase. Evidence lists a verdict for each requested cube and the number of physics steps with tabletop support during the final second. Open the run folder for the three onboard views at each phase and the independent evaluator measurements.
+Open **AISLE Studio → Task → Adora Nano**. Enter “Move all three floor cubes onto the coffee table in red, green, blue order” and choose **DeepSeek via Octos**. To run one cube, enter “Move the red floor cube onto the coffee table.” Read the order and model on Task. On Scene choose a development layout (0, 1 or 2) and inspect the Nano model. Then select **Run → Start run**. Evidence records the selected layout. Run shows the live head camera and current phase. Evidence lists a verdict for each requested cube and the number of physics steps with tabletop support during the final second. Open the run folder for the three onboard views at each phase and the independent evaluator measurements.
 
 Configure the [Studio runtime](../README.md) first. The local arm solver also requires SciPy. The tested Octos installation uses a stored DeepSeek profile. Substitute your profile name in the following commands.
 
@@ -35,7 +35,7 @@ Build Studio and the pinned Makepad remote client using the [workbench instructi
   --octos-deepseek --transfer three --out /tmp/aisle-nano-three
 ```
 
-The driver types the instruction, selects the provider, inspects the scene, starts the run, observes two live updates and opens Evidence. A failed task produces a nonzero exit and retains its measurements. After a successful run the driver restarts Studio and checks that Evidence restores the verdict. For a matched Codex run, select **Ask Codex** in Task or use `--codex` in the verification command.
+The driver types the instruction, selects the provider, inspects the scene, starts the run, observes two live updates and opens Evidence. A failed task produces a nonzero exit and retains its measurements. After a successful run the driver restarts Studio and checks that Evidence restores the verdict. Add `--layout 1` or `--layout 2` to test another starting arrangement. For a matched Codex run, select **Ask Codex** in Task or use `--codex` in the verification command.
 
 ## Matched provider runs
 
@@ -64,7 +64,7 @@ On a second development layout, the original release motion left green resting o
 
 [Watch the complete run from the three onboard cameras at 6× speed](nano-table-transfer.mp4) · [Download the LeRobot v2.1 episode](nano-table-transfer-lerobot.zip) · [Export manifest, file hashes and native checks](nano-table-transfer-recording.json)
 
-On Evidence, choose **Export episode**, then **Open in Replay**. To open the published example independently, unpack the ZIP and open its `dataset` directory in Studio. The episode contains 1,365 synchronized 480 × 360 frames from each of the head, left wrist and right wrist cameras at 5 Hz. Each Parquet row carries all 17 measured joint positions and their commanded positions in radians. The command includes the integrated wheel position targets sent to the motors. Dataset time zero is the first recorded sample, at simulation step 20. The final sample is step 27,300. The separate policy log records its irregular observation and action times.
+On Evidence, choose **Export episode**, then **Open in Replay**. To open the published example independently, unpack the ZIP and open its `dataset` directory in Studio. The episode contains 1,365 synchronized 480 × 360 frames from each of the head, left wrist and right wrist cameras at 5 Hz. Each Parquet row carries all 17 measured joint positions and their commanded positions in radians. The command includes the integrated wheel position targets sent to the motors. Dataset time zero is the first recorded sample, at simulation step 20. The final sample is step 27,300. The trial’s separate `actions.jsonl` records its irregular policy observation and action times.
 
 Native instrumentation checked the decoded frame count and dimensions of each MP4, every recorded state and action against Parquet and all sample timestamps. It then opened the episode in the existing Studio Replay page. Camera calibration, controller identity, model hashes and the physical verdict accompany the exported episode.
 

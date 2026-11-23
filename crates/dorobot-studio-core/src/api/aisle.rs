@@ -54,6 +54,7 @@ pub enum Action {
     },
     Inspect,
     Fixture(bool),
+    Layout(u8),
     OlderPlan,
     NewerPlan,
     Run,
@@ -108,6 +109,7 @@ pub struct Workbench {
     pub live: Option<PathBuf>,
     pub revisions: Vec<PathBuf>,
     pub compliant: bool,
+    pub layout_seed: u8,
     pub comparison: Option<f64>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
@@ -137,6 +139,7 @@ impl Workbench {
             live: None,
             revisions: Vec::new(),
             compliant: false,
+            layout_seed: 0,
             comparison: None,
             dataset: None,
             exports: Default::default(),
@@ -353,6 +356,7 @@ impl Workbench {
             cmd.args(["--provider", planner.name(), "--task", &self.task]);
         }
         if op == "run" {
+            cmd.arg("--seed").arg(self.layout_seed.to_string());
             cmd.args([
                 "--fixture",
                 if self.compliant {
@@ -446,6 +450,11 @@ impl Workbench {
                 self.compliant = value;
                 Ok(())
             }
+            Action::Layout(seed @ 0..=2) => {
+                self.layout_seed = seed;
+                Ok(())
+            }
+            Action::Layout(_) => Err(io::Error::other("Select a development layout from 0 to 2")),
             Action::OlderPlan | Action::NewerPlan => {
                 if let Some(i) = self.revision_index() {
                     let index = if matches!(action, Action::OlderPlan) {

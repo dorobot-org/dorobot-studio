@@ -37,7 +37,10 @@ def main():
         choices=["red", "three"],
         help="Run and score a Nano floor-to-table journey",
     )
+    parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     args = parser.parse_args()
+    if args.layout and not args.transfer:
+        parser.error("--layout requires a Nano transfer scenario")
     if (args.standing or args.transfer) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     output = args.out.resolve()
@@ -92,7 +95,9 @@ def main():
                 if args.standing:
                     check.append("--standing")
                 if args.transfer:
-                    check.extend(["--transfer", args.transfer])
+                    check.extend(
+                        ["--transfer", args.transfer, "--layout", str(args.layout)]
+                    )
                 if stage == "recovery":
                     check.append("--recover")
                 else:
