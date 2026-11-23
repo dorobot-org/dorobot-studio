@@ -1,0 +1,49 @@
+{
+  "backend": "offscreen",
+  "requested_size": "1024x768",
+  "provider": "codex",
+  "native_binary_sha256": "05224e71e0fedeb4d222e6c3eb6459c62aea387b3f4d24ae2bd9a0ae0bb0a127",
+  "sessions": [
+    {
+      "stage": "journey",
+      "pid": 5073,
+      "observed_dark": true,
+      "windows": [
+        [
+          1024,
+          768
+        ]
+      ]
+    },
+    {
+      "stage": "recovery",
+      "pid": 10367,
+      "observed_dark": true,
+      "windows": [
+        [
+          1024,
+          768
+        ]
+      ]
+    }
+  ],
+  "trials": [
+    "1795462587459213000-Nano-run",
+    "1795462599179266000-G1-run",
+    "1795462608822009000-G1-run",
+    "1795462611443023000-G1-run"
+  ],
+  "files": {
+    "G1-evidence.png": "ba6ee586f6b6c2f6cdd4b0923f18996747ee11b900123b272ce9ac80b0974c0e",
+    "G1-replay.png": "e73f962d43e788a2ab65deca92c22d73f7a15d87dab771703c23c23e64dc63aa",
+    "G1-run.png": "ec49f8e09b83352cfc0c778ba0a77fa14fd3a98a7888a4fd88114324e2c5ea4e",
+    "G1-scene.png": "be073cbb3b76cfac783f0178ecfb822220d829770c5b7acb691ac8b98d0c42a4",
+    "G1-task.png": "67ff4f1104396b918afddd4001af0b5a5e580d5057b03af70a940f0ad1dfbaa7",
+    "Nano-evidence.png": "9a9d7e6d5502985c0ef5156ebd5ca289eda9c5d997d6e4bc39fc32f88df42b31",
+    "Nano-run.png": "730927c7c36a43474a6f903bf392bea2de087025ae5bd33a7dc26a3aa965ce36",
+    "Nano-scene.png": "2181ee8af9798b534ad3e168db2e3f1b83424823a7ca25136c8e1ca835dbda4f",
+    "Nano-task.png": "f1f2d3b072c39f67f51053cff86283f6bb3be8439f511a2af8f2fb2ad97a4691",
+    "journey.json": "567becede5cc7e16813799b428a5fb2da1408a9be0cc0b28af5309b55e26cb35",
+    "recovery.json": "b202d1dc8e7cf482ab9eb8610a56060b887dd24477ef8438532dbb4fff6c1f12"
+  }
+}

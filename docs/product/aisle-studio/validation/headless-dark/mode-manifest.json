@@ -1,0 +1,40 @@
+{
+  "backend": "headless",
+  "requested_size": "1024x768",
+  "provider": "codex",
+  "native_binary_sha256": "05224e71e0fedeb4d222e6c3eb6459c62aea387b3f4d24ae2bd9a0ae0bb0a127",
+  "sessions": [
+    {
+      "stage": "journey",
+      "pid": 5074,
+      "observed_dark": true,
+      "windows": [
+        [
+          1024,
+          768
+        ]
+      ]
+    },
+    {
+      "stage": "recovery",
+      "pid": 9598,
+      "observed_dark": true,
+      "windows": [
+        [
+          1024,
+          768
+        ]
+      ]
+    }
+  ],
+  "trials": [
+    "1795462586714174000-Nano-run",
+    "1795462596397158000-G1-run",
+    "1795462605390272000-G1-run",
+    "1795462607944314000-G1-run"
+  ],
+  "files": {
+    "journey.json": "567becede5cc7e16813799b428a5fb2da1408a9be0cc0b28af5309b55e26cb35",
+    "recovery.json": "b202d1dc8e7cf482ab9eb8610a56060b887dd24477ef8438532dbb4fff6c1f12"
+  }
+}
