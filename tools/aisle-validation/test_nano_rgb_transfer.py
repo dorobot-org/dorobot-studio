@@ -54,6 +54,32 @@ class TransferTests(unittest.TestCase):
             controller.reach([1.0, 0.0, 0.0], 60, 3, supported=True)
         self.assertEqual(sent, [])
 
+    def test_unreachable_open_jaw_withdrawal_sends_no_motor_targets(self):
+        controller = Controller.__new__(Controller)
+        controller.names = ["arm", "gripper"]
+        controller.grip = "gripper"
+        controller.targets = np.array([0.0, 0.84])
+        commands = []
+
+        def solve(point, state):
+            if state[1] < 0 and point[0] < 0.39:
+                raise ValueError("open jaw path is unreachable")
+            return np.array([point[0], state[1]])
+
+        controller.model = SimpleNamespace(
+            arm=["arm"],
+            grip=lambda q: (np.array([q[0], 0, 0]), None),
+            solve_supported_grasp=solve,
+        )
+        controller.joints = lambda cmd, steps: commands.append(cmd)
+        with self.assertRaisesRegex(ValueError, "open jaw"):
+            controller.release_paths(np.array([0.4, 0.0]), 0.55)
+        self.assertEqual(commands, [])
+        np.testing.assert_array_equal(controller.targets, [0.0, 0.84])
+        incoming, outgoing = controller.release_paths(np.array([0.5, 0.0]), 0.55)
+        self.assertEqual((len(incoming), len(outgoing)), (12, 9))
+        self.assertEqual(commands, [])
+
     def test_rotated_finger_box_gives_conservative_gap(self):
         basis = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
         pos = np.array([0.4, -0.1, 1])

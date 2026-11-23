@@ -1,0 +1,418 @@
+{
+  "disclosed-layout-regression": {
+    "manifest_sha256": "8e21bb7c21275caa5d9ac7da0094fea09a32f739a6eae8dcf24c5ace63015419",
+    "split": "development",
+    "cases": 8,
+    "successes": 3,
+    "verified": 8,
+    "verified_guard_bypasses": 0,
+    "qualified": false,
+    "trials": [
+      {
+        "seed": 357419639,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 23224,
+        "motor_sha256": "0711bd3f385d396c2ced9671a2c0c7d8212e491ad88d6c39594391ff3da538d0",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 3681886153,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 23604,
+        "motor_sha256": "baa5ff5997564a8285562a777155b85b0e588e3030d47b9ecc37978974e58362",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 2084400044,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 23544,
+        "motor_sha256": "5768b92d680c220ebee2edc66a58cb26610968de6fe60d985b9f4c0ada4a100f",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 2980733694,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 21250,
+        "motor_sha256": "1fbd44aa0dda7262e49256d6156fa3136ec87d9b7dd18a4a202ced2f2095419e",
+        "error": "model.UnreachableGrasp: No level, upward-supported grasp reaches [0.3240143011687104, 0.07507163104594587, 0.637399613180544]",
+        "robot_furniture_contacts": {},
+        "failed_cubes": [
+          "blue"
+        ]
+      },
+      {
+        "seed": 877750787,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 28122,
+        "motor_sha256": "9598dd110e89ac4cf99735e61e538ade70a5558be30ca203855dbfc8d8508010",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 1168469256,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 3620,
+        "motor_sha256": "0ac67d5d1f3c030b8195ada74c0c7380e04df69de7be8366ac5a674da0da8a6c",
+        "error": "ValueError: Could not align the cube with the left arm",
+        "robot_furniture_contacts": {
+          "locate/left_finger_b/coffee_table": 1,
+          "locate/left_finger_a/coffee_table": 3299
+        },
+        "failed_cubes": [
+          "red",
+          "green",
+          "blue"
+        ]
+      },
+      {
+        "seed": 2681883464,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 13682,
+        "motor_sha256": "2b807319db38739c5b516f25161c210475e764da1c27b3a22866ba22dd1ee620",
+        "error": "model.UnreachableGrasp: No level, upward-supported grasp reaches [0.3257133981690622, 0.07505849192313628, 0.6379706079653042]",
+        "robot_furniture_contacts": {},
+        "failed_cubes": [
+          "green",
+          "blue"
+        ]
+      },
+      {
+        "seed": 918119721,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 22904,
+        "motor_sha256": "197aa999275e2e39d3fd46eece9704502de63b020994d92509141c2b35677681",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      }
+    ]
+  },
+  "smooth-drive-development": {
+    "manifest_sha256": "b957bd5a286d692ccba787fe6313183057681231f58e8a14965ebfb0fa8b73b3",
+    "split": "development",
+    "cases": 4,
+    "successes": 1,
+    "verified": 4,
+    "verified_guard_bypasses": 0,
+    "qualified": false,
+    "trials": [
+      {
+        "seed": 357419639,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 27742,
+        "motor_sha256": "4b1c3faa833d118ee20a311f4d3d103ed970696a436855918ab065621077f849",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 3681886153,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 23744,
+        "motor_sha256": "4ee39c08b4bd4c451e648b6d92e03bbd9290194bb81aab57c0fada5fc9334d74",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": [
+          "blue"
+        ]
+      },
+      {
+        "seed": 0,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 31110,
+        "motor_sha256": "08b02d0e163077c10226e93b459640e00afdc0fb46158be5c7af0d89d572f126",
+        "error": "ValueError: Lost blue during two transport attempts",
+        "robot_furniture_contacts": {},
+        "failed_cubes": [
+          "blue"
+        ]
+      },
+      {
+        "seed": 2,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 29462,
+        "motor_sha256": "2752a39a887851bd22f44342fe43a1c79acbe0e28c58a7789596653f4a5a42a9",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      }
+    ]
+  },
+  "release-path-development": {
+    "manifest_sha256": "dd48427973eaa4300581afc30a3ef38779ba4f0fad15909d323f2c918025b6ca",
+    "split": "development",
+    "cases": 4,
+    "successes": 3,
+    "verified": 4,
+    "verified_guard_bypasses": 0,
+    "qualified": false,
+    "trials": [
+      {
+        "seed": 3383977070,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 23384,
+        "motor_sha256": "e216839d66a97985ea30ad8ac64a99d31332cb5e9891ec78c367195a9a06dae9",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 1087931936,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 23564,
+        "motor_sha256": "aba358cd73a161d53f4661784350189efdc9e8a8f7eda2b7dd550e08ff22f9e2",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 2768641056,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 27662,
+        "motor_sha256": "5522c6084cba85b972cb7f103869fcba2288bc369bc6c8873ab529bceddf1afc",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 214720732,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 24424,
+        "motor_sha256": "c7adb22a516e9641c9b1620ca2321e2b58e1633cc5f2c8510c07ee65c3fe7b21",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      }
+    ]
+  },
+  "clearance-path-only-dev": {
+    "manifest_sha256": "43e1c69656db7b234044252705ddd2e20518c9d70337d6f5dab88b5c14ed13b6",
+    "split": "development",
+    "cases": 6,
+    "successes": 5,
+    "verified": 6,
+    "verified_guard_bypasses": 0,
+    "qualified": false,
+    "trials": [
+      {
+        "seed": 3383977070,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 23364,
+        "motor_sha256": "1e5e5c305ce45e620d59b39108112ad0b96a443fb4533b16db6be547410d6d5e",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 1087931936,
+        "passed": false,
+        "verified": true,
+        "physics_ticks": 23704,
+        "motor_sha256": "e66a98b5487c3b90cab1e2493856dfc2e3f340e40e1e6aae5356602d299c5b2e",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": [
+          "green"
+        ]
+      },
+      {
+        "seed": 2768641056,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 33120,
+        "motor_sha256": "f2372f33cee7b502e540038b4aebb5583e6df12fdb149b406b82a4be80beb821",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 214720732,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 22884,
+        "motor_sha256": "6d9b5128a7d8bf268fd29949645d0a8d47f29b44ccaf738853e7b6c30ed5556c",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 0,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 23744,
+        "motor_sha256": "f52906850b459559cf4f5bd86460bc81c4b3ed492b695e1a0a6ef40d2de474bb",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      },
+      {
+        "seed": 2,
+        "passed": true,
+        "verified": true,
+        "physics_ticks": 23424,
+        "motor_sha256": "608bbce35b45ef877bcae43bce3d10bcb1d66e6de8aca2102cd446b4fe481c98",
+        "error": null,
+        "robot_furniture_contacts": {},
+        "failed_cubes": []
+      }
+    ]
+  },
+  "camera_order_demo": {
+    "robot": "Nano",
+    "task_success": true,
+    "physics_ticks": 27282,
+    "wheel_supported_ticks": 27282,
+    "robot_furniture_contacts": {},
+    "cubes": {
+      "blue": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3123,
+        "final_position_m": [
+          0.3332018256187439,
+          0.698793351650238,
+          0.5599988698959351
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.2717249597739965,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.09879335165023806,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      },
+      "green": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 4086,
+        "final_position_m": [
+          0.277177095413208,
+          0.7065402269363403,
+          0.5599989891052246
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.29105302067242755,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.10654022693634035,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      },
+      "red": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3720,
+        "final_position_m": [
+          0.3699163496494293,
+          0.7308182716369629,
+          0.5599989295005798
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.29238729576324785,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.1308182716369629,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      }
+    },
+    "sha256": {
+      "motor-targets.f64": "49de43a1bbe65c75a7cb6e096632ffd7122435364d8bfb3849841d3d7be35ce9",
+      "controller.json": "ad20562fd5e4a63e0d125e6296de4211a4223fe3b5eb074f3b8c8ed0849ea191"
+    }
+  },
+  "wheel_open_loop": [
+    {
+      "seed": 357419639,
+      "first_steps": 500,
+      "measurements": [
+        {
+          "rate_increment_per_10ms": null,
+          "unsupported": 1,
+          "unsupported_ranges": [
+            {
+              "phase": "locate",
+              "first_step": 337,
+              "last_step": 337
+            }
+          ],
+          "xy_motion_m": 0.3386898934841156
+        },
+        {
+          "rate_increment_per_10ms": 0.1,
+          "unsupported": 0,
+          "unsupported_ranges": [],
+          "xy_motion_m": 0.3331858813762665
+        },
+        {
+          "rate_increment_per_10ms": 0.05,
+          "unsupported": 8,
+          "unsupported_ranges": [
+            {
+              "phase": "locate",
+              "first_step": 141,
+              "last_step": 148
+            }
+          ],
+          "xy_motion_m": 0.38614538311958313
+        }
+      ]
+    },
+    {
+      "seed": 3681886153,
+      "first_steps": 500,
+      "measurements": [
+        {
+          "rate_increment_per_10ms": null,
+          "unsupported": 12,
+          "unsupported_ranges": [
+            {
+              "phase": "locate",
+              "first_step": 131,
+              "last_step": 141
+            },
+            {
+              "phase": "locate",
+              "first_step": 143,
+              "last_step": 143
+            }
+          ],
+          "xy_motion_m": 0.3217441737651825
+        },
+        {
+          "rate_increment_per_10ms": 0.1,
+          "unsupported": 0,
+          "unsupported_ranges": [],
+          "xy_motion_m": 0.29377228021621704
+        },
+        {
+          "rate_increment_per_10ms": 0.05,
+          "unsupported": 0,
+          "unsupported_ranges": [],
+          "xy_motion_m": 0.28724440932273865
+        }
+      ]
+    }
+  ]
+}
