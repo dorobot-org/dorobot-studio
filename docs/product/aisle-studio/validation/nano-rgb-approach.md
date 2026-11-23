@@ -27,7 +27,7 @@ The two red-cube traces have the same SHA-256. Both models selected the same par
 
 For the red revision, the operator asked to stop 4 cm closer than the previously requested distance. DeepSeek received the previous controller hash, target and RGB-estimated distance. It selected the same red cube and changed 45 cm to 41 cm. In a separate check, both providers rejected a request to pick up all three cubes and carry them to the table before issuing a controller.
 
-The development trials start with the target in view on an unobstructed floor. They exercise visual approach and braking. The three-cube qualification still needs search under occlusion, grasp and lift, table localization, release, settled placement and 50 sealed layouts. Physical Nano calibration and deployment remain separate.
+The development trials start with the target in view on an unobstructed floor. They exercise visual approach and braking. The three-cube qualification still needs search under occlusion, grasp and lift on the mobile task path, table localization, release, settled placement and 50 sealed layouts. The separate test below measures a single physical lift. Physical Nano calibration and deployment remain separate.
 
 ## Reproduce
 
@@ -46,3 +46,22 @@ replay_dir=$(mktemp -d)
 unzip -q docs/product/aisle-studio/validation/nano-rgb-approach.zip -d "$replay_dir"
 PYTHONPATH="$DOROBOT_AISLE_ROOT/src" .venv-aisle/bin/python tools/aisle-validation/verify_rgb_replay.py "$replay_dir"
 ```
+
+## Single-cube test lift
+
+The separate command-line experiment accepts an instruction to lift one visible floor cube with the Nano’s left arm. Octos and DeepSeek select the target and capability. The local controller aligns the base using fresh onboard RGB and encoders, solves the arm pose from the final RGB estimate and closes the fingers. The arm follows its planned trajectory during closure and lift. The judge independently measures physical cube height, opposing finger contacts and wheel support. This experiment has its own entry point.
+
+In matched development trials on layout 0, DeepSeek and Codex each selected the red cube. Its lowest measured height across five samples during the one-second hold was 9.12 cm above its starting height. Both fingers touched the cube and wheels contacted the floor on all 100 hold ticks for both runs. Measured arm joints stayed inside the URDF position limits during interpolation. The base moved through the wheel motors and the object moved through contact. [Matched lift measurements](nano-rgb-lift-trials.json) · [Head camera during the hold](nano-rgb-lift-hold.png)
+
+DeepSeek also selected and lifted green on layout 1 and blue on layout 2. Their minimum sampled lifts were 9.24 cm and 9.22 cm. Each trial started from a fresh scene.
+
+The probe accepts a single lift and hold. Carrying a cube to the table, placing it and repeating the sequence for three objects are open qualification steps. To reproduce from the Studio checkout, install the arm solver dependency and run the following with your Octos profile configured.
+
+```sh
+uv pip install --python .venv-aisle/bin/python scipy==1.18.1
+PYTHONPATH="$DOROBOT_AISLE_ROOT/src" .venv-aisle/bin/python tools/aisle-validation/check_rgb_lift.py \
+  --task "Use the Nano left gripper to lift the red cube from the floor and hold it for one second." \
+  --seed 0 --out /tmp/nano-red-lift
+```
+
+Add `--provider codex` and choose a fresh output directory to compare the same task. The output includes the selected controller, provider metrics, three onboard images taken during the hold, the measured lift and the contact counts.

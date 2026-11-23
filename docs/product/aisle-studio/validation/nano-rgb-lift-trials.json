@@ -1,0 +1,156 @@
+[
+  {
+    "task": "single-cube test lift",
+    "controller": "local RGB servo and URDF IK",
+    "seed": 0,
+    "color": "red",
+    "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "estimated_cube_base_xy_m": [
+      0.2695945852176086,
+      0.23121586516194612
+    ],
+    "max_arm_excursion_during_interpolation_rad": 0.0,
+    "initial_cube_z_m": -0.014301073737442493,
+    "hold_cube_z_m": [
+      0.076908178627491,
+      0.07698021829128265,
+      0.07694299519062042,
+      0.07697758078575134,
+      0.07693572342395782
+    ],
+    "min_lift_m": 0.09120925236493349,
+    "opposing_finger_contact_ticks": 100,
+    "wheel_supported_hold_ticks": 100,
+    "hold_ticks": 100,
+    "root_pose_writes": 0,
+    "passed": true,
+    "author": {
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "color": "red",
+      "task": "Use the Nano left gripper to lift the red cube from the floor and hold it for one second."
+    },
+    "provider_metrics": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 1.6576237911358476,
+      "input_tokens": 5997,
+      "output_tokens": 52
+    }
+  },
+  {
+    "task": "single-cube test lift",
+    "controller": "local RGB servo and URDF IK",
+    "seed": 0,
+    "color": "red",
+    "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "estimated_cube_base_xy_m": [
+      0.2695945852176086,
+      0.23121586516194612
+    ],
+    "max_arm_excursion_during_interpolation_rad": 0.0,
+    "initial_cube_z_m": -0.014301073737442493,
+    "hold_cube_z_m": [
+      0.076908178627491,
+      0.07698021829128265,
+      0.07694299519062042,
+      0.07697758078575134,
+      0.07693572342395782
+    ],
+    "min_lift_m": 0.09120925236493349,
+    "opposing_finger_contact_ticks": 100,
+    "wheel_supported_hold_ticks": 100,
+    "hold_ticks": 100,
+    "root_pose_writes": 0,
+    "passed": true,
+    "author": {
+      "provider": "codex",
+      "policy_model": "gpt-6.2-astra",
+      "color": "red",
+      "task": "Use the Nano left gripper to lift the red cube from the floor and hold it for one second."
+    },
+    "provider_metrics": {
+      "provider": "codex",
+      "model": "gpt-6.2-astra",
+      "wall_seconds": 4.419862166978419
+    }
+  },
+  {
+    "task": "single-cube test lift",
+    "controller": "local RGB servo and URDF IK",
+    "seed": 1,
+    "color": "green",
+    "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "estimated_cube_base_xy_m": [
+      0.2691382628919164,
+      0.23131225190338556
+    ],
+    "max_arm_excursion_during_interpolation_rad": 0.0,
+    "initial_cube_z_m": -0.014301073737442493,
+    "hold_cube_z_m": [
+      0.0780559852719307,
+      0.0780944973230362,
+      0.07809798419475555,
+      0.07809893786907196,
+      0.07809675484895706
+    ],
+    "min_lift_m": 0.09235705900937319,
+    "opposing_finger_contact_ticks": 100,
+    "wheel_supported_hold_ticks": 100,
+    "hold_ticks": 100,
+    "root_pose_writes": 0,
+    "passed": true,
+    "author": {
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "color": "green",
+      "task": "Lift the green floor cube with the Nano left gripper. Hold it for one second."
+    },
+    "provider_metrics": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 1.440275833941996,
+      "input_tokens": 5994,
+      "output_tokens": 58
+    }
+  },
+  {
+    "task": "single-cube test lift",
+    "controller": "local RGB servo and URDF IK",
+    "seed": 2,
+    "color": "blue",
+    "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "estimated_cube_base_xy_m": [
+      0.26858542660835805,
+      0.2302223284787686
+    ],
+    "max_arm_excursion_during_interpolation_rad": 0.0,
+    "initial_cube_z_m": -0.014301072806119919,
+    "hold_cube_z_m": [
+      0.07793580740690231,
+      0.0779745951294899,
+      0.07797742635011673,
+      0.07797850668430328,
+      0.07797638326883316
+    ],
+    "min_lift_m": 0.09223688021302223,
+    "opposing_finger_contact_ticks": 100,
+    "wheel_supported_hold_ticks": 100,
+    "hold_ticks": 100,
+    "root_pose_writes": 0,
+    "passed": true,
+    "author": {
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "color": "blue",
+      "task": "Lift the blue floor cube with the Nano left gripper. Hold it for one second."
+    },
+    "provider_metrics": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 1.294340250082314,
+      "input_tokens": 5994,
+      "output_tokens": 50
+    }
+  }
+]
