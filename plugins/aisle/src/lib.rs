@@ -1,7 +1,7 @@
 use dorobot_studio_core::{
     api::{
         Backend, Intent,
-        aisle::{Action, Planner, REFERENCE, Robot, Workbench},
+        aisle::{Action, Planner, REFERENCE, RgbTiming, Robot, Workbench},
     },
     data::robot_model::RobotModelLoader,
     ui::frame::{self, Themed},
@@ -90,14 +90,14 @@ script_mod! {
                 Section{text:"Robot profile"}
                 Bar{nano := mod.widgets.ux.ToolButton{text:"Adora Nano"} g1 := mod.widgets.ux.ToolButton{text:"Unitree G1"}}
                 Section{text:"Task instruction"}
-                instruction := TextInput{width:Fill height:54 empty_text:"Inspect a shoulder or approach a colored cube with Nano"}
-                reference := mod.widgets.ux.ToolButton{text:"Use reference task"}
+                instruction := TextInput{width:Fill height:64 is_multiline:true empty_text:"Inspect a shoulder or approach a colored cube with Nano"}
+                Bar{reference := mod.widgets.ux.ToolButton{text:"Use reference task"} onboard := mod.widgets.ux.ToolButton{text:"Onboard RGB off"}}
                 Bar{octos := mod.widgets.ux.PrimaryButton{text:"DeepSeek via Octos"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
                 Section{text:"Prepared controller"} detail := Body{}
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
                 revision_actions := Bar{revise := mod.widgets.ux.ToolButton{text:"Revise with DeepSeek"} revise_codex := mod.widgets.ux.ToolButton{text:"Revise with Codex"}}
             }
-            model_card := Card{width:Fill height:Fill Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
+            model_card := Card{width:Fill height:Fill preview_title := Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false} onboard_photo := VideoPlayer{width:Fill height:Fill}}
         }
         status := Body{}
     }
@@ -124,6 +124,9 @@ script_mod! {
                 fixture := Body{}
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
                     Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
+                }
+                rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Onboard camera timing"}
+                    Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}
                 }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
             }
@@ -348,11 +351,38 @@ impl PluginPanel for Panel {
         self.label(cx, ids!(status), &w.status);
         match self.page.as_str() {
             "aisle_task" => {
+                let capture = w.plan["scene_observation"]["files"]["onboard-head.rgb"].is_string();
+                self.root.widget(cx, ids!(robot)).set_visible(cx, !capture);
+                self.root
+                    .widget(cx, ids!(onboard_photo))
+                    .set_visible(cx, capture);
+                self.label(
+                    cx,
+                    ids!(preview_title),
+                    if capture {
+                        "Head camera at task authoring"
+                    } else {
+                        "Robot preview"
+                    },
+                );
                 let draft = (w.robot, w.prepared.clone());
                 if self.draft.as_ref() != Some(&draft) {
                     self.root
                         .text_input(cx, ids!(instruction))
                         .set_text(cx, &w.task);
+                    let photo = self.root.video_player(cx, ids!(onboard_photo));
+                    photo.clear(cx);
+                    if capture {
+                        if let Some(raw) = w
+                            .prepared
+                            .as_ref()
+                            .and_then(|p| std::fs::read(p.with_file_name("onboard-head.rgb")).ok())
+                        {
+                            if raw.len() == 480 * 360 * 3 {
+                                photo.set_frame(cx, 480, 360, &raw);
+                            }
+                        }
+                    }
                     self.draft = Some(draft);
                 }
                 let detail = if w.plan.is_null() {
@@ -391,7 +421,26 @@ impl PluginPanel for Panel {
                         w.revisions.len()
                     )
                 };
+                let mut detail = detail;
+                if let Some(n) = w.plan["scene_observation"]["visible"].as_u64() {
+                    detail.push_str(&format!(
+                        "\nAuthored from onboard RGB · {n} cubes localized"
+                    ));
+                }
                 self.label(cx, ids!(detail), &detail);
+                self.root
+                    .widget(cx, ids!(onboard))
+                    .set_visible(cx, w.robot == Robot::Nano);
+                let onboard = self.root.button(cx, ids!(onboard));
+                onboard.set_enabled(cx, !w.busy());
+                onboard.set_text(
+                    cx,
+                    if w.onboard_context {
+                        "Onboard RGB on"
+                    } else {
+                        "Onboard RGB off"
+                    },
+                );
                 let index = w.revision_index();
                 self.root
                     .button(cx, ids!(older))
@@ -487,7 +536,21 @@ impl PluginPanel for Panel {
                         "Fixed base · zero gravity"
                     },
                 );
-                self.root.widget(cx, ids!(layouts)).set_visible(cx, mobile);
+                self.root
+                    .widget(cx, ids!(layouts))
+                    .set_visible(cx, mobile || (w.robot == Robot::Nano && w.onboard_context));
+                self.root
+                    .widget(cx, ids!(rgb_delivery))
+                    .set_visible(cx, kind == "visual-approach");
+                for (id, timing) in [
+                    (ids!(on_time) as &[LiveId], RgbTiming::Normal),
+                    (ids!(late_rgb), RgbTiming::Intermittent),
+                    (ids!(frozen_rgb), RgbTiming::Disconnected),
+                ] {
+                    self.root
+                        .button(cx, id)
+                        .set_enabled(cx, !w.busy() && w.rgb_timing != timing);
+                }
                 self.root
                     .widget(cx, ids!(standing_fixtures))
                     .set_visible(cx, standing);
@@ -713,7 +776,7 @@ impl PluginPanel for Panel {
                     }
                     lines.join("\n")
                 } else if mobile {
-                    format!(
+                    let mut detail = format!(
                         "{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
                         w.evidence["color"].as_str().unwrap_or(""),
                         w.evidence["standoff_m"].as_f64().unwrap_or_default(),
@@ -721,7 +784,21 @@ impl PluginPanel for Panel {
                         w.evidence["wheel_supported_ticks"],
                         w.evidence["physics_ticks"],
                         w.evidence["obstacle_contact_ticks"]
-                    )
+                    );
+                    let timing = &w.evidence["sensor_timing"];
+                    if let Some(fixture) = timing["fixture"].as_str() {
+                        let held: u64 = timing["rejected"]
+                            .as_object()
+                            .into_iter()
+                            .flat_map(|m| m.values())
+                            .filter_map(|n| n.as_u64())
+                            .sum();
+                        detail.push_str(&format!("\nCamera timing {fixture} · {held} withheld observations · {} recoveries", timing["recoveries"]));
+                        if timing["timed_out"] == true {
+                            detail.push_str(" · stopped after timeout");
+                        }
+                    }
+                    detail
                 } else if standing {
                     let mut summary = format!(
                         "{} · requested {:+.3} rad · measured {:+.4} rad\nBoth feet loaded {}/{} steps\nPeak tilt {:.1}° · maximum pelvis drift {:.1} cm",
@@ -885,6 +962,10 @@ impl PluginPanel for Panel {
             (ids!(compliant), Action::Fixture(true)),
             (ids!(level), Action::Impact(false)),
             (ids!(impact), Action::Impact(true)),
+            (ids!(onboard), Action::ToggleOnboardContext),
+            (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
+            (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
+            (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),
             (ids!(trial_mode), Action::ShowEvaluation(false)),
             (ids!(evaluation_mode), Action::ShowEvaluation(true)),
             (ids!(earlier_failure), Action::SelectFailure(false)),

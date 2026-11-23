@@ -117,11 +117,50 @@ def verify(archive_path, expected_manifest, include_trials=False):
                 reasons = []
                 if row.get("error") or row.get("issue"):
                     reasons.append(row.get("error") or row["issue"])
-                for color, cube in row.get("cubes", {}).items():
-                    if not cube["passed"]:
+                if row.get("verified"):
+                    measured = read(tmp / f"case-{row['index']:03}" / "result.json")
+                    unsupported = (
+                        measured["physics_ticks"] - measured["wheel_supported_ticks"]
+                    )
+                    if unsupported:
                         reasons.append(
-                            f"{color} incomplete · {cube['table_contact_tail_ticks']}/100 table contacts"
+                            f"No loaded wheel contact for {unsupported} physics steps"
                         )
+                    if measured["max_joint_excursion_rad"] > 0.005:
+                        reasons.append(
+                            f"Joint excursion {measured['max_joint_excursion_rad']:.4f} rad"
+                        )
+                    if row["guard_bypasses"] or row["rejected_motor_writes"]:
+                        reasons.append(
+                            f"{row['guard_bypasses']} guard bypasses · {row['rejected_motor_writes']} rejected writes"
+                        )
+                    for color, cube in row["cubes"].items():
+                        if cube["passed"]:
+                            continue
+                        criteria = []
+                        if cube["opposing_finger_airborne_ticks"] < 20:
+                            criteria.append("opposing-finger lift incomplete")
+                        if cube["table_contact_tail_ticks"] < 100:
+                            criteria.append(
+                                f"{cube['table_contact_tail_ticks']}/100 table contacts"
+                            )
+                        if cube["nearest_table_edge_m"] <= 0.035:
+                            criteria.append(
+                                f"{1000 * cube['nearest_table_edge_m']:.1f} mm rim margin"
+                            )
+                        if (
+                            not cube["detached"]
+                            or cube["min_finger_clearance_tail_m"] <= 0.001
+                        ):
+                            criteria.append("gripper release incomplete")
+                        height = cube["final_position_m"][2] - measured["table_top_m"]
+                        if not 0.015 <= height <= 0.037:
+                            criteria.append(
+                                f"center {1000 * height:.1f} mm above tabletop"
+                            )
+                        if cube["settle_motion_m"] >= 0.003:
+                            criteria.append("still moving")
+                        reasons.append(color + " · " + ", ".join(criteria))
                 for pair, ticks in row.get("robot_furniture_contacts", {}).items():
                     reasons.append(f"{pair} · {ticks} contact steps")
                 failures.append(

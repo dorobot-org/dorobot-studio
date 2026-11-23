@@ -38,6 +38,16 @@ def main():
         help="Run and score a Nano floor-to-table journey",
     )
     scenario.add_argument(
+        "--observed-author",
+        action="store_true",
+        help="Select a target from two actual onboard scene observations",
+    )
+    scenario.add_argument(
+        "--camera-faults",
+        action="store_true",
+        help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
+    )
+    scenario.add_argument(
         "--handoff",
         action="store_true",
         help="Revise a measured Codex trial using DeepSeek via Octos",
@@ -63,17 +73,20 @@ def main():
         parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
         parser.error("--layout requires a Nano transfer scenario")
-    if (args.standing or args.transfer) and not args.provider:
+    if (
+        args.standing or args.transfer or args.camera_faults or args.observed_author
+    ) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
+    studio_root = Path(__file__).resolve().parents[2]
     env = os.environ | {
         "MAKEPAD_HAL_BACKEND": args.backend,
         "DOROBOT_UX_REPORT": str(report),
+        "DOROBOT_STUDIO_SOURCE_ROOT": str(studio_root),
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
-    studio_root = Path(__file__).resolve().parents[2]
     # The binary can come from another build directory. Its digest identifies the
     # executable, while these fields identify the workspace observed at launch.
     with args.studio.open("rb") as binary:
@@ -97,6 +110,7 @@ def main():
                     studio_root / f
                     for f in (
                         "Cargo.lock",
+                        "crates/dorobot-studio-core/src/runtime.rs",
                         "plugins/aisle/src/lib.rs",
                         "crates/dorobot-studio-core/src/api/aisle.rs",
                         "dorobot-flex/src/bin/dorobot-flex.rs",
@@ -105,8 +119,20 @@ def main():
             ]
         )
     }
+
+    def check_sources():
+        for name, expected in source_hashes.items():
+            if (
+                hashlib.sha256((studio_root / name).read_bytes()).hexdigest()
+                != expected
+            ):
+                raise RuntimeError(
+                    f"Native verification source changed during the run: {name}"
+                )
+
     sessions = []
     for stage in ["journey", "recovery"]:
+        check_sources()
         with args.studio.open("rb") as binary:
             if hashlib.file_digest(binary, "sha256").hexdigest() != binary_hash:
                 raise RuntimeError(
@@ -126,6 +152,16 @@ def main():
                     if process.poll() is not None or time.monotonic() > deadline:
                         raise RuntimeError(f"Studio failed to start. See {log.name}")
                     time.sleep(0.1)
+                if (
+                    Path(
+                        json.loads(report.read_text())["state"].get("aisle_source_root")
+                        or ""
+                    )
+                    != studio_root
+                ):
+                    raise RuntimeError(
+                        "Studio launched against a different source checkout"
+                    )
                 check = [
                     sys.executable,
                     str(Path(__file__).with_name("journey.py")),
@@ -140,6 +176,10 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.observed_author:
+                    check.append("--observed-author")
+                if args.camera_faults:
+                    check.append("--camera-faults")
                 if args.handoff:
                     check.append("--handoff")
                 if args.evaluation:
@@ -178,6 +218,7 @@ def main():
                         stage=stage,
                         pid=process.pid,
                         observed_dark=state["dark"],
+                        observed_source_root=state["aisle_source_root"],
                         windows=[w.get("sz") for w in windows],
                     )
                 )
@@ -186,6 +227,7 @@ def main():
                     process.terminate()
                 process.wait(timeout=15)
 
+    check_sources()
     directory = output / "verified"
     manifest = dict(
         backend=args.backend,

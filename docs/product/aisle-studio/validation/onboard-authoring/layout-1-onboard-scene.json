@@ -1,0 +1,33 @@
+{
+  "frame": "base_link",
+  "capture_ns": 0,
+  "objects": {
+    "red": {
+      "status": "localized",
+      "x_forward_m": 0.703,
+      "y_left_m": -0.2837,
+      "distance_m": 0.7581,
+      "views": [
+        "head"
+      ]
+    },
+    "green": {
+      "status": "localized",
+      "x_forward_m": 0.74,
+      "y_left_m": -0.0453,
+      "distance_m": 0.7414,
+      "views": [
+        "head"
+      ]
+    },
+    "blue": {
+      "status": "localized",
+      "x_forward_m": 0.8528,
+      "y_left_m": 0.2151,
+      "distance_m": 0.8795,
+      "views": [
+        "head"
+      ]
+    }
+  }
+}

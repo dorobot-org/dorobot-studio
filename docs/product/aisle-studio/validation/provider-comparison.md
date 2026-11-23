@@ -32,3 +32,22 @@ The following authoring calls used the same Workbench validation code and task t
 Each provider met all five expectations. Median authoring time was **2.14 s for DeepSeek and 5.98 s for Codex** on this Mac. The timed interval includes CLI startup and model-service latency. This small set exercises constrained task authoring and rejection.
 
 The two independently prepared blue-only retry artifacts were then executed from the identical initial layout in Nexus. Each placed blue 120 mm inside the rim, maintained wheel contact on all 7,268 physics steps and produced byte-identical motor journals. This tests the selected retry subtask from a fresh scene. The three-cube holdout evaluates full episodes separately. The model chooses the task parameters, while local camera perception, navigation and grasp code drive the simulated robot. [Requests, model identities, timing, feedback and both retry receipts](paired-authoring-requests.json)
+
+
+## Hand an existing Codex run to DeepSeek
+
+In the native Task page, **Revise with DeepSeek** can use a selected Codex, reference or DeepSeek trial. **Revise with Codex** uses the same measured evidence and validation rules. The recorded parent hash connects the selected run to the new controller.
+
+In the headless G1 inspection, Codex requested −0.080 rad and Nexus measured −0.079959 rad. DeepSeek received that result and the instruction “Repeat the preceding inspection at three quarters of its signed displacement.” It selected the same right shoulder, requested −0.060 rad and Nexus measured −0.059967 rad. Restarting Studio restored the scored G1 trial. [Requests, controller lineage, measurements and native build](provider-handoff.json)
+
+To repeat this handoff, follow the workbench setup and run the native verifier with `--handoff`. To run a new simulation using DeepSeek alone, author it with **DeepSeek via Octos** and revise with **Revise with DeepSeek**.
+
+
+A further matched spatial test gave each provider the same instruction on two different robot-camera observations. Each selected red and then blue and reached both targets under the hardware-model limits. The head camera and the estimated floor positions are retained with the measured outcomes. [How to use onboard perception](onboard-authoring/README.md)
+
+One additional DeepSeek authoring call during camera-fault testing returned an unreadable controller. The draft failed before a robot run started. A fresh call produced a valid plan and the complete camera-timing test passed. Studio now retains malformed text for inspection and accepts a single JSON object in a Markdown code fence. The five-request comparison above counts the original fixed set of prompts.
+
+
+## Run Studio with Codex absent from PATH
+
+A fresh headless Studio process received a PATH containing only the Octos executable and the macOS system utilities. The test checked that Codex could not be resolved on that PATH. Octos 2.0.3-rc.11 called DeepSeek's hosted model. Both camera-selected Nano approaches and the G1 standing-impact trial passed. G1 retained two-foot support throughout 2,000 physics steps and reached its 100-step recovery window after 0.50 seconds. Each Studio journey reopened its final measured outcome on restart. [Recorded environment, requests and native trials](octos-standalone.json)

@@ -1,6 +1,7 @@
 """Development trial for the grounded Nano in Nexus. See nano_rgb_policy for the sensor boundary."""
 
 import argparse
+from collections import Counter, deque
 import io
 import json
 import math
@@ -71,7 +72,7 @@ def controller(args):
     return plan
 
 
-def sensor_packet(sim, out, save_frame=True, record=True):
+def sensor_packet(sim, out, save_frame=True):
     encoders = np.asarray(sim.robot.get_qpos())[sim.dofs]
     data = dict(encoders=encoders, stamp_ns=np.int64(sim.tick * 10_000_000))
     for name in CAMERAS:
@@ -80,8 +81,6 @@ def sensor_packet(sim, out, save_frame=True, record=True):
             Image.fromarray(data[name]).save(out / f"{name}-{sim.tick}.png")
     payload = io.BytesIO()
     np.savez_compressed(payload, **data)
-    if record:
-        (out / "observations" / f"{sim.tick:07d}.npz").write_bytes(payload.getvalue())
     return payload.getvalue(), data["head"]
 
 
@@ -94,16 +93,51 @@ def evaluate_pose(sim, cube):
     return base, xy
 
 
-def trial(out, seed, plan, room_objects=(), room_settings=None):
-    meta = worker.describe("Nano")
-    model = Path(meta["model"])
-    sim = LivingSimulation(
+def approach_scene(model, seed, room_objects, room_settings):
+    return LivingSimulation(
         model,
         specs=[*scene_recipe(seed), *room_objects],
         room_settings=room_settings,
         resolution=(480, 360),
         posture=NAVIGATION_POSTURE | dict(head_pan_joint=0, head_tilt_joint=0.35),
     )
+
+
+def camera_config(sim, model):
+    cameras = {
+        name: {
+            k: sim.camera_specs[name][k]
+            for k in ("resolution", "intrinsics", "parent_link", "link_from_camera_gl")
+        }
+        for name in CAMERAS
+    }
+    return dict(
+        cameras=cameras,
+        model=str(model),
+        joint_names=sim.names,
+    )
+
+
+MAX_OBSERVATION_AGE_NS = 250_000_000
+MAX_MISSING_OBSERVATIONS = 10
+
+
+def timing_fault(captured_ns, received_ns, last_accepted_ns):
+    if captured_ns < 0 or captured_ns > received_ns:
+        return "invalid timestamp"
+    if captured_ns <= last_accepted_ns:
+        return "repeated or out-of-order packet"
+    if received_ns - captured_ns > MAX_OBSERVATION_AGE_NS:
+        return "late packet"
+    return None
+
+
+def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="normal"):
+    if rgb_timing not in ("normal", "intermittent", "disconnected"):
+        raise ValueError("Unknown RGB timing fixture")
+    meta = worker.describe("Nano")
+    model = Path(meta["model"])
+    sim = approach_scene(model, seed, room_objects, room_settings)
     by_name = {spec["name"]: body for spec, body in zip(sim.specs, sim.bodies)}
     cube = by_name[plan["color"]]
     initial_cube = np.array(cube.get_pos())
@@ -120,23 +154,18 @@ def trial(out, seed, plan, room_objects=(), room_settings=None):
     wheels = {links[f"wheel_{i}"] for i in (1, 2, 3)}
     robot_ids = set(links.values())
     obstacles = {body_id(body) for name, body in by_name.items() if name != "floor"}
-    cameras = {
-        name: {
-            k: sim.camera_specs[name][k]
-            for k in ("resolution", "intrinsics", "parent_link", "link_from_camera_gl")
-        }
-        for name in CAMERAS
-    }
-    config = dict(
-        color=plan["color"],
-        standoff_m=plan["standoff_m"],
-        cameras=cameras,
-        model=str(model),
-        joint_names=sim.names,
+    config = camera_config(sim, model) | dict(
+        color=plan["color"], standoff_m=plan["standoff_m"]
     )
     worker.save(out / "calibration.json", config)
     (out / "observations").mkdir()
     guard = WheelGuard()
+    buffer = deque(maxlen=3)
+    frozen = None
+    last_accepted_ns = -1
+    missed = 0
+    rejected = Counter()
+    recoveries = 0
     trajectory = []
     grounded = set()
     hits = set()
@@ -155,23 +184,54 @@ def trial(out, seed, plan, room_objects=(), room_settings=None):
         try:
             policy.stdin.write(json.dumps(config).encode() + b"\n")
             for sequence in range(100):
-                payload, head = sensor_packet(sim, out, sequence == 0)
-                policy.stdin.write(struct.pack(">I", len(payload)) + payload)
-                policy.stdin.flush()
-                command = json.loads(policy.stdout.readline())
+                received_ns = sim.tick * 10_000_000
+                current = sensor_packet(sim, out, sequence == 0)
+                if rgb_timing != "normal":
+                    buffer.append(current)
+                    if sequence == 3:
+                        frozen = current
+                    if sequence >= 4 and (rgb_timing == "disconnected" or sequence < 7):
+                        current = frozen
+                    elif 7 <= sequence < 12:
+                        current = buffer[0]
+                payload, head = current
+                (out / "observations" / f"{sim.tick:07d}.npz").write_bytes(payload)
+                with np.load(io.BytesIO(payload), allow_pickle=False) as delivered:
+                    captured_ns = int(delivered["stamp_ns"])
+                fault = timing_fault(captured_ns, received_ns, last_accepted_ns)
+                if fault:
+                    missed += 1
+                    rejected[fault] += 1
+                    command = dict(
+                        state="waiting for current RGB",
+                        xy=None,
+                        cameras=[],
+                        speed=0.0,
+                        yaw_rate=0.0,
+                    )
+                else:
+                    recoveries += int(missed > 0)
+                    missed = 0
+                    last_accepted_ns = captured_ns
+                    policy.stdin.write(struct.pack(">I", len(payload)) + payload)
+                    policy.stdin.flush()
+                    command = json.loads(policy.stdout.readline())
                 speed, yaw = command["speed"], command["yaw_rate"]
                 if not -0.045 <= speed <= 0.13 or not -0.5 <= yaw <= 0.5:
                     raise ValueError("visual servo exceeded wheel command envelope")
                 seen = command["xy"]
                 progress = dict(
                     kind="visual-approach",
+                    capture_ns=captured_ns,
+                    receive_ns=received_ns,
+                    sensor_fault=fault,
                     step=sim.tick + 1,
                     state=command["state"],
                     color=plan["color"],
                     standoff_m=plan["standoff_m"],
-                    distance_m=float(np.linalg.norm(seen))
-                    if seen is not None
-                    else None,
+                    distance_m=(
+                        float(np.linalg.norm(seen)) if seen is not None else None
+                    ),
                 )
                 trajectory.append(progress)
                 preview = out / "preview.tmp"
@@ -199,6 +259,9 @@ def trial(out, seed, plan, room_objects=(), room_settings=None):
                         dict(
                             sequence=sequence,
                             tick=sim.tick,
+                            capture_ns=captured_ns,
+                            receive_ns=received_ns,
+                            sensor_fault=fault,
                             command=command,
                             wheels=rates.tolist(),
                             evaluator_xy=truth.tolist(),
@@ -214,14 +277,16 @@ def trial(out, seed, plan, room_objects=(), room_settings=None):
                     else 0
                 )
                 if settled >= 3 or (
-                    command["xy"] is None and np.all(np.abs(rates) < 1e-5)
+                    command["xy"] is None
+                    and (fault is None or missed >= MAX_MISSING_OBSERVATIONS)
+                    and np.all(np.abs(rates) < 1e-5)
                 ):
                     break
         finally:
             policy.stdin.close()
             if policy.wait(timeout=10) != 0:
                 raise RuntimeError("RGB policy process failed")
-    _, final_frame = sensor_packet(sim, out, record=False)
+    _, final_frame = sensor_packet(sim, out)
     Image.fromarray(final_frame).save(out / "frame.png")
     worker.save(out / "trajectory.json", trajectory)
     base, final_xy = evaluate_pose(sim, cube)
@@ -240,6 +305,13 @@ def trial(out, seed, plan, room_objects=(), room_settings=None):
         recipe=RECIPE,
         seed=seed,
         split="development",
+        sensor_timing=dict(
+            fixture=rgb_timing,
+            maximum_age_ns=MAX_OBSERVATION_AGE_NS,
+            rejected=dict(rejected),
+            recoveries=recoveries,
+            timed_out=missed >= MAX_MISSING_OBSERVATIONS,
+        ),
         measured_room_bodies=sim.room_readback(),
         task="visual approach",
         passed=passed,
@@ -277,6 +349,11 @@ def main():
     )
     parser.add_argument("--seed", type=int, default=0, help="development layout seed")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--rgb-timing",
+        choices=["normal", "intermittent", "disconnected"],
+        default="normal",
+    )
     args = parser.parse_args()
     if not 0.4 <= args.distance <= 0.55:
         parser.error("distance must be within [0.40, 0.55] m")
@@ -290,7 +367,7 @@ def main():
     args.out.mkdir(parents=True, exist_ok=False)
     plan = controller(args)
     worker.save(args.out / "controller.json", plan)
-    result = trial(args.out, args.seed, plan)
+    result = trial(args.out, args.seed, plan, rgb_timing=args.rgb_timing)
     worker.save(args.out / "result.json", result)
     print(json.dumps(result, indent=2))
     return 0 if result["passed"] else 1

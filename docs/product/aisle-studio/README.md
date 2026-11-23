@@ -4,7 +4,7 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 [Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
 
-[Import and edit a surveyed living room](validation/room-survey/README.md) · [Stand and track a shoulder target on G1](validation/g1-standing.md) · [Move cubes to the table with DeepSeek via Octos](validation/nano-table-transfer.md) · [Three-camera demo](validation/nano-table-transfer.mp4) · [Replayable three-cube dataset](validation/nano-table-transfer-lerobot.zip) · [Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
+[Author from the actual Nano camera view](validation/onboard-authoring/README.md) · [Test camera delay and recovery](validation/camera-timing/README.md) · [Verify a 50-layout Nano evaluation](validation/nano-qualification.md) · [Import and edit a surveyed living room](validation/room-survey/README.md) · [Stand and track a shoulder target on G1](validation/g1-standing.md) · [Move cubes to the table with DeepSeek via Octos](validation/nano-table-transfer.md) · [Three-camera demo](validation/nano-table-transfer.mp4) · [Replayable three-cube dataset](validation/nano-table-transfer-lerobot.zip) · [Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
 
 ## Run from a Studio source checkout
 
@@ -21,6 +21,20 @@ cargo run --locked -p dorobot-flex --bin dorobot-flex -- --screen aisle-task
 ```
 
 An existing checkout at `../AISLE` and a Studio-local `.venv-aisle/bin/python` are discovered automatically. Override the interpreter with `DOROBOT_AISLE_PYTHON`. **DeepSeek via Octos** uses the Octos CLI and a DeepSeek credential configured in Octos. Set `DOROBOT_OCTOS_PROFILE` to your stored DeepSeek profile if required. The default model is `deepseek-v4-flash`; `DOROBOT_OCTOS_MODEL` selects another DeepSeek model. Studio requests a one-turn read-only Octos session and checks the returned model identity and controller fields. **Ask Codex** uses an authenticated Codex CLI on PATH. **Use reference task** works locally without an inference service. The source workbench uses external Python and a GPU. Desktop release bundles require separate integration.
+
+### Use DeepSeek as the only author
+
+Install Octos on the Studio machine and configure a DeepSeek profile. On this Mac the profile was named `dsflash`. With an existing profile, the following setup reads the credential interactively into Keychain. [Octos project](https://github.com/octos-org/octos)
+
+```sh
+export DOROBOT_OCTOS_PROFILE=dsflash
+octos auth set-key --profile "$DOROBOT_OCTOS_PROFILE" DEEPSEEK_API_KEY
+octos --version
+```
+
+Select **DeepSeek via Octos** for a new task and **Revise with DeepSeek** for a selected measured run. Enable **Onboard RGB** for location-dependent Nano instructions. The Octos CLI runs locally and inference uses the DeepSeek service. [Verified operation on both robots with Codex absent from PATH](validation/provider-comparison.md)
+
+### Work through the four pages
 
 1. **Task** — select a robot. Use the reference task or enter “Inspect the right shoulder with a displacement of minus 0.08 rad” and choose **DeepSeek via Octos** or **Ask Codex**. Read the joint, signed displacement, provider and revision. Select an earlier controller to repeat it. After a scored run, select it on Evidence, update the task text and choose **Revise with DeepSeek** or **Revise with Codex**. Either author can revise the selected trial, including a trial prepared by the other provider or the local reference controller. The agent receives the measured outcome and signed displacement. The new controller records the previous controller hash and measurements.
 2. **Scene** — inspect the mesh inventory, movable joint count and limits. Standard and Compliant select reproducible position gains of 28 and 18 respectively. These two inspection fixtures anchor the root and disable gravity. The Nano living-room and G1 standing tasks select their own floating-base scenes with gravity.

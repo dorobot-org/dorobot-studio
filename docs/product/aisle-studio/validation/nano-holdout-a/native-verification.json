@@ -1,0 +1,481 @@
+{
+  "native": {
+    "backend": "offscreen",
+    "requested_size": "1440x900",
+    "provider": "reference",
+    "native_binary_sha256": "b9083905edfb5533d110446cab00359c8039ef0f989e2e948b479478dd5899c2",
+    "studio_source_commit": "cbd12afe09f0cbbe7bdc8a9753b54007d4c8a656",
+    "source_files_sha256": {
+      "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+      "crates/dorobot-studio-core/src/api/aisle.rs": "600048315693c69f5c4fa6b29078c84f53e16ad44f22725066d5e44931f2add6",
+      "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+      "dorobot-flex/src/bin/dorobot-flex.rs": "2282e370583546e5a4179a074101817fad57e66c652533495bc5e49df617bde6",
+      "plugins/aisle/src/lib.rs": "1ebda7d3103fb5acedc8cc100b378b9c4815cd0ed38f409d7ba666693d53fb28",
+      "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+      "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+      "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+      "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+      "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+      "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+      "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+      "tools/aisle-validation/nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+      "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+      "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+      "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+      "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+      "tools/aisle-validation/nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+      "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+      "tools/aisle-validation/nano_rgb_transfer_policy.py": "0489a3d5c32e30af2bd893fb52ddc209cf86551bb73d0ef285465de25c595c77",
+      "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+      "tools/aisle-validation/nano_suite_evidence.py": "fa2cf6b35933bdc041d359c043053fe635f752fdcb13abc112ae9aca25d8178a",
+      "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+      "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+      "tools/aisle-validation/nano_transfer_suite.py": "8cf40d72785a7789822eaa791c3fcde8fc476bf6723ff87c56d1c2400561acb3",
+      "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+      "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+      "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+      "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+      "tools/aisle-validation/run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60",
+      "tools/aisle-validation/run_rgb_transfer.py": "1771394001b68ae8652073fed8a9309037a68197c4edfb33a3bfd5ea24604f7c",
+      "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+      "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+      "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+      "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+      "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+      "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+      "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+      "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+      "tools/aisle-validation/test_nano_rgb_transfer.py": "3b6364587496b3272be69c1492591835bd6e9ed4984354e9b3e5f4851effeeed",
+      "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+      "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+      "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+      "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+      "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+      "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+      "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+      "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+      "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+      "tools/aisle-validation/verify_rgb_replay.py": "e819b2fcd900741108bb94594ddda77e8babf79978dff8c723013e9fca3d76c2",
+      "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+      "tools/aisle_workbench/g1_stand.py": "16685d98103674938c07028c6375847cb54e17214b7dd18169902c4ebde934e4",
+      "tools/aisle_workbench/journey.py": "c9bb48dbe7e762f703269ec521ccd5ae1d3ac42be84d353a31a6714ac4cc33a9",
+      "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+      "tools/aisle_workbench/onboard_scene.py": "94f806d2885ca9b23ff3beb77a284586f4ab11e0d8365a6bcc86eb7ee3e817f8",
+      "tools/aisle_workbench/replay.py": "97dcf1d3da1ef324406268ec8c8948a5dc293d36d8f5117fe37b52c666c90202",
+      "tools/aisle_workbench/room_revision.py": "810a93ced266c7ea9cdd2a11c4ae3d73a0e89ec2ebf8d503126ed961dc70e83c",
+      "tools/aisle_workbench/sensor_timing_check.py": "cfd0217de698b254ff733c84c17bd266707b4357df70db65132308d6de4a942e",
+      "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+      "tools/aisle_workbench/test_worker.py": "b883ee58603877d4d2a888054f94c9c969bd21d6f55412acbd7db87e80e216c7",
+      "tools/aisle_workbench/verify.py": "d944fbc32552e495b71f8156be86097c30beb85ade1ce573f0e780c60edbb702",
+      "tools/aisle_workbench/worker.py": "21f158faae25d29db4c46766507a6cc1d816a80a6ae5540b35894727a6c8c30f",
+      "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+      "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+      "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+      "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+      "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+    },
+    "workspace_changes_at_launch": [],
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 97588,
+        "observed_dark": false,
+        "observed_source_root": "/Users/yuechen/home/dorobot-aisle-studio",
+        "windows": [
+          [
+            1440,
+            900
+          ]
+        ]
+      },
+      {
+        "stage": "recovery",
+        "pid": 98023,
+        "observed_dark": false,
+        "observed_source_root": "/Users/yuechen/home/dorobot-aisle-studio",
+        "windows": [
+          [
+            1440,
+            900
+          ]
+        ]
+      }
+    ],
+    "trials": [],
+    "files": {
+      "journey.json": "09e8fa8a44f1f473595f7fa4a2bdf94bfb31d17c04bc683a40d0453f4fb404fb",
+      "layout-evaluation.png": "beba7fe1880de959e1905cfb404bf62b4d7ee6329b8cb9374d1c2dc4b4082e58",
+      "recovery.json": "fe954b8a2139bfe35668e90e86f148660db5fab043dc12d33483658a6e5a2553"
+    }
+  },
+  "checks": [
+    {
+      "check": "Layout archive verified",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 evaluate",
+      "evaluation": {
+        "archive_sha256": "86d218eb5c287b4dbf010b1d74ab24a13ccc38efcf9204af838cbd348878d73a",
+        "cases": 50,
+        "failures": [
+          {
+            "index": 1,
+            "reasons": [
+              "No loaded wheel contact for 1 physics steps"
+            ],
+            "seed": 357419639
+          },
+          {
+            "index": 2,
+            "reasons": [
+              "ValueError: Could not confirm green in the wrist camera after two grasps",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -445.5 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -918.4 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 885467859
+          },
+          {
+            "index": 4,
+            "reasons": [
+              "blue \u00b7 0/100 table contacts, center 60.0 mm above tabletop"
+            ],
+            "seed": 359691140
+          },
+          {
+            "index": 7,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -211.9 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -381.3 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -953.3 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 877750787
+          },
+          {
+            "index": 8,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -287.5 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -350.0 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -914.7 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2461838070
+          },
+          {
+            "index": 9,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -305.1 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -356.5 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -926.3 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2704475297
+          },
+          {
+            "index": 11,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -437.5 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -357.4 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -605.2 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 368836155
+          },
+          {
+            "index": 13,
+            "reasons": [
+              "No loaded wheel contact for 12 physics steps"
+            ],
+            "seed": 3681886153
+          },
+          {
+            "index": 17,
+            "reasons": [
+              "No loaded wheel contact for 1 physics steps"
+            ],
+            "seed": 2084400044
+          },
+          {
+            "index": 18,
+            "reasons": [
+              "ValueError: Could not align the cube with the left arm",
+              "No loaded wheel contact for 3350 physics steps",
+              "red \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -658.7 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -398.3 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -945.7 mm rim margin, center -554.3 mm above tabletop",
+              "locate/left_finger_b/coffee_table \u00b7 1 contact steps",
+              "locate/left_finger_a/coffee_table \u00b7 3299 contact steps"
+            ],
+            "seed": 1168469256
+          },
+          {
+            "index": 23,
+            "reasons": [
+              "green \u00b7 33.5 mm rim margin"
+            ],
+            "seed": 2681883464
+          },
+          {
+            "index": 31,
+            "reasons": [
+              "ValueError: Lost green during two transport attempts",
+              "green \u00b7 0/100 table contacts, -339.5 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -457.3 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 3439968140
+          },
+          {
+            "index": 37,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -386.4 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -401.1 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -623.4 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 3319694021
+          },
+          {
+            "index": 38,
+            "reasons": [
+              "ValueError: Lost blue during two transport attempts",
+              "blue \u00b7 0/100 table contacts, -309.8 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2701543012
+          },
+          {
+            "index": 40,
+            "reasons": [
+              "No loaded wheel contact for 1 physics steps",
+              "blue \u00b7 0/100 table contacts, center 60.0 mm above tabletop"
+            ],
+            "seed": 774486918
+          },
+          {
+            "index": 43,
+            "reasons": [
+              "blue \u00b7 0/100 table contacts, center 60.0 mm above tabletop"
+            ],
+            "seed": 918119721
+          },
+          {
+            "index": 47,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -590.4 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -622.8 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -414.0 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 458352548
+          },
+          {
+            "index": 49,
+            "reasons": [
+              "No loaded wheel contact for 9 physics steps"
+            ],
+            "seed": 2980733694
+          }
+        ],
+        "interval_95": [
+          0.501410168761127,
+          0.7586125034815325
+        ],
+        "manifest_sha256": "3f64faea894cd691c2c0d51c4e1905bbc2031bb724adb0d45d77b86a2f7af027",
+        "qualified": false,
+        "requirement": 45,
+        "split": "hidden",
+        "successes": 32,
+        "verified": 50,
+        "verified_guard_bypasses": 0
+      }
+    },
+    {
+      "check": "Second failed layout opened",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 evaluate"
+    },
+    {
+      "check": "First failed layout reopened",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 evaluate"
+    }
+  ],
+  "restart": [
+    {
+      "check": "Layout evaluation restored",
+      "robot": "Nano",
+      "status": "Ready",
+      "evaluation": {
+        "archive_sha256": "86d218eb5c287b4dbf010b1d74ab24a13ccc38efcf9204af838cbd348878d73a",
+        "cases": 50,
+        "failures": [
+          {
+            "index": 1,
+            "reasons": [
+              "No loaded wheel contact for 1 physics steps"
+            ],
+            "seed": 357419639
+          },
+          {
+            "index": 2,
+            "reasons": [
+              "ValueError: Could not confirm green in the wrist camera after two grasps",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -445.5 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -918.4 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 885467859
+          },
+          {
+            "index": 4,
+            "reasons": [
+              "blue \u00b7 0/100 table contacts, center 60.0 mm above tabletop"
+            ],
+            "seed": 359691140
+          },
+          {
+            "index": 7,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -211.9 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -381.3 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -953.3 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 877750787
+          },
+          {
+            "index": 8,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -287.5 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -350.0 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -914.7 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2461838070
+          },
+          {
+            "index": 9,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -305.1 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -356.5 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -926.3 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2704475297
+          },
+          {
+            "index": 11,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -437.5 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -357.4 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -605.2 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 368836155
+          },
+          {
+            "index": 13,
+            "reasons": [
+              "No loaded wheel contact for 12 physics steps"
+            ],
+            "seed": 3681886153
+          },
+          {
+            "index": 17,
+            "reasons": [
+              "No loaded wheel contact for 1 physics steps"
+            ],
+            "seed": 2084400044
+          },
+          {
+            "index": 18,
+            "reasons": [
+              "ValueError: Could not align the cube with the left arm",
+              "No loaded wheel contact for 3350 physics steps",
+              "red \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -658.7 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -398.3 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -945.7 mm rim margin, center -554.3 mm above tabletop",
+              "locate/left_finger_b/coffee_table \u00b7 1 contact steps",
+              "locate/left_finger_a/coffee_table \u00b7 3299 contact steps"
+            ],
+            "seed": 1168469256
+          },
+          {
+            "index": 23,
+            "reasons": [
+              "green \u00b7 33.5 mm rim margin"
+            ],
+            "seed": 2681883464
+          },
+          {
+            "index": 31,
+            "reasons": [
+              "ValueError: Lost green during two transport attempts",
+              "green \u00b7 0/100 table contacts, -339.5 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -457.3 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 3439968140
+          },
+          {
+            "index": 37,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -386.4 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -401.1 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -623.4 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 3319694021
+          },
+          {
+            "index": 38,
+            "reasons": [
+              "ValueError: Lost blue during two transport attempts",
+              "blue \u00b7 0/100 table contacts, -309.8 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2701543012
+          },
+          {
+            "index": 40,
+            "reasons": [
+              "No loaded wheel contact for 1 physics steps",
+              "blue \u00b7 0/100 table contacts, center 60.0 mm above tabletop"
+            ],
+            "seed": 774486918
+          },
+          {
+            "index": 43,
+            "reasons": [
+              "blue \u00b7 0/100 table contacts, center 60.0 mm above tabletop"
+            ],
+            "seed": 918119721
+          },
+          {
+            "index": 47,
+            "reasons": [
+              "ValueError: Lost red during two transport attempts",
+              "red \u00b7 0/100 table contacts, -590.4 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -622.8 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -414.0 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 458352548
+          },
+          {
+            "index": 49,
+            "reasons": [
+              "No loaded wheel contact for 9 physics steps"
+            ],
+            "seed": 2980733694
+          }
+        ],
+        "interval_95": [
+          0.501410168761127,
+          0.7586125034815325
+        ],
+        "manifest_sha256": "3f64faea894cd691c2c0d51c4e1905bbc2031bb724adb0d45d77b86a2f7af027",
+        "qualified": false,
+        "requirement": 45,
+        "split": "hidden",
+        "successes": 32,
+        "verified": 50,
+        "verified_guard_bypasses": 0
+      }
+    }
+  ]
+}
