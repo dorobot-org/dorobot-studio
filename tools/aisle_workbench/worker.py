@@ -209,6 +209,17 @@ def simulate(args, meta):
     robot.set_dofs_kp([18 if args.fixture == "compliant" else 28] * robot.n_dofs)
     robot.set_dofs_kv([3] * robot.n_dofs)
     rows = []
+    names = [
+        name
+        for _, name in sorted(
+            (i, j.name) for j in robot.joints for i in j.dofs_idx_local
+        )
+    ]
+    if len(names) != len(initial) or len(set(names)) != len(names):
+        raise ValueError("Inspection requires one named joint per measured coordinate")
+    recording = []
+    camera = args.out / "camera"
+    camera.mkdir()
     in_bounds = True
     for index in range(121):
         target[dof] = initial[dof] + control["delta_rad"] * min(index / 60, 1)
@@ -226,20 +237,26 @@ def simulate(args, meta):
             measured_rad=float(measured[dof]),
         )
         rows.append(row)
+        recording.append(
+            dict(step=index + 1, state=measured.tolist(), action=target.tolist())
+        )
         rgb = np.asarray(cam.render()[0], dtype=np.uint8)
         image = Image.fromarray(rgb).convert("RGB")
         path = args.out / "frame.tmp"
         image.save(path, "PNG")
+        (camera / f"{len(rows) - 1:04d}.png").write_bytes(path.read_bytes())
         path.replace(args.out / "frame.png")
         tmp = args.out / "preview.tmp"
         tmp.write_bytes(index.to_bytes(4, "big") + image.tobytes())
         tmp.replace(args.out / "preview.rgb")
         save(args.out / "progress.json", row)
     save(args.out / "trajectory.json", rows)
+    save(args.out / "recording.json", dict(joints=names, samples=recording))
     actual = rows[-1]["measured_rad"] - float(initial[dof])
     passed = abs(actual - control["delta_rad"]) < 0.025 and in_bounds
     return dict(
         robot=args.robot,
+        recording=True,
         task_success=passed,
         frames=len(rows),
         steps=121,
@@ -255,13 +272,14 @@ def simulate(args, meta):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("operation", choices=["scene", "prepare", "run"])
+    p.add_argument("operation", choices=["scene", "prepare", "run", "export"])
     p.add_argument("--robot", choices=MODELS, required=True)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--provider", choices=["reference", "codex"], default="reference")
     p.add_argument("--task", default=REFERENCE)
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
+    p.add_argument("--trial", type=Path)
     p.add_argument("--fixture", choices=["standard", "compliant"], default="standard")
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
@@ -272,6 +290,11 @@ def main():
     else:
         args.out.mkdir(parents=True, exist_ok=False)
     try:
+        if args.operation == "export":
+            from replay import export
+
+            save(args.out / "export.json", export(args.trial.resolve(), args.out))
+            return
         meta = describe(args.robot)
         save(args.out / "scene.json", meta)
         if args.operation == "prepare":

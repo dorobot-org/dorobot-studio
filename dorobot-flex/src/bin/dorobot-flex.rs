@@ -1002,7 +1002,7 @@ impl MatchEvent for App {
                         "language": self.language.code(), "untranslated": self.localizer.untranslated(),
                         "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()});
                 probe["aisle_panel"] = serde_json::json!(self.plugins.selected());
-                probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"status":w.status,"scene_joints":w.scene["joint_count"],"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"revision":w.revision_index(),"result":w.evidence})));
+                probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"status":w.status,"scene_joints":w.scene["joint_count"],"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"revision":w.revision_index(),"dataset":w.dataset,"result":w.evidence})));
                 dorobot_flex::ux_probe::write(cx,&self.ui,probe,
                     &[
                         "page_record.body.right.session",
@@ -1024,7 +1024,7 @@ impl MatchEvent for App {
                         "page_play.timeline",
                         "page_play.timeline.tl_head",
                         "workspace_tabs.plugin_tabs.plugin_tab_aisle_task", "workspace_tabs.plugin_tabs.plugin_tab_aisle_scene", "workspace_tabs.plugin_tabs.plugin_tab_aisle_run", "workspace_tabs.plugin_tabs.plugin_tab_aisle_evidence",
-                        "aisle_task.nano", "aisle_task.g1", "aisle_task.instruction", "aisle_task.reference", "aisle_task.codex", "aisle_task.older", "aisle_task.newer", "aisle_task.revise", "aisle_scene.standard", "aisle_scene.compliant", "aisle_scene.inspect", "aisle_run.start_run", "aisle_run.stop_run", "aisle_evidence.previous", "aisle_evidence.next", "aisle_evidence.folder",
+                        "aisle_task.nano", "aisle_task.g1", "aisle_task.instruction", "aisle_task.reference", "aisle_task.codex", "aisle_task.older", "aisle_task.newer", "aisle_task.revise", "aisle_scene.standard", "aisle_scene.compliant", "aisle_scene.inspect", "aisle_run.start_run", "aisle_run.stop_run", "aisle_evidence.previous", "aisle_evidence.next", "aisle_evidence.folder", "aisle_evidence.export", "aisle_evidence.replay",
                         "data_workspace", "plugin_tools", "plugin_tabs", "data_tabs",
                         "workspace_tabs.plugin_tabs.plugin_tab_page_hardware", "workspace_tabs.plugin_tabs.plugin_tab_hardware_teleop", "workspace_tabs.plugin_tabs.plugin_tab_page_record",
                         "workspace_tabs.data_tabs.tab_library", "workspace_tabs.data_tabs.tab_play", "workspace_tabs.data_tabs.tab_eval",
@@ -1291,8 +1291,9 @@ impl MatchEvent for App {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         let previous_screen = self.backend.screen();
         let previous_job = self.backend.nexus().and_then(|state| state.job_dir.clone());
-        let opening_saved = self.plugins.selected() == Some("nexus_setup")
-            && self.ui.button(cx, ids!(nexus_setup.open_saved)).clicked(actions);
+        let opening_saved = (self.plugins.selected() == Some("nexus_setup")
+            && self.ui.button(cx, ids!(nexus_setup.open_saved)).clicked(actions))
+            || (self.plugins.selected() == Some("aisle_evidence") && self.ui.button(cx, ids!(aisle_evidence.replay)).clicked(actions));
         let mut dirty = self.plugins.handle_actions(cx, actions, &mut *self.backend);
         if dirty {
             if self.backend.screen() != previous_screen || (opening_saved && self.backend.screen() == Screen::Play) {

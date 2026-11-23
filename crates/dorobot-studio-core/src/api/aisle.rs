@@ -46,6 +46,7 @@ pub enum Action {
     Previous,
     Next,
     Open,
+    Export,
 }
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
@@ -72,6 +73,7 @@ pub struct Workbench {
     pub robot: Robot,
     pub task: String,
     pub status: String,
+    pub error: Option<String>,
     pub scene: Value,
     pub plan: Value,
     pub evidence: Value,
@@ -84,6 +86,7 @@ pub struct Workbench {
     pub revisions: Vec<PathBuf>,
     pub compliant: bool,
     pub comparison: Option<f64>,
+    pub dataset: Option<PathBuf>,
     job: Option<Job>,
     root: PathBuf,
 }
@@ -94,6 +97,7 @@ impl Default for Workbench {
             robot: Robot::Nano,
             task: REFERENCE.into(),
             status: "Ready".into(),
+            error: None,
             scene: Value::Null,
             plan: Value::Null,
             evidence: Value::Null,
@@ -106,6 +110,7 @@ impl Default for Workbench {
             revisions: Vec::new(),
             compliant: false,
             comparison: None,
+            dataset: None,
             job: None,
             root,
         };
@@ -201,6 +206,7 @@ impl Workbench {
         serde_json::json!({"robot":robot,"outcome":outcome,"reason":reason})
     }
     fn select_run(&mut self, path: PathBuf) {
+        self.dataset = Some(path.join("dataset")).filter(|p| p.join("meta/info.json").is_file());
         self.evidence = Self::receipt(&path);
         self.comparison = self
             .history
@@ -280,6 +286,13 @@ impl Workbench {
         if let Some(run) = feedback {
             cmd.arg("--feedback").arg(run);
         }
+        if op == "export" {
+            cmd.arg("--trial").arg(
+                self.selected
+                    .as_ref()
+                    .ok_or_else(|| io::Error::other("Select a recorded trial"))?,
+            );
+        }
         if op == "prepare" {
             cmd.args([
                 "--provider",
@@ -349,6 +362,7 @@ impl Workbench {
         if self.busy() {
             return;
         }
+        self.error = None;
         let result = match action {
             Action::Select(r) => {
                 if self.robot != r {
@@ -388,6 +402,7 @@ impl Workbench {
                 }
                 Ok(())
             }
+            Action::Export => self.launch("export", false, None),
             Action::Inspect => self.launch("scene", false, None),
             Action::Run => self.launch("run", false, None),
             Action::Previous | Action::Next => {
@@ -427,6 +442,7 @@ impl Workbench {
         };
         if let Err(e) = result {
             self.status = e.to_string();
+            self.error = Some(self.status.clone());
         }
     }
     pub fn poll(&mut self) {
@@ -449,12 +465,17 @@ impl Workbench {
             self.scene = m;
         }
         let artifact = match job.op {
+            "export" => "export.json",
             "run" => "result.json",
             "prepare" => "controller.json",
             _ => "scene.json",
         };
         if status.is_ok_and(|s| s.is_some_and(|c| c.success())) && job.dir.join(artifact).is_file()
         {
+            if job.op == "export" {
+                self.dataset =
+                    read(&job.dir, artifact).and_then(|v| v["dataset"].as_str().map(PathBuf::from));
+            }
             if job.op == "prepare" {
                 let p = job.dir.join(artifact);
                 self.revisions.push(p.clone());
@@ -473,6 +494,7 @@ impl Workbench {
                         job.dir.join("worker.log").display()
                     )
                 });
+            self.error = Some(self.status.clone());
             if job.op == "run" {
                 if !job.dir.join("error.json").exists() {
                     let _ = fs::write(

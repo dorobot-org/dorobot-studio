@@ -176,6 +176,38 @@ def main():
         )
         grab(robot + "-run")
         page("evidence")
+        click("aisle_evidence.export")
+        saved = done(
+            lambda w: w["dataset"] and not w["busy"], robot + " episode exported", 60
+        )
+        dataset = Path(saved["dataset"])
+        info = json.loads((dataset / "meta/info.json").read_text())
+        assert info["total_frames"] == 25 and info["features"]["observation.state"][
+            "shape"
+        ] == [joints]
+        video = (
+            dataset / "videos/chunk-000/observation.images.operator/episode_000000.mp4"
+        )
+        measured = subprocess.check_output(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-count_frames",
+                "-show_entries",
+                "stream=nb_read_frames,width,height",
+                "-of",
+                "json",
+                str(video),
+            ],
+            text=True,
+        )
+        stream = json.loads(measured)["streams"][0]
+        assert (int(stream["nb_read_frames"]), stream["width"], stream["height"]) == (
+            25,
+            480,
+            320,
+        )
         grab(robot + "-evidence")
         checks.append(dict(check=robot + " scored and retained", **result))
     click("aisle_evidence.previous")
@@ -227,6 +259,18 @@ def main():
     )
     assert (Path(row["selected"]) / "stopped.json").is_file()
     page("evidence")
+    click("aisle_evidence.previous")
+    prior = done(lambda w: w["result"].get("task_success"), "reopen scored evidence")
+    if not prior["dataset"]:
+        click("aisle_evidence.export")
+        done(lambda w: w["dataset"] and not w["busy"], "revised episode exported", 60)
+    click("aisle_evidence.replay")
+    wait(
+        lambda j: j["state"]["screen"] == "Replay" and j["state"]["frames"] == 25,
+        "episode opened in Studio Replay",
+    )
+    checks.append(dict(check="native Replay loaded episode", robot="G1", frames=25))
+    grab("G1-replay")
     (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
 
 

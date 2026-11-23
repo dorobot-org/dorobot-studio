@@ -126,7 +126,8 @@ script_mod! {
         summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
         plot := Card{width:Fill height:Fill Section{text:"Measured joint angle · radians"} trace := Spark{width:Fill height:Fill} scale := Section{}}
         Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
-            folder := mod.widgets.ux.PrimaryButton{text:"Open run folder"}}
+            folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
+            export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"}}
         status := Body{}
     }
 }
@@ -357,7 +358,24 @@ impl PluginPanel for Panel {
                 } else {
                     String::new()
                 };
-                self.label(cx, ids!(status), &status);
+                let msg = if w.busy() {
+                    &w.status
+                } else {
+                    w.error.as_ref().unwrap_or(&status)
+                };
+                self.label(cx, ids!(status), msg);
+                self.root
+                    .widget(cx, ids!(export))
+                    .set_visible(cx, w.dataset.is_none() && w.evidence["recording"] == true);
+                self.root
+                    .button(cx, ids!(export))
+                    .set_enabled(cx, !w.busy());
+                self.root
+                    .widget(cx, ids!(replay))
+                    .set_visible(cx, w.dataset.is_some());
+                self.root
+                    .button(cx, ids!(replay))
+                    .set_enabled(cx, !w.busy());
                 self.label(cx, ids!(detail), &text);
                 let trace: Vec<_> = w.trace.iter().map(|&x| x as f64).collect();
                 self.root
@@ -393,6 +411,12 @@ impl PluginPanel for Panel {
         let Some(_) = b.aisle() else {
             return false;
         };
+        if self.root.button(cx, ids!(replay)).clicked(actions) {
+            if let Some(path) = b.aisle().and_then(|w| w.dataset.clone()) {
+                b.dispatch(Intent::OpenFolder(path));
+            }
+            return true;
+        }
         for (id, act) in [
             (ids!(nano) as &[LiveId], Action::Select(Robot::Nano)),
             (ids!(g1), Action::Select(Robot::G1)),
@@ -406,6 +430,7 @@ impl PluginPanel for Panel {
             (ids!(previous), Action::Previous),
             (ids!(next), Action::Next),
             (ids!(folder), Action::Open),
+            (ids!(export), Action::Export),
         ] {
             if self.root.button(cx, id).clicked(actions) {
                 b.dispatch(Intent::Aisle(act));
