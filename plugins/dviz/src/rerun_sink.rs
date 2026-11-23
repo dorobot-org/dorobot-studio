@@ -241,6 +241,8 @@ const POINTS_JSON_COLOR: [u8; 4] = [200, 200, 200, 255];
 const BOXES_COLOR: [u8; 4] = [100, 150, 200, 255];
 const ARROWS_COLOR: [u8; 4] = [255, 100, 100, 255];
 const STRIPS_COLOR: [u8; 4] = [100, 200, 255, 255];
+/// Length (m) of the axes drawn at every `transform3d` entity.
+const TRANSFORM_AXIS_LENGTH: f32 = 0.3;
 
 fn rgba(c: [u8; 4]) -> rerun::Color {
     rerun::Color::from_unmultiplied_rgba(c[0], c[1], c[2], c[3])
@@ -358,28 +360,26 @@ impl Sink for RerunSink {
             }
             "transform3d" => {
                 let data = parse!(msg, Transform3DData);
-                if let Some(m) = data.matrix4x4 {
+                let transform = if let Some(m) = data.matrix4x4 {
                     // Row-major 4x4: the upper-left 3x3 rotation and the last column.
-                    rec.log(
-                        entity,
-                        &rerun::Transform3D::from_mat3x3([
-                            [m[0], m[1], m[2]],
-                            [m[4], m[5], m[6]],
-                            [m[8], m[9], m[10]],
-                        ])
-                        .with_translation([m[3], m[7], m[11]]),
-                    )
+                    rerun::Transform3D::from_mat3x3([
+                        [m[0], m[1], m[2]],
+                        [m[4], m[5], m[6]],
+                        [m[8], m[9], m[10]],
+                    ])
+                    .with_translation([m[3], m[7], m[11]])
                 } else if let (Some(t), Some(r)) = (data.translation, data.rotation) {
-                    rec.log(
-                        entity,
-                        &rerun::Transform3D::from_translation(t)
-                            .with_quaternion(rerun::Quaternion::from_xyzw(r)),
-                    )
+                    rerun::Transform3D::from_translation(t)
+                        .with_quaternion(rerun::Quaternion::from_xyzw(r))
                 } else if let Some(t) = data.translation {
-                    rec.log(entity, &rerun::Transform3D::from_translation(t))
+                    rerun::Transform3D::from_translation(t)
                 } else {
                     return Err("transform3d needs a matrix4x4 or a translation".to_string());
-                }
+                };
+                // Rerun 0.28 draws nothing for a bare Transform3D; the axes make it visible.
+                rec.log(entity, &transform).and_then(|()| {
+                    rec.log(entity, &rerun::TransformAxes3D::new(TRANSFORM_AXIS_LENGTH))
+                })
             }
             "scalar" => {
                 // A time series: Rerun plots it as a curve over log time.
@@ -531,6 +531,59 @@ mod tests {
             !schemas.iter().any(|schema| schema.contains("TextLog")),
             "logged as text: {schemas:?}"
         );
+    }
+
+    #[test]
+    fn transform_logs_axes_too() {
+        // Rerun 0.28 draws nothing for a bare Transform3D; TransformAxes3D does.
+        let cases = [
+            json!({"matrix4x4": [1, 0, 0, 5, 0, 1, 0, 6, 0, 0, 1, 7, 0, 0, 0, 1]}),
+            json!({"translation": [1, 2, 3], "rotation": [0, 0, 0, 1]}),
+            json!({"translation": [1, 2, 3]}),
+        ];
+        for data in cases {
+            let (mut sink, storage) = RerunSink::memory("test");
+            let m = msg("transform3d", data.clone());
+            assert_eq!(sink.log("robot/pose", &m, None), Ok(()));
+            sink.flush();
+            let batches: Vec<_> = storage
+                .take()
+                .into_iter()
+                .filter_map(|msg| match msg {
+                    rerun::log::LogMsg::ArrowMsg(_, arrow) => Some(arrow.batch.clone()),
+                    _ => None,
+                })
+                .filter(|b| format!("{:?}", b.schema()).contains("\"/robot/pose\""))
+                .collect();
+            let schemas: Vec<String> = batches
+                .iter()
+                .map(|b| format!("{:?}", b.schema()))
+                .collect();
+            let axes: Vec<String> = batches
+                .iter()
+                .flat_map(|b| {
+                    b.schema()
+                        .fields()
+                        .iter()
+                        .zip(b.columns())
+                        .filter(|(f, _)| f.name().starts_with("TransformAxes3D:"))
+                        .map(|(_, c)| format!("{c:?}"))
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            assert!(
+                axes.iter().any(|c| c.contains("0.3")),
+                "axis length 0.3 not recorded for {data}: {axes:?}"
+            );
+            assert!(
+                schemas.iter().any(|s| s.contains("TransformAxes3D:")),
+                "no TransformAxes3D component for {data}: {schemas:?}"
+            );
+            assert!(
+                schemas.iter().any(|s| s.contains("Transform3D:")),
+                "transform itself missing for {data}: {schemas:?}"
+            );
+        }
     }
 
     #[test]

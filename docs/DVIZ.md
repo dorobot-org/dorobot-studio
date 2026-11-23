@@ -4,7 +4,7 @@
 
 ## 前提
 
-- Rerun 0.28 查看器在 `PATH` 里：`cargo install rerun-cli --version 0.28.x --locked`（命令行名为 `rerun`）。没有它，或者 `rerun --version` 的主、次版本号不是 0.28，“Open 3D window”都会在状态栏报错（版本不对时写出查看器和 Studio 内置 SDK 两边的版本），不会启动它；其余功能照常。
+- Rerun 0.28 查看器在 `PATH` 里（命令行名为 `rerun`）：`python3 -m venv ~/rerun-0.28 && ~/rerun-0.28/bin/pip install rerun-sdk==0.28.2`，再把 `~/rerun-0.28/bin` 放进 `PATH`。`cargo install rerun-cli --version 0.28.2` 在 Rust 1.95 上编译失败（E0275），不要用。没有它，或者 `rerun --version` 的主、次版本号不是 0.28，“Open 3D window”都会在状态栏报错（版本不对时写出查看器和 Studio 内置 SDK 两边的版本），不会启动它；其余功能照常。
 - 构建带 Rerun：`dorobot-flex` 的默认特性已包含 `rerun`；`--no-default-features` 构建不含 Rerun，“Open 3D window”会提示“This build does not include Rerun”。
 - 3D 内容在独立的 Rerun 窗口里，不嵌在 Studio 内。
 
@@ -19,6 +19,7 @@
 | Prefix | 话题前缀，默认 `dviz`；订阅 `<prefix>/**`，Rerun 实体路径 = 话题去掉 `<prefix>/` |
 
 - **同一局域网**：Mode 填 `peer`，Endpoint 留空，用组播自动发现。
+- 组播模式下状态栏的 “Connected” 可能是局域网里别的 Zenoh 节点（比如车上的 Dora 节点），不一定是发布器；连车请用 `client` 模式并填端点。
 - **跨 Wi-Fi / 组播不通**：Endpoint 填机器人上监听的地址；`client` 模式必须填 Endpoint，`peer` 模式填了就直连该地址。
 
 点“Connect”建立会话，“Disconnect”断开，“Open 3D window”打开 Rerun。切到别的页面再回来，连接和已收到的数据保留（会话是进程内全局的）。这些按钮都立即返回，界面不会等 Zenoh 或 Rerun。
@@ -70,7 +71,7 @@ cargo run --locked -p dorobot-plugin-dviz --example fake_publisher -- \
 
 自动测试覆盖协议、路由、会话和发布器，但下面这些必须在有显示器的机器上人工确认。
 
-1. 先装好 `rerun-cli 0.28`，再启动发布器（见上）。
+1. 先装好 Rerun 0.28 查看器（`rerun-sdk==0.28.2`），再启动发布器（见上）。
 2. 启动 Studio：`cargo run --locked -p dorobot-flex`（默认特性）。
 3. 进入“3D visualization”，Mode `client`，Endpoint 填发布器地址，点“Connect”。状态变为 “Connected”。
 4. 点“Open 3D window”：状态栏先显示 “3D window: starting…”，再变成 “3D window: open (Rerun 0.28.x)”。Rerun 窗口里能看到点云（`world/lidar`）、车的位姿（`world/vehicle`）和路径（`world/path`），`imu/*` 是随时间变化的曲线（时间序列视图）。
