@@ -546,8 +546,9 @@ impl App {
         self.sync_workflow(cx);
         let live = self.backend.screen() == Screen::Live;
         let teleop = matches!(self.backend.screen(), Screen::Live | Screen::Record) && self.backend.playback().live.is_some();
+        self.ui.flex_panels(cx, ids!(hardware_teleop.upper.grid)).set_external_source(cx, self.external_stream);
         self.ui.widget(cx, ids!(live_bar)).set_visible(cx, live && self.external_stream && self.backend.hardware().nano.is_none());
-        self.ui.widget(cx, ids!(gamepad_help)).set_visible(cx, teleop);
+        self.ui.widget(cx, ids!(gamepad_help)).set_visible(cx, teleop && !self.external_stream);
         self.ui.widget(cx,ids!(gamepad_setup)).set_visible(cx, live);
         self.ui.widget(cx,ids!(hardware_teleop.toolbar.camera_hint)).set_visible(cx, self.workflow_help);
         if teleop {
@@ -814,6 +815,7 @@ impl MatchEvent for App {
         self.plugins.mount_toolbox(cx, &self.ui.widget(cx, ids!(plugin_tools))).expect("插件工具箱挂载失败");
         self.plugins.mount_tabs(cx, &self.ui.widget(cx, ids!(workspace_tabs.plugin_tabs))).expect("插件标签栏挂载失败");
         let args: Vec<String> = std::env::args().collect();
+        self.external_stream = args.iter().any(|a| a == "--live-socket");
         let saved = if args.iter().any(|a| a == "--demo" || a == "--live-socket") {
             None
         } else {
@@ -1317,7 +1319,13 @@ impl MatchEvent for App {
             (ids!(wf_start), Intent::StartSimulation), (ids!(wf_stop), Intent::StopSimulation),
             (ids!(wf_back), Intent::Navigate(Screen::Hardware)), (ids!(wf_operate), Intent::Navigate(Screen::Live)), (ids!(wf_next), Intent::Navigate(Screen::Record)),
             (ids!(wf_replay), Intent::OpenSavedRecording),
-        ] { if self.ui.button(cx,path).clicked(actions) { if matches!(intent, Intent::Navigate(_)) { self.plugins.follow_navigation(); } self.backend.dispatch(intent); dirty = true; } }
+        ] { if self.ui.button(cx,path).clicked(actions) {
+            if matches!(intent, Intent::Navigate(_)) { self.plugins.follow_navigation(); }
+            if matches!(intent, Intent::StartSimulation | Intent::SelectSimulation(_) | Intent::SelectNanoBase(_)) {
+                self.external_stream = false;
+            }
+            self.backend.dispatch(intent); dirty = true;
+        } }
         for (path, action) in [(ids!(wf_record), "record"), (ids!(wf_finish), "stop"), (ids!(wf_save), "save"), (ids!(wf_discard), "discard")] {
             if self.ui.button(cx,path).clicked(actions) {
                 self.backend.dispatch(Intent::SimulationCapture { action: action.into(), task: self.ui.text_input(cx,ids!(wf_task)).text(), destination: self.ui.text_input(cx,ids!(wf_destination)).text() }); dirty = true;

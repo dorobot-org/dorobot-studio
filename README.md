@@ -87,6 +87,8 @@ The [Nano room integration guide](tools/aisle-validation/README.md#mobile-nano-i
 retains the original AISLE validation experiments. The recording workflow currently
 captures at 5 Hz; the Live mode does not imply 30 fps throughput.
 
+See the [scripted three-cube stream](tools/nano-three-cubes/README.md) for the historical demo using simulator state.
+
 ### AISLE 与 Nexus 验证
 
 [Adora Nano／AISLE 验证指南](tools/aisle-validation/README.md)保留可复现的仿真、原始数据导出、LeRobot 转换及 Studio 回放／审阅验证流程。指南同时记录多相机与场景扩展、证据产物和适用范围；应用内的原生 Rust 运行时使用方式见 [运行时指南](runtime/README.md)。
