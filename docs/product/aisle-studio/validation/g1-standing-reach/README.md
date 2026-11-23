@@ -29,3 +29,9 @@ Use the [configured Python and AISLE runtime](../../README.md). Keep the indepen
 The original manifest SHA-256 is `00386e6bdb7f118de306637d38814de61219c3be22c782316bb82817f11540b3`. Publish a new manifest before starting a new cohort. Each case runs once.
 
 A separate offscreen native Studio run used a live DeepSeek call. Its world-frame wrist moved toward a 22.99 mm goal, stayed within 2.63 mm for the final half-second and retained two-foot load for all 2,000 scored steps. Studio recovered the trial after restart. [Task, provider response, native events and measurement](native-standing.json) · [Evidence page at 1440 × 900](standing-evidence.png)
+
+## Qualification result
+
+**20 of 20 passed.** All eight boundary and twelve interior cases registered a physical robot–block contact and met the wrist criterion. Both feet stayed loaded across all 40,000 physics steps. Worst settled wrist error across cases was 2.624 mm. Every trial completed the stable recovery window 0.50 s after its last impact. The independent motor audit measured zero position or rate guard bypasses. [Per-case results and disclosed recipes](report.json) · [Raw records for all cases](evidence.zip)
+
+The evidence archive SHA-256 is `f03dcfdf6b5e004402d5b62071e3d23969007e22faae0167c334d35f57630119`. Both the 1024 × 768 headless and 1440 × 900 offscreen Makepad journeys verified the archive, rejected an unreadable replacement, and restored the result after restart. An independent check also rejected a changed impact recipe and a wrong preregistration hash. [Native measurements](native-batch.json) · [Studio batch result](batch-evidence.png)

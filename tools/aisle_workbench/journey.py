@@ -237,6 +237,11 @@ def main():
             evaluation["archive_sha256"]
             == hashlib.sha256(a.evaluation.read_bytes()).hexdigest()
         )
+        if not a.recover:
+            profile = (
+                "G1" if evaluation.get("profile") == "g1-standing-reach-v1" else "Nano"
+            )
+            assert row["status"] == f"Evaluation verified · {profile}"
         checks[-1]["evaluation"] = evaluation
         if len(evaluation["failures"]) > 1 and not a.recover:
             click("aisle_evidence.later_failure")

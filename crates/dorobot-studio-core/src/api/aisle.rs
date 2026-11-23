@@ -862,7 +862,16 @@ impl Workbench {
             if job.op == "run" {
                 self.select_run(job.dir);
             }
-            self.status = format!("Completed · {} · {}", self.robot.name(), job.op);
+            self.status = if job.op == "evaluate" {
+                let profile = if self.evaluation["profile"] == "g1-standing-reach-v1" {
+                    "G1"
+                } else {
+                    "Nano"
+                };
+                format!("Evaluation verified · {profile}")
+            } else {
+                format!("Completed · {} · {}", self.robot.name(), job.op)
+            };
         } else {
             self.status = read(&job.dir, "error.json")
                 .and_then(|v| v["message"].as_str().map(str::to_owned))
