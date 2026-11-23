@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::os::unix::process::CommandExt;
 use std::{
     fs, io,
+    io::BufRead,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -54,6 +55,7 @@ pub enum Action {
     },
     Inspect,
     Fixture(bool),
+    Impact(bool),
     Layout(u8),
     OlderPlan,
     NewerPlan,
@@ -67,6 +69,109 @@ pub enum Action {
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
 }
+fn compare_actions(previous: &Path, current: &Path) -> io::Result<String> {
+    let stream = |p: &Path| {
+        Ok::<_, io::Error>(io::BufReader::new(fs::File::open(p.join("actions.jsonl"))?).lines())
+    };
+    let (mut left, mut right) = (stream(previous)?, stream(current)?);
+    for index in 1usize.. {
+        let (a, b) = (left.next().transpose()?, right.next().transpose()?);
+        match (a, b) {
+            (None, None) => return Ok(format!("All {} recorded actions match.", index - 1)),
+            (Some(a), Some(b)) => {
+                let a: Value = serde_json::from_str(&a)?;
+                let b: Value = serde_json::from_str(&b)?;
+                if !a.is_object() || !b.is_object() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Invalid action row",
+                    ));
+                }
+                if a != b {
+                    return Ok(format!("First change at action {index} · previous {} at step {}, current {} at step {}.",
+                        a["op"].as_str().unwrap_or("unknown"), a["tick"], b["op"].as_str().unwrap_or("unknown"), b["tick"]));
+                }
+            }
+            (None, _) => return Ok(format!("Previous trace ends before action {index}.")),
+            (_, None) => return Ok(format!("Current trace ends before action {index}.")),
+        }
+    }
+    unreachable!()
+}
+
+fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option<String> {
+    if current["kind"] != "table-transfer" || !current["task_success"].is_boolean() {
+        return None;
+    }
+    let source = read(path, "source.json")?;
+    let calibration = read(path, "calibration.json")?;
+    let settled = |v: &Value| {
+        v["cubes"]
+            .as_object()
+            .map(|c| c.values().filter(|r| r["passed"] == true).count())
+    };
+    for previous in history.iter().rev().filter(|p| p.as_path() < path) {
+        let Some(prior) = read(previous, "result.json") else {
+            continue;
+        };
+        if !prior["task_success"].is_boolean()
+            || ![
+                "kind",
+                "robot",
+                "model_hash",
+                "fixture",
+                "requested",
+                "seed",
+            ]
+            .iter()
+            .all(|k| !current[*k].is_null() && current[*k] == prior[*k])
+        {
+            continue;
+        }
+        let Some(old) = read(previous, "source.json") else {
+            continue;
+        };
+        let Some(old_cal) = read(previous, "calibration.json") else {
+            continue;
+        };
+        if !["recipe", "nexus", "adapter_hash", "backend"]
+            .iter()
+            .all(|k| !source[*k].is_null() && source[*k] == old[*k])
+            || ![
+                "nano_living.py",
+                "run_rgb_approach.py",
+                "run_rgb_transfer.py",
+                "nano_cameras.py",
+                "nano_visuals.py",
+            ]
+            .iter()
+            .all(|k| {
+                source["support_code_hashes"][*k].is_string()
+                    && source["support_code_hashes"][*k] == old["support_code_hashes"][*k]
+            })
+            || !["cameras", "joint_names", "rolling_radius_m"]
+                .iter()
+                .all(|k| calibration[*k] == old_cal[*k])
+            || !calibration["cameras"].is_object()
+        {
+            continue;
+        }
+        let label = previous.file_name()?.to_string_lossy();
+        let trace =
+            compare_actions(previous, path).unwrap_or_else(|_| "Action trace unavailable.".into());
+        let outcome = |v: &Value| {
+            if v["task_success"] == true {
+                "passed"
+            } else {
+                "failed"
+            }
+        };
+        return Some(format!("Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {trace}",
+            current["seed"],outcome(&prior),settled(&prior)?,outcome(current),settled(current)?));
+    }
+    None
+}
+
 struct Job {
     child: Child,
     dir: PathBuf,
@@ -109,8 +214,10 @@ pub struct Workbench {
     pub live: Option<PathBuf>,
     pub revisions: Vec<PathBuf>,
     pub compliant: bool,
+    pub impact: bool,
     pub layout_seed: u8,
     pub comparison: Option<f64>,
+    pub transfer_comparison: Option<String>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     job: Option<Job>,
@@ -139,8 +246,10 @@ impl Workbench {
             live: None,
             revisions: Vec::new(),
             compliant: false,
+            impact: false,
             layout_seed: 0,
             comparison: None,
+            transfer_comparison: None,
             dataset: None,
             exports: Default::default(),
             job: None,
@@ -261,6 +370,7 @@ impl Workbench {
             legacy.join("meta/info.json").is_file().then_some(legacy)
         });
         self.evidence = Self::receipt(&path);
+        self.transfer_comparison = compare_transfer(&self.history, &path, &self.evidence);
         self.comparison = self
             .history
             .iter()
@@ -359,7 +469,9 @@ impl Workbench {
             cmd.arg("--seed").arg(self.layout_seed.to_string());
             cmd.args([
                 "--fixture",
-                if self.compliant {
+                if self.plan["kind"] == "standing-inspection" && self.impact {
+                    "impact"
+                } else if self.compliant {
                     "compliant"
                 } else {
                     "standard"
@@ -445,6 +557,10 @@ impl Workbench {
                     planner,
                     if revise { self.selected.clone() } else { None },
                 )
+            }
+            Action::Impact(value) => {
+                self.impact = value;
+                Ok(())
             }
             Action::Fixture(value) => {
                 self.compliant = value;
@@ -597,6 +713,44 @@ mod tests {
         ));
         fs::create_dir(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn pair_requires_matching_layout_and_reports_first_action_change() {
+        let dir = fixture("matched-layout");
+        let mut runs = Vec::new();
+        let result = serde_json::json!({"kind":"table-transfer","robot":"Nano","model_hash":"model",
+            "fixture":"living-room","requested":["red"],"seed":3,"task_success":true,
+            "cubes":{"red":{"passed":true}}});
+        let source = serde_json::json!({"recipe":"room","backend":"native","nexus":"engine",
+            "adapter_hash":"adapter","support_code_hashes":{"nano_living.py":"physics",
+            "run_rgb_approach.py":"recipe","run_rgb_transfer.py":"judge","nano_cameras.py":"rig",
+            "nano_visuals.py":"mesh"}});
+        for name in ["01-Nano-run", "02-Nano-run"] {
+            let run = dir.join(name);
+            fs::create_dir(&run).unwrap();
+            fs::write(run.join("source.json"), source.to_string()).unwrap();
+            fs::write(run.join("result.json"), result.to_string()).unwrap();
+            fs::write(
+                run.join("calibration.json"),
+                r#"{"cameras":{"head":{}},"joint_names":["wheel"]}"#,
+            )
+            .unwrap();
+            fs::write(run.join("actions.jsonl"), "{\"op\":\"sense\",\"tick\":0}\n").unwrap();
+            runs.push(run);
+        }
+        let comparison = || compare_transfer(&runs, &runs[1], &result);
+        assert!(comparison()
+            .unwrap()
+            .contains("All 1 recorded actions match"));
+        fs::write(runs[1].join("actions.jsonl"), r#"{"op":"wheel","tick":20}"#).unwrap();
+        assert!(comparison().unwrap().contains("First change at action 1"));
+        let mut changed = result.clone();
+        changed["seed"] = serde_json::json!(2);
+        assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
+        fs::remove_file(runs[0].join("calibration.json")).unwrap();
+        assert!(comparison().is_none());
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

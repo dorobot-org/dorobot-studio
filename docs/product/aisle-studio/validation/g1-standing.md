@@ -17,3 +17,19 @@ From a [configured Studio checkout](../README.md), run the native verification w
   --studio target/debug/dorobot-flex --backend headless --size 1024x768 --dark \
   --octos-deepseek --standing --out /tmp/aisle-g1-standing
 ```
+
+## Development impact and motor work
+
+Select **Scene → Impact test** after preparing a G1 standing controller. At three seconds the fixture releases a 0.25 kg, 65 mm block toward the torso at 1.2 m/s. The robot continues running the same standing controller. Nexus resolves contact and gravity. The evaluator records positive normal impulses between the block and individual robot links. It requires an actual impact and a subsequent half second of continuous stability within two seconds of the final contact. Both feet must stay loaded, pelvis drift must stay below 30 mm, tilt below 4° and shoulder error below 0.015 rad throughout that recovery window. The original ten-second limits also apply. **Level floor** selects the original trial.
+
+Evidence reports the estimated positive mechanical work at the actuated joints. The worker evaluates the requested PD torque before each step from the configured gains and measured joint angles and velocities, caps it at each URDF effort limit, then multiplies by measured joint travel. Positive and negative contributions accumulate separately. The retained `motor-work.npz` contains the initial and final angles, initial velocities, targets, gains and effort limits for every scored step. This estimates commanded mechanical work. Battery consumption, drive losses and actual solver motor torques require additional instrumentation.
+
+Run the impact fixture through the native application from the configured Studio checkout.
+
+```sh
+.venv-aisle/bin/python tools/aisle_workbench/verify.py \
+  --studio target/debug/dorobot-flex --backend headless --size 1024x768 --dark \
+  --octos-deepseek --standing --impact --out /tmp/aisle-g1-impact
+```
+
+In the 1024 × 768 dark headless Studio trial, DeepSeek through Octos authored a −0.08 rad shoulder target. Three positive contact rows at steps 631 and 638 summed to 0.4284 N·s of normal impulse. G1 maintained two-foot support on 2,000 of 2,000 steps. It completed the 100-step stable window 0.50 s after the last contact. Peak tilt was 2.53°, maximum drift was 2.47 mm and final shoulder displacement was −0.0799992 rad. Independent replay of the 2,000 × 29 motor samples yielded +0.8050 J and −0.6370 J of estimated joint work. Studio recovered the scored trial after restart. [Native result, provider call and contacts](g1-impact-trial.json) · [Replayable motor samples](g1-impact-motor-work.npz)

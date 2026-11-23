@@ -1,0 +1,156 @@
+{
+  "result": {
+    "kind": "standing-inspection",
+    "task_success": true,
+    "fixture": "standing-impact-development",
+    "disturbance": {
+      "contacts": 3,
+      "normal_impulse_sum_ns": 0.4283974878489971,
+      "links": [
+        "pelvis_contour_link",
+        "torso_link"
+      ],
+      "recovery_s": 0.5,
+      "last_contact_step": 638,
+      "recovered_step": 738,
+      "passed": true
+    },
+    "estimated_positive_joint_work_j": 0.8050148153803406,
+    "estimated_negative_joint_work_j": -0.6370287680099146,
+    "motor_work_sha256": "500629039815ed8c1681b227200edbf19e2a29c1d24217e2c069e2589b13ddd9",
+    "joint": "right_shoulder_pitch_joint",
+    "requested_delta": -0.08,
+    "measured_delta": -0.07999920099973679,
+    "within_limits": true,
+    "max_joint_excursion_rad": 0.0,
+    "steps": 2000,
+    "frames": 101,
+    "both_feet_loaded_steps": 2000,
+    "floor_contact_links_other_than_feet": [],
+    "peak_tilt_deg": 2.5321330658215335,
+    "max_pelvis_drift_m": 0.002474752953276038,
+    "root_pose_writes": 0,
+    "robot": "G1",
+    "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+    "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+  },
+  "source": {
+    "adapter": "aisle.sim.nexus_backend",
+    "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+    "backend": "metal",
+    "fixture_profile": "standing-impact-development",
+    "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+    "nexus": "0.2.1",
+    "fixture": "floating G1, gravity and loaded feet",
+    "control_sha256": "16685d98103674938c07028c6375847cb54e17214b7dd18169902c4ebde934e4",
+    "physics_dt_s": 0.005,
+    "gravity_m_s2": -9.81,
+    "warmup_steps": 200,
+    "floor_z_m": -0.7938637524222113,
+    "disturbance": {
+      "mass_kg": 0.25,
+      "side_m": 0.065,
+      "initial_position_m": [
+        0.29,
+        0,
+        0.16
+      ],
+      "initial_velocity_m_s": [
+        -1.2,
+        0,
+        0
+      ],
+      "launch_step": 601
+    }
+  },
+  "controller": {
+    "joint": "right_shoulder_pitch_joint",
+    "delta_rad": -0.08,
+    "kind": "standing-inspection",
+    "robot": "G1",
+    "task": "Stand on both feet and track a right shoulder displacement of minus 0.08 rad for the standing test.",
+    "provider": "octos-deepseek",
+    "policy_model": "deepseek-v4-flash",
+    "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+  },
+  "provider": {
+    "provider": "octos-deepseek",
+    "model": "deepseek-v4-flash",
+    "wall_seconds": 4.07906433311291,
+    "input_tokens": 6097,
+    "output_tokens": 89
+  },
+  "impacts": [
+    {
+      "step": 631,
+      "link": "torso_link",
+      "normal_impulse_ns": 0.061153654009103775
+    },
+    {
+      "step": 638,
+      "link": "pelvis_contour_link",
+      "normal_impulse_ns": 0.24862830340862274
+    },
+    {
+      "step": 638,
+      "link": "pelvis_contour_link",
+      "normal_impulse_ns": 0.1186155304312706
+    }
+  ],
+  "instrumentation": {
+    "backend": "headless",
+    "requested_size": "1024x768",
+    "provider": "octos-deepseek",
+    "native_binary_sha256": "c298bf6f90b75cc8424a4314f47faecfb75bea4fd0e510c6efed7e545f6c3d1e",
+    "studio_source_commit": "97c3201ea4bdc481c9537e88a772b276cfc2603d",
+    "workspace_changes_at_launch": [
+      " M crates/dorobot-studio-core/src/api/aisle.rs",
+      " M docs/product/aisle-studio/validation/g1-standing.md",
+      " M dorobot-flex/src/bin/dorobot-flex.rs",
+      " M plugins/aisle/src/lib.rs",
+      " M tools/aisle_workbench/g1_stand.py",
+      " M tools/aisle_workbench/journey.py",
+      " M tools/aisle_workbench/verify.py",
+      " M tools/aisle_workbench/worker.py",
+      "?? tools/aisle-validation/test_nano_qualification.py"
+    ],
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 23075,
+        "observed_dark": true,
+        "windows": [
+          [
+            1024,
+            768
+          ]
+        ]
+      },
+      {
+        "stage": "recovery",
+        "pid": 29302,
+        "observed_dark": true,
+        "windows": [
+          [
+            1024,
+            768
+          ]
+        ]
+      }
+    ],
+    "trials": [
+      "1795470641857401000-G1-run"
+    ],
+    "files": {
+      "journey.json": "a206f84ac8a5f6cdeb0ea92b4f75e6f5c19f0d591a4523dc2ced51d05b890f64",
+      "recovery.json": "bb56c90ae9f5b9ddb40f8c869dba86f524893dd9aa2cd2086f976f1ec73452af"
+    }
+  },
+  "restart": [
+    {
+      "check": "standing evidence restored",
+      "robot": "Nano",
+      "status": "Ready"
+    }
+  ]
+}

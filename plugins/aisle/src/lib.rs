@@ -106,6 +106,10 @@ script_mod! {
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
             inspector := Card{width:285 height:Fill Section{text:"Simulation fixture"} fixture_kind := Body{}
                 Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
+                standing_fixtures := Bar{
+                    level := mod.widgets.ux.ToolButton{text:"Level floor"}
+                    impact := mod.widgets.ux.ToolButton{text:"Impact test"}
+                }
                 fixture := Body{}
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
                     Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
@@ -406,6 +410,15 @@ impl PluginPanel for Panel {
                     },
                 );
                 self.root.widget(cx, ids!(layouts)).set_visible(cx, mobile);
+                self.root
+                    .widget(cx, ids!(standing_fixtures))
+                    .set_visible(cx, standing);
+                self.root
+                    .button(cx, ids!(level))
+                    .set_enabled(cx, !w.busy() && w.impact);
+                self.root
+                    .button(cx, ids!(impact))
+                    .set_enabled(cx, !w.busy() && !w.impact);
                 for (id, seed) in [
                     (ids!(layout0) as &[LiveId], 0),
                     (ids!(layout1), 1),
@@ -426,7 +439,11 @@ impl PluginPanel for Panel {
                     if mobile {
                         "Three floor cubes · head and two wrist RGB cameras · wheel drive"
                     } else if standing {
-                        "Free pelvis · ankle feedback · both feet monitored"
+                        if w.impact {
+                            "0.25 kg block at 1.2 m/s · both feet and recovery monitored"
+                        } else {
+                            "Free pelvis · ankle feedback · both feet monitored"
+                        }
                     } else if w.compliant {
                         "Compliant · position gain 18"
                     } else {
@@ -485,28 +502,51 @@ impl PluginPanel for Panel {
                         .filter_map(|s| s.as_str())
                     {
                         let record = &w.evidence["cubes"][color];
+                        let contacts = record["table_contact_tail_ticks"].as_u64().unwrap_or(0);
+                        let state = if record["passed"] == true {
+                            "settled"
+                        } else {
+                            "incomplete"
+                        };
+                        let inset = record["nearest_table_edge_m"]
+                            .as_f64()
+                            .map_or_else(String::new, |m| {
+                                format!(" · {:.0} mm inside rim", m * 1000.0)
+                            });
                         lines.push(format!(
-                            "{} cube · {} · {} / 100 final table-contact steps",
-                            color,
-                            if record["passed"] == true {
-                                "settled"
-                            } else {
-                                "incomplete"
-                            },
-                            record["table_contact_tail_ticks"]
-                                .as_u64()
-                                .unwrap_or_default()
+                            "{color} · {state} · {contacts}/100 table contacts{inset}"
                         ));
                     }
-                    lines.push(format!("Living-room layout {}", w.evidence["seed"]));
                     lines.push(format!(
-                        "Wheel support {}/{} steps · {} furniture contact pairs",
+                        "Layout {} · wheel support {}/{} steps",
+                        w.evidence["seed"],
                         w.evidence["wheel_supported_ticks"],
-                        w.evidence["physics_ticks"],
-                        w.evidence["robot_furniture_contacts"]
-                            .as_object()
-                            .map_or(0, |x| x.len())
+                        w.evidence["physics_ticks"]
                     ));
+                    let audit = &w.evidence["actuator_audit"];
+                    if audit.is_object() {
+                        lines.push(format!(
+                            "Motor audit {} · {} recorded writes",
+                            if audit["passed"] == true {
+                                "passed"
+                            } else {
+                                "failed"
+                            },
+                            audit["applied_rows"],
+                        ));
+                    }
+                    if let Some(contacts) = w.evidence["robot_furniture_contacts"].as_object() {
+                        if contacts.is_empty() {
+                            lines.push("No furniture contacts".into());
+                        } else {
+                            for (pair, ticks) in contacts {
+                                lines.push(format!(
+                                    "Contact during {} · {ticks} steps",
+                                    pair.replace('/', " / ")
+                                ));
+                            }
+                        }
+                    }
                     if let Some(reason) = w.evidence["error"].as_str() {
                         lines.push(reason.to_owned());
                     }
@@ -515,10 +555,25 @@ impl PluginPanel for Panel {
                     format!("{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
                       w.evidence["color"].as_str().unwrap_or(""),w.evidence["standoff_m"].as_f64().unwrap_or_default(),w.evidence["final_distance_m"].as_f64().unwrap_or_default(),w.evidence["wheel_supported_ticks"],w.evidence["physics_ticks"],w.evidence["obstacle_contact_ticks"])
                 } else if standing {
-                    format!("{} · requested {:+.3} rad · measured {:+.4} rad\nBoth feet loaded {}/{} steps\nPeak tilt {:.1}° · maximum pelvis drift {:.1} cm",
+                    let mut summary = format!("{} · requested {:+.3} rad · measured {:+.4} rad\nBoth feet loaded {}/{} steps\nPeak tilt {:.1}° · maximum pelvis drift {:.1} cm",
                         w.evidence["joint"].as_str().unwrap_or("Shoulder"), w.evidence["requested_delta"].as_f64().unwrap_or_default(),
                         w.evidence["measured_delta"].as_f64().unwrap_or_default(),w.evidence["both_feet_loaded_steps"], w.evidence["steps"],
-                        w.evidence["peak_tilt_deg"].as_f64().unwrap_or_default(),w.evidence["max_pelvis_drift_m"].as_f64().unwrap_or_default()*100.)
+                        w.evidence["peak_tilt_deg"].as_f64().unwrap_or_default(),w.evidence["max_pelvis_drift_m"].as_f64().unwrap_or_default()*100.);
+                    if let Some(joules) = w.evidence["estimated_positive_joint_work_j"].as_f64() {
+                        summary.push_str(&format!("\nEstimated positive joint work {joules:.2} J"));
+                    }
+                    let impact = &w.evidence["disturbance"];
+                    if impact.is_object() {
+                        let recovery = impact["recovery_s"]
+                            .as_f64()
+                            .map(|t| format!("stable after {t:.2} s"))
+                            .unwrap_or_else(|| "recovery unconfirmed".into());
+                        summary.push_str(&format!(
+                            "\nImpact {:.3} N·s · {recovery}",
+                            impact["normal_impulse_sum_ns"].as_f64().unwrap_or(0.0)
+                        ));
+                    }
+                    summary
                 } else if let Some(angle) = w.evidence["measured_delta"].as_f64() {
                     format!("{} · {} · {} fixture\nRequested {:+.3} rad    Measured {:+.5} rad    {} observations\nLimits {} over {} physics steps.",
                             w.evidence["robot"].as_str().unwrap_or(""), w.evidence["joint"].as_str().unwrap_or(""),
@@ -530,7 +585,9 @@ impl PluginPanel for Panel {
                         .unwrap_or("Run a prepared controller to record its outcome.")
                         .to_owned()
                 };
-                let status = if let Some(diff) = w.comparison {
+                let status = if let Some(comparison) = &w.transfer_comparison {
+                    comparison.clone()
+                } else if let Some(diff) = w.comparison {
                     format!("Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png.")
                 } else if w.evidence["task_success"].is_boolean() {
                     "Open the run folder for controller.json, trajectory.json and frame.png."
@@ -634,6 +691,8 @@ impl PluginPanel for Panel {
             (ids!(layout2), Action::Layout(2)),
             (ids!(standard), Action::Fixture(false)),
             (ids!(compliant), Action::Fixture(true)),
+            (ids!(level), Action::Impact(false)),
+            (ids!(impact), Action::Impact(true)),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
             (ids!(start_run), Action::Run),

@@ -38,7 +38,12 @@ def main():
         help="Run and score a Nano floor-to-table journey",
     )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
+    parser.add_argument(
+        "--impact", action="store_true", help="Select the G1 development impact fixture"
+    )
     args = parser.parse_args()
+    if args.impact and not args.standing:
+        parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
         parser.error("--layout requires a Nano transfer scenario")
     if (args.standing or args.transfer) and not args.provider:
@@ -94,6 +99,8 @@ def main():
                 ]
                 if args.standing:
                     check.append("--standing")
+                    if args.impact:
+                        check.append("--impact")
                 if args.transfer:
                     check.extend(
                         ["--transfer", args.transfer, "--layout", str(args.layout)]

@@ -391,6 +391,9 @@ def simulate(args, meta):
         else "fixed-base, zero-gravity inspection"
     )
     standing = control.get("kind") == "standing-inspection"
+    impact = args.fixture == "impact"
+    if impact and not standing:
+        raise ValueError("Impact fixture requires a G1 standing controller")
     if standing:
         fixture = "floating G1, gravity and loaded feet"
     repo = Path(nx.__file__).resolve().parents[3]
@@ -408,7 +411,9 @@ def simulate(args, meta):
             adapter=nx.__name__,
             aisle_revision=revision,
             backend=engine.backend_name,
-            fixture_profile="standing-development"
+            fixture_profile="standing-impact-development"
+            if impact
+            else "standing-development"
             if standing
             else "living-room"
             if mobile
@@ -421,7 +426,9 @@ def simulate(args, meta):
     if standing:
         from g1_stand import simulate as standing_trial
 
-        return standing_trial(args.out, Path(meta["model"]), control) | dict(
+        return standing_trial(
+            args.out, Path(meta["model"]), control, impact=impact
+        ) | dict(
             robot=args.robot,
             controller_hash=hashlib.sha256(original).hexdigest(),
             model_hash=meta["model_hash"],
@@ -558,7 +565,9 @@ def main():
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
     p.add_argument("--seed", type=int, default=0, help="Living-room layout seed")
-    p.add_argument("--fixture", choices=["standard", "compliant"], default="standard")
+    p.add_argument(
+        "--fixture", choices=["standard", "compliant", "impact"], default="standard"
+    )
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
     if args.seed < 0:
