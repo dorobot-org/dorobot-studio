@@ -69,3 +69,17 @@ On Evidence, choose **Export episode**, then **Open in Replay**. To open the pub
 Native instrumentation checked the decoded frame count and dimensions of each MP4, every recorded state and action against Parquet and all sample timestamps. It then opened the episode in the existing Studio Replay page. Camera calibration, controller identity, model hashes and the physical verdict accompany the exported episode.
 
 ![Studio Replay with the exported Nano camera streams](nano-table-transfer-replay.png)
+
+## Development layouts after the release correction
+
+The controller now checks the wrist RGB image after it opens and withdraws. If the cube is still on the fixed finger, it returns to the observed tabletop and tips that finger so gravity can release the cube. The same synchronized exposure supplies the next tabletop check. The controller solves the full sequence of arm waypoints before sending its first command.
+
+The final regression ran the same policy and evaluator bytes on development layouts 0, 1 and 2. These layouts were available during development. [Complete per-cube results and earlier failed attempts](nano-transfer-development-layouts.json)
+
+| Layout | Whole task | Cubes meeting every placement criterion | Wheel-supported steps |
+| --- | --- | --- | ---: |
+| 0 | Passed | red, green, blue | 27,302/27,302 |
+| 1 | Passed | red, green, blue | 24,706/24,706 |
+| 2 | Failed | red, green | 23,024/23,024 |
+
+On layout 2, blue settled with 100 consecutive tabletop-load measurements. Its center was only 15.8 mm inside the front edge, below the required 35 mm inset. The scorer retained a whole-task failure. The sealed qualification of 45 complete successes in 50 layouts remains open. Operators can reproduce the three development layouts from Scene. The native selection check exported layout 2’s red-only trial and reopened it in Replay.
