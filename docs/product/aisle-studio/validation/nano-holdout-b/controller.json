@@ -1,0 +1,9 @@
+{
+  "kind": "table-transfer",
+  "color_order": "red,green,blue",
+  "robot": "Nano",
+  "task": "Move all three floor cubes onto the coffee table in red, green, blue order.",
+  "provider": "octos-deepseek",
+  "policy_model": "deepseek-v4-flash",
+  "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+}
