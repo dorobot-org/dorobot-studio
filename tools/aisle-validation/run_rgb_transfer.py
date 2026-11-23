@@ -77,6 +77,7 @@ class Judge:
         self.grasped = Counter()
         self.collisions = Counter()
         self.supported = 0
+        self.unsupported_ranges = []
         self.excursions = Counter()
         self.tail = {n: deque(maxlen=100) for n in colors}
         self.phase = "start"
@@ -133,6 +134,18 @@ class Judge:
             if link and obj and obj not in COLORS and obj != "floor":
                 impact.add((link, obj))
         self.supported += int(ground)
+        if not ground:
+            last = self.unsupported_ranges[-1] if self.unsupported_ranges else None
+            if (
+                last
+                and last["phase"] == self.phase
+                and last["last_step"] + 1 == sim.tick
+            ):
+                last["last_step"] = sim.tick
+            else:
+                self.unsupported_ranges.append(
+                    dict(phase=self.phase, first_step=sim.tick, last_step=sim.tick)
+                )
         self.collisions.update(f"{self.phase}/{link}/{obj}" for link, obj in impact)
         q = np.asarray(sim.robot.get_qpos())[sim.dofs]
         if not np.isfinite(q).all():
@@ -205,6 +218,7 @@ class Judge:
             cubes=cubes,
             table_top_m=top,
             wheel_supported_ticks=self.supported,
+            unsupported_wheel_ranges=self.unsupported_ranges,
             physics_ticks=sim.tick,
             robot_furniture_contacts=dict(self.collisions),
             max_joint_excursion_rad=max(self.excursions.values(), default=0),
