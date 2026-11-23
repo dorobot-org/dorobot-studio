@@ -15,7 +15,7 @@
 | 输入 | 含义 |
 |---|---|
 | Mode | `peer`（默认）或 `client` |
-| Endpoint | Zenoh 端点，如 `tcp/192.168.1.186:7447`；多个用逗号或空格分隔 |
+| Endpoint | Zenoh 端点，如 `tcp/192.168.1.160:7450`（车上的桥节点）；多个用逗号或空格分隔 |
 | Prefix | 话题前缀，默认 `dviz`；订阅 `<prefix>/**`，Rerun 实体路径 = 话题去掉 `<prefix>/` |
 
 - **同一局域网**：Mode 填 `peer`，Endpoint 留空，用组播自动发现。
@@ -43,6 +43,37 @@
 - **Displays**：每个收到的实体一行，带开关和消息计数；关掉后该实体不再送进 Rerun。
 - **Logs**：最近的 12 条日志，最新的在最上面；每条只占一行，超过 160 个字符的截断并以“…”结尾。“WARN and above”只看警告及以上。
 - **Nodes**：节点“List”或“Graph”（数据流图）。每个节点显示状态和 “seen at t=12.3 s”：t 是发送方的时钟（数据流启动以来的秒数），不是“多少秒以前”。图里点击节点显示它的输入输出和上下游。
+
+## 连接车上的 DORA_NAV（Navigation 面板）
+
+车上的桥节点 `dorobot-nav-bridge`（`runtime/nav-bridge`）挂在 DORA_NAV 的数据流里，把导航数据整理成 dviz 协议，从 Orin 的 7450 端口发出（Zenoh，不开组播）。车上怎么启用见 `runtime/nav-bridge/README.md` 和 DORA_NAV `apps/tracer/README.md`（`~/.config/dora-nav/env` 里的 `NAV_VIZ_BRIDGE`）。
+
+在 Studio 里：
+
+1. "3D visualization" → "Visualization" 标签：Mode 填 `client`，Endpoint 填 `tcp/<Orin 的 IP>:7450`，Prefix 保持 `dviz`，点 "Connect"。
+   - Orin 的 Wi-Fi 地址由 DHCP 分配，会变（2026-11-23 是 `192.168.1.160`），在 Orin 上用 `ip -4 -br addr` 查。
+   - 不要用组播模式连车：车上的 Dora 节点自己也在用 Zenoh 组播，会显示 "Connected" 却收不到 dviz 数据。
+2. 需要 3D 时点 "Open 3D window"。
+3. 切到 "Navigation" 标签看 2D 地图。
+
+两个视图的内容（颜色是车上桥节点配置里的默认值）：
+
+| 实体 | 2D 地图 | Rerun 3D |
+|---|---|---|
+| `map/grid` 栅格地图 | 空闲近白、障碍黑、未知灰 | 铺在地面上的贴图 |
+| `map/cloud` PCD 地图（≤ 5 万点） | — | 浅灰点 |
+| `robot/pose` 车的位姿 | 车头方向短线 | 0.3 m 坐标轴 |
+| `robot/footprint` 足迹 | 绿色框 | 绿色框 |
+| `nav/plan` 规划路径 | 绿线 | 绿线 |
+| `nav/trail` 实际轨迹（从当前目标开始，每 5 cm 一点） | 橙线 | 橙线 |
+| `nav/goal` 当前目标 | 品红箭头 | 品红箭头 |
+| `sensors/scan` 激光 | 红点 | 红点 |
+| `sensors/cloud` 实时点云（≈ 5000 点） | — | 按高度着色 |
+| `nav/status` 导航状态 | 面板上方的状态行，超过 2 s 没更新会标 "Stale" | — |
+
+Navigation 面板的操作：滚轮缩放（以光标为中心），拖动平移（会关掉跟随）；"Fit map" 适应地图，"Follow robot" 让车保持在中间；右侧图例每层一个开关。Wi-Fi 上的急停不是安全装置，遥控器切 RC 才是。
+
+日志、节点和数据流图来自车上各节点真实的 Dora 日志，在 "Visualization" 标签的 Logs / Nodes 里看。
 
 ## 合成发布器
 
@@ -88,7 +119,7 @@ cargo run --locked -p dorobot-plugin-dviz --example fake_publisher -- \
 ## 已知限制
 
 - 3D 视图是独立的 Rerun 窗口，不嵌在 Studio 内。
-- 本阶段（P1）只做通用 dviz 接入；接入 DORA_NAV 的真实话题留给 P2。
+- 设初始位姿、发目标、急停 / 撤防按钮属于 P2 的交付②，还没有；现在只能看。
 - Rerun 查看器版本必须是 0.28。
 - “3D window: open” 只说明启动那一刻连上了；之后关掉 Rerun 窗口，这一行不会变，此后的 3D 数据直接丢弃，再点“Open 3D window”会重新启动。
 - 9876 端口上如果已经有进程在监听，Studio 当它是 Rerun 查看器直接连过去（和 Rerun SDK 自己的做法一样），版本只核对 `PATH` 里的 `rerun`。
