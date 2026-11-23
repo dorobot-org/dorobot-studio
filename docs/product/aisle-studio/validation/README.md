@@ -44,3 +44,5 @@ Codex scored the rendered native pages separately from the generated design boar
 | **Total** | **91/100** | Meets the internal 90-point gate |
 
 The tests establish reference joint inspection, revision and dataset handoff. Room navigation, three-cube manipulation using onboard RGB, G1 balance, physical robot deployment and full Google workflow parity retain the separate gates in the [PRD](../PRD.md).
+
+Subsequent native development trials cover a continuous [three-cube Nano transfer](nano-table-transfer.md) and [floating-base G1 shoulder tracking](g1-standing.md). The Nano evaluation retains a failed second layout alongside its successful matched-provider runs.

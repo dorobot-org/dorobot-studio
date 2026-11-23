@@ -14,3 +14,5 @@ Times measure one CLI authoring call per provider per task, including process st
 [Raw timing and outcome records](provider-comparison.json) · [Native DeepSeek Task page](octos-deepseek-task.png)
 
 The subsequent floating-base trial exercised a separate Nano wheel controller. Both providers approached the red cube in Nexus and reproduced the same command and measurement trace. [RGB approach comparison, live view and replay](nano-rgb-approach.md)
+
+The grounded Nano transfer capability subsequently exercised both providers on a complete floor-to-table task. [Task setup, matching criteria and measured outcomes](nano-table-transfer.md)

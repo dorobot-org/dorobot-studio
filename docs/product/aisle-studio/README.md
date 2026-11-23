@@ -1,10 +1,10 @@
 # AISLE Studio
 
-Open **AISLE Studio** in the DoRobot Studio sidebar. The four pages take an inspection from a written instruction to a measured robot response. Adora Nano also supports driving to a named floor cube using its three onboard RGB cameras and stopping at the requested distance. Both the Adora Nano and Unitree G1 use their repository URDFs. Nexus advances the physics and renders the operator camera through AISLE's Python adapter. The Studio worker evaluates the retained measurements.
+Open **AISLE Studio** in the DoRobot Studio sidebar. The four pages take an inspection from a written instruction to a measured robot response. Adora Nano also supports driving to a named floor cube using its three onboard RGB cameras and stopping at the requested distance. Its development transfer controller can also pick up floor cubes and attempt to place them on a coffee table. Both the Adora Nano and Unitree G1 use their repository URDFs. Nexus advances the physics and renders the operator camera through AISLE's Python adapter. The Studio worker evaluates the retained measurements.
 
 [Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
 
-[Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
+[Stand and track a shoulder target on G1](validation/g1-standing.md) · [Move cubes to the table with DeepSeek via Octos](validation/nano-table-transfer.md) · [Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
 
 ## Run from a Studio source checkout
 

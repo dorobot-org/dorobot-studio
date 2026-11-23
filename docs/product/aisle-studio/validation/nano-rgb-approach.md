@@ -25,9 +25,9 @@ The live capture below comes from the Makepad app during the red-cube trial. The
 
 The two red-cube traces have the same SHA-256. Both models selected the same parameters and the local visual servo executed both trials. Each retained pair of successive Run-page observations was read while physics was active. Each native journey passed 30 checks plus two restart checks. All five runs recorded zero obstacle-contact ticks. The largest measured localization error across the three layouts was 7.9 mm. Authoring times include the CLI and network and come from one call per row. [Inputs, provider metrics, outcomes and trace hashes](nano-rgb-trials.json)
 
-For the red revision, the operator asked to stop 4 cm closer than the previously requested distance. DeepSeek received the previous controller hash, target and RGB-estimated distance. It selected the same red cube and changed 45 cm to 41 cm. In a separate check, both providers rejected a request to pick up all three cubes and carry them to the table before issuing a controller.
+For the red revision, the operator asked to stop 4 cm closer than the previously requested distance. DeepSeek received the previous controller hash, target and RGB-estimated distance. It selected the same red cube and changed 45 cm to 41 cm. With the approach-only capability schema at that revision, both providers rejected a request to pick up all three cubes and carry them to the table before issuing a controller.
 
-The development trials start with the target in view on an unobstructed floor. They exercise visual approach and braking. The three-cube qualification still needs search under occlusion, grasp and lift on the mobile task path, table localization, release, settled placement and 50 sealed layouts. The separate test below measures a single physical lift. Physical Nano calibration and deployment remain separate.
+The development trials start with the target in view on an unobstructed floor. They exercise visual approach and braking. A subsequent Studio capability adds mobile grasp, stereo table localization, carry, release and independent placement checks. The sealed 50-layout qualification remains open. [Transfer trials](nano-table-transfer.md) The separate test below measures a single physical lift. Physical Nano calibration and deployment remain separate.
 
 ## Reproduce
 
@@ -55,7 +55,7 @@ In matched development trials on layout 0, DeepSeek and Codex each selected the 
 
 DeepSeek also selected and lifted green on layout 1 and blue on layout 2. Their minimum sampled lifts were 9.24 cm and 9.22 cm. Each trial started from a fresh scene.
 
-The probe accepts a single lift and hold. Carrying a cube to the table, placing it and repeating the sequence for three objects are open qualification steps. To reproduce from the Studio checkout, install the arm solver dependency and run the following with your Octos profile configured.
+The probe accepts a single lift and hold. The separate Studio transfer capability handles carrying and placing. To reproduce from the Studio checkout, install the arm solver dependency and run the following with your Octos profile configured.
 
 ```sh
 uv pip install --python .venv-aisle/bin/python scipy==1.18.1

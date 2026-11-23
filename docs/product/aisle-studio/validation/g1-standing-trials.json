@@ -1,0 +1,222 @@
+{
+  "headless": {
+    "trial_id": "1795467888127769000-G1-run",
+    "controller": {
+      "joint": "right_shoulder_pitch_joint",
+      "delta_rad": -0.08,
+      "kind": "standing-inspection",
+      "robot": "G1",
+      "task": "Stand on both feet and track a right shoulder displacement of minus 0.08 rad for the standing test.",
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+    },
+    "provider_call": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 1.956665749894455,
+      "input_tokens": 6095,
+      "output_tokens": 90
+    },
+    "result": {
+      "kind": "standing-inspection",
+      "task_success": true,
+      "fixture": "standing-development",
+      "joint": "right_shoulder_pitch_joint",
+      "requested_delta": -0.08,
+      "measured_delta": -0.07999993115663528,
+      "within_limits": true,
+      "max_joint_excursion_rad": 0.0,
+      "steps": 2000,
+      "frames": 101,
+      "both_feet_loaded_steps": 2000,
+      "floor_contact_links_other_than_feet": [],
+      "peak_tilt_deg": 2.5321360549062057,
+      "max_pelvis_drift_m": 0.0024747438728809357,
+      "root_pose_writes": 0,
+      "robot": "G1",
+      "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+      "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "standing-development",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating G1, gravity and loaded feet",
+      "control_sha256": "2ee919bcd38b7c008f98de40af0e0e2b4ac101ac9af1dcad974ac5ede4614e08",
+      "physics_dt_s": 0.005,
+      "gravity_m_s2": -9.81,
+      "warmup_steps": 200,
+      "floor_z_m": -0.7938637524222113
+    },
+    "trajectory_sha256": "64eec916a8e6cf50295dacdf44fc5b7bd8aa7e1108086dd97817040697daf118",
+    "journey": [
+      {
+        "check": "standing controller authored",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "g1 scene checked",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 scene"
+      },
+      {
+        "check": "standing stream active",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing fresh frame",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing adjudicated",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing physical verdict",
+        "both_feet_loaded_steps": 2000,
+        "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+        "fixture": "standing-development",
+        "floor_contact_links_other_than_feet": [],
+        "frames": 101,
+        "joint": "right_shoulder_pitch_joint",
+        "kind": "standing-inspection",
+        "max_joint_excursion_rad": 0.0,
+        "max_pelvis_drift_m": 0.0024747438728809357,
+        "measured_delta": -0.07999993115663528,
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+        "peak_tilt_deg": 2.5321360549062057,
+        "requested_delta": -0.08,
+        "robot": "G1",
+        "root_pose_writes": 0,
+        "steps": 2000,
+        "task_success": true,
+        "within_limits": true
+      }
+    ],
+    "recovery": [
+      {
+        "check": "standing evidence restored",
+        "robot": "Nano",
+        "status": "Ready"
+      }
+    ]
+  },
+  "offscreen": {
+    "trial_id": "1795467838712491000-G1-run",
+    "controller": {
+      "joint": "right_shoulder_pitch_joint",
+      "delta_rad": -0.08,
+      "kind": "standing-inspection",
+      "robot": "G1",
+      "task": "Stand on both feet and track a right shoulder displacement of minus 0.08 rad for the standing test.",
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+    },
+    "provider_call": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 1.6950917500071228,
+      "input_tokens": 6097,
+      "output_tokens": 111
+    },
+    "result": {
+      "kind": "standing-inspection",
+      "task_success": true,
+      "fixture": "standing-development",
+      "joint": "right_shoulder_pitch_joint",
+      "requested_delta": -0.08,
+      "measured_delta": -0.08000002056360245,
+      "within_limits": true,
+      "max_joint_excursion_rad": 0.0,
+      "steps": 2000,
+      "frames": 101,
+      "both_feet_loaded_steps": 2000,
+      "floor_contact_links_other_than_feet": [],
+      "peak_tilt_deg": 2.532136268153845,
+      "max_pelvis_drift_m": 0.0024747727438807487,
+      "root_pose_writes": 0,
+      "robot": "G1",
+      "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+      "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "standing-development",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating G1, gravity and loaded feet",
+      "control_sha256": "2ee919bcd38b7c008f98de40af0e0e2b4ac101ac9af1dcad974ac5ede4614e08",
+      "physics_dt_s": 0.005,
+      "gravity_m_s2": -9.81,
+      "warmup_steps": 200,
+      "floor_z_m": -0.7938637524222113
+    },
+    "trajectory_sha256": "4fdc0537d9a6e1c9df0ed1cd624da4436e1bad1f4f002d568fb17df2c133c3e4",
+    "journey": [
+      {
+        "check": "standing controller authored",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "g1 scene checked",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "standing stream active",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing fresh frame",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing adjudicated",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing physical verdict",
+        "both_feet_loaded_steps": 2000,
+        "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+        "fixture": "standing-development",
+        "floor_contact_links_other_than_feet": [],
+        "frames": 101,
+        "joint": "right_shoulder_pitch_joint",
+        "kind": "standing-inspection",
+        "max_joint_excursion_rad": 0.0,
+        "max_pelvis_drift_m": 0.0024747727438807487,
+        "measured_delta": -0.08000002056360245,
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+        "peak_tilt_deg": 2.532136268153845,
+        "requested_delta": -0.08,
+        "robot": "G1",
+        "root_pose_writes": 0,
+        "steps": 2000,
+        "task_success": true,
+        "within_limits": true
+      }
+    ],
+    "recovery": [
+      {
+        "check": "standing evidence restored",
+        "robot": "Nano",
+        "status": "Ready"
+      }
+    ]
+  }
+}
