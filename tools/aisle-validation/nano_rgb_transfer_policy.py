@@ -38,6 +38,25 @@ RELEASE_INSET = 0.085
 DOCK_DISTANCE = 0.385 - RELEASE_INSET
 
 
+GRID_SPACING = 0.020
+EXTRA_INSET = 0.020
+
+
+def release_candidates(side, span):
+    """Prefer the existing reachable slots, then scan the visible rim between them."""
+    low, high = span
+    for offset in (0, 0.08, -0.08, 0.115, -0.115, 0.15, -0.15):
+        if low <= side + offset <= high:
+            yield side + offset, RELEASE_INSET, "preferred"
+    # Try a second strip farther inside the table when the original inset is occupied.
+    lateral = sorted(
+        np.arange(low + 0.009, high - 0.009, GRID_SPACING), key=lambda x: abs(x - side)
+    )
+    for inset in (RELEASE_INSET, RELEASE_INSET + EXTRA_INSET):
+        for along in lateral:
+            yield along, inset, "grid"
+
+
 class Controller:
     def __init__(self, config):
         self.input = sys.stdin.buffer
@@ -327,11 +346,8 @@ class Controller:
                 views = self.table_views(self.sense())
                 occupied = occupied_table_points(views, edge, self.colors[:index])
             z = edge["height"]
-            for shift in (0, 0.08, -0.08, 0.115, -0.115, 0.15, -0.15):
-                along = side + shift
-                if not edge["span"][0] <= along <= edge["span"][1]:
-                    continue
-                place = (edge["distance"] + RELEASE_INSET) * edge["normal"] + along * t
+            for along, inset, search in release_candidates(side, edge["span"]):
+                place = (edge["distance"] + inset) * edge["normal"] + along * t
                 if any(np.linalg.norm(place - p) < 0.078 for p in occupied):
                     continue
                 # reach preflights every waypoint before sending the first target.
@@ -343,6 +359,8 @@ class Controller:
                     "table observation",
                     release_xy_m=place.tolist(),
                     observed_occupants=len(occupied),
+                    release_search=search,
+                    inset_m=inset,
                 )
                 break
             else:

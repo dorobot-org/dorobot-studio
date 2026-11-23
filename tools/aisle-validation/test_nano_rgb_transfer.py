@@ -4,11 +4,27 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from nano_rgb_transfer_policy import Controller, visible_in_jaws
+from nano_rgb_transfer_policy import Controller, release_candidates, visible_in_jaws
 from run_rgb_transfer import Judge, finger_gap
 
 
 class TransferTests(unittest.TestCase):
+    def test_clear_reachable_region_between_preferred_release_slots(self):
+        side, span = 0.161, (-0.1867, 0.2318)
+        occupied = np.array([0.3375, 0.1217])
+        choices = list(release_candidates(side, span))
+        clear = [
+            kind
+            for along, inset, kind in choices
+            if 0.181 <= along <= 0.212
+            and np.linalg.norm(np.array([0.3075 + inset, along]) - occupied) >= 0.078
+        ]
+        self.assertTrue(clear)
+        self.assertEqual(set(clear), {"grid"})
+        self.assertTrue(
+            all(span[0] <= y <= span[1] and depth >= 0.085 for y, depth, _ in choices)
+        )
+
     def test_blue_background_does_not_confirm_grasp(self):
         rgb = np.zeros((360, 480, 3), np.uint8)
         rgb[:, :80] = [25, 70, 200]
