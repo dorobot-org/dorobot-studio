@@ -62,6 +62,9 @@ pub enum Action {
         edit: String,
     },
     DefaultRoom,
+    ShowEvaluation(bool),
+    Evaluate(String),
+    SelectFailure(bool),
     Layout(u8),
     OlderPlan,
     NewerPlan,
@@ -94,8 +97,13 @@ fn compare_actions(previous: &Path, current: &Path) -> io::Result<String> {
                     ));
                 }
                 if a != b {
-                    return Ok(format!("First change at action {index} · previous {} at step {}, current {} at step {}.",
-                        a["op"].as_str().unwrap_or("unknown"), a["tick"], b["op"].as_str().unwrap_or("unknown"), b["tick"]));
+                    return Ok(format!(
+                        "First change at action {index} · previous {} at step {}, current {} at step {}.",
+                        a["op"].as_str().unwrap_or("unknown"),
+                        a["tick"],
+                        b["op"].as_str().unwrap_or("unknown"),
+                        b["tick"]
+                    ));
                 }
             }
             (None, _) => return Ok(format!("Previous trace ends before action {index}.")),
@@ -183,8 +191,14 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
                 "failed"
             }
         };
-        return Some(format!("Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {trace}",
-            current["seed"],outcome(&prior),previous_count,outcome(current),settled(current)?));
+        return Some(format!(
+            "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {trace}",
+            current["seed"],
+            outcome(&prior),
+            previous_count,
+            outcome(current),
+            settled(current)?
+        ));
     }
     None
 }
@@ -200,6 +214,7 @@ impl Job {
         match self.op {
             "export" => "export.json",
             "room" => "room-ref.json",
+            "evaluate" => "evaluation.json",
             "run" => "result.json",
             "prepare" => "controller.json",
             _ => "scene.json",
@@ -234,6 +249,10 @@ pub struct Workbench {
     pub compliant: bool,
     pub impact: bool,
     pub room_editor: bool,
+    pub show_evaluation: bool,
+    pub evaluation: Value,
+    pub failure_index: usize,
+    evaluation_archive: String,
     pub room_info: Value,
     pub room_path: Option<PathBuf>,
     room_selection: Value,
@@ -271,6 +290,10 @@ impl Workbench {
             compliant: false,
             impact: false,
             room_editor: false,
+            show_evaluation: false,
+            evaluation: Value::Null,
+            failure_index: 0,
+            evaluation_archive: String::new(),
             room_info: Value::Null,
             room_path: None,
             room_selection: Value::Null,
@@ -284,18 +307,27 @@ impl Workbench {
             root,
         };
         if let Ok(entries) = fs::read_dir(&w.root) {
+            let mut last_evaluation = None;
             for entry in entries.flatten() {
                 let path = entry.path();
                 let name = entry.file_name();
                 let name = name.to_string_lossy();
                 if name.ends_with("-run") && path.is_dir() {
                     w.history.push(path);
+                } else if name.ends_with("-evaluate")
+                    && path.join("evaluation.json").is_file()
+                    && last_evaluation.as_ref().is_none_or(|p| &path > p)
+                {
+                    last_evaluation = Some(path);
                 } else if name.ends_with("-export") {
                     let export = read(&path, "export.json");
                     if let Some(trial) = export.as_ref().and_then(|v| v["trial"].as_str()) {
                         w.exports.insert(w.root.join(trial), path.join("dataset"));
                     }
                 }
+            }
+            if let Some(path) = last_evaluation {
+                w.evaluation = read(&path, "evaluation.json").unwrap_or_default();
             }
             w.history.sort();
             if let Some(path) = w.history.last().cloned() {
@@ -313,17 +345,6 @@ impl Workbench {
     }
 }
 impl Workbench {
-    pub fn revision_planner(&self) -> Planner {
-        let origin = self
-            .selected
-            .as_ref()
-            .and_then(|p| read(p, "controller.json"));
-        if origin.as_ref().and_then(|v| v["provider"].as_str()) == Some("octos-deepseek") {
-            Planner::OctosDeepSeek
-        } else {
-            Planner::Codex
-        }
-    }
     pub fn worker_pid(&self) -> Option<u32> {
         self.job.as_ref().map(|j| j.child.id())
     }
@@ -512,6 +533,9 @@ impl Workbench {
         if let Some(run) = feedback {
             cmd.arg("--feedback").arg(run);
         }
+        if op == "evaluate" {
+            cmd.arg("--archive").arg(&self.evaluation_archive);
+        }
         if op == "room" {
             let (source, edit) = self
                 .room_request
@@ -639,6 +663,23 @@ impl Workbench {
                     if revise { self.selected.clone() } else { None },
                 )
             }
+            Action::ShowEvaluation(value) => {
+                self.show_evaluation = value;
+                Ok(())
+            }
+            Action::SelectFailure(next) => {
+                let count = self.evaluation["failures"].as_array().map_or(0, Vec::len);
+                self.failure_index = if next {
+                    (self.failure_index + 1).min(count.saturating_sub(1))
+                } else {
+                    self.failure_index.saturating_sub(1)
+                };
+                Ok(())
+            }
+            Action::Evaluate(path) => {
+                self.evaluation_archive = path;
+                self.launch("evaluate", Planner::Reference, None)
+            }
             Action::EditRoom(value) => {
                 self.room_editor = value;
                 Ok(())
@@ -739,6 +780,10 @@ impl Workbench {
         }
         let artifact = job.artifact();
         if success && job.dir.join(artifact).is_file() {
+            if job.op == "evaluate" {
+                self.evaluation = read(&job.dir, artifact).unwrap_or_default();
+                self.failure_index = 0;
+            }
             if job.op == "room" {
                 if let Err(error) = read(&job.dir, artifact)
                     .ok_or_else(|| io::Error::other("Missing room receipt"))
@@ -840,9 +885,11 @@ mod tests {
             runs.push(run);
         }
         let comparison = || compare_transfer(&runs, &runs[1], &result);
-        assert!(comparison()
-            .unwrap()
-            .contains("All 1 recorded actions match"));
+        assert!(
+            comparison()
+                .unwrap()
+                .contains("All 1 recorded actions match")
+        );
         fs::write(runs[1].join("actions.jsonl"), r#"{"op":"wheel","tick":20}"#).unwrap();
         assert!(comparison().unwrap().contains("First change at action 1"));
         let mut changed = result.clone();

@@ -34,6 +34,8 @@ def main():
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     p.add_argument("--impact", action="store_true")
     p.add_argument("--survey", type=Path)
+    p.add_argument("--evaluation", type=Path)
+    p.add_argument("--handoff", action="store_true")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
@@ -107,6 +109,132 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.handoff:
+
+        def enter_task(instruction):
+            click("aisle_task.instruction")
+            remote(
+                "key",
+                "w=0",
+                "c=KeyA",
+                "logo=1" if sys.platform == "darwin" else "ctrl=1",
+                "wait=1",
+            )
+            remote("text", "w=0", "t=" + instruction, "wait=1")
+
+        def inspect_with(planner, button, instruction, delta):
+            page("task")
+            if planner == "codex":
+                click("aisle_task.g1")
+            enter_task(instruction)
+            click("aisle_task." + button)
+            row = done(
+                lambda w: not w["busy"]
+                and w["controller"]
+                and w["controller"].get("provider") == planner,
+                planner + " revision prepared",
+                180,
+            )
+            plan = row["controller"]
+            assert (
+                plan["joint"] == "right_shoulder_pitch_joint"
+                and abs(plan["delta_rad"] - delta) < 1e-5
+            )
+            previous = row["selected"]
+            page("run")
+            click("aisle_run.start_run")
+            row = done(
+                lambda w: not w["busy"]
+                and w["selected"] != previous
+                and w["result"]
+                and w["result"].get("task_success"),
+                planner + " shoulder trial scored",
+                120,
+            )
+            return plan, row["result"]
+
+        if a.recover:
+            page("evidence")
+            row = done(
+                lambda w: w["result"]
+                and w["result"].get("task_success")
+                and w["robot"] == "G1",
+                "Revised G1 trial reopened",
+            )
+            saved = json.loads((a.out / "journey.json").read_text())[-1]
+            assert (
+                row["result"]["controller_hash"]
+                == saved["revised_result"]["controller_hash"]
+            )
+            (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
+            return
+        original, measured = inspect_with(
+            "codex",
+            "codex",
+            "Inspect the right shoulder pitch using minus 0.08 rad.",
+            -0.08,
+        )
+        revised, result = inspect_with(
+            "octos-deepseek",
+            "revise",
+            "Repeat the preceding inspection at three quarters of its signed displacement.",
+            -0.06,
+        )
+        assert (
+            revised["previous_trial"]["controller_hash"] == measured["controller_hash"]
+        )
+        assert abs(result["measured_delta"] + 0.06) < 0.003
+        page("evidence")
+        grab("provider-handoff")
+        checks.append(
+            dict(
+                check="Measured cross-provider revision",
+                original=original,
+                original_result=measured,
+                revised=revised,
+                revised_result=result,
+            )
+        )
+        (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
+        return
+    if a.evaluation:
+        import hashlib
+
+        expected = hashlib.sha256(
+            a.evaluation.with_name("suite.json").read_bytes()
+        ).hexdigest()
+        page("evidence")
+        click("aisle_evidence.evaluation_mode")
+        if not a.recover:
+            click("aisle_evidence.archive_path")
+            remote("text", "w=0", "t=" + str(a.evaluation), "wait=1")
+            click("aisle_evidence.verify_archive")
+        row = done(
+            lambda w: not w["busy"]
+            and w["evaluation"]
+            and w["evaluation"]["manifest_sha256"] == expected,
+            "Layout evaluation restored" if a.recover else "Layout archive verified",
+            100,
+        )
+        evaluation = row["evaluation"]
+        assert (
+            len(evaluation["failures"]) + evaluation["successes"] == evaluation["cases"]
+        )
+        assert (
+            evaluation["archive_sha256"]
+            == hashlib.sha256(a.evaluation.read_bytes()).hexdigest()
+        )
+        checks[-1]["evaluation"] = evaluation
+        if len(evaluation["failures"]) > 1 and not a.recover:
+            click("aisle_evidence.later_failure")
+            done(lambda w: w["failure_index"] == 1, "Second failed layout opened")
+            click("aisle_evidence.earlier_failure")
+            done(lambda w: w["failure_index"] == 0, "First failed layout reopened")
+        if not a.recover:
+            grab("layout-evaluation")
+        name = "recovery.json" if a.recover else "journey.json"
+        (a.out / name).write_text(json.dumps(checks, indent=2))
+        return
     if a.standing or a.transfer:
         kind = "standing-inspection" if a.standing else "table-transfer"
         label = "standing" if a.standing else "transfer"
@@ -598,7 +726,11 @@ def main():
             "t=Repeat the previous trial on the same shoulder with three quarters of the previously requested signed displacement",
             "wait=1",
         )
-        click("aisle_task.revise")
+        click(
+            "aisle_task.revise"
+            if a.provider == "octos-deepseek"
+            else "aisle_task.revise_codex"
+        )
     else:
         click("aisle_task.reference")
     revision = done(

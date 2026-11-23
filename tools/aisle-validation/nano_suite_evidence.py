@@ -2,10 +2,11 @@
 
 import argparse
 from pathlib import Path
+from shutil import copyfileobj
 from tempfile import TemporaryDirectory
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from nano_transfer_suite import read, signature, summarize, worker
+from nano_transfer_suite import MODEL, read, signature, summarize, worker
 
 HEADER = ("suite.json", "controller.json", "report.json")
 EVIDENCE = (
@@ -44,22 +45,40 @@ def pack(directory, output):
     return worker.digest(output)
 
 
-def verify(archive_path, expected_manifest):
+def verify(archive_path, expected_manifest, include_trials=False):
     with ZipFile(archive_path) as archive, TemporaryDirectory() as name:
         tmp = Path(name)
+        names = set(archive.namelist())
+        if len(names) != len(archive.infolist()):
+            raise ValueError("Evaluation archive has duplicate file names")
+        expanded = 0
+
+        def copy_member(key, output, limit):
+            nonlocal expanded
+            info = archive.getinfo(key)
+            expanded += info.file_size
+            if info.file_size > limit or expanded > 1024**3:
+                raise ValueError(
+                    "Evaluation record exceeds the batch evidence size limit"
+                )
+            with archive.open(info) as src, output.open("xb") as dest:
+                copyfileobj(src, dest, 128 * 1024)
+
         for file in HEADER:
-            (tmp / file).write_bytes(archive.read(file))
+            copy_member(file, tmp / file, 8 * 1024**2)
         manifest, reported = read(tmp / "suite.json"), read(tmp / "report.json")
         cases = manifest["cases"]
         if (
             worker.digest(tmp / "suite.json") != expected_manifest
             or reported["manifest_sha256"] != expected_manifest
             or worker.digest(tmp / "controller.json") != manifest["controller_sha256"]
+            or worker.digest(MODEL) != manifest["inputs"]["urdf"]
+            or not isinstance(cases, int)
+            or cases < 1
             or cases != len(reported["rows"])
             or cases != len(manifest["commitments"])
         ):
             raise ValueError("Manifest, controller or case count differs")
-        names = set(archive.namelist())
         members = []
         for i, row in enumerate(reported["rows"]):
             member = {k: row[k] for k in ("seed", "salt")}
@@ -71,7 +90,7 @@ def verify(archive_path, expected_manifest):
             for file in EVIDENCE[:6]:
                 key = f"{case.name}/{file}"
                 if key in names:
-                    (case / file).write_bytes(archive.read(key))
+                    copy_member(key, case / file, 16 * 1024**2)
         summary = summarize(tmp, expected_manifest, manifest, members)
         replayed = read(tmp / "report.json")
         if manifest["split"] == "development":
@@ -84,6 +103,40 @@ def verify(archive_path, expected_manifest):
                         actual.pop(field, None)
         if replayed != reported:
             raise ValueError("Independent per-case or cohort score differs")
+        if include_trials:
+            n = summary["cases"]
+            p = summary["successes"] / n
+            z = 1.959963984540054
+            denom = 1 + z * z / n
+            center = (p + z * z / (2 * n)) / denom
+            radius = z * (p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5 / denom
+            failures = []
+            for row in reported["rows"]:
+                if row["passed"]:
+                    continue
+                reasons = []
+                if row.get("error") or row.get("issue"):
+                    reasons.append(row.get("error") or row["issue"])
+                for color, cube in row.get("cubes", {}).items():
+                    if not cube["passed"]:
+                        reasons.append(
+                            f"{color} incomplete · {cube['table_contact_tail_ticks']}/100 table contacts"
+                        )
+                for pair, ticks in row.get("robot_furniture_contacts", {}).items():
+                    reasons.append(f"{pair} · {ticks} contact steps")
+                failures.append(
+                    dict(
+                        index=row["index"],
+                        seed=row["seed"],
+                        reasons=reasons or ["Trial criteria failed"],
+                    )
+                )
+            summary.update(
+                interval_95=[max(0.0, center - radius), min(1.0, center + radius)],
+                failures=failures,
+                archive_sha256=worker.digest(archive_path),
+                requirement=manifest["success_requirement"],
+            )
         return summary
 
 

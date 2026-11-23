@@ -449,13 +449,15 @@ def simulate(args, meta):
             adapter=nx.__name__,
             aisle_revision=revision,
             backend=engine.backend_name,
-            fixture_profile="standing-impact-development"
-            if impact
-            else "standing-development"
-            if standing
-            else "living-room"
-            if mobile
-            else args.fixture,
+            fixture_profile=(
+                "standing-impact-development"
+                if impact
+                else (
+                    "standing-development"
+                    if standing
+                    else "living-room" if mobile else args.fixture
+                )
+            ),
             adapter_hash=digest(Path(nx.__file__)),
             nexus=version("dimforge-nexus3d"),
             fixture=fixture,
@@ -627,7 +629,9 @@ def simulate(args, meta):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("operation", choices=["scene", "prepare", "run", "export", "room"])
+    p.add_argument(
+        "operation", choices=["scene", "prepare", "run", "export", "room", "evaluate"]
+    )
     p.add_argument("--robot", choices=MODELS, required=True)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument(
@@ -639,6 +643,7 @@ def main():
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
+    p.add_argument("--archive", type=Path)
     p.add_argument("--room-source", type=Path)
     p.add_argument("--room-revision", type=Path)
     p.add_argument("--room-hash")
@@ -669,6 +674,20 @@ def main():
     else:
         args.out.mkdir(parents=True, exist_ok=False)
     try:
+        if args.operation == "evaluate":
+            if args.archive is None:
+                raise ValueError(
+                    "Choose an evaluation archive beside its preregistered suite.json"
+                )
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from nano_suite_evidence import verify
+
+            expected = digest(args.archive.with_name("suite.json"))
+            save(
+                args.out / "evaluation.json",
+                verify(args.archive, expected, include_trials=True),
+            )
+            return
         if args.operation == "room":
             if args.robot != "Nano":
                 raise ValueError("A floor survey requires the Nano living-room profile")
