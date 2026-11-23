@@ -505,6 +505,9 @@ def simulate(args, meta):
     )
     standing = control.get("kind") == "standing-inspection"
     impact = args.fixture == "impact"
+    impact_recipe = getattr(args, "impact_recipe", None)
+    if impact_recipe is not None and not (standing and impact):
+        raise ValueError("A bounded impact recipe requires a standing G1 impact trial")
     if impact and not standing:
         raise ValueError("Impact fixture requires a G1 standing controller")
     if standing:
@@ -543,7 +546,11 @@ def simulate(args, meta):
         from g1_stand import simulate as standing_trial
 
         return standing_trial(
-            args.out, Path(meta["model"]), control, impact=impact
+            args.out,
+            Path(meta["model"]),
+            control,
+            impact=impact,
+            parameters=json.loads(impact_recipe.read_text()) if impact_recipe else None,
         ) | dict(
             robot=args.robot,
             controller_hash=hashlib.sha256(original).hexdigest(),
@@ -723,6 +730,9 @@ def main():
     p.add_argument("--room-revision", type=Path)
     p.add_argument("--room-hash")
     p.add_argument("--room-edit")
+    p.add_argument(
+        "--impact-recipe", type=Path, help="Bounded G1 simulation impact JSON"
+    )
     p.add_argument("--seed", type=int, default=0, help="Living-room layout seed")
     p.add_argument(
         "--fixture", choices=["standard", "compliant", "impact"], default="standard"
@@ -755,9 +765,18 @@ def main():
                     "Choose an evaluation archive beside its preregistered suite.json"
                 )
             sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            public = args.archive.with_name("suite.json")
+            if json.loads(public.read_text()).get("profile") == "g1-standing-reach-v1":
+                from g1_reach_suite import verify as verify_g1
+
+                save(
+                    args.out / "evaluation.json",
+                    verify_g1(args.archive, digest(public)),
+                )
+                return
             from nano_suite_evidence import verify
 
-            expected = digest(args.archive.with_name("suite.json"))
+            expected = digest(public)
             save(
                 args.out / "evaluation.json",
                 verify(args.archive, expected, include_trials=True),

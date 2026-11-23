@@ -1,0 +1,38 @@
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
+
+import numpy as np
+
+from g1_reach_suite import safe_npz
+from g1_stand import impact_parameters
+
+
+class G1ReachTests(unittest.TestCase):
+    def test_closed_envelope(self):
+        recipe = dict(mass_kg=0.2, speed_m_s=1.3, lateral_m=-0.015)
+        self.assertEqual(impact_parameters(recipe), recipe)
+        for name, value in (
+            ("mass_kg", 0.31),
+            ("speed_m_s", 1.31),
+            ("lateral_m", -0.016),
+            ("mass_kg", True),
+            ("speed_m_s", float("nan")),
+        ):
+            with self.subTest(name=name, value=value), self.assertRaises(ValueError):
+                impact_parameters(recipe | {name: value})
+
+    def test_reject_unexpected_shape_before_loading_a_trace(self):
+        from io import BytesIO
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "wrist.npz"
+            stream = BytesIO()
+            np.lib.format.write_array_header_1_0(
+                stream, dict(descr="<f8", fortran_order=False, shape=(2**36, 3))
+            )
+            with ZipFile(path, "x") as z:
+                z.writestr("measured_m.npy", stream.getvalue())
+            with self.assertRaisesRegex(ValueError, "array header"):
+                safe_npz(path, {"measured_m": (2000, 3)})
