@@ -73,6 +73,8 @@ The comparison uses the official [release](https://developers.googleblog.com/gem
 
 | Gate | Evidence |
 | --- | --- |
-| DeepSeek through Octos as the outer author | The same Nano program interface accepts either provider and records the model identity and generated controller. Compare the single-call authoring timings and physical results on matched tasks. [Provider comparison](validation/provider-comparison.md) |
+| DeepSeek through Octos as the outer author | The same Nano program interface accepts either provider and records the model identity and generated controller. Five matched authoring requests and independently executed retry programs passed for both providers. Native Studio also handed a measured Codex G1 trial to DeepSeek, preserving the parent controller digest. [Provider comparison](validation/provider-comparison.md) |
 | G1 development disturbance | An independent 0.25 kg block contacted the torso and pelvis. Native headless Studio recorded 2,000 two-foot support steps, final shoulder error under 0.000001 rad and a 0.50 s stable recovery. Positive actuator work is a PD estimate with the raw joint trace retained. The owner-approved G1 holdout is open. [Trial](validation/g1-standing.md) |
 | Scene revision | Import a surveyed image, validate floor scale and collision boxes, edit an object's center and height, and bind the selected revision to a Nano run. The reference test exercises import, rejected and accepted edits, replay and restart. [Scene authoring](validation/room-survey/README.md) |
+
+The native Evidence page opens batch archives, independently replays motor traces and shows the success interval and each failed layout. [Qualification protocol and results](validation/nano-qualification.md)
