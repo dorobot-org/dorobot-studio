@@ -4,6 +4,7 @@
 
 use dorobot_plugin_dviz::{
     open_viewer, DvizGraphAction, DvizGraphWidgetRefExt, DvizPlugin, DvizSession, DvizViewPanel,
+    SessionOptions,
 };
 use dorobot_studio_core::api::mock::MockBackend;
 use dorobot_studio_plugin::*;
@@ -228,6 +229,51 @@ fn connect_button_starts_the_session_with_the_entered_endpoint() {
     session.disconnect();
 }
 
+/// What the status adds once the session has waited 2 s without a peer.
+const NO_PEER_HINT: &str = "no dviz peer found by multicast; enter the robot's endpoint";
+
+#[test]
+fn listening_without_a_peer_shows_listening_then_the_no_peer_hint() {
+    let (mut cx, session) = setup();
+    let mut panel = new_panel(&mut cx, session);
+    // Like the default mode (empty endpoint), but hermetic: listening on
+    // loopback with multicast off, so no other Zenoh node can answer.
+    session
+        .connect(SessionOptions {
+            listen_endpoints: vec![format!("tcp/127.0.0.1:{}", free_port())],
+            prefix: "dviz_panel_alone".into(),
+            ..SessionOptions::default()
+        })
+        .unwrap();
+    let opened = Instant::now();
+    assert!(
+        wait_until(SETTLE, || {
+            let snapshot = session.snapshot();
+            snapshot.connected || snapshot.listening_for.is_some()
+        }),
+        "the session never opened: {:?}",
+        session.snapshot()
+    );
+    sync(&mut cx, &mut panel);
+    let status = text(&mut cx, &panel, ids!(status));
+    assert!(
+        status.starts_with("Listening, no peer found yet"),
+        "{status}"
+    );
+    assert!(!status.contains("Error"), "{status}");
+    if opened.elapsed() < Duration::from_millis(1500) {
+        assert!(!status.contains(NO_PEER_HINT), "hint too early: {status}");
+    }
+
+    thread::sleep(Duration::from_millis(2200).saturating_sub(opened.elapsed()));
+    sync(&mut cx, &mut panel);
+    let status = text(&mut cx, &panel, ids!(status));
+    assert!(status.contains(NO_PEER_HINT), "{status}");
+    assert!(!status.contains("Error"), "{status}");
+    assert!(!session.snapshot().connected);
+    session.disconnect();
+}
+
 #[test]
 fn disable_keeps_the_session_connected() {
     let (mut cx, session) = setup();
@@ -410,7 +456,7 @@ fn graph_view_builds_without_script_errors_and_shows_node_detail_on_select() {
     assert!(detail.visible());
     assert_eq!(
         detail.text(),
-        "planner · active · last seen 12.3 s\n\
+        "planner · active · seen at t=12.3 s\n\
          Inputs: cloud ← lidar/points, tick ← dora/timer/millis/100\n\
          Outputs: path → controller/path"
     );

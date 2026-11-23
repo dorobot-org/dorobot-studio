@@ -24,10 +24,10 @@ use zenoh::{bytes::ZBytes, key_expr::KeyExpr, sample::Sample, Wait};
 pub const RING_CAP: usize = 64;
 /// Larger payloads are refused in the callback and counted as malformed.
 const MAX_PAYLOAD: usize = 8 * 1024 * 1024;
-/// Zenoh's connect timeout, and how long named endpoints may stay
+/// Zenoh's connect timeout, and how long named connect endpoints may stay
 /// unreachable before `last_error` says so.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(1);
-/// How often the receiver checks that named endpoints are linked.
+/// How often the receiver checks whether a peer or router is linked.
 const LINK_CHECK: Duration = Duration::from_millis(100);
 const RETRY_DELAY: Duration = Duration::from_secs(1);
 const POLL: Duration = Duration::from_millis(50);
@@ -57,9 +57,13 @@ impl Default for SessionOptions {
 /// A copy of what the panels show.
 #[derive(Debug, Clone, Default)]
 pub struct SessionSnapshot {
-    /// Zenoh is open and, if connect endpoints were given, linked to at least
-    /// one peer or router.
+    /// Zenoh is open and linked to at least one peer or router, in every
+    /// mode: an open session alone is not a connection.
     pub connected: bool,
+    /// How long the open session has waited for its first peer. `Some` only
+    /// without connect endpoints (multicast discovery, or listening), while
+    /// no peer or router is linked; that is not an error.
+    pub listening_for: Option<Duration>,
     pub last_error: Option<String>,
     /// Successful connections so far.
     pub generation: u64,
@@ -90,6 +94,9 @@ struct Shared {
 #[derive(Default)]
 struct Link {
     connected: bool,
+    /// Set while the open session waits for its first peer without connect
+    /// endpoints; see `SessionSnapshot::listening_for`.
+    listening_since: Option<Instant>,
     last_error: Option<String>,
     generation: u64,
 }
@@ -193,14 +200,20 @@ impl DvizSession {
     }
 
     pub fn snapshot(&self) -> SessionSnapshot {
-        let (connected, last_error, generation) = {
+        let (connected, listening_for, last_error, generation) = {
             let link = lock(&self.shared.link);
-            (link.connected, link.last_error.clone(), link.generation)
+            (
+                link.connected,
+                link.listening_since.map(|since| since.elapsed()),
+                link.last_error.clone(),
+                link.generation,
+            )
         };
         let receivers_alive = self.shared.receivers_alive.load(Ordering::Relaxed);
         let state = lock(&self.shared.state);
         SessionSnapshot {
             connected,
+            listening_for,
             last_error,
             generation,
             receivers_alive,
@@ -222,6 +235,7 @@ impl DvizSession {
         // reports, so a stopped receiver can no longer overwrite this.
         let mut link = lock(&self.shared.link);
         link.connected = false;
+        link.listening_since = None;
         link.last_error = None;
     }
 }
@@ -267,6 +281,7 @@ fn run(
             let error = describe(options, error);
             report(shared, stop, |link| {
                 link.connected = false;
+                link.listening_since = None;
                 link.last_error = Some(error);
             });
         }
@@ -331,13 +346,16 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
     session.close().wait()
 }
 
-/// Reports the session as connected once it is linked. Without connect
-/// endpoints an open session is enough. With them it needs a peer or router
-/// transport: a peer session opens without one and keeps connecting in the
-/// background, so an unreachable endpoint shows up only here.
+/// Reports the session as connected only while it is linked: a peer or
+/// router transport exists. A peer session opens without one (and keeps
+/// connecting in the background), so an open session alone proves nothing.
+/// Without connect endpoints, waiting for the first peer is normal and is
+/// reported as listening; with them, staying unlinked past the connect
+/// timeout is an error.
 struct LinkWatch<'a> {
     options: &'a SessionOptions,
-    linked: bool,
+    /// The state last reported; `None` before the first check.
+    linked: Option<bool>,
     unlinked_since: Instant,
     error_shown: bool,
     next_check: Instant,
@@ -348,7 +366,7 @@ impl<'a> LinkWatch<'a> {
         let now = Instant::now();
         Self {
             options,
-            linked: false,
+            linked: None,
             unlinked_since: now,
             error_shown: false,
             next_check: now,
@@ -361,23 +379,34 @@ impl<'a> LinkWatch<'a> {
             return;
         }
         self.next_check = now + LINK_CHECK;
-        let linked = self.options.connect_endpoints.is_empty() || has_transport(session);
-        if linked && !self.linked {
-            report(shared, stop, |link| {
-                link.connected = true;
-                link.last_error = None;
-                link.generation += 1;
-            });
-        } else if !linked && self.linked {
-            self.unlinked_since = now;
-            self.error_shown = false;
-            report(shared, stop, |link| link.connected = false);
-        } else if !linked && !self.error_shown && now - self.unlinked_since >= CONNECT_TIMEOUT {
+        let linked = has_transport(session);
+        let listening = self.options.connect_endpoints.is_empty();
+        if self.linked != Some(linked) {
+            if linked {
+                report(shared, stop, |link| {
+                    link.connected = true;
+                    link.listening_since = None;
+                    link.last_error = None;
+                    link.generation += 1;
+                });
+            } else {
+                self.unlinked_since = now;
+                self.error_shown = false;
+                report(shared, stop, |link| {
+                    link.connected = false;
+                    link.listening_since = listening.then_some(now);
+                });
+            }
+            self.linked = Some(linked);
+        } else if !linked
+            && !listening
+            && !self.error_shown
+            && now - self.unlinked_since >= CONNECT_TIMEOUT
+        {
             self.error_shown = true;
             let error = describe(self.options, "no peer or router reachable; still trying");
             report(shared, stop, |link| link.last_error = Some(error));
         }
-        self.linked = linked;
     }
 }
 

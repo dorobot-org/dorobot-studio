@@ -15,10 +15,15 @@ use dorobot_studio_core::{
 };
 use dorobot_studio_plugin::*;
 use dviz_protocol::{GraphEdge, GraphNode, GraphNodeStatus, LogEntry, LogLevel};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Duration};
 
 /// Newest log lines shown; the `logs` label holds this many.
 const LOG_LINES: usize = 12;
+/// Longest log line shown, in characters; longer entries end in "…".
+const LOG_LINE_CHARS: usize = 160;
+/// How long the session may listen without a peer before the status hints
+/// at entering the robot's endpoint.
+const NO_PEER_HINT_AFTER: Duration = Duration::from_secs(2);
 /// Nodes listed; the `nodes` label holds this many.
 const NODE_LINES: usize = 12;
 
@@ -304,10 +309,13 @@ fn session_options(mode: &str, endpoints: &str, prefix: &str) -> SessionOptions 
     }
 }
 
-/// Connection state and counters, then any session or 3D window error.
+/// Connection state and counters, the no-peer hint once the session has
+/// listened that long, then any session or 3D window error.
 fn status_text(snapshot: &SessionSnapshot, viewer_error: Option<&str>) -> String {
     let state = if snapshot.connected {
         "Connected"
+    } else if snapshot.listening_for.is_some() {
+        "Listening, no peer found yet"
     } else {
         "Not connected"
     };
@@ -315,6 +323,12 @@ fn status_text(snapshot: &SessionSnapshot, viewer_error: Option<&str>) -> String
         "{state} · received {} · dropped {} · malformed {}",
         snapshot.received, snapshot.dropped, snapshot.malformed
     )];
+    if snapshot
+        .listening_for
+        .is_some_and(|waited| waited >= NO_PEER_HINT_AFTER)
+    {
+        lines.push("Hint: no dviz peer found by multicast; enter the robot's endpoint".into());
+    }
     if let Some(error) = &snapshot.last_error {
         lines.push(format!("Error: {error}"));
     }
@@ -324,31 +338,38 @@ fn status_text(snapshot: &SessionSnapshot, viewer_error: Option<&str>) -> String
     lines.join("\n")
 }
 
-/// The newest `limit` entries (only WARN and above if `warn_only`), oldest
-/// first, one line each.
+/// The newest `limit` entries (only WARN and above if `warn_only`), newest
+/// first, each cut to one line of at most `LOG_LINE_CHARS` characters. Newest
+/// first so that when the label runs out of lines the oldest are cut.
 fn log_text(logs: &[LogEntry], warn_only: bool, limit: usize) -> String {
     let shown: Vec<_> = logs
         .iter()
         .rev()
         .filter(|entry| !warn_only || entry.level >= LogLevel::Warn)
         .take(limit)
+        .map(|entry| {
+            one_line(
+                &format!("{} {}: {}", entry.level, entry.node_id, entry.message),
+                LOG_LINE_CHARS,
+            )
+        })
         .collect();
     if shown.is_empty() {
         return "No log messages".to_string();
     }
-    shown
-        .iter()
-        .rev()
-        .map(|entry| {
-            format!(
-                "{} {}: {}",
-                entry.level,
-                entry.node_id,
-                entry.message.replace('\n', " ")
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    shown.join("\n")
+}
+
+/// `text` with every control character (newlines, tabs) as a space, cut to
+/// `max_chars` characters with a trailing "…" when it is longer.
+fn one_line(text: &str, max_chars: usize) -> String {
+    let flat = text.chars().map(|c| if c.is_control() { ' ' } else { c });
+    if text.chars().count() <= max_chars {
+        return flat.collect();
+    }
+    let mut cut: String = flat.take(max_chars.saturating_sub(1)).collect();
+    cut.push('…');
+    cut
 }
 
 /// One line per node, up to `limit`.
@@ -364,14 +385,15 @@ fn node_text(nodes: &[GraphNode], limit: usize) -> String {
         .join("\n")
 }
 
-/// Name, status and last activity (seconds since the dataflow started).
+/// Name, status and last activity. `last_seen` is the sender's clock
+/// (seconds since its dataflow started), not an age, so it is shown as a time.
 fn node_line(node: &GraphNode) -> String {
     let status = match node.status {
         GraphNodeStatus::Active => "active",
         GraphNodeStatus::Idle => "idle",
         GraphNodeStatus::Error => "error",
     };
-    format!("{} · {status} · last seen {:.1} s", node.id, node.last_seen)
+    format!("{} · {status} · seen at t={:.1} s", node.id, node.last_seen)
 }
 
 /// The node's line, then its inputs (`port ← node/output`) and outputs
@@ -468,22 +490,69 @@ mod tests {
     }
 
     #[test]
-    fn log_filter_keeps_the_newest_lines_in_order() {
+    fn status_shows_listening_and_the_no_peer_hint_after_two_seconds() {
+        let mut snapshot = SessionSnapshot {
+            listening_for: Some(Duration::from_millis(500)),
+            ..Default::default()
+        };
+        assert_eq!(
+            status_text(&snapshot, None),
+            "Listening, no peer found yet · received 0 · dropped 0 · malformed 0"
+        );
+        snapshot.listening_for = Some(Duration::from_secs(2));
+        assert_eq!(
+            status_text(&snapshot, None),
+            "Listening, no peer found yet · received 0 · dropped 0 · malformed 0\n\
+             Hint: no dviz peer found by multicast; enter the robot's endpoint"
+        );
+        // A link ends the waiting.
+        snapshot.listening_for = None;
+        snapshot.connected = true;
+        assert_eq!(
+            status_text(&snapshot, None),
+            "Connected · received 0 · dropped 0 · malformed 0"
+        );
+    }
+
+    #[test]
+    fn log_filter_keeps_the_newest_lines_newest_first() {
         let logs = [
             entry(LogLevel::Error, "first"),
             entry(LogLevel::Info, "second"),
             entry(LogLevel::Warn, "third"),
-            entry(LogLevel::Debug, "fourth\nmore"),
+            entry(LogLevel::Debug, "fourth\nmore\r\tend"),
         ];
+        // Newest on top: if the label cuts lines, the oldest go first.
         assert_eq!(
             log_text(&logs, false, 2),
-            "WARN planner: third\nDEBUG planner: fourth more"
+            "DEBUG planner: fourth more  end\nWARN planner: third"
         );
         assert_eq!(
             log_text(&logs, true, 10),
-            "ERROR planner: first\nWARN planner: third"
+            "WARN planner: third\nERROR planner: first"
         );
         assert_eq!(log_text(&logs[1..2], true, 10), "No log messages");
+    }
+
+    #[test]
+    fn long_log_entries_are_cut_to_one_line() {
+        let long = "x".repeat(300);
+        let text = log_text(&[entry(LogLevel::Info, &long)], false, 10);
+        assert_eq!(text.chars().count(), LOG_LINE_CHARS, "{text}");
+        assert!(text.starts_with("INFO planner: xxx"), "{text}");
+        assert!(text.ends_with("x…"), "{text}");
+
+        // Characters, not bytes: multi-byte text is cut without a panic.
+        let wide = "点云".repeat(200);
+        let text = log_text(&[entry(LogLevel::Warn, &wide)], false, 10);
+        assert_eq!(text.chars().count(), LOG_LINE_CHARS, "{text}");
+        assert!(text.ends_with('…'), "{text}");
+
+        // Exactly at the limit: kept whole.
+        let prefix = "INFO planner: ";
+        let fits = "y".repeat(LOG_LINE_CHARS - prefix.chars().count());
+        let text = log_text(&[entry(LogLevel::Info, &fits)], false, 10);
+        assert_eq!(text, format!("{prefix}{fits}"));
     }
 
     #[test]
@@ -500,11 +569,12 @@ mod tests {
                 last_seen: 3.0,
             },
         ];
+        // `last_seen` is the sender's clock (seconds since its start), not an age.
         assert_eq!(
             node_text(&nodes, 10),
-            "planner · active · last seen 12.3 s\nlidar · error · last seen 3.0 s"
+            "planner · active · seen at t=12.3 s\nlidar · error · seen at t=3.0 s"
         );
-        assert_eq!(node_text(&nodes, 1), "planner · active · last seen 12.3 s");
+        assert_eq!(node_text(&nodes, 1), "planner · active · seen at t=12.3 s");
         assert_eq!(node_text(&[], 10), "No nodes");
     }
 
@@ -533,7 +603,7 @@ mod tests {
         assert_eq!(
             node_detail(&nodes, &edges, "camera").as_deref(),
             Some(
-                "camera · idle · last seen 2.0 s\n\
+                "camera · idle · seen at t=2.0 s\n\
                  Inputs: tick ← dora/timer/millis/50\n\
                  Outputs: image → detector/frame, image → recorder/video"
             )
@@ -541,7 +611,7 @@ mod tests {
         assert_eq!(
             node_detail(&nodes, &edges, "detector").as_deref(),
             Some(
-                "detector · error · last seen 2.0 s\n\
+                "detector · error · seen at t=2.0 s\n\
                  Inputs: frame ← camera/image\n\
                  Outputs: none"
             )

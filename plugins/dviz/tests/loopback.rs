@@ -49,15 +49,16 @@ fn listen_options(port: u16, prefix: &str) -> SessionOptions {
     }
 }
 
-/// A `DvizSession` listening on a fresh loopback port, already connected.
+/// A `DvizSession` listening on a fresh loopback port: open, but with no
+/// peer yet, so not connected.
 fn listening_session(prefix: &str) -> (DvizSession, u16) {
     let port = free_port();
     let session = DvizSession::new();
     session.connect(listen_options(port, prefix)).unwrap();
     assert!(
-        wait_until(SETTLE, || session.snapshot().connected),
-        "session never connected: {:?}",
-        session.snapshot().last_error
+        wait_until(SETTLE, || session.snapshot().listening_for.is_some()),
+        "session never opened: {:?}",
+        session.snapshot()
     );
     (session, port)
 }
@@ -77,6 +78,37 @@ fn publisher_peer(port: u16) -> zenoh::Session {
         .insert_json5("transport/shared_memory/enabled", "false")
         .unwrap();
     zenoh::open(config).wait().unwrap()
+}
+
+/// A listening session plus the test's publishing peer connected to it;
+/// returns once the session counts that peer as its link.
+fn linked_session(prefix: &str) -> (DvizSession, zenoh::Session) {
+    let (session, port) = listening_session(prefix);
+    let peer = publisher_peer(port);
+    assert!(
+        wait_until(SETTLE, || session.snapshot().connected),
+        "the session never linked to the test peer: {:?}",
+        session.snapshot()
+    );
+    (session, peer)
+}
+
+/// A test peer listening on a fresh loopback port, for a session to connect to.
+fn listening_peer() -> (zenoh::Session, String) {
+    let endpoint = format!("tcp/127.0.0.1:{}", free_port());
+    let mut config = zenoh::Config::default();
+    config.insert_json5("mode", r#""peer""#).unwrap();
+    config
+        .insert_json5("listen/endpoints", &format!(r#"["{endpoint}"]"#))
+        .unwrap();
+    config.insert_json5("connect/endpoints", "[]").unwrap();
+    config
+        .insert_json5("scouting/multicast/enabled", "false")
+        .unwrap();
+    config
+        .insert_json5("transport/shared_memory/enabled", "false")
+        .unwrap();
+    (zenoh::open(config).wait().unwrap(), endpoint)
 }
 
 /// A blocking publisher on `key`, returned once the session's subscriber is
@@ -136,8 +168,7 @@ impl Sink for SlowSink {
 #[test]
 fn session_receives_over_loopback() {
     let prefix = "dviz_test_receive";
-    let (session, port) = listening_session(prefix);
-    let peer = publisher_peer(port);
+    let (session, peer) = linked_session(prefix);
     let logs = matched_publisher(&peer, format!("{prefix}/logs"));
     let lidar = matched_publisher(&peer, format!("{prefix}/world/lidar"));
 
@@ -164,6 +195,40 @@ fn session_receives_over_loopback() {
     assert_eq!(snapshot.generation, 1);
     assert_eq!(snapshot.receivers_alive, 1);
     assert!(snapshot.last_error.is_none());
+}
+
+/// Alone: open and listening, with no peer and no network. That is not a
+/// connection, and not an error either.
+#[test]
+fn listen_only_session_without_a_peer_is_not_connected() {
+    let session = DvizSession::new();
+    session
+        .connect(listen_options(free_port(), "dviz_test_alone"))
+        .unwrap();
+    thread::sleep(Duration::from_millis(2200));
+    let snapshot = session.snapshot();
+    assert!(!snapshot.connected, "connected with no peer: {snapshot:?}");
+    assert_eq!(snapshot.generation, 0);
+    assert!(snapshot.last_error.is_none(), "{:?}", snapshot.last_error);
+    let waited = snapshot.listening_for.expect("open and listening");
+    assert!(waited >= Duration::from_secs(2), "listening for {waited:?}");
+    assert_eq!(snapshot.receivers_alive, 1);
+}
+
+#[test]
+fn listen_only_session_connects_once_a_peer_links() {
+    let (session, port) = listening_session("dviz_test_first_peer");
+    assert!(!session.snapshot().connected);
+    let _peer = publisher_peer(port);
+    assert!(
+        wait_until(SETTLE, || session.snapshot().connected),
+        "{:?}",
+        session.snapshot()
+    );
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.generation, 1);
+    assert_eq!(snapshot.listening_for, None);
+    assert!(snapshot.last_error.is_none(), "{:?}", snapshot.last_error);
 }
 
 fn connect_options(mode: &str, endpoint: &str) -> SessionOptions {
@@ -300,8 +365,12 @@ fn invalid_options_are_rejected_immediately() {
 
 #[test]
 fn reconnect_replaces_the_single_receiver() {
-    let port = free_port();
-    let options = listen_options(port, "dviz_test_reconnect");
+    // Every connect links at once to this peer, so each counts as a connection.
+    let (_peer, endpoint) = listening_peer();
+    let options = SessionOptions {
+        prefix: "dviz_test_reconnect".into(),
+        ..connect_options("peer", &endpoint)
+    };
     let session = DvizSession::new();
     let most_alive = AtomicU32::new(0);
     let done = AtomicBool::new(false);
@@ -365,9 +434,8 @@ fn reconnect_replaces_the_single_receiver() {
 fn burst_beyond_capacity_drops_oldest_and_counts() {
     const BURST: u64 = 500;
     let prefix = "dviz_test_burst";
-    let (session, port) = listening_session(prefix);
+    let (session, peer) = linked_session(prefix);
     session.set_sink(Box::new(SlowSink));
-    let peer = publisher_peer(port);
     let lidar = matched_publisher(&peer, format!("{prefix}/world/lidar"));
 
     let payload = points();
