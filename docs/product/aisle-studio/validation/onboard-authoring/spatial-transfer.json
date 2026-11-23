@@ -403,5 +403,672 @@
       "rationale": "Use a 20 mm lateral lattice (half the 40 mm cube width), anchored on the nominal tangent, so the unsampled 35 mm gaps and the just-missed 78 mm clearance boundary are covered without an excessive number of IK checks. Add one optional 20 mm deeper inset ring: relative to the prior cube at 30 mm inset, radial separation rises from 55 mm to 75 mm, giving about 84.7 mm center distance at the nominal tangent and clearing 78 mm. The original 85 mm minimum inset is only increased, and every grid point is still subject to the unchanged URDF, motor-guard, and IK checks before motion.",
       "supported": true
     }
+  },
+  "grid": {
+    "octos-deepseek": {
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3123,
+            "final_position_m": [
+              0.32771122455596924,
+              0.7026869654655457,
+              0.5599988102912903
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.27058255827386746,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.10268696546554568,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 4081,
+            "final_position_m": [
+              0.29506346583366394,
+              0.6787127256393433,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.24716319948534338,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.07871272563934328,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 5434,
+            "final_position_m": [
+              0.19633632898330688,
+              0.676089882850647,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2625555505392801,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.076089882850647,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 32380,
+        "physics_ticks": 32380,
+        "robot_furniture_contacts": {
+          "locate/right_finger_b/table_leg_0.6_0.7": 29
+        },
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": null,
+        "requested": [
+          "blue",
+          "green",
+          "red"
+        ],
+        "phase": "back away",
+        "onboard_observations": 634,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 32380,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "122538d8b7338b10176e76522531c694e19f8b63bfa4c6509db6daf47c70ce79",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 1619,
+        "recording": true,
+        "seed": 1,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "ad20562fd5e4a63e0d125e6296de4211a4223fe3b5eb074f3b8c8ed0849ea191",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": false
+      },
+      "source": {
+        "adapter": "aisle.sim.nexus_backend",
+        "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+        "backend": "metal",
+        "fixture_profile": "living-room",
+        "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+        "nexus": "0.2.1",
+        "fixture": "floating base, wheel contact under gravity",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 1,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "5aaa26789b51631682d8ce6b74e362b44434c4a509fa738aaebfdf542aeec34f",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "1771394001b68ae8652073fed8a9309037a68197c4edfb33a3bfd5ea24604f7c"
+        }
+      },
+      "motor_comparison": {
+        "previous_steps": 17024,
+        "current_steps": 32380,
+        "first_different_or_additional_step": 17025,
+        "common_initial_plus_target_rows": 17025
+      },
+      "source_controller_identical": true,
+      "release_observations": [
+        {
+          "tick": 5294,
+          "op": "table observation",
+          "release_xy_m": [
+            0.39464882627434095,
+            0.15506314652417555
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 17600,
+          "op": "table observation",
+          "release_xy_m": [
+            0.3950982860042075,
+            0.17642183532042793
+          ],
+          "observed_occupants": 1,
+          "release_search": "grid",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 30726,
+          "op": "table observation",
+          "release_xy_m": [
+            0.392238544957522,
+            0.15494866996998166
+          ],
+          "observed_occupants": 1,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        }
+      ]
+    },
+    "codex": {
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3123,
+            "final_position_m": [
+              0.32771122455596924,
+              0.7026869654655457,
+              0.5599988102912903
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.27058255827386746,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.10268696546554568,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 4081,
+            "final_position_m": [
+              0.29506346583366394,
+              0.6787127256393433,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.24716319948534338,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.07871272563934328,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 5434,
+            "final_position_m": [
+              0.19633632898330688,
+              0.676089882850647,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2625555505392801,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.076089882850647,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 32380,
+        "physics_ticks": 32380,
+        "robot_furniture_contacts": {
+          "locate/right_finger_b/table_leg_0.6_0.7": 29
+        },
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": null,
+        "requested": [
+          "blue",
+          "green",
+          "red"
+        ],
+        "phase": "back away",
+        "onboard_observations": 634,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 32380,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "122538d8b7338b10176e76522531c694e19f8b63bfa4c6509db6daf47c70ce79",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 1619,
+        "recording": true,
+        "seed": 1,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "fcae4d0daa6e792e18f0a85455c104ac4b1ea551ee02fd695734cd748805fd16",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": false
+      },
+      "source": {
+        "adapter": "aisle.sim.nexus_backend",
+        "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+        "backend": "metal",
+        "fixture_profile": "living-room",
+        "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+        "nexus": "0.2.1",
+        "fixture": "floating base, wheel contact under gravity",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 1,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "5aaa26789b51631682d8ce6b74e362b44434c4a509fa738aaebfdf542aeec34f",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "1771394001b68ae8652073fed8a9309037a68197c4edfb33a3bfd5ea24604f7c"
+        }
+      },
+      "motor_comparison": {
+        "previous_steps": 17024,
+        "current_steps": 32380,
+        "first_different_or_additional_step": 17025,
+        "common_initial_plus_target_rows": 17025
+      },
+      "source_controller_identical": true,
+      "release_observations": [
+        {
+          "tick": 5294,
+          "op": "table observation",
+          "release_xy_m": [
+            0.39464882627434095,
+            0.15506314652417555
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 17600,
+          "op": "table observation",
+          "release_xy_m": [
+            0.3950982860042075,
+            0.17642183532042793
+          ],
+          "observed_occupants": 1,
+          "release_search": "grid",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 30726,
+          "op": "table observation",
+          "release_xy_m": [
+            0.392238544957522,
+            0.15494866996998166
+          ],
+          "observed_occupants": 1,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        }
+      ]
+    },
+    "matched_authors": {
+      "previous_steps": 32380,
+      "current_steps": 32380,
+      "first_different_or_additional_step": null,
+      "common_initial_plus_target_rows": 32381
+    }
+  },
+  "fold": {
+    "octos-deepseek": {
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3123,
+            "final_position_m": [
+              0.3332018256187439,
+              0.698793351650238,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2717249597739965,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.09879335165023806,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 4086,
+            "final_position_m": [
+              0.277177095413208,
+              0.7065402269363403,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.29105302067242755,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.10654022693634035,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3720,
+            "final_position_m": [
+              0.3699163496494293,
+              0.7308182716369629,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.29238729576324785,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.1308182716369629,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 27282,
+        "unsupported_wheel_ranges": [],
+        "physics_ticks": 27282,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "blue",
+          "green",
+          "red"
+        ],
+        "phase": "back away",
+        "onboard_observations": 538,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 27282,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "49de43a1bbe65c75a7cb6e096632ffd7122435364d8bfb3849841d3d7be35ce9",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 1364,
+        "recording": true,
+        "seed": 1,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "ad20562fd5e4a63e0d125e6296de4211a4223fe3b5eb074f3b8c8ed0849ea191",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": true
+      },
+      "source": {
+        "adapter": "aisle.sim.nexus_backend",
+        "controller_sha256": "ad20562fd5e4a63e0d125e6296de4211a4223fe3b5eb074f3b8c8ed0849ea191",
+        "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+        "backend": "metal",
+        "fixture_profile": "living-room",
+        "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+        "nexus": "0.2.1",
+        "fixture": "floating base, wheel contact under gravity",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 1,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "23af5400ac7eeb961f74284e0feee275ce619acf8b09dd20df14609dcbd4db9d",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "fd6ca04df90239749e429808bab9ed74a9dabf70ad00eaa59cab0c7843d9f73a"
+        }
+      },
+      "motor_comparison": {
+        "previous_steps": 32380,
+        "current_steps": 27282,
+        "first_different_or_additional_step": 12667,
+        "common_initial_plus_target_rows": 12667
+      },
+      "source_controller_identical": true,
+      "release_observations": [
+        {
+          "tick": 5294,
+          "op": "table observation",
+          "release_xy_m": [
+            0.39464882627434095,
+            0.15506314652417555
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 17680,
+          "op": "table observation",
+          "release_xy_m": [
+            0.3950049687718947,
+            0.18618050557122157
+          ],
+          "observed_occupants": 1,
+          "release_search": "grid",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 25648,
+          "op": "table observation",
+          "release_xy_m": [
+            0.3944431375513341,
+            0.1550363357372197
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        }
+      ]
+    },
+    "codex": {
+      "result": {
+        "cubes": {
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3123,
+            "final_position_m": [
+              0.3332018256187439,
+              0.698793351650238,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2717249597739965,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.09879335165023806,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 4086,
+            "final_position_m": [
+              0.277177095413208,
+              0.7065402269363403,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.29105302067242755,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.10654022693634035,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          },
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3720,
+            "final_position_m": [
+              0.3699163496494293,
+              0.7308182716369629,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.29238729576324785,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.1308182716369629,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 27282,
+        "unsupported_wheel_ranges": [],
+        "physics_ticks": 27282,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "blue",
+          "green",
+          "red"
+        ],
+        "phase": "back away",
+        "onboard_observations": 538,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 27282,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "49de43a1bbe65c75a7cb6e096632ffd7122435364d8bfb3849841d3d7be35ce9",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 1364,
+        "recording": true,
+        "seed": 1,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "fcae4d0daa6e792e18f0a85455c104ac4b1ea551ee02fd695734cd748805fd16",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": true
+      },
+      "source": {
+        "adapter": "aisle.sim.nexus_backend",
+        "controller_sha256": "fcae4d0daa6e792e18f0a85455c104ac4b1ea551ee02fd695734cd748805fd16",
+        "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+        "backend": "metal",
+        "fixture_profile": "living-room",
+        "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+        "nexus": "0.2.1",
+        "fixture": "floating base, wheel contact under gravity",
+        "recipe": "nano-living-room-floor-cubes-v1",
+        "seed": 1,
+        "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "policy_sha256": "23af5400ac7eeb961f74284e0feee275ce619acf8b09dd20df14609dcbd4db9d",
+        "support_code_hashes": {
+          "nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+          "nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+          "nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+          "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+          "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+          "nano_living.py": "af3501d0db4f3384e7496c1f05dd0ec269730a0373c0477daee4235fe3e272ad",
+          "nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+          "run_rgb_approach.py": "ae0ffacf4a4e6e0a7fd801d1e35db49041e45ed63471ff1eb0e04a7cda994b60",
+          "model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+          "run_rgb_transfer.py": "fd6ca04df90239749e429808bab9ed74a9dabf70ad00eaa59cab0c7843d9f73a"
+        }
+      },
+      "motor_comparison": {
+        "previous_steps": 32380,
+        "current_steps": 27282,
+        "first_different_or_additional_step": 12667,
+        "common_initial_plus_target_rows": 12667
+      },
+      "source_controller_identical": true,
+      "release_observations": [
+        {
+          "tick": 5294,
+          "op": "table observation",
+          "release_xy_m": [
+            0.39464882627434095,
+            0.15506314652417555
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 17680,
+          "op": "table observation",
+          "release_xy_m": [
+            0.3950049687718947,
+            0.18618050557122157
+          ],
+          "observed_occupants": 1,
+          "release_search": "grid",
+          "inset_m": 0.085
+        },
+        {
+          "tick": 25648,
+          "op": "table observation",
+          "release_xy_m": [
+            0.3944431375513341,
+            0.1550363357372197
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        }
+      ]
+    },
+    "matched_authors": {
+      "previous_steps": 27282,
+      "current_steps": 27282,
+      "first_different_or_additional_step": null,
+      "common_initial_plus_target_rows": 27283
+    }
+  },
+  "video": {
+    "fps_recorded": 5,
+    "fps_playback": 30,
+    "cameras": [
+      "head",
+      "left_wrist",
+      "right_wrist"
+    ],
+    "samples": 1364,
+    "sha256": "86cf131668ee215d15f4d57478e0b11d15b36066867d045262900506d5fd9775"
   }
 }
