@@ -2122,6 +2122,14 @@ version = "1.2.1"
 source = "git+https://github.com/OctoSense-org/makepad.git?rev=44d8220f12acfa46157019267e119e0866dd6b05#44d8220f12acfa46157019267e119e0866dd6b05"
 
 [[package]]
+name = "dviz-protocol"
+version = "0.1.0-rc.2"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"

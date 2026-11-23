@@ -1,0 +1,5 @@
+DoRobot Studio
+
+crates/dviz-protocol contains code from dviz (dorobot-org/dviz, commit 5276598),
+originally dviz-core/src/zenoh_protocol.rs, licensed under the Apache License 2.0.
+That crate is distributed under Apache-2.0; the rest of this repository is MIT.
