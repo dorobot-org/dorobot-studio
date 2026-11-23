@@ -496,6 +496,15 @@ def main():
                 "G1 standing episode opened in native Replay",
             )
             grab("standing-replay")
+            checks.append(
+                dict(
+                    check="G1 native Replay and synchronized encoder/action columns",
+                    cameras=["operator"],
+                    frames_per_camera=100,
+                    joints=29,
+                )
+            )
+            (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
         else:
             if a.survey:
                 assert result["room_revision_sha256"] and result["room_obstacles"] == [
