@@ -3,3 +3,13 @@ DoRobot Studio
 crates/dviz-protocol contains code from dviz (dorobot-org/dviz, commit 5276598),
 originally dviz-core/src/zenoh_protocol.rs, licensed under the Apache License 2.0.
 That crate is distributed under Apache-2.0; the rest of this repository is MIT.
+
+Files moved from dviz (dorobot-org/dviz, commit 5276598, Apache-2.0):
+
+- crates/dviz-protocol: dviz-core/src/zenoh_protocol.rs (message protocol);
+- plugins/dviz/src/rerun_sink.rs: the Rerun logging logic of dviz-shell
+  (`log_vis_data_to_rerun`);
+- plugins/dviz/src/fake/sim.rs: dviz-rerun-bridge/src/simulation.rs (sensor
+  simulator used by the synthetic publisher).
+
+plugins/dviz is distributed under Apache-2.0 for the same reason.

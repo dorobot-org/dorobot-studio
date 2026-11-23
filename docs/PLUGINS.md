@@ -9,6 +9,7 @@ dorobot-flex                         宿主、导航、通用工作流
   ├── dorobot-studio-plugin          插件契约、工厂注册表、面板生命周期
   ├── dorobot-plugin-collection      录制、审阅与保存
   ├── dorobot-plugin-control         机器人设置、校准与实时操作
+  ├── dorobot-plugin-dviz            dviz 3D 可视化与数据流图（见 [DVIZ.md](DVIZ.md)）
   └── dorobot-plugin-policy          本机 ACT 训练与 Nexus 推理
         └── dorobot-studio-core      业务后端、数据格式、回放与共享控件
 ```

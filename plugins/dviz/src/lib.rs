@@ -1,6 +1,7 @@
 use dorobot_studio_core::api::Backend;
 use dorobot_studio_plugin::*;
 
+pub mod fake;
 mod graph;
 #[cfg(feature = "rerun")]
 mod rerun_sink;

@@ -400,3 +400,47 @@ fn burst_beyond_capacity_drops_oldest_and_counts() {
     );
     assert_eq!(session.snapshot().entities["world/lidar"].count, received);
 }
+
+#[test]
+fn fake_publisher_feeds_every_displayed_kind() {
+    use dorobot_plugin_dviz::fake::{run_for, FakeOptions};
+
+    let prefix = "dviz_test_fake";
+    let (session, port) = listening_session(prefix);
+    run_for(
+        FakeOptions {
+            listen_endpoints: Vec::new(),
+            connect_endpoints: vec![format!("tcp/127.0.0.1:{port}")],
+            prefix: prefix.into(),
+            hz: 10.0,
+        },
+        Duration::from_secs(3),
+    )
+    .unwrap();
+
+    // run_for returns only after its session is closed; what it sent is
+    // already queued in the receiver.
+    assert!(
+        wait_until(SETTLE, || {
+            let snapshot = session.snapshot();
+            snapshot.nodes.len() == 3 && !snapshot.logs.is_empty()
+        }),
+        "{:?}",
+        session.snapshot()
+    );
+    let snapshot = session.snapshot();
+    for (entity, msg_type) in [
+        ("world/lidar", "points3d"),
+        ("world/vehicle", "transform3d"),
+        ("world/path", "linestrips3d"),
+        ("imu/accel_x", "scalar"),
+    ] {
+        assert_eq!(snapshot.entities[entity].msg_type, msg_type, "{entity}");
+    }
+    let mut ids: Vec<_> = snapshot.nodes.iter().map(|n| n.id.as_str()).collect();
+    ids.sort_unstable();
+    assert_eq!(ids, ["bridge", "planner", "sim"]);
+    assert!(!snapshot.edges.is_empty());
+    assert_eq!(snapshot.malformed, 0);
+    assert_eq!(snapshot.dropped, 0);
+}
