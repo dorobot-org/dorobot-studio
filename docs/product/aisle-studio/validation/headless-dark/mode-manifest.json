@@ -1,0 +1,41 @@
+{
+  "backend": "headless",
+  "requested_size": "1024x768",
+  "provider": "codex",
+  "native_binary_sha256": "78bee1dcc735cf7eab86619bab7d0c8ca3533a974c5c0233211429818e5f2658",
+  "studio_source_commit": "72ee2fd7de5872ad0baead0db0547929dc3492ad",
+  "sessions": [
+    {
+      "stage": "journey",
+      "pid": 38825,
+      "observed_dark": true,
+      "windows": [
+        [
+          1024,
+          768
+        ]
+      ]
+    },
+    {
+      "stage": "recovery",
+      "pid": 44152,
+      "observed_dark": true,
+      "windows": [
+        [
+          1024,
+          768
+        ]
+      ]
+    }
+  ],
+  "trials": [
+    "1795462931422270000-Nano-run",
+    "1795462941385440000-G1-run",
+    "1795462951362223000-G1-run",
+    "1795462953804173000-G1-run"
+  ],
+  "files": {
+    "journey.json": "ed213cb0c99d980f503e7985a280980a2954ba37e394f1513271ee8071967c91",
+    "recovery.json": "b202d1dc8e7cf482ab9eb8610a56060b887dd24477ef8438532dbb4fff6c1f12"
+  }
+}

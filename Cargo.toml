@@ -10,6 +10,7 @@ members = [
     "plugins/collection",
     "plugins/control",
     "plugins/policy",
+    "plugins/aisle",
 ]
 
 [workspace.package]

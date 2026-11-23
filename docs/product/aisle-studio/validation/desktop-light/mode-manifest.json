@@ -1,0 +1,50 @@
+{
+  "backend": "offscreen",
+  "requested_size": "1440x900",
+  "provider": "codex",
+  "native_binary_sha256": "78bee1dcc735cf7eab86619bab7d0c8ca3533a974c5c0233211429818e5f2658",
+  "studio_source_commit": "72ee2fd7de5872ad0baead0db0547929dc3492ad",
+  "sessions": [
+    {
+      "stage": "journey",
+      "pid": 38929,
+      "observed_dark": false,
+      "windows": [
+        [
+          1440,
+          900
+        ]
+      ]
+    },
+    {
+      "stage": "recovery",
+      "pid": 44823,
+      "observed_dark": false,
+      "windows": [
+        [
+          1440,
+          900
+        ]
+      ]
+    }
+  ],
+  "trials": [
+    "1795462932318787000-Nano-run",
+    "1795462943514023000-G1-run",
+    "1795462953506991000-G1-run",
+    "1795462955995630000-G1-run"
+  ],
+  "files": {
+    "G1-evidence.png": "5f9f064cca63251175e82a166491447ebab502ea70efdfbb3273fe095d56f293",
+    "G1-replay.png": "50d4302800aaa4710f401c0ac36ca47a9e28d309bea3e6daac78f624465ee461",
+    "G1-run.png": "ff2bc426e3ef336097c290a01285da92a7f3a0dcbcb910a187eaf52658c3fcc2",
+    "G1-scene.png": "6765d4ce224f1cfc87864a07e91178196312a074b3fff7961840b4ad0959dab0",
+    "G1-task.png": "d236782402081962fe3ce0d65372d6aec9146ba704d493881b4fac8375365fa6",
+    "Nano-evidence.png": "702b72d4676fa0170704e052a03d6362dae393e8f71875b0fbeee78471a0b704",
+    "Nano-run.png": "75e082e9b41e4f3c4ab7e812d7de0aae1fa4e1cad54de55f7abdad45353a055c",
+    "Nano-scene.png": "660ef942ca36408bc594a14918678281a1fcd45da264d5c46a728da49780f973",
+    "Nano-task.png": "905958af9f580ea4bd9698c6d4828014227b37d601ca6e6357497d71768f40e8",
+    "journey.json": "423b597016aa00f6b2c8ae8131a568860530bc3373ddb42131de35ee8469d96f",
+    "recovery.json": "b202d1dc8e7cf482ab9eb8610a56060b887dd24477ef8438532dbb4fff6c1f12"
+  }
+}

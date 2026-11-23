@@ -290,14 +290,23 @@ class WheelGuard:
 
 
 class LivingSimulation:
-    def __init__(self, model: Path, seed=0, cameras=True, resolution=(640, 480)):
+    def __init__(
+        self,
+        model: Path,
+        seed=0,
+        cameras=True,
+        resolution=(640, 480),
+        *,
+        specs=None,
+        posture=None,
+    ):
         from aisle.sim.nexus_backend import _ensure_nexus, _new_scene, NexusRobot
 
         self.engine = _ensure_nexus("metal")
         self.scene = _new_scene(
             self.engine, {"sim": {"dt": 0.01, "gravity": [0, 0, -9.81]}}, 1, [0.6] * 3
         )
-        self.specs = room_specs(seed)
+        self.specs = room_specs(seed) if specs is None else specs
         self.bodies = [
             self.scene.add_box(
                 s["name"],
@@ -345,7 +354,8 @@ class LivingSimulation:
             for spec in self.camera_specs.values():
                 spec["fps"] = 1 / CONTROL_DT
         self.scene.build()
-        parked = np.array([NAVIGATION_POSTURE.get(name, 0.0) for name in self.names])
+        park = NAVIGATION_POSTURE if posture is None else posture
+        parked = np.array([park.get(name, 0.0) for name in self.names])
         for step in range(250):
             self.robot.control_dofs_position(
                 (parked * min(1.0, (step + 1) / 150)).tolist(), self.dofs

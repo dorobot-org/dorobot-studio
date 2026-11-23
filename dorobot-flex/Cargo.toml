@@ -9,6 +9,7 @@ description = "DoRobot Studio plugin workbench"
 dorobot-studio-core = { path = "../crates/dorobot-studio-core", default-features = false }
 dorobot-studio-plugin = { path = "../crates/dorobot-studio-plugin" }
 dorobot-plugin-collection = { path = "../plugins/collection" }
+dorobot-plugin-aisle = { path = "../plugins/aisle" }
 dorobot-plugin-policy = { path = "../plugins/policy" }
 dorobot-plugin-control = { path = "../plugins/control" }
 dorobot-ux = { workspace = true }

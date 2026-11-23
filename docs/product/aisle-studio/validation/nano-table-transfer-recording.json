@@ -1,0 +1,565 @@
+{
+  "trial": "1795467985859646000-Nano-run",
+  "verdict": {
+    "cubes": {
+      "red": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3142,
+        "final_position_m": [
+          0.1603521853685379,
+          0.6500661373138428,
+          0.5599988698959351
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.28110806996892096,
+        "cube_center_over_table": true,
+        "settle_motion_m": 0.0
+      },
+      "green": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3794,
+        "final_position_m": [
+          0.3919389247894287,
+          0.6853047013282776,
+          0.5599989295005798
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.26014429616621015,
+        "cube_center_over_table": true,
+        "settle_motion_m": 0.0
+      },
+      "blue": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3927,
+        "final_position_m": [
+          0.4763706922531128,
+          0.7041502594947815,
+          0.5599988698959351
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.28701167070674,
+        "cube_center_over_table": true,
+        "settle_motion_m": 0.0
+      }
+    },
+    "table_top_m": 0.54,
+    "wheel_supported_ticks": 27302,
+    "physics_ticks": 27302,
+    "robot_furniture_contacts": {},
+    "max_joint_excursion_rad": 0,
+    "root_pose_writes": 0,
+    "passed": true,
+    "error": null,
+    "requested": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "phase": "back away",
+    "onboard_observations": 545,
+    "frames": 1365,
+    "recording": true,
+    "seed": 0,
+    "robot": "Nano",
+    "fixture": "living-room",
+    "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "kind": "table-transfer",
+    "task_success": true
+  },
+  "provider": {
+    "provider": "octos-deepseek",
+    "model": "deepseek-v4-flash",
+    "wall_seconds": 2.2453612498939037,
+    "input_tokens": 6318,
+    "output_tokens": 192
+  },
+  "manifest": {
+    "codebase_version": "v2.1",
+    "robot_type": "adora_nano",
+    "fps": 5,
+    "total_episodes": 1,
+    "total_frames": 1365,
+    "total_tasks": 1,
+    "total_videos": 3,
+    "total_chunks": 1,
+    "chunks_size": 1000,
+    "splits": {
+      "train": "0:1"
+    },
+    "features": {
+      "observation.state": {
+        "dtype": "float32",
+        "shape": [
+          17
+        ],
+        "names": [
+          "wheel_1_joint",
+          "wheel_2_joint",
+          "wheel_3_joint",
+          "head_pan_joint",
+          "head_tilt_joint",
+          "left_j1_yaw",
+          "left_j2_pitch",
+          "left_j3_pitch",
+          "left_j4_pitch",
+          "left_j5_roll",
+          "right_j1_yaw",
+          "right_j2_pitch",
+          "right_j3_pitch",
+          "right_j4_pitch",
+          "right_j5_roll",
+          "left_j6_gripper",
+          "right_j6_gripper"
+        ]
+      },
+      "action": {
+        "dtype": "float32",
+        "shape": [
+          17
+        ],
+        "names": [
+          "wheel_1_joint",
+          "wheel_2_joint",
+          "wheel_3_joint",
+          "head_pan_joint",
+          "head_tilt_joint",
+          "left_j1_yaw",
+          "left_j2_pitch",
+          "left_j3_pitch",
+          "left_j4_pitch",
+          "left_j5_roll",
+          "right_j1_yaw",
+          "right_j2_pitch",
+          "right_j3_pitch",
+          "right_j4_pitch",
+          "right_j5_roll",
+          "left_j6_gripper",
+          "right_j6_gripper"
+        ]
+      },
+      "timestamp": {
+        "dtype": "float32",
+        "shape": [
+          1
+        ],
+        "names": null
+      },
+      "frame_index": {
+        "dtype": "int64",
+        "shape": [
+          1
+        ],
+        "names": null
+      },
+      "index": {
+        "dtype": "int64",
+        "shape": [
+          1
+        ],
+        "names": null
+      },
+      "episode_index": {
+        "dtype": "int64",
+        "shape": [
+          1
+        ],
+        "names": null
+      },
+      "task_index": {
+        "dtype": "int64",
+        "shape": [
+          1
+        ],
+        "names": null
+      },
+      "observation.images.head": {
+        "dtype": "video",
+        "shape": [
+          360,
+          480,
+          3
+        ],
+        "names": [
+          "height",
+          "width",
+          "channel"
+        ],
+        "info": {
+          "video.fps": 5,
+          "video.codec": "mpeg4",
+          "video.pix_fmt": "yuv420p",
+          "video.is_depth_map": false,
+          "has_audio": false
+        }
+      },
+      "observation.images.left_wrist": {
+        "dtype": "video",
+        "shape": [
+          360,
+          480,
+          3
+        ],
+        "names": [
+          "height",
+          "width",
+          "channel"
+        ],
+        "info": {
+          "video.fps": 5,
+          "video.codec": "mpeg4",
+          "video.pix_fmt": "yuv420p",
+          "video.is_depth_map": false,
+          "has_audio": false
+        }
+      },
+      "observation.images.right_wrist": {
+        "dtype": "video",
+        "shape": [
+          360,
+          480,
+          3
+        ],
+        "names": [
+          "height",
+          "width",
+          "channel"
+        ],
+        "info": {
+          "video.fps": 5,
+          "video.codec": "mpeg4",
+          "video.pix_fmt": "yuv420p",
+          "video.is_depth_map": false,
+          "has_audio": false
+        }
+      }
+    },
+    "data_path": "data/chunk-{episode_chunk:03d}/episode_{episode_index:06d}.parquet",
+    "video_path": "videos/chunk-{episode_chunk:03d}/{video_key}/episode_{episode_index:06d}.mp4"
+  },
+  "source": {
+    "trial": "1795467985859646000-Nano-run",
+    "physics_step_s": 0.01,
+    "first_physics_step": 20,
+    "onboard_cameras": [
+      "head",
+      "left_wrist",
+      "right_wrist"
+    ],
+    "calibration": {
+      "head": {
+        "parent_link": "head_tilt",
+        "link_from_camera_gl": [
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.03
+          ],
+          [
+            0.0,
+            0.0,
+            -1.0,
+            0.018
+          ],
+          [
+            -1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics": [
+          [
+            257.0666412135806,
+            0,
+            240.0
+          ],
+          [
+            0,
+            257.0666412135806,
+            180.0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ],
+        "resolution": [
+          480,
+          360
+        ]
+      },
+      "left_wrist": {
+        "parent_link": "left_wrist_cam",
+        "link_from_camera_gl": [
+          [
+            0.0,
+            0.7071067811865475,
+            -0.7071067811865475,
+            0.073
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -0.7071067811865475,
+            -0.7071067811865475,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics": [
+          [
+            257.0666412135806,
+            0,
+            240.0
+          ],
+          [
+            0,
+            257.0666412135806,
+            180.0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ],
+        "resolution": [
+          480,
+          360
+        ]
+      },
+      "right_wrist": {
+        "parent_link": "right_wrist_cam",
+        "link_from_camera_gl": [
+          [
+            0.0,
+            0.7071067811865475,
+            -0.7071067811865475,
+            0.073
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -0.7071067811865475,
+            -0.7071067811865475,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics": [
+          [
+            257.0666412135806,
+            0,
+            240.0
+          ],
+          [
+            0,
+            257.0666412135806,
+            180.0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ],
+        "resolution": [
+          480,
+          360
+        ]
+      }
+    },
+    "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+    "controller_provider": "octos-deepseek",
+    "policy_model": "deepseek-v4-flash",
+    "simulation_source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "living-room",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating base, wheel contact under gravity",
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 0,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "394af00935c42f9247c9e4abc859c60bba61b82a5f4c9268f0ed8fdaf24b62c1",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844"
+      }
+    },
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "verdict": true
+  },
+  "journey": [
+    {
+      "check": "transfer controller authored",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 prepare"
+    },
+    {
+      "check": "nano scene checked",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 scene"
+    },
+    {
+      "check": "transfer stream active",
+      "robot": "Nano",
+      "status": "Running \u00b7 Nano \u00b7 run"
+    },
+    {
+      "check": "transfer fresh frame",
+      "robot": "Nano",
+      "status": "Running \u00b7 Nano \u00b7 run"
+    },
+    {
+      "check": "transfer adjudicated",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 run"
+    },
+    {
+      "check": "transfer physical verdict",
+      "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+      "cubes": {
+        "blue": {
+          "cube_center_over_table": true,
+          "detached": true,
+          "final_position_m": [
+            0.4763706922531128,
+            0.7041502594947815,
+            0.5599988698959351
+          ],
+          "min_finger_clearance_tail_m": 0.28701167070674,
+          "opposing_finger_airborne_ticks": 3927,
+          "passed": true,
+          "settle_motion_m": 0.0,
+          "table_contact_tail_ticks": 100
+        },
+        "green": {
+          "cube_center_over_table": true,
+          "detached": true,
+          "final_position_m": [
+            0.3919389247894287,
+            0.6853047013282776,
+            0.5599989295005798
+          ],
+          "min_finger_clearance_tail_m": 0.26014429616621015,
+          "opposing_finger_airborne_ticks": 3794,
+          "passed": true,
+          "settle_motion_m": 0.0,
+          "table_contact_tail_ticks": 100
+        },
+        "red": {
+          "cube_center_over_table": true,
+          "detached": true,
+          "final_position_m": [
+            0.1603521853685379,
+            0.6500661373138428,
+            0.5599988698959351
+          ],
+          "min_finger_clearance_tail_m": 0.28110806996892096,
+          "opposing_finger_airborne_ticks": 3142,
+          "passed": true,
+          "settle_motion_m": 0.0,
+          "table_contact_tail_ticks": 100
+        }
+      },
+      "error": null,
+      "fixture": "living-room",
+      "frames": 1365,
+      "kind": "table-transfer",
+      "max_joint_excursion_rad": 0,
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "onboard_observations": 545,
+      "passed": true,
+      "phase": "back away",
+      "physics_ticks": 27302,
+      "recording": true,
+      "requested": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "robot": "Nano",
+      "robot_furniture_contacts": {},
+      "root_pose_writes": 0,
+      "seed": 0,
+      "table_top_m": 0.54,
+      "task_success": true,
+      "wheel_supported_ticks": 27302
+    },
+    {
+      "check": "Onboard episode exported",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 export"
+    },
+    {
+      "check": "Native Replay and synchronized encoder/action columns",
+      "cameras": [
+        "head",
+        "left_wrist",
+        "right_wrist"
+      ],
+      "frames_per_camera": 1365
+    }
+  ],
+  "recovery": [
+    {
+      "check": "transfer evidence restored",
+      "robot": "Nano",
+      "status": "Ready"
+    }
+  ],
+  "files": {
+    "data/chunk-000/episode_000000.parquet": "0b831213d14c56e397146ceafd13c393f7214864122b991f476853b996d69e42",
+    "meta/aisle.json": "278f7b3f7ac098ba9cd855cdb672da1f33b9abc80865b8f1663c744c40b838f1",
+    "meta/episodes.jsonl": "087da7ff5bf588f33553e1fca32eec3eeed839789e388c3540b0f222d96e3667",
+    "meta/episodes_stats.jsonl": "3608cf24d188f59a4e08e6e0ab8d17c592af0f612ec5e695e8d80e378af742d6",
+    "meta/info.json": "71d713ab640c0b0fad5bfc8787441714da9201b1366cd5e13ffe2727ca6c0053",
+    "meta/tasks.jsonl": "3d2e1a4a9fb9d0b20f0a688978bf3186dc2aaeabccc72bb586c7764cea1e8047",
+    "videos/chunk-000/observation.images.head/episode_000000.mp4": "2a0aa7a6ee61c1c1beeea0f75df3deea3c1788c34ce284f4655d45936d6b82cd",
+    "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": "e90b224cbe8b9a5cbb2a01d1d93f4ba4dfdb31535714be464ea1d0c1916c7d48",
+    "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": "027c41890be312cb85ea2b25793ade76da8dd65b5aa83264e104fdc9cda51f43"
+  },
+  "preview_sha256": "40537764d342fa4bd3044d491faaf344f2c60e389ed1371a1440f79958d63435",
+  "archive_sha256": "fced39864286d96d0c0898e2ff30267fb01e69d0eb19200bb1eaf338fa08c240"
+}

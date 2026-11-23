@@ -1,0 +1,1661 @@
+{
+  "deepseek_red": {
+    "trial_id": "1795467200905462000-Nano-run",
+    "controller": {
+      "kind": "table-transfer",
+      "color_order": "red",
+      "robot": "Nano",
+      "task": "Move the red floor cube onto the coffee table.",
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+    },
+    "provider_call": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 2.222739083925262,
+      "input_tokens": 6312,
+      "output_tokens": 138
+    },
+    "verdict": {
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3142,
+          "final_position_m": [
+            0.1603521853685379,
+            0.6500661373138428,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.22592609221709814,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 6728,
+      "physics_ticks": 6728,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": true,
+      "error": null,
+      "requested": [
+        "red"
+      ],
+      "phase": "back away",
+      "onboard_observations": 123,
+      "seed": 0,
+      "robot": "Nano",
+      "fixture": "living-room",
+      "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "kind": "table-transfer",
+      "task_success": true
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "living-room",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating base, wheel contact under gravity",
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 0,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "51ad84c7c86764e2c9bf229166a6e827a358a4b5f88d2039eb29c88c049bc3a4",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "9e5add9a4cda4f82d552da3c6fbd9a2aa5f0ee17feab4ec729da6373fe5fc0f6"
+      }
+    },
+    "action_trace_sha256": "9a67ea69d1fae027c7cd3b95e1b18bf9e16d75bbc90806edcf1443ba94629448",
+    "controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "phase_changes": [
+      {
+        "tick": 0,
+        "op": "phase",
+        "name": "locate",
+        "color": "red"
+      },
+      {
+        "tick": 920,
+        "op": "phase",
+        "name": "pick",
+        "color": "red"
+      },
+      {
+        "tick": 2278,
+        "op": "phase",
+        "name": "carry",
+        "color": "red"
+      },
+      {
+        "tick": 4558,
+        "op": "phase",
+        "name": "place",
+        "color": "red"
+      },
+      {
+        "tick": 5134,
+        "op": "phase",
+        "name": "release",
+        "color": "red"
+      },
+      {
+        "tick": 5948,
+        "op": "phase",
+        "name": "back away",
+        "color": "red"
+      }
+    ],
+    "interface": {
+      "checks": [
+        {
+          "check": "Transfer authored",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Nano scene checked",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Transfer stream active",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Fresh transfer frame",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer adjudicated",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer physical verdict",
+          "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+          "cubes": {
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1603521853685379,
+                0.6500661373138428,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.22592609221709817,
+              "opposing_finger_airborne_ticks": 3142,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": null,
+          "fixture": "living-room",
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 123,
+          "passed": true,
+          "phase": "back away",
+          "physics_ticks": 6728,
+          "requested": [
+            "red"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": true,
+          "wheel_supported_ticks": 6728
+        }
+      ],
+      "recovery": [
+        {
+          "check": "Transfer evidence restored",
+          "robot": "Nano",
+          "status": "Ready"
+        }
+      ]
+    }
+  },
+  "codex_red": {
+    "trial_id": "1795467325105850000-Nano-run",
+    "controller": {
+      "kind": "table-transfer",
+      "color_order": "red",
+      "robot": "Nano",
+      "task": "Move the red floor cube onto the coffee table.",
+      "provider": "codex",
+      "policy_model": "gpt-6.2-astra",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+    },
+    "provider_call": {
+      "provider": "codex",
+      "model": "gpt-6.2-astra",
+      "wall_seconds": 8.250000790925696
+    },
+    "verdict": {
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3142,
+          "final_position_m": [
+            0.1603521853685379,
+            0.6500661373138428,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.22592609221709814,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 6728,
+      "physics_ticks": 6728,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": true,
+      "error": null,
+      "requested": [
+        "red"
+      ],
+      "phase": "back away",
+      "onboard_observations": 123,
+      "seed": 0,
+      "robot": "Nano",
+      "fixture": "living-room",
+      "controller_hash": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "kind": "table-transfer",
+      "task_success": true
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "living-room",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating base, wheel contact under gravity",
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 0,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "51ad84c7c86764e2c9bf229166a6e827a358a4b5f88d2039eb29c88c049bc3a4",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "9e5add9a4cda4f82d552da3c6fbd9a2aa5f0ee17feab4ec729da6373fe5fc0f6"
+      }
+    },
+    "action_trace_sha256": "9a67ea69d1fae027c7cd3b95e1b18bf9e16d75bbc90806edcf1443ba94629448",
+    "controller_sha256": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+    "phase_changes": [
+      {
+        "tick": 0,
+        "op": "phase",
+        "name": "locate",
+        "color": "red"
+      },
+      {
+        "tick": 920,
+        "op": "phase",
+        "name": "pick",
+        "color": "red"
+      },
+      {
+        "tick": 2278,
+        "op": "phase",
+        "name": "carry",
+        "color": "red"
+      },
+      {
+        "tick": 4558,
+        "op": "phase",
+        "name": "place",
+        "color": "red"
+      },
+      {
+        "tick": 5134,
+        "op": "phase",
+        "name": "release",
+        "color": "red"
+      },
+      {
+        "tick": 5948,
+        "op": "phase",
+        "name": "back away",
+        "color": "red"
+      }
+    ],
+    "interface": {
+      "checks": [
+        {
+          "check": "Transfer authored",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Nano scene checked",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Transfer stream active",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Fresh transfer frame",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer adjudicated",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer physical verdict",
+          "controller_hash": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+          "cubes": {
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1603521853685379,
+                0.6500661373138428,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.22592609221709817,
+              "opposing_finger_airborne_ticks": 3142,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": null,
+          "fixture": "living-room",
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 123,
+          "passed": true,
+          "phase": "back away",
+          "physics_ticks": 6728,
+          "requested": [
+            "red"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": true,
+          "wheel_supported_ticks": 6728
+        }
+      ],
+      "recovery": [
+        {
+          "check": "Transfer evidence restored",
+          "robot": "Nano",
+          "status": "Ready"
+        }
+      ]
+    }
+  },
+  "deepseek_three_failed": {
+    "trial_id": "1795467201166105000-Nano-run",
+    "controller": {
+      "kind": "table-transfer",
+      "color_order": "red,green,blue",
+      "robot": "Nano",
+      "task": "Move all three floor cubes onto the coffee table in red, green, blue order.",
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+    },
+    "provider_call": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 1.6820453749969602,
+      "input_tokens": 6318,
+      "output_tokens": 136
+    },
+    "verdict": {
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3142,
+          "final_position_m": [
+            0.1603521853685379,
+            0.6500661373138428,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.33910773803406313,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3794,
+          "final_position_m": [
+            0.3919321596622467,
+            0.6853110790252686,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3442978369709588,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 2520,
+          "final_position_m": [
+            0.31488555669784546,
+            0.3217363655567169,
+            0.6294735074043274
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": false,
+          "min_finger_clearance_tail_m": -0.018036968994906116,
+          "cube_center_over_table": false,
+          "settle_motion_m": 0.010521952994167805
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 24352,
+      "physics_ticks": 24352,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": false,
+      "error": "ValueError: Lost blue during two transport attempts",
+      "requested": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "phase": "carry",
+      "onboard_observations": 485,
+      "seed": 0,
+      "robot": "Nano",
+      "fixture": "living-room",
+      "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "kind": "table-transfer",
+      "task_success": false
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "living-room",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating base, wheel contact under gravity",
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 0,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "51ad84c7c86764e2c9bf229166a6e827a358a4b5f88d2039eb29c88c049bc3a4",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "9e5add9a4cda4f82d552da3c6fbd9a2aa5f0ee17feab4ec729da6373fe5fc0f6"
+      }
+    },
+    "action_trace_sha256": "6ce8af0c78563e8b2bcfbf4597d99522ae7acde7ff643a2e0544b935512ee82a",
+    "controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+    "phase_changes": [
+      {
+        "tick": 0,
+        "op": "phase",
+        "name": "locate",
+        "color": "red"
+      },
+      {
+        "tick": 920,
+        "op": "phase",
+        "name": "pick",
+        "color": "red"
+      },
+      {
+        "tick": 2278,
+        "op": "phase",
+        "name": "carry",
+        "color": "red"
+      },
+      {
+        "tick": 4558,
+        "op": "phase",
+        "name": "place",
+        "color": "red"
+      },
+      {
+        "tick": 5134,
+        "op": "phase",
+        "name": "release",
+        "color": "red"
+      },
+      {
+        "tick": 5948,
+        "op": "phase",
+        "name": "back away",
+        "color": "red"
+      },
+      {
+        "tick": 6728,
+        "op": "phase",
+        "name": "locate",
+        "color": "green"
+      },
+      {
+        "tick": 8868,
+        "op": "phase",
+        "name": "pick",
+        "color": "green"
+      },
+      {
+        "tick": 10226,
+        "op": "phase",
+        "name": "carry",
+        "color": "green"
+      },
+      {
+        "tick": 13146,
+        "op": "phase",
+        "name": "place",
+        "color": "green"
+      },
+      {
+        "tick": 13722,
+        "op": "phase",
+        "name": "release",
+        "color": "green"
+      },
+      {
+        "tick": 14536,
+        "op": "phase",
+        "name": "back away",
+        "color": "green"
+      },
+      {
+        "tick": 15336,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 17456,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 18814,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      },
+      {
+        "tick": 20694,
+        "op": "phase",
+        "name": "back away",
+        "color": "blue"
+      },
+      {
+        "tick": 21254,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 21594,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 22952,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      }
+    ],
+    "interface": {
+      "checks": [
+        {
+          "check": "Transfer authored",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Nano scene checked",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Transfer stream active",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Fresh transfer frame",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer adjudicated",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer physical verdict",
+          "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+          "cubes": {
+            "blue": {
+              "cube_center_over_table": false,
+              "detached": false,
+              "final_position_m": [
+                0.31488555669784546,
+                0.3217363655567169,
+                0.6294735074043274
+              ],
+              "min_finger_clearance_tail_m": -0.018036968994906116,
+              "opposing_finger_airborne_ticks": 2520,
+              "passed": false,
+              "settle_motion_m": 0.010521952994167805,
+              "table_contact_tail_ticks": 0
+            },
+            "green": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.3919321596622467,
+                0.6853110790252686,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.3442978369709588,
+              "opposing_finger_airborne_ticks": 3794,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            },
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1603521853685379,
+                0.6500661373138428,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.33910773803406313,
+              "opposing_finger_airborne_ticks": 3142,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": "ValueError: Lost blue during two transport attempts",
+          "fixture": "living-room",
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 485,
+          "passed": false,
+          "phase": "carry",
+          "physics_ticks": 24352,
+          "requested": [
+            "red",
+            "green",
+            "blue"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": false,
+          "wheel_supported_ticks": 24352
+        }
+      ],
+      "recovery": null
+    }
+  },
+  "deepseek_three": {
+    "trial_id": "1795467501873435000-Nano-run",
+    "controller": {
+      "kind": "table-transfer",
+      "color_order": "red,green,blue",
+      "robot": "Nano",
+      "task": "Move all three floor cubes onto the coffee table in red, green, blue order.",
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+    },
+    "provider_call": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 1.6126940420363098,
+      "input_tokens": 6319,
+      "output_tokens": 130
+    },
+    "verdict": {
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3142,
+          "final_position_m": [
+            0.1603521853685379,
+            0.6500661373138428,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28110806996892096,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3794,
+          "final_position_m": [
+            0.3919389247894287,
+            0.6853047013282776,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26014429616621015,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3927,
+          "final_position_m": [
+            0.4763706922531128,
+            0.7041502594947815,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28701167070674,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 27302,
+      "physics_ticks": 27302,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": true,
+      "error": null,
+      "requested": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "phase": "back away",
+      "onboard_observations": 545,
+      "seed": 0,
+      "robot": "Nano",
+      "fixture": "living-room",
+      "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "kind": "table-transfer",
+      "task_success": true
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "living-room",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating base, wheel contact under gravity",
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 0,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "394af00935c42f9247c9e4abc859c60bba61b82a5f4c9268f0ed8fdaf24b62c1",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "b8962a8ce1dcfb6e0428548ed4c29c4125eca842262aa72accd885863bdc602c"
+      }
+    },
+    "action_trace_sha256": "4ab72fb15ac991bfabf33b7d5d13bb7c2fcc332bc4074da2a9e55f92d38db59b",
+    "controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+    "phase_changes": [
+      {
+        "tick": 0,
+        "op": "phase",
+        "name": "locate",
+        "color": "red"
+      },
+      {
+        "tick": 920,
+        "op": "phase",
+        "name": "pick",
+        "color": "red"
+      },
+      {
+        "tick": 2278,
+        "op": "phase",
+        "name": "carry",
+        "color": "red"
+      },
+      {
+        "tick": 4558,
+        "op": "phase",
+        "name": "place",
+        "color": "red"
+      },
+      {
+        "tick": 5134,
+        "op": "phase",
+        "name": "release",
+        "color": "red"
+      },
+      {
+        "tick": 5948,
+        "op": "phase",
+        "name": "back away",
+        "color": "red"
+      },
+      {
+        "tick": 6728,
+        "op": "phase",
+        "name": "locate",
+        "color": "green"
+      },
+      {
+        "tick": 8868,
+        "op": "phase",
+        "name": "pick",
+        "color": "green"
+      },
+      {
+        "tick": 10226,
+        "op": "phase",
+        "name": "carry",
+        "color": "green"
+      },
+      {
+        "tick": 13146,
+        "op": "phase",
+        "name": "place",
+        "color": "green"
+      },
+      {
+        "tick": 13722,
+        "op": "phase",
+        "name": "release",
+        "color": "green"
+      },
+      {
+        "tick": 14536,
+        "op": "phase",
+        "name": "back away",
+        "color": "green"
+      },
+      {
+        "tick": 15336,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 17456,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 18814,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      },
+      {
+        "tick": 20694,
+        "op": "phase",
+        "name": "back away",
+        "color": "blue"
+      },
+      {
+        "tick": 21254,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 21594,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 22952,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      },
+      {
+        "tick": 25112,
+        "op": "phase",
+        "name": "place",
+        "color": "blue"
+      },
+      {
+        "tick": 25688,
+        "op": "phase",
+        "name": "release",
+        "color": "blue"
+      },
+      {
+        "tick": 26502,
+        "op": "phase",
+        "name": "back away",
+        "color": "blue"
+      }
+    ],
+    "interface": {
+      "checks": [
+        {
+          "check": "Transfer authored",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Nano scene checked",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 scene"
+        },
+        {
+          "check": "Transfer stream active",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Fresh transfer frame",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer adjudicated",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer physical verdict",
+          "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+          "cubes": {
+            "blue": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.4763706922531128,
+                0.7041502594947815,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.28701167070674,
+              "opposing_finger_airborne_ticks": 3927,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            },
+            "green": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.3919389247894287,
+                0.6853047013282776,
+                0.5599989295005798
+              ],
+              "min_finger_clearance_tail_m": 0.26014429616621015,
+              "opposing_finger_airborne_ticks": 3794,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            },
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1603521853685379,
+                0.6500661373138428,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.28110806996892096,
+              "opposing_finger_airborne_ticks": 3142,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": null,
+          "fixture": "living-room",
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 545,
+          "passed": true,
+          "phase": "back away",
+          "physics_ticks": 27302,
+          "requested": [
+            "red",
+            "green",
+            "blue"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": true,
+          "wheel_supported_ticks": 27302
+        }
+      ],
+      "recovery": [
+        {
+          "check": "Transfer evidence restored",
+          "robot": "Nano",
+          "status": "Ready"
+        }
+      ]
+    }
+  },
+  "deepseek_blue_revision": {
+    "trial_id": "aisle-transfer-deepseek-blue-r8b",
+    "controller": {
+      "kind": "table-transfer",
+      "color_order": "blue",
+      "previous_trial": {
+        "robot": "Nano",
+        "kind": "table-transfer",
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "carry",
+        "task_success": false,
+        "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "settled": {
+          "red": true,
+          "green": true,
+          "blue": false
+        }
+      },
+      "robot": "Nano",
+      "task": "Prepare a new development simulation to move only the cube that failed to settle in the selected trial onto the coffee table.",
+      "provider": "octos-deepseek",
+      "policy_model": "deepseek-v4-flash",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+    },
+    "provider_call": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 2.1588787499349564,
+      "input_tokens": 6431,
+      "output_tokens": 139
+    },
+    "verdict": {
+      "cubes": {
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3864,
+          "final_position_m": [
+            0.28648295998573303,
+            0.6863828301429749,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.27113305621417766,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 12466,
+      "physics_ticks": 12466,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": true,
+      "error": null,
+      "requested": [
+        "blue"
+      ],
+      "phase": "back away",
+      "onboard_observations": 250,
+      "seed": 0,
+      "robot": "Nano",
+      "fixture": "living-room",
+      "controller_hash": "3f38c27f2c8b31949e8e5366d4c0e4b945639a56a570c97a95410a0531335a00",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "kind": "table-transfer",
+      "task_success": true
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "living-room",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating base, wheel contact under gravity",
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 0,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "394af00935c42f9247c9e4abc859c60bba61b82a5f4c9268f0ed8fdaf24b62c1",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "f5abe776b66d9b2752da67f761bbbafe555cc86e9a9c2302fd710064ca2019b1"
+      }
+    },
+    "action_trace_sha256": "f56df747491b1054727b2bdedb37f95eac998eb2ec7f9f587db1d87f13f745e9",
+    "controller_sha256": "3f38c27f2c8b31949e8e5366d4c0e4b945639a56a570c97a95410a0531335a00",
+    "phase_changes": [
+      {
+        "tick": 0,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 900,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 2258,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      },
+      {
+        "tick": 4198,
+        "op": "phase",
+        "name": "back away",
+        "color": "blue"
+      },
+      {
+        "tick": 4758,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 6338,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 7696,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      },
+      {
+        "tick": 10256,
+        "op": "phase",
+        "name": "place",
+        "color": "blue"
+      },
+      {
+        "tick": 10832,
+        "op": "phase",
+        "name": "release",
+        "color": "blue"
+      },
+      {
+        "tick": 11646,
+        "op": "phase",
+        "name": "back away",
+        "color": "blue"
+      }
+    ]
+  },
+  "codex_three": {
+    "trial_id": "1795467802766277000-Nano-run",
+    "controller": {
+      "kind": "table-transfer",
+      "color_order": "red,green,blue",
+      "robot": "Nano",
+      "task": "Move all three floor cubes onto the coffee table in red, green, blue order.",
+      "provider": "codex",
+      "policy_model": "gpt-6.2-astra",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+    },
+    "provider_call": {
+      "provider": "codex",
+      "model": "gpt-6.2-astra",
+      "wall_seconds": 11.147574666887522
+    },
+    "verdict": {
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3142,
+          "final_position_m": [
+            0.1603521853685379,
+            0.6500661373138428,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28110806996892096,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3794,
+          "final_position_m": [
+            0.3919389247894287,
+            0.6853047013282776,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26014429616621015,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3927,
+          "final_position_m": [
+            0.4763706922531128,
+            0.7041502594947815,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28701167070674,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 27302,
+      "physics_ticks": 27302,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": true,
+      "error": null,
+      "requested": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "phase": "back away",
+      "onboard_observations": 545,
+      "seed": 0,
+      "robot": "Nano",
+      "fixture": "living-room",
+      "controller_hash": "0fd4c9c9c4a2f26442995601339257774b71f4d1ffc132993e61fc463a5d3a09",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "kind": "table-transfer",
+      "task_success": true
+    },
+    "source": {
+      "adapter": "aisle.sim.nexus_backend",
+      "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+      "backend": "metal",
+      "fixture_profile": "living-room",
+      "adapter_hash": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus": "0.2.1",
+      "fixture": "floating base, wheel contact under gravity",
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 0,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "394af00935c42f9247c9e4abc859c60bba61b82a5f4c9268f0ed8fdaf24b62c1",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "f5abe776b66d9b2752da67f761bbbafe555cc86e9a9c2302fd710064ca2019b1"
+      }
+    },
+    "action_trace_sha256": "4ab72fb15ac991bfabf33b7d5d13bb7c2fcc332bc4074da2a9e55f92d38db59b",
+    "controller_sha256": "0fd4c9c9c4a2f26442995601339257774b71f4d1ffc132993e61fc463a5d3a09",
+    "phase_changes": [
+      {
+        "tick": 0,
+        "op": "phase",
+        "name": "locate",
+        "color": "red"
+      },
+      {
+        "tick": 920,
+        "op": "phase",
+        "name": "pick",
+        "color": "red"
+      },
+      {
+        "tick": 2278,
+        "op": "phase",
+        "name": "carry",
+        "color": "red"
+      },
+      {
+        "tick": 4558,
+        "op": "phase",
+        "name": "place",
+        "color": "red"
+      },
+      {
+        "tick": 5134,
+        "op": "phase",
+        "name": "release",
+        "color": "red"
+      },
+      {
+        "tick": 5948,
+        "op": "phase",
+        "name": "back away",
+        "color": "red"
+      },
+      {
+        "tick": 6728,
+        "op": "phase",
+        "name": "locate",
+        "color": "green"
+      },
+      {
+        "tick": 8868,
+        "op": "phase",
+        "name": "pick",
+        "color": "green"
+      },
+      {
+        "tick": 10226,
+        "op": "phase",
+        "name": "carry",
+        "color": "green"
+      },
+      {
+        "tick": 13146,
+        "op": "phase",
+        "name": "place",
+        "color": "green"
+      },
+      {
+        "tick": 13722,
+        "op": "phase",
+        "name": "release",
+        "color": "green"
+      },
+      {
+        "tick": 14536,
+        "op": "phase",
+        "name": "back away",
+        "color": "green"
+      },
+      {
+        "tick": 15336,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 17456,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 18814,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      },
+      {
+        "tick": 20694,
+        "op": "phase",
+        "name": "back away",
+        "color": "blue"
+      },
+      {
+        "tick": 21254,
+        "op": "phase",
+        "name": "locate",
+        "color": "blue"
+      },
+      {
+        "tick": 21594,
+        "op": "phase",
+        "name": "pick",
+        "color": "blue"
+      },
+      {
+        "tick": 22952,
+        "op": "phase",
+        "name": "carry",
+        "color": "blue"
+      },
+      {
+        "tick": 25112,
+        "op": "phase",
+        "name": "place",
+        "color": "blue"
+      },
+      {
+        "tick": 25688,
+        "op": "phase",
+        "name": "release",
+        "color": "blue"
+      },
+      {
+        "tick": 26502,
+        "op": "phase",
+        "name": "back away",
+        "color": "blue"
+      }
+    ],
+    "interface": {
+      "checks": [
+        {
+          "check": "Transfer authored",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 prepare"
+        },
+        {
+          "check": "Nano scene checked",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 scene"
+        },
+        {
+          "check": "Transfer stream active",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Fresh transfer frame",
+          "robot": "Nano",
+          "status": "Running \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer adjudicated",
+          "robot": "Nano",
+          "status": "Completed \u00b7 Nano \u00b7 run"
+        },
+        {
+          "check": "Transfer physical verdict",
+          "controller_hash": "0fd4c9c9c4a2f26442995601339257774b71f4d1ffc132993e61fc463a5d3a09",
+          "cubes": {
+            "blue": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.4763706922531128,
+                0.7041502594947815,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.28701167070674,
+              "opposing_finger_airborne_ticks": 3927,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            },
+            "green": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.3919389247894287,
+                0.6853047013282776,
+                0.5599989295005798
+              ],
+              "min_finger_clearance_tail_m": 0.26014429616621015,
+              "opposing_finger_airborne_ticks": 3794,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            },
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1603521853685379,
+                0.6500661373138428,
+                0.5599988698959351
+              ],
+              "min_finger_clearance_tail_m": 0.28110806996892096,
+              "opposing_finger_airborne_ticks": 3142,
+              "passed": true,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": null,
+          "fixture": "living-room",
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 545,
+          "passed": true,
+          "phase": "back away",
+          "physics_ticks": 27302,
+          "requested": [
+            "red",
+            "green",
+            "blue"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": true,
+          "wheel_supported_ticks": 27302
+        }
+      ],
+      "recovery": [
+        {
+          "check": "transfer evidence restored",
+          "robot": "Nano",
+          "status": "Ready"
+        }
+      ]
+    }
+  },
+  "development_layout_1": {
+    "entry_point": "direct simulation, identical reference sequence",
+    "verdict": {
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3789,
+          "final_position_m": [
+            0.20742329955101013,
+            0.6917313933372498,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2995900063175417,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 3413,
+          "final_position_m": [
+            0.2364329993724823,
+            0.4440351724624634,
+            -0.01430107094347477
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3718482584797664,
+          "cube_center_over_table": false,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3171,
+          "final_position_m": [
+            0.3551046848297119,
+            0.6552945375442505,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.22993624941436325,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 23444,
+      "physics_ticks": 23444,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": false,
+      "error": null,
+      "requested": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "phase": "back away",
+      "onboard_observations": 512,
+      "seed": 1
+    },
+    "source": {
+      "recipe": "nano-living-room-floor-cubes-v1",
+      "seed": 1,
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "policy_sha256": "394af00935c42f9247c9e4abc859c60bba61b82a5f4c9268f0ed8fdaf24b62c1",
+      "support_code_hashes": {
+        "nano_rgb_table.py": "70642fce7388597a17825b2e5f83fb4a43d7863169a8eea10395f54a447fc1e4",
+        "verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "nano_living.py": "90ca0b15ffaa523eef413040b1b8c86abcad5c2b7502a7790b27249bec25c67e",
+        "nano_cameras.py": "8a2225df2a68bbea3dd98d9581d97e59bcbb916daeabc1e8960a786bbb915a98",
+        "run_rgb_approach.py": "14969cbaabe4da2008f88f27e224e5b4c34f04d92e734617d84ca052c7298615",
+        "model.py": "b90f3be1737d23b7b8aebb9c08650cf84a533ffdc9e83dee28d9807a00f0e69e",
+        "run_rgb_transfer.py": "f5abe776b66d9b2752da67f761bbbafe555cc86e9a9c2302fd710064ca2019b1"
+      },
+      "nexus": "0.2.1"
+    },
+    "action_trace_sha256": "24a20a60b4f9ab30c1f9bf4140411f3e9990065c3fa200d198b64f5ee4e9a187"
+  }
+}

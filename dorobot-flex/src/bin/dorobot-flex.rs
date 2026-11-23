@@ -441,6 +441,9 @@ impl App {
     }
 
     fn display_status(&self) -> &str {
+        if self.plugins.selected().is_some_and(|p| p.starts_with("aisle_")) {
+            return self.backend.status().filter(|s| !s.is_empty() && !s.starts_with("Choose Simulation or Real robot")).unwrap_or("AISLE · Nexus simulation");
+        }
         if matches!(self.plugins.selected(), Some("hardware_live_mirror" | "nexus_setup" | "nexus_train" | "nexus_rollout"))
             || (self.backend.screen() == Screen::Record && self.nexus_record())
         {
@@ -859,6 +862,10 @@ impl MatchEvent for App {
                 if let Some(t) = target {
                     self.navigate(t);
                 } else if let Some(panel) = match name.as_str() {
+                    "aisle-task" => Some("aisle_task"),
+                    "aisle-scene" => Some("aisle_scene"),
+                    "aisle-run" => Some("aisle_run"),
+                    "aisle-evidence" => Some("aisle_evidence"),
                     "nexus-setup" => Some("nexus_setup"),
                     "nexus-training" => Some("nexus_train"),
                     "nexus-inference" => Some("nexus_rollout"),
@@ -911,7 +918,7 @@ impl MatchEvent for App {
             self.sync_plugins(cx);
         } else {
             let nexus_panel = match self.plugins.selected() {
-                Some(panel @ ("nexus_setup" | "nexus_train" | "nexus_rollout")) => Some(LiveId::from_str(panel)),
+                Some(panel @ ("aisle_task" | "aisle_scene" | "aisle_run" | "aisle_evidence" | "nexus_setup" | "nexus_train" | "nexus_rollout")) => Some(LiveId::from_str(panel)),
                 None if self.backend.screen() == Screen::Record && self.nexus_record() => Some(live_id!(page_record)),
                 _ => None,
             };
@@ -966,10 +973,7 @@ impl MatchEvent for App {
                 });
                 let signals = self.ui.play_screen(cx, ids!(page_play)).signal_probe(cx);
                 let monitor_signals = self.ui.play_screen(cx, ids!(monitor_play)).signal_probe(cx);
-                dorobot_flex::ux_probe::write(
-                    cx,
-                    &self.ui,
-                    serde_json::json!({
+                let mut probe = serde_json::json!({
                         "screen": self.backend.screen().label(), "dark": frame::light_mode() < 0.5,
                         "workflow": {"calibrated":self.backend.workflow().calibrated,"nano":self.backend.hardware().nano.as_ref().map(|n|serde_json::json!({"active":n.active,"mock":n.mock,"phase":n.phase,"acks":n.acks})),"simulation":self.backend.workflow().simulation,"active":self.backend.workflow().active,"ready":self.backend.workflow().ready,"phase":self.backend.workflow().phase,"frames":self.backend.workflow().frames,"saved":self.backend.workflow().saved,"dataset":self.backend.workflow().dataset,"detail":self.backend.workflow().detail},
                         "episode": play.selected, "playing": play.is_playing, "time": play.current_time,
@@ -996,8 +1000,10 @@ impl MatchEvent for App {
                         "panel_layout": self.ui.flex_panels(cx, ids!(page_play.upper.grid)).snapshot(),
                         "recording": self.backend.record().recording, "saved": self.backend.record().saved, "discarded": self.backend.record().discarded,
                         "language": self.language.code(), "untranslated": self.localizer.untranslated(),
-                        "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()
-                    }),
+                        "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()});
+                probe["aisle_panel"] = serde_json::json!(self.plugins.selected());
+                probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"worker_pid":w.worker_pid(),"status":w.status,"scene_joints":w.scene["joint_count"],"progress":w.progress,"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"layout_seed":w.layout_seed,"revision":w.revision_index(),"dataset":w.dataset,"result":w.evidence})));
+                dorobot_flex::ux_probe::write(cx,&self.ui,probe,
                     &[
                         "page_record.body.right.session",
                         "page_record.body.right.session.ss_body.cues",
@@ -1017,6 +1023,8 @@ impl MatchEvent for App {
                         "page_play.toolbar",
                         "page_play.timeline",
                         "page_play.timeline.tl_head",
+                        "workspace_tabs.plugin_tabs.plugin_tab_aisle_task", "workspace_tabs.plugin_tabs.plugin_tab_aisle_scene", "workspace_tabs.plugin_tabs.plugin_tab_aisle_run", "workspace_tabs.plugin_tabs.plugin_tab_aisle_evidence",
+                        "aisle_task.nano", "aisle_task.g1", "aisle_task.instruction", "aisle_task.reference", "aisle_task.codex", "aisle_task.octos", "aisle_task.older", "aisle_task.newer", "aisle_task.revise", "aisle_scene.standard", "aisle_scene.compliant", "aisle_scene.layout0", "aisle_scene.layout1", "aisle_scene.layout2", "aisle_scene.inspect", "aisle_run.start_run", "aisle_run.stop_run", "aisle_evidence.previous", "aisle_evidence.next", "aisle_evidence.folder", "aisle_evidence.export", "aisle_evidence.replay",
                         "data_workspace", "plugin_tools", "plugin_tabs", "data_tabs",
                         "workspace_tabs.plugin_tabs.plugin_tab_page_hardware", "workspace_tabs.plugin_tabs.plugin_tab_hardware_teleop", "workspace_tabs.plugin_tabs.plugin_tab_page_record",
                         "workspace_tabs.data_tabs.tab_library", "workspace_tabs.data_tabs.tab_play", "workspace_tabs.data_tabs.tab_eval",
@@ -1283,8 +1291,9 @@ impl MatchEvent for App {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         let previous_screen = self.backend.screen();
         let previous_job = self.backend.nexus().and_then(|state| state.job_dir.clone());
-        let opening_saved = self.plugins.selected() == Some("nexus_setup")
-            && self.ui.button(cx, ids!(nexus_setup.open_saved)).clicked(actions);
+        let opening_saved = (self.plugins.selected() == Some("nexus_setup")
+            && self.ui.button(cx, ids!(nexus_setup.open_saved)).clicked(actions))
+            || (self.plugins.selected() == Some("aisle_evidence") && self.ui.button(cx, ids!(aisle_evidence.replay)).clicked(actions));
         let mut dirty = self.plugins.handle_actions(cx, actions, &mut *self.backend);
         if dirty {
             if self.backend.screen() != previous_screen || (opening_saved && self.backend.screen() == Screen::Play) {

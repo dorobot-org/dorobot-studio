@@ -1,0 +1,788 @@
+{
+  "suite": "Three development layouts already used for engineering; no hidden trials.",
+  "controller_source_revision": "523383195e33acd1052cc9cdc40074be3959a4f6",
+  "current": [
+    {
+      "seed": 0,
+      "policy_sha256": "b20c3369b07a78d9f94bd144ba843616e95fd2b15afb74749ba916eab5b1cc27",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "074b1a6237a62205565ea92d9dce46ddef7610856d28b0427bb7bc27bacc8251",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3142,
+            "final_position_m": [
+              0.1603521853685379,
+              0.6500661373138428,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.28110806996892096,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3794,
+            "final_position_m": [
+              0.3919389247894287,
+              0.6853047013282776,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.26014429616621015,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3927,
+            "final_position_m": [
+              0.4763706922531128,
+              0.7041502594947815,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.28701167070674,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 27302,
+        "physics_ticks": 27302,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 545,
+        "frames": 0,
+        "recording": false,
+        "seed": 0
+      }
+    },
+    {
+      "seed": 1,
+      "policy_sha256": "b20c3369b07a78d9f94bd144ba843616e95fd2b15afb74749ba916eab5b1cc27",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "2d918f06cc340e07522f0b9b76b5ffcaa73647dbf46fc9a24311a3c4313ebec7",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3789,
+            "final_position_m": [
+              0.19324953854084015,
+              0.6968816518783569,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.31253665726701785,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3413,
+            "final_position_m": [
+              0.23158682882785797,
+              0.6547616124153137,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.26204651950581886,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3174,
+            "final_position_m": [
+              0.3514642119407654,
+              0.6937238574028015,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.26646160461621704,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 24706,
+        "physics_ticks": 24706,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 512,
+        "frames": 0,
+        "recording": false,
+        "seed": 1
+      }
+    },
+    {
+      "seed": 2,
+      "policy_sha256": "b20c3369b07a78d9f94bd144ba843616e95fd2b15afb74749ba916eab5b1cc27",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "e779c31eca0450ea219da0d28ab69394bfea90b1f130c34d692f82e39f631e40",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3058,
+            "final_position_m": [
+              0.22552719712257385,
+              0.6556417346000671,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.25887603935931747,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3719,
+            "final_position_m": [
+              0.31122201681137085,
+              0.6869795918464661,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.26366768296458426,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "blue": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 3404,
+            "final_position_m": [
+              0.29976415634155273,
+              0.6157838702201843,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.201716379175355,
+            "cube_center_over_table": false,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 23024,
+        "physics_ticks": 23024,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": null,
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 491,
+        "frames": 0,
+        "recording": false,
+        "seed": 2
+      }
+    }
+  ],
+  "earlier_attempts": [
+    {
+      "seed": 1,
+      "policy_sha256": "394af00935c42f9247c9e4abc859c60bba61b82a5f4c9268f0ed8fdaf24b62c1",
+      "judge_sha256": "f5abe776b66d9b2752da67f761bbbafe555cc86e9a9c2302fd710064ca2019b1",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "24a20a60b4f9ab30c1f9bf4140411f3e9990065c3fa200d198b64f5ee4e9a187",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3789,
+            "final_position_m": [
+              0.20742329955101013,
+              0.6917313933372498,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2995900063175417,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 3413,
+            "final_position_m": [
+              0.2364329993724823,
+              0.4440351724624634,
+              -0.01430107094347477
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.3718482584797664,
+            "cube_center_over_table": false,
+            "settle_motion_m": 0.0
+          },
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3171,
+            "final_position_m": [
+              0.3551046848297119,
+              0.6552945375442505,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.22993624941436325,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 23444,
+        "physics_ticks": 23444,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": null,
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 512,
+        "seed": 1
+      }
+    },
+    {
+      "seed": 1,
+      "policy_sha256": "b9843c695bb32d5077a738bbfb9b0502057d87027b5f4d8f46b102b8252c459a",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "7468da8d4eba0d6e21bcfe522b0f8842011e9cd1aae34783bb455ac3c0085f5f",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3789,
+            "final_position_m": [
+              0.20742329955101013,
+              0.6917313933372498,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.05925235750480322,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 0,
+            "final_position_m": [
+              0.7386030554771423,
+              -0.04613371938467026,
+              -0.014301071874797344
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.9407045210244176,
+            "cube_center_over_table": false,
+            "settle_motion_m": 3.725290298461914e-09
+          },
+          "blue": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 0,
+            "final_position_m": [
+              0.8520947098731995,
+              0.2127360701560974,
+              -0.014301075600087643
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.8853440888553938,
+            "cube_center_over_table": false,
+            "settle_motion_m": 3.725290298461914e-09
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 6688,
+        "physics_ticks": 6688,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": "ValueError: Invalid encoder sample or timestamp",
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 141,
+        "frames": 0,
+        "recording": false,
+        "seed": 1
+      }
+    },
+    {
+      "seed": 0,
+      "policy_sha256": "ccc984176fae5f691db96b7b09178fe750192b98e8a565e30407e43d4bbb45c3",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "414bd3e3190ef9ff11dab3d61c02aa1fd8a72f1e002f7d7f48ef843acaa404a6",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3142,
+            "final_position_m": [
+              0.1603521853685379,
+              0.6500661373138428,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2895519363465812,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3753,
+            "final_position_m": [
+              0.365141898393631,
+              0.6746700406074524,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.24755316035769065,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "blue": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 3899,
+            "final_position_m": [
+              0.33178186416625977,
+              0.5276392698287964,
+              -0.014301067218184471
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.39162033814519576,
+            "cube_center_over_table": false,
+            "settle_motion_m": 2.7939677238464355e-09
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 28882,
+        "physics_ticks": 28882,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": null,
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 624,
+        "frames": 1444,
+        "recording": true,
+        "seed": 0,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "task_success": false
+      }
+    },
+    {
+      "seed": 1,
+      "policy_sha256": "ccc984176fae5f691db96b7b09178fe750192b98e8a565e30407e43d4bbb45c3",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "55a3af124f9d681d28847c5b6289d39e38b142edb7f5b8ab352cc5b46ab4ee68",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3789,
+            "final_position_m": [
+              0.20744197070598602,
+              0.6917288899421692,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.27236394584580803,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3403,
+            "final_position_m": [
+              0.25310391187667847,
+              0.6891947388648987,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2609061737992854,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 4459,
+            "final_position_m": [
+              0.26005151867866516,
+              0.6418523192405701,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.2162668538427151,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 28182,
+        "physics_ticks": 28182,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 589,
+        "frames": 0,
+        "recording": false,
+        "seed": 1
+      }
+    },
+    {
+      "seed": 1,
+      "policy_sha256": "28d9124836ddb85e7a9c1683921c8ba698576a81dba81574e5743624a7d2e5f2",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "ec2bbbfc0521d4722f8afd0edb69437c4e6b550eb80e21531e1b0ae03071f86a",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3789,
+            "final_position_m": [
+              0.20742329955101013,
+              0.6917313933372498,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.013013135170268482,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 3413,
+            "final_position_m": [
+              0.25710630416870117,
+              0.6566540002822876,
+              0.6269906759262085
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": false,
+            "min_finger_clearance_tail_m": -0.015351765341719018,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.014311225153505802
+          },
+          "blue": {
+            "passed": false,
+            "opposing_finger_airborne_ticks": 0,
+            "final_position_m": [
+              0.8520947098731995,
+              0.2127360701560974,
+              -0.014301072806119919
+            ],
+            "table_contact_tail_ticks": 0,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.8831251484460592,
+            "cube_center_over_table": false,
+            "settle_motion_m": 3.725290298461914e-09
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 15064,
+        "physics_ticks": 15064,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": false,
+        "error": "ValueError: No level, upward-supported grasp reaches [0.39497370487950123, 0.15501305312834407, 0.6298443711974425]",
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "release",
+        "onboard_observations": 312,
+        "frames": 0,
+        "recording": false,
+        "seed": 1
+      }
+    },
+    {
+      "seed": 1,
+      "policy_sha256": "36c606936d2e682537f448146bafe49b1990327894d8a7c484a56a437a0b98c6",
+      "judge_sha256": "02fd6097cd64fdedd5d52eccf0d7fb090504bdbc5fab5a8655850b1e9b2d4844",
+      "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "action_trace_sha256": "2d918f06cc340e07522f0b9b76b5ffcaa73647dbf46fc9a24311a3c4313ebec7",
+      "verdict": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3789,
+            "final_position_m": [
+              0.19324953854084015,
+              0.6968816518783569,
+              0.5599988698959351
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.31253665726701785,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "green": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3413,
+            "final_position_m": [
+              0.23158682882785797,
+              0.6547616124153137,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.26204651950581886,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          },
+          "blue": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3174,
+            "final_position_m": [
+              0.3514642119407654,
+              0.6937238574028015,
+              0.5599989295005798
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.26646160461621704,
+            "cube_center_over_table": true,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 24706,
+        "physics_ticks": 24706,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "phase": "back away",
+        "onboard_observations": 512,
+        "frames": 0,
+        "recording": false,
+        "seed": 1
+      }
+    }
+  ],
+  "studio_layout_selection": {
+    "requested_layout": 2,
+    "result": {
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3058,
+          "final_position_m": [
+            0.22552719712257385,
+            0.6556417346000671,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.23133162470921642,
+          "cube_center_over_table": true,
+          "settle_motion_m": 0.0
+        }
+      },
+      "table_top_m": 0.54,
+      "wheel_supported_ticks": 6808,
+      "physics_ticks": 6808,
+      "robot_furniture_contacts": {},
+      "max_joint_excursion_rad": 0,
+      "root_pose_writes": 0,
+      "passed": true,
+      "error": null,
+      "requested": [
+        "red"
+      ],
+      "phase": "back away",
+      "onboard_observations": 127,
+      "frames": 340,
+      "recording": true,
+      "seed": 2,
+      "robot": "Nano",
+      "fixture": "living-room",
+      "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "kind": "table-transfer",
+      "task_success": true
+    },
+    "journey": [
+      {
+        "check": "transfer controller authored",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Living-room layout 2 selected",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "nano scene checked",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "transfer stream active",
+        "robot": "Nano",
+        "status": "Running \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer fresh frame",
+        "robot": "Nano",
+        "status": "Running \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer adjudicated",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer physical verdict",
+        "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "cubes": {
+          "red": {
+            "cube_center_over_table": true,
+            "detached": true,
+            "final_position_m": [
+              0.22552719712257385,
+              0.6556417346000671,
+              0.5599989295005798
+            ],
+            "min_finger_clearance_tail_m": 0.2313316247092164,
+            "opposing_finger_airborne_ticks": 3058,
+            "passed": true,
+            "settle_motion_m": 0.0,
+            "table_contact_tail_ticks": 100
+          }
+        },
+        "error": null,
+        "fixture": "living-room",
+        "frames": 340,
+        "kind": "table-transfer",
+        "max_joint_excursion_rad": 0,
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "onboard_observations": 127,
+        "passed": true,
+        "phase": "back away",
+        "physics_ticks": 6808,
+        "recording": true,
+        "requested": [
+          "red"
+        ],
+        "robot": "Nano",
+        "robot_furniture_contacts": {},
+        "root_pose_writes": 0,
+        "seed": 2,
+        "table_top_m": 0.54,
+        "task_success": true,
+        "wheel_supported_ticks": 6808
+      },
+      {
+        "check": "Onboard episode exported",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 export"
+      },
+      {
+        "check": "Native Replay and synchronized encoder/action columns",
+        "cameras": [
+          "head",
+          "left_wrist",
+          "right_wrist"
+        ],
+        "frames_per_camera": 340
+      }
+    ],
+    "recovery": [
+      {
+        "check": "transfer evidence restored",
+        "robot": "Nano",
+        "status": "Ready"
+      }
+    ]
+  }
+}

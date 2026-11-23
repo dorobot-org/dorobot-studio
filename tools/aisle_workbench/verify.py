@@ -1,0 +1,152 @@
+"""Launch a fresh native Studio, exercise the pages and verify evidence after restart."""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--studio", type=Path, required=True)
+    parser.add_argument("--remote", default="makepad-remote")
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--backend", choices=["headless", "offscreen"], default="headless"
+    )
+    parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
+    parser.add_argument("--dark", action="store_true")
+    models = parser.add_mutually_exclusive_group()
+    models.add_argument("--codex", dest="provider", action="store_const", const="codex")
+    models.add_argument(
+        "--octos-deepseek",
+        dest="provider",
+        action="store_const",
+        const="octos-deepseek",
+    )
+    scenario = parser.add_mutually_exclusive_group()
+    scenario.add_argument(
+        "--standing", action="store_true", help="Run a floating-base G1 tracking trial"
+    )
+    scenario.add_argument(
+        "--transfer",
+        choices=["red", "three"],
+        help="Run and score a Nano floor-to-table journey",
+    )
+    parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
+    args = parser.parse_args()
+    if args.layout and not args.transfer:
+        parser.error("--layout requires a Nano transfer scenario")
+    if (args.standing or args.transfer) and not args.provider:
+        parser.error("Select --codex or --octos-deepseek to author the requested trial")
+    output = args.out.resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    report = output / "ui.json"
+    env = os.environ | {
+        "MAKEPAD_HAL_BACKEND": args.backend,
+        "DOROBOT_UX_REPORT": str(report),
+        "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
+    }
+    studio_root = Path(__file__).resolve().parents[2]
+    # The binary can come from another build directory. Its digest identifies the
+    # executable, while these fields identify the workspace observed at launch.
+    with args.studio.open("rb") as binary:
+        binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
+    revision = subprocess.check_output(
+        ["git", "-C", str(studio_root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    changed = subprocess.check_output(
+        ["git", "-C", str(studio_root), "status", "--porcelain"], text=True
+    ).splitlines()
+    sessions = []
+    for stage in ["journey", "recovery"]:
+        report.unlink(missing_ok=True)
+        command = [str(args.studio.resolve()), "--remote", "--screen", "aisle-task"]
+        if args.dark:
+            command.append("--dark")
+        with (output / f"{stage}.log").open("w") as log:
+            process = subprocess.Popen(
+                command, env=env, stdout=log, stderr=subprocess.STDOUT
+            )
+            try:
+                deadline = time.monotonic() + 30
+                while not report.exists():
+                    if process.poll() is not None or time.monotonic() > deadline:
+                        raise RuntimeError(f"Studio failed to start. See {log.name}")
+                    time.sleep(0.1)
+                check = [
+                    sys.executable,
+                    str(Path(__file__).with_name("journey.py")),
+                    "--remote",
+                    args.remote,
+                    "--pid",
+                    str(process.pid),
+                    "--report",
+                    str(report),
+                    "--out",
+                    str(output / "verified"),
+                    "--size",
+                    args.size,
+                ]
+                if args.standing:
+                    check.append("--standing")
+                if args.transfer:
+                    check.extend(
+                        ["--transfer", args.transfer, "--layout", str(args.layout)]
+                    )
+                if stage == "recovery":
+                    check.append("--recover")
+                else:
+                    if args.provider:
+                        check.append("--" + args.provider)
+                    if args.backend == "offscreen":
+                        check.append("--screenshots")
+                subprocess.run(check, check=True, timeout=900 if args.transfer else 330)
+                status = subprocess.check_output(
+                    [args.remote, "app", str(process.pid), "status"], text=True
+                )
+                windows = [
+                    w
+                    for line in status.splitlines()
+                    for w in json.loads(line).get("w", [])
+                    if w.get("i") == 0
+                ]
+                state = json.loads(report.read_text())["state"]
+                assert state["dark"] == args.dark
+                sessions.append(
+                    dict(
+                        stage=stage,
+                        pid=process.pid,
+                        observed_dark=state["dark"],
+                        windows=[w.get("sz") for w in windows],
+                    )
+                )
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                process.wait(timeout=15)
+
+    directory = output / "verified"
+    manifest = dict(
+        backend=args.backend,
+        requested_size=args.size,
+        provider=args.provider or "reference",
+        native_binary_sha256=binary_hash,
+        studio_source_commit=revision,
+        workspace_changes_at_launch=changed,
+        sessions=sessions,
+        trials=sorted(p.name for p in (output / "state/aisle").glob("*-run")),
+        files={
+            p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(directory.iterdir())
+        },
+    )
+    (directory / "mode-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+
+if __name__ == "__main__":
+    main()

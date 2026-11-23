@@ -1,0 +1,86 @@
+[
+  {
+    "task": "Inspect the left shoulder with a positive displacement of 0.12 rad.",
+    "robot": "Nano",
+    "accepted": true,
+    "provider": "octos-deepseek",
+    "model": "deepseek-v4-flash",
+    "wall_seconds": 1.4164642090909183,
+    "input_tokens": 6045,
+    "output_tokens": 66,
+    "measured_delta_rad": 0.11991871893405914
+  },
+  {
+    "task": "Inspect the left shoulder with a positive displacement of 0.12 rad.",
+    "robot": "Nano",
+    "accepted": true,
+    "provider": "codex",
+    "model": "gpt-6.2-astra",
+    "wall_seconds": 4.513968207873404,
+    "measured_delta_rad": 0.11991871893405914
+  },
+  {
+    "task": "Drive across the room and place three cubes onto a coffee table. Do this with the mobile base and gripper.",
+    "robot": "Nano",
+    "accepted": false,
+    "provider": "octos-deepseek",
+    "model": "deepseek-v4-flash",
+    "wall_seconds": 1.5341150420717895,
+    "input_tokens": 6052,
+    "output_tokens": 91,
+    "reason": "Requested task exceeds this controller's capabilities"
+  },
+  {
+    "task": "Drive across the room and place three cubes onto a coffee table. Do this with the mobile base and gripper.",
+    "robot": "Nano",
+    "accepted": false,
+    "provider": "codex",
+    "model": "gpt-6.2-astra",
+    "wall_seconds": 7.464088083943352,
+    "reason": "Requested task exceeds this controller's capabilities"
+  },
+  {
+    "task": "Inspect the right shoulder with a displacement of minus 0.08 rad",
+    "robot": "G1",
+    "accepted": true,
+    "requested_delta": -0.08,
+    "measured_delta_rad": -0.08004719018936157,
+    "provider": "octos-deepseek",
+    "model": "deepseek-v4-flash",
+    "wall_seconds": 1.5137696671299636,
+    "input_tokens": 6051,
+    "output_tokens": 67
+  },
+  {
+    "task": "Repeat the previous trial on the same shoulder with three quarters of the previously requested signed displacement",
+    "robot": "G1",
+    "accepted": true,
+    "requested_delta": -0.06,
+    "measured_delta_rad": -0.06003393605351448,
+    "provider": "octos-deepseek",
+    "model": "deepseek-v4-flash",
+    "wall_seconds": 2.1280511668883264,
+    "input_tokens": 6175,
+    "output_tokens": 91
+  },
+  {
+    "task": "Inspect the right shoulder with a displacement of minus 0.08 rad",
+    "robot": "G1",
+    "accepted": true,
+    "requested_delta": -0.08,
+    "measured_delta_rad": -0.08004719018936157,
+    "provider": "codex",
+    "model": "gpt-6.2-astra",
+    "wall_seconds": 6.076409708941355
+  },
+  {
+    "task": "Repeat the previous trial on the same shoulder with three quarters of the previously requested signed displacement",
+    "robot": "G1",
+    "accepted": true,
+    "requested_delta": -0.06,
+    "measured_delta_rad": -0.06003393605351448,
+    "provider": "codex",
+    "model": "gpt-6.2-astra",
+    "wall_seconds": 4.830371458083391
+  }
+]

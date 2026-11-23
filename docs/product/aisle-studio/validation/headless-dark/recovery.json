@@ -1,0 +1,12 @@
+[
+  {
+    "check": "stopped run recovered on restart",
+    "robot": "Nano",
+    "status": "Ready"
+  },
+  {
+    "check": "G1 controller restored",
+    "robot": "G1",
+    "status": "Ready"
+  }
+]
