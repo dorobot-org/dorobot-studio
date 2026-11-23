@@ -1,0 +1,17 @@
+[package]
+name = "dorobot-plugin-dviz"
+version.workspace = true
+edition.workspace = true
+license = "Apache-2.0"
+
+[dependencies]
+dorobot-studio-core = { path = "../../crates/dorobot-studio-core", default-features = false }
+dorobot-studio-plugin = { path = "../../crates/dorobot-studio-plugin" }
+dorobot-ux = { workspace = true }
+dviz-protocol = { workspace = true }
+zenoh = { version = "=1.10.2", default-features = false, features = ["transport_tcp"] }
+serde_json = { workspace = true }
+rerun = { workspace = true, optional = true }
+
+[features]
+rerun = ["dep:rerun"]

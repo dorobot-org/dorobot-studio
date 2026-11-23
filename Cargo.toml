@@ -10,6 +10,7 @@ members = [
     "crates/dorobot-studio-plugin",
     "plugins/collection",
     "plugins/control",
+    "plugins/dviz",
     "plugins/policy",
 ]
 

@@ -2020,6 +2020,7 @@ version = "0.1.0-rc.2"
 dependencies = [
  "dorobot-plugin-collection",
  "dorobot-plugin-control",
+ "dorobot-plugin-dviz",
  "dorobot-plugin-policy",
  "dorobot-studio-core",
  "dorobot-studio-plugin",
@@ -2053,6 +2054,19 @@ dependencies = [
  "log",
  "makepad-urdf-player",
  "makepad-widgets",
+]
+
+[[package]]
+name = "dorobot-plugin-dviz"
+version = "0.1.0-rc.2"
+dependencies = [
+ "dorobot-studio-core",
+ "dorobot-studio-plugin",
+ "dorobot-ux",
+ "dviz-protocol",
+ "rerun",
+ "serde_json",
+ "zenoh",
 ]
 
 [[package]]

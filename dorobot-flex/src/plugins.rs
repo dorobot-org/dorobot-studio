@@ -12,4 +12,7 @@ pub fn builtin_plugins() -> PluginRegistry {
         .register(Box::new(dorobot_plugin_policy::PolicyPlugin))
         .expect("训练与推理插件注册失败");
     registry
+        .register(Box::new(dorobot_plugin_dviz::DvizPlugin))
+        .expect("3D 可视化插件注册失败");
+    registry
 }

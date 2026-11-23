@@ -11,6 +11,7 @@ dorobot-studio-plugin = { path = "../crates/dorobot-studio-plugin" }
 dorobot-plugin-collection = { path = "../plugins/collection" }
 dorobot-plugin-policy = { path = "../plugins/policy" }
 dorobot-plugin-control = { path = "../plugins/control" }
+dorobot-plugin-dviz = { path = "../plugins/dviz" }
 dorobot-ux = { workspace = true }
 makepad-widgets = { workspace = true }
 makepad-urdf-player = { git = "https://github.com/dorobot-org/makepad-urdf-viewer", rev = "283d303df6d3e158bac2c281a190ac1f749b5bd5" }
@@ -19,8 +20,9 @@ env_logger = { workspace = true }
 serde_json = { workspace = true }
 
 [features]
-default = ["video"]
+default = ["video", "rerun"]
 video = ["dorobot-studio-core/video"]
+rerun = ["dorobot-plugin-dviz/rerun"]
 
 [dev-dependencies]
 urdf-rs = "0.9"
