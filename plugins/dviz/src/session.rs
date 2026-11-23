@@ -24,8 +24,11 @@ use zenoh::{bytes::ZBytes, key_expr::KeyExpr, sample::Sample, Wait};
 pub const RING_CAP: usize = 64;
 /// Larger payloads are refused in the callback and counted as malformed.
 const MAX_PAYLOAD: usize = 8 * 1024 * 1024;
-/// How long `disconnect` waits for the receiver thread to finish.
-const STOP_BUDGET: Duration = Duration::from_secs(1);
+/// Zenoh's connect timeout, and how long named endpoints may stay
+/// unreachable before `last_error` says so.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(1);
+/// How often the receiver checks that named endpoints are linked.
+const LINK_CHECK: Duration = Duration::from_millis(100);
 const RETRY_DELAY: Duration = Duration::from_secs(1);
 const POLL: Duration = Duration::from_millis(50);
 
@@ -54,6 +57,8 @@ impl Default for SessionOptions {
 /// A copy of what the panels show.
 #[derive(Debug, Clone, Default)]
 pub struct SessionSnapshot {
+    /// Zenoh is open and, if connect endpoints were given, linked to at least
+    /// one peer or router.
     pub connected: bool,
     pub last_error: Option<String>,
     /// Successful connections so far.
@@ -93,7 +98,8 @@ struct Link {
 struct Control {
     /// Stop flag of the current receiver, `None` when disconnected.
     stop: Option<Arc<AtomicBool>>,
-    /// The latest receiver thread, possibly still finishing after a stop.
+    /// The latest receiver thread, possibly still finishing after a stop;
+    /// the next receiver joins it before it starts.
     thread: Option<JoinHandle<()>>,
 }
 
@@ -160,22 +166,11 @@ impl DvizSession {
         Ok(())
     }
 
-    /// Stops receiving and waits up to 1 s for the receiver thread to end.
+    /// Stops receiving and returns at once. The receiver thread ends within
+    /// about the connect timeout (1 s) plus the session close; a later
+    /// `connect` waits for it, so two receivers never run together.
     pub fn disconnect(&self) {
-        let mut control = lock(&self.control);
-        self.stop_current(&mut control);
-        if let Some(thread) = control.thread.take() {
-            let deadline = Instant::now() + STOP_BUDGET;
-            while !thread.is_finished() && Instant::now() < deadline {
-                thread::sleep(Duration::from_millis(5));
-            }
-            if thread.is_finished() {
-                let _ = thread.join();
-            } else {
-                // Still inside a Zenoh call; the next connect waits for it.
-                control.thread = Some(thread);
-            }
-        }
+        self.stop_current(&mut lock(&self.control));
     }
 
     /// Where visual messages go from now on.
@@ -298,13 +293,10 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
         .declare_subscriber(format!("{}/**", options.prefix))
         .callback(move |sample| callback_inbox.push(sample))
         .wait()?;
-    report(shared, stop, |link| {
-        link.connected = true;
-        link.last_error = None;
-        link.generation += 1;
-    });
 
+    let mut watch = LinkWatch::new(options);
     while !stop.load(Ordering::Relaxed) {
+        watch.check(shared, stop, &session);
         let (next, dropped, oversized) = inbox.next(POLL);
         let item = next
             .as_ref()
@@ -330,6 +322,61 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
     session.close().wait()
 }
 
+/// Reports the session as connected once it is linked. Without connect
+/// endpoints an open session is enough. With them it needs a peer or router
+/// transport: a peer session opens without one and keeps connecting in the
+/// background, so an unreachable endpoint shows up only here.
+struct LinkWatch<'a> {
+    options: &'a SessionOptions,
+    linked: bool,
+    unlinked_since: Instant,
+    error_shown: bool,
+    next_check: Instant,
+}
+
+impl<'a> LinkWatch<'a> {
+    fn new(options: &'a SessionOptions) -> Self {
+        let now = Instant::now();
+        Self {
+            options,
+            linked: false,
+            unlinked_since: now,
+            error_shown: false,
+            next_check: now,
+        }
+    }
+
+    fn check(&mut self, shared: &Shared, stop: &AtomicBool, session: &zenoh::Session) {
+        let now = Instant::now();
+        if now < self.next_check {
+            return;
+        }
+        self.next_check = now + LINK_CHECK;
+        let linked = self.options.connect_endpoints.is_empty() || has_transport(session);
+        if linked && !self.linked {
+            report(shared, stop, |link| {
+                link.connected = true;
+                link.last_error = None;
+                link.generation += 1;
+            });
+        } else if !linked && self.linked {
+            self.unlinked_since = now;
+            self.error_shown = false;
+            report(shared, stop, |link| link.connected = false);
+        } else if !linked && !self.error_shown && now - self.unlinked_since >= CONNECT_TIMEOUT {
+            self.error_shown = true;
+            let error = describe(self.options, "no peer or router reachable; still trying");
+            report(shared, stop, |link| link.last_error = Some(error));
+        }
+        self.linked = linked;
+    }
+}
+
+fn has_transport(session: &zenoh::Session) -> bool {
+    let info = session.info();
+    info.routers_zid().wait().next().is_some() || info.peers_zid().wait().next().is_some()
+}
+
 fn zenoh_config(options: &SessionOptions) -> zenoh::Result<zenoh::Config> {
     let mut config = zenoh::Config::default();
     config.insert_json5("mode", &serde_json::to_string(&options.mode)?)?;
@@ -352,7 +399,10 @@ fn zenoh_config(options: &SessionOptions) -> zenoh::Result<zenoh::Config> {
         if multicast { "true" } else { "false" },
     )?;
     config.insert_json5("transport/shared_memory/enabled", "false")?;
-    config.insert_json5("connect/timeout_ms", "1000")?;
+    config.insert_json5(
+        "connect/timeout_ms",
+        &CONNECT_TIMEOUT.as_millis().to_string(),
+    )?;
     Ok(config)
 }
 

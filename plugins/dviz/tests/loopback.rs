@@ -14,6 +14,10 @@ use std::{
 use zenoh::{qos::CongestionControl, Wait};
 
 const SETTLE: Duration = Duration::from_secs(3);
+/// `disconnect` must not wait for the receiver thread.
+const DISCONNECT_MAX: Duration = Duration::from_millis(50);
+/// The receiver ends within the 1 s connect timeout plus the session close.
+const STOP_WAIT: Duration = Duration::from_millis(2500);
 
 fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -112,6 +116,14 @@ fn points() -> Vec<u8> {
     message("points3d", Value::Null, Some(&xyz))
 }
 
+struct SetOnDrop<'a>(&'a AtomicBool);
+
+impl Drop for SetOnDrop<'_> {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::Relaxed);
+    }
+}
+
 struct SlowSink;
 
 impl Sink for SlowSink {
@@ -154,19 +166,21 @@ fn session_receives_over_loopback() {
     assert!(snapshot.last_error.is_none());
 }
 
-#[test]
-fn connect_to_unreachable_endpoint_reports_error_without_blocking() {
-    let endpoint = format!("tcp/127.0.0.1:{}", free_port());
+fn connect_options(mode: &str, endpoint: &str) -> SessionOptions {
+    SessionOptions {
+        mode: mode.into(),
+        connect_endpoints: vec![endpoint.to_string()],
+        listen_endpoints: Vec::new(),
+        prefix: "dviz".into(),
+    }
+}
+
+/// Connects to `endpoint`, where nothing listens, and checks that `connect`
+/// returns at once and the error names the endpoint.
+fn assert_unreachable_is_reported(mode: &str, endpoint: &str) -> DvizSession {
     let session = DvizSession::new();
     let started = Instant::now();
-    session
-        .connect(SessionOptions {
-            mode: "client".into(),
-            connect_endpoints: vec![endpoint.clone()],
-            listen_endpoints: Vec::new(),
-            prefix: "dviz".into(),
-        })
-        .unwrap();
+    session.connect(connect_options(mode, endpoint)).unwrap();
     let elapsed = started.elapsed();
     assert!(
         elapsed < Duration::from_millis(100),
@@ -175,16 +189,87 @@ fn connect_to_unreachable_endpoint_reports_error_without_blocking() {
 
     assert!(
         wait_until(SETTLE, || session.snapshot().last_error.is_some()),
-        "no error reported for an unreachable endpoint"
+        "no error reported for an unreachable {mode} endpoint: {:?}",
+        session.snapshot()
     );
     let snapshot = session.snapshot();
     assert!(!snapshot.connected);
     assert_eq!(snapshot.generation, 0);
     let error = snapshot.last_error.unwrap();
     assert!(
-        error.contains(&endpoint),
+        error.contains(endpoint),
         "error does not name {endpoint}: {error}"
     );
+    session
+}
+
+#[test]
+fn connect_to_unreachable_endpoint_reports_error_without_blocking() {
+    let endpoint = format!("tcp/127.0.0.1:{}", free_port());
+    assert_unreachable_is_reported("client", &endpoint);
+}
+
+#[test]
+fn peer_connect_to_unreachable_endpoint_reports_error() {
+    let endpoint = format!("tcp/127.0.0.1:{}", free_port());
+    let session = assert_unreachable_is_reported("peer", &endpoint);
+    // Still not connected a while later: the open session alone is not a link.
+    thread::sleep(Duration::from_millis(300));
+    let snapshot = session.snapshot();
+    assert!(!snapshot.connected);
+    assert!(snapshot.last_error.is_some());
+}
+
+#[test]
+fn peer_error_clears_once_the_endpoint_appears() {
+    let port = free_port();
+    let endpoint = format!("tcp/127.0.0.1:{port}");
+    let session = assert_unreachable_is_reported("peer", &endpoint);
+
+    let mut config = zenoh::Config::default();
+    config.insert_json5("mode", r#""peer""#).unwrap();
+    config
+        .insert_json5("listen/endpoints", &format!(r#"["{endpoint}"]"#))
+        .unwrap();
+    config
+        .insert_json5("scouting/multicast/enabled", "false")
+        .unwrap();
+    config
+        .insert_json5("transport/shared_memory/enabled", "false")
+        .unwrap();
+    let _late_peer = zenoh::open(config).wait().unwrap();
+
+    // Zenoh's background connector backs off up to 4 s between attempts.
+    assert!(
+        wait_until(Duration::from_secs(10), || session.snapshot().connected),
+        "never connected after the peer appeared: {:?}",
+        session.snapshot()
+    );
+    let snapshot = session.snapshot();
+    assert!(snapshot.last_error.is_none(), "{:?}", snapshot.last_error);
+    assert_eq!(snapshot.generation, 1);
+}
+
+#[test]
+fn disconnect_returns_at_once_even_during_a_blocked_open() {
+    let endpoint = format!("tcp/127.0.0.1:{}", free_port());
+    let session = DvizSession::new();
+    session
+        .connect(connect_options("client", &endpoint))
+        .unwrap();
+    // The receiver is now inside zenoh::open, which blocks for up to 1 s.
+    thread::sleep(Duration::from_millis(200));
+
+    let started = Instant::now();
+    session.disconnect();
+    let elapsed = started.elapsed();
+    assert!(elapsed < DISCONNECT_MAX, "disconnect took {elapsed:?}");
+    assert!(!session.snapshot().connected);
+    assert!(
+        wait_until(STOP_WAIT, || session.snapshot().receivers_alive == 0),
+        "the receiver outlived disconnect by more than {STOP_WAIT:?}"
+    );
+    assert!(session.snapshot().last_error.is_none());
 }
 
 #[test]
@@ -222,6 +307,9 @@ fn reconnect_replaces_the_single_receiver() {
     let done = AtomicBool::new(false);
 
     thread::scope(|scope| {
+        // Stops the watcher even when an assertion below fails, so a failure
+        // cannot hang the scope.
+        let _stop_watcher = SetOnDrop(&done);
         scope.spawn(|| {
             while !done.load(Ordering::Relaxed) {
                 most_alive.fetch_max(session.snapshot().receivers_alive, Ordering::Relaxed);
@@ -234,14 +322,14 @@ fn reconnect_replaces_the_single_receiver() {
         assert_eq!(session.snapshot().generation, 1);
         assert_eq!(session.snapshot().receivers_alive, 1);
 
+        let started = Instant::now();
         session.disconnect();
+        let elapsed = started.elapsed();
+        assert!(elapsed < DISCONNECT_MAX, "disconnect took {elapsed:?}");
         assert!(!session.snapshot().connected);
         assert!(
-            wait_until(Duration::from_secs(1), || session
-                .snapshot()
-                .receivers_alive
-                == 0),
-            "the receiver outlived disconnect by more than 1 s"
+            wait_until(STOP_WAIT, || session.snapshot().receivers_alive == 0),
+            "the receiver outlived disconnect by more than {STOP_WAIT:?}"
         );
 
         session.connect(options.clone()).unwrap();
@@ -262,8 +350,6 @@ fn reconnect_replaces_the_single_receiver() {
         );
         assert!(session.snapshot().connected);
         assert_eq!(session.snapshot().receivers_alive, 1);
-
-        done.store(true, Ordering::Relaxed);
     });
     assert_eq!(
         most_alive.load(Ordering::Relaxed),
@@ -272,10 +358,7 @@ fn reconnect_replaces_the_single_receiver() {
     );
 
     session.disconnect();
-    assert!(wait_until(Duration::from_secs(1), || session
-        .snapshot()
-        .receivers_alive
-        == 0));
+    assert!(wait_until(STOP_WAIT, || session.snapshot().receivers_alive == 0));
 }
 
 #[test]
