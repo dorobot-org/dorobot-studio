@@ -27,3 +27,5 @@ Use the [configured Python and AISLE runtime](../../README.md). Keep the indepen
 ```
 
 The original manifest SHA-256 is `00386e6bdb7f118de306637d38814de61219c3be22c782316bb82817f11540b3`. Publish a new manifest before starting a new cohort. Each case runs once.
+
+A separate offscreen native Studio run used a live DeepSeek call. Its world-frame wrist moved toward a 22.99 mm goal, stayed within 2.63 mm for the final half-second and retained two-foot load for all 2,000 scored steps. Studio recovered the trial after restart. [Task, provider response, native events and measurement](native-standing.json) · [Evidence page at 1440 × 900](standing-evidence.png)
