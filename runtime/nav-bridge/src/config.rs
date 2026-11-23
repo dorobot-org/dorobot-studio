@@ -86,16 +86,16 @@ pub struct BridgeConfig {
 impl Default for BridgeConfig {
     fn default() -> Self {
         let inputs = [
-            ("map_base", InputFormat::Odometry),
-            ("plan", InputFormat::Path),
+            ("pose", InputFormat::Odometry),
+            ("path", InputFormat::Path),
             ("goal", InputFormat::Goal),
             ("goal_status", InputFormat::GoalStatus),
             ("scan", InputFormat::LaserScan),
-            ("cloud_body", InputFormat::CloudXyzi),
+            ("cloud", InputFormat::CloudXyzi),
             ("trust", InputFormat::Trust),
             ("refine_state", InputFormat::RefineState),
             ("gate_state", InputFormat::GateState),
-            ("chassis_state", InputFormat::ChassisState),
+            ("chassis", InputFormat::ChassisState),
         ];
         BridgeConfig {
             robot_id: "tracer".into(),
@@ -136,7 +136,7 @@ mod tests {
         assert_eq!(c.cloud_max_points, 5000);
         assert_eq!(c.trail_max_points, 3000);
         assert_eq!(c.colors.trail, [255, 140, 0, 255]);
-        assert_eq!(c.inputs.get("map_base"), Some(&InputFormat::Odometry));
+        assert_eq!(c.inputs.get("pose"), Some(&InputFormat::Odometry));
         let shipped = load_config(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config/tracer.json"))).unwrap();
         assert_eq!(shipped.footprint, c.footprint);
         assert_eq!(shipped.inputs, c.inputs);

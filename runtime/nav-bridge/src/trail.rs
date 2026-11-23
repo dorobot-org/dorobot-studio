@@ -31,16 +31,12 @@ impl Trail {
         }
     }
 
-    /// A goal id different from the previous one clears the trail. The first id
-    /// seen only records itself.
+    /// A goal id different from the previous one clears the trail; going from no
+    /// goal to the first id counts as a change.
     pub fn on_goal(&mut self, goal_id: &str) {
-        match &self.goal_id {
-            Some(prev) if prev == goal_id => {}
-            Some(_) => {
-                self.points.clear();
-                self.goal_id = Some(goal_id.to_owned());
-            }
-            None => self.goal_id = Some(goal_id.to_owned()),
+        if self.goal_id.as_deref() != Some(goal_id) {
+            self.points.clear();
+            self.goal_id = Some(goal_id.to_owned());
         }
     }
 
@@ -74,9 +70,11 @@ mod tests {
         t.push([0.0, 0.0]);
         t.push([1.0, 0.0]);
         t.on_goal("C1");
-        assert_eq!(t.points().len(), 2, "first goal keeps the existing trail");
+        assert!(t.points().is_empty(), "first goal id clears points from before it");
+        t.push([0.0, 0.0]);
+        t.push([1.0, 0.0]);
         t.on_goal("C1");
-        assert_eq!(t.points().len(), 2);
+        assert_eq!(t.points().len(), 2, "same id keeps the trail");
         t.on_goal("C2");
         assert!(t.points().is_empty());
         t.push([1.0, 0.0]);

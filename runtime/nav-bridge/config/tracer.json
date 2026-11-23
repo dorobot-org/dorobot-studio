@@ -5,16 +5,16 @@
   "map_pcd": "/home/nvidia/nvme/tracer_slam/maps/garage_20261121/map.pcd",
   "footprint": [[0.09, 0.20], [0.09, -0.20], [-0.31, -0.20], [-0.31, 0.20]],
   "inputs": {
-    "map_base": "odometry",
-    "plan": "path",
+    "pose": "odometry",
+    "path": "path",
     "goal": "goal",
     "goal_status": "goal_status",
     "scan": "laser_scan",
-    "cloud_body": "cloud_xyzi",
+    "cloud": "cloud_xyzi",
     "trust": "trust",
     "refine_state": "refine_state",
     "gate_state": "gate_state",
-    "chassis_state": "chassis_state"
+    "chassis": "chassis_state"
   },
   "rates_hz": { "pose": 20, "cloud": 5, "scan": 10, "trail": 2, "status": 5 },
   "cloud_max_points": 5000,
