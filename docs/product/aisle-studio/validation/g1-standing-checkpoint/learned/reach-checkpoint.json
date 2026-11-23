@@ -1,0 +1,17 @@
+{
+  "method": "g1-shoulder-ridge-v1",
+  "robot": "G1",
+  "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+  "joint": "right_shoulder_pitch_joint",
+  "delta_rad": -0.08,
+  "parent_controller_sha256": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+  "dataset_sha256": "f34937b46945a1bc3e429961790f100ca96bc77094d1852d3c8cf8270f27d3c4",
+  "teacher_trial": "1795476563193091000-G1-run",
+  "frames": 100,
+  "weights": [
+    -0.011315221528686319,
+    -0.011442454808538813,
+    -0.01857400919371426
+  ],
+  "training_sha256": "fde9f978a7218500d541628e60203c55655376838c8c15861545193ccf170f49"
+}
