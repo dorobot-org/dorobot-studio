@@ -71,7 +71,34 @@ def validate(plan, meta):
     return dict(joint=joint, delta_rad=delta)
 
 
+def measured_feedback(path, meta):
+    previous = json.loads((path / "result.json").read_text())
+    parent = path / "controller.json"
+    if (
+        previous.get("robot") != meta["robot"]
+        or previous.get("model_hash") != meta["model_hash"]
+        or previous.get("controller_hash") != digest(parent)
+    ):
+        raise ValueError(
+            "The selected run and controller must match the current robot model"
+        )
+    return {
+        k: previous[k]
+        for k in (
+            "robot",
+            "joint",
+            "requested_delta",
+            "measured_delta",
+            "within_limits",
+            "task_success",
+            "fixture",
+            "controller_hash",
+        )
+    }
+
+
 def prepare(args, meta):
+    feedback = measured_feedback(args.feedback, meta) if args.feedback else None
     if args.provider == "reference":
         if args.task.strip() != REFERENCE:
             raise ValueError(
@@ -100,6 +127,9 @@ def prepare(args, meta):
             + ". Instruction: "
             + args.task
         )
+        if feedback:
+            prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
+            save(args.out / "feedback.json", feedback)
         with tempfile.TemporaryDirectory() as empty:
             subprocess.run(
                 [
@@ -126,6 +156,7 @@ def prepare(args, meta):
             raise ValueError("Requested task exceeds this controller's capabilities")
     return dict(
         **validate(plan, meta),
+        **({"previous_trial": feedback} if feedback else {}),
         robot=args.robot,
         task=args.task,
         provider=args.provider,
@@ -229,6 +260,7 @@ def main():
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--provider", choices=["reference", "codex"], default="reference")
     p.add_argument("--task", default=REFERENCE)
+    p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
     p.add_argument("--fixture", choices=["standard", "compliant"], default="standard")
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)

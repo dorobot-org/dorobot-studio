@@ -1024,7 +1024,7 @@ impl MatchEvent for App {
                         "page_play.timeline",
                         "page_play.timeline.tl_head",
                         "workspace_tabs.plugin_tabs.plugin_tab_aisle_task", "workspace_tabs.plugin_tabs.plugin_tab_aisle_scene", "workspace_tabs.plugin_tabs.plugin_tab_aisle_run", "workspace_tabs.plugin_tabs.plugin_tab_aisle_evidence",
-                        "aisle_task.nano", "aisle_task.g1", "aisle_task.instruction", "aisle_task.reference", "aisle_task.codex", "aisle_task.older", "aisle_task.newer", "aisle_scene.standard", "aisle_scene.compliant", "aisle_scene.inspect", "aisle_run.start_run", "aisle_run.stop_run", "aisle_evidence.previous", "aisle_evidence.next", "aisle_evidence.folder",
+                        "aisle_task.nano", "aisle_task.g1", "aisle_task.instruction", "aisle_task.reference", "aisle_task.codex", "aisle_task.older", "aisle_task.newer", "aisle_task.revise", "aisle_scene.standard", "aisle_scene.compliant", "aisle_scene.inspect", "aisle_run.start_run", "aisle_run.stop_run", "aisle_evidence.previous", "aisle_evidence.next", "aisle_evidence.folder",
                         "data_workspace", "plugin_tools", "plugin_tabs", "data_tabs",
                         "workspace_tabs.plugin_tabs.plugin_tab_page_hardware", "workspace_tabs.plugin_tabs.plugin_tab_hardware_teleop", "workspace_tabs.plugin_tabs.plugin_tab_page_record",
                         "workspace_tabs.data_tabs.tab_library", "workspace_tabs.data_tabs.tab_play", "workspace_tabs.data_tabs.tab_eval",

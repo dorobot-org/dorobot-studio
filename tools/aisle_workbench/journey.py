@@ -183,8 +183,37 @@ def main():
     click("aisle_evidence.next")
     done(lambda w: w["result"] and w["result"]["robot"] == "G1", "next evidence")
     page("task")
-    click("aisle_task.reference")
-    done(lambda w: not w["busy"] and w["revision"] == 1, "G1 second revision")
+    if a.codex:
+        click("aisle_task.instruction")
+        remote("key", "w=0", "c=KeyA", "logo=1", "wait=1")
+        remote(
+            "text",
+            "w=0",
+            "t=Repeat the previous trial on the same shoulder with three quarters of the previously requested signed displacement",
+            "wait=1",
+        )
+        click("aisle_task.revise")
+    else:
+        click("aisle_task.reference")
+    revision = done(
+        lambda w: not w["busy"] and w["revision"] == 1, "G1 second revision", 180
+    )
+    if a.codex:
+        plan = revision["controller"]
+        assert plan["previous_trial"]["controller_hash"] == result["controller_hash"]
+        assert plan["joint"] == result["joint"] and abs(plan["delta_rad"] + 0.06) < 1e-6
+        page("run")
+        before = revision["selected"]
+        click("aisle_run.start_run")
+        updated = done(
+            lambda w: w["selected"] != before
+            and not w["busy"]
+            and w["result"].get("task_success"),
+            "revised controller measured",
+            100,
+        )
+        checks.append(dict(check="G1 evidence-informed revision", **updated["result"]))
+        page("task")
     click("aisle_task.older")
     done(lambda w: w["revision"] == 0, "G1 earlier revision")
     click("aisle_task.newer")

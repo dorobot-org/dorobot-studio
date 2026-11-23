@@ -32,7 +32,11 @@ impl Robot {
 #[derive(Clone, Debug)]
 pub enum Action {
     Select(Robot),
-    Prepare { task: String, codex: bool },
+    Prepare {
+        task: String,
+        codex: bool,
+        revise: bool,
+    },
     Inspect,
     Fixture(bool),
     OlderPlan,
@@ -220,7 +224,12 @@ impl Workbench {
             .collect();
         self.selected = Some(path);
     }
-    fn launch(&mut self, op: &'static str, codex: bool) -> io::Result<()> {
+    fn launch(
+        &mut self,
+        op: &'static str,
+        codex: bool,
+        feedback: Option<PathBuf>,
+    ) -> io::Result<()> {
         fs::create_dir_all(&self.root)?;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -267,6 +276,9 @@ impl Workbench {
             return Err(io::Error::other(
                 "DOROBOT_AISLE_ROOT must point to an AISLE checkout containing src/aisle",
             ));
+        }
+        if let Some(run) = feedback {
+            cmd.arg("--feedback").arg(run);
         }
         if op == "prepare" {
             cmd.args([
@@ -347,11 +359,19 @@ impl Workbench {
                 }
                 Ok(())
             }
-            Action::Prepare { task, codex } => {
+            Action::Prepare {
+                task,
+                codex,
+                revise,
+            } => {
                 self.task = task;
                 self.prepared = None;
                 self.plan = Value::Null;
-                self.launch("prepare", codex)
+                self.launch(
+                    "prepare",
+                    codex,
+                    if revise { self.selected.clone() } else { None },
+                )
             }
             Action::Fixture(value) => {
                 self.compliant = value;
@@ -368,8 +388,8 @@ impl Workbench {
                 }
                 Ok(())
             }
-            Action::Inspect => self.launch("scene", false),
-            Action::Run => self.launch("run", false),
+            Action::Inspect => self.launch("scene", false, None),
+            Action::Run => self.launch("run", false, None),
             Action::Previous | Action::Next => {
                 if let Some(i) = self
                     .history

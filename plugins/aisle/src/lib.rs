@@ -93,6 +93,7 @@ script_mod! {
                 Bar{reference := mod.widgets.ux.PrimaryButton{text:"Use reference task"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
                 Section{text:"Prepared controller"} detail := Body{}
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
+                revise := mod.widgets.ux.ToolButton{text:"Revise using selected run"}
             }
             model_card := Card{width:Fill height:Fill Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
         }
@@ -271,6 +272,14 @@ impl PluginPanel for Panel {
                     cx,
                     !w.busy() && index.is_some_and(|i| i + 1 < w.revisions.len()),
                 );
+                self.root.widget(cx, ids!(revise)).set_visible(
+                    cx,
+                    w.evidence["robot"].as_str() == Some(w.robot.name())
+                        && w.evidence["task_success"].is_boolean(),
+                );
+                self.root
+                    .button(cx, ids!(revise))
+                    .set_enabled(cx, !w.busy());
                 self.model(cx, w);
                 for id in [ids!(nano), ids!(g1), ids!(reference), ids!(codex)] {
                     self.root.button(cx, id).set_enabled(cx, !w.busy());
@@ -404,7 +413,8 @@ impl PluginPanel for Panel {
             }
         }
         let reference = self.root.button(cx, ids!(reference)).clicked(actions);
-        if reference || self.root.button(cx, ids!(codex)).clicked(actions) {
+        let revise = self.root.button(cx, ids!(revise)).clicked(actions);
+        if reference || revise || self.root.button(cx, ids!(codex)).clicked(actions) {
             let input = self.root.text_input(cx, ids!(instruction));
             if reference {
                 input.set_text(cx, REFERENCE);
@@ -412,6 +422,7 @@ impl PluginPanel for Panel {
             b.dispatch(Intent::Aisle(Action::Prepare {
                 task: input.text(),
                 codex: !reference,
+                revise,
             }));
             return true;
         }
