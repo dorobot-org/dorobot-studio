@@ -1,6 +1,12 @@
 use dorobot_studio_core::api::Backend;
 use dorobot_studio_plugin::*;
 
+mod route;
+mod session;
+
+pub use route::{route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP};
+pub use session::{DvizSession, SessionOptions, SessionSnapshot, RING_CAP};
+
 pub struct DvizPlugin;
 
 impl StudioPlugin for DvizPlugin {
