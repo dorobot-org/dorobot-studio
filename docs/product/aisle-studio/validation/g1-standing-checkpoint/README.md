@@ -10,3 +10,5 @@ The comparison uses the same 20 impact recipes as the [published standing-reach 
 | --- | --- |
 | DeepSeek task and original tracking law | [Controller](teacher/controller.json) · [Matched manifest](teacher/suite.json) |
 | Same DeepSeek task with learned correction | [Controller](learned/controller.json) · [Checkpoint](learned/reach-checkpoint.json) · [Training inputs and loss](learned/training.json) · [Matched manifest](learned/suite.json) |
+
+The first fit paired each target with the pose recorded at the end of that tick. The full-rate trial trace also retains the encoder exposure immediately before the command, which is the information available at inference time. The final trainer uses those causal encoder inputs with the same 100 LeRobot action labels. The largest within-tick difference in the training episode was 0.00058 rad. Both fitted revisions use the same runtime and actuator limits. [Aligned checkpoint](aligned/reach-checkpoint.json) · [Input digests](aligned/training.json) · [Matched evaluation manifest](aligned/suite.json)
