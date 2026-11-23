@@ -48,6 +48,17 @@ def main():
         "DOROBOT_UX_REPORT": str(report),
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
+    studio_root = Path(__file__).resolve().parents[2]
+    # The binary can come from another build directory. Its digest identifies the
+    # executable, while these fields identify the workspace observed at launch.
+    with args.studio.open("rb") as binary:
+        binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
+    revision = subprocess.check_output(
+        ["git", "-C", str(studio_root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    changed = subprocess.check_output(
+        ["git", "-C", str(studio_root), "status", "--porcelain"], text=True
+    ).splitlines()
     sessions = []
     for stage in ["journey", "recovery"]:
         report.unlink(missing_ok=True)
@@ -115,23 +126,13 @@ def main():
                 process.wait(timeout=15)
 
     directory = output / "verified"
-    with args.studio.open("rb") as binary:
-        binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
     manifest = dict(
         backend=args.backend,
         requested_size=args.size,
         provider=args.provider or "reference",
         native_binary_sha256=binary_hash,
-        studio_source_commit=subprocess.check_output(
-            [
-                "git",
-                "-C",
-                str(Path(__file__).resolve().parents[2]),
-                "rev-parse",
-                "HEAD",
-            ],
-            text=True,
-        ).strip(),
+        studio_source_commit=revision,
+        workspace_changes_at_launch=changed,
         sessions=sessions,
         trials=sorted(p.name for p in (output / "state/aisle").glob("*-run")),
         files={

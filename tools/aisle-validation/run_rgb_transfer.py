@@ -251,10 +251,33 @@ def execute(out, seed, colors, record=False):
     )
 
     rows = []
+    samples = []
+    if record:
+        for name in CAMERAS:
+            (out / "camera" / name).mkdir(parents=True)
     active_color = colors[0]
 
-    def publish():
+    def publish(sample=False):
         rgb = sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
+        if sample:
+            for name in CAMERAS:
+                frame = (
+                    rgb
+                    if name == "head"
+                    else sim.rig[name].render(
+                        rgb=True, depth=False, segmentation=False
+                    )[0]
+                )
+                Image.fromarray(frame).save(
+                    out / "camera" / name / f"{len(samples):04d}.png", compress_level=1
+                )
+            samples.append(
+                dict(
+                    step=sim.tick,
+                    state=np.asarray(sim.robot.get_qpos())[sim.dofs].tolist(),
+                    action=sim.targets.tolist(),
+                )
+            )
         tmp = out / "preview.tmp"
         tmp.write_bytes(struct.pack(">I", sim.tick) + rgb.tobytes())
         tmp.replace(out / "preview.rgb")
@@ -266,7 +289,8 @@ def execute(out, seed, colors, record=False):
             requested=colors,
             table_contacts=sum(bool(v) and v[-1][1] for v in judge.tail.values()),
         )
-        rows.append(row)
+        if not rows or rows[-1]["step"] != row["step"]:
+            rows.append(row)
         worker.save(out / "progress.json", row)
         return rgb
 
@@ -278,7 +302,7 @@ def execute(out, seed, colors, record=False):
         sim.tick += 1
         judge.tick(sim)
         if record and sim.tick % 20 == 0:
-            publish()
+            publish(sample=True)
 
     def move(command):
         if command["op"] == "wheel":
@@ -424,6 +448,10 @@ def execute(out, seed, colors, record=False):
         frame = publish()
         Image.fromarray(frame).save(out / "frame.png")
         worker.save(out / "trajectory.json", rows)
+        worker.save(
+            out / "recording.json",
+            dict(joints=sim.names, fps=5, cameras=list(CAMERAS), samples=samples),
+        )
     if error and (out / "policy.log").stat().st_size:
         error = (out / "policy.log").read_text().strip().splitlines()[-1][-350:]
     result = judge.result(sim)
@@ -442,6 +470,8 @@ def execute(out, seed, colors, record=False):
         requested=colors,
         phase=judge.phase,
         onboard_observations=frame_count,
+        frames=len(samples),
+        recording=bool(samples),
         seed=seed,
     )
 

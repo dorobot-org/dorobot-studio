@@ -59,3 +59,13 @@ An earlier three-cube Studio run correctly failed with two cubes settled. On a s
 On a second development layout, the original release motion left green resting on the open lower finger. It returned to the floor when the arm withdrew. The evaluator scored red and blue as settled and the complete task as failed. This is a separate development layout; the PRD qualification calls for at least 45 complete successes across 50 hidden layouts.
 
 ![Live head RGB and phase on the Run page](nano-table-transfer-run.png)
+
+## Replay and dataset handoff
+
+[Watch the complete run from the three onboard cameras at 6× speed](nano-table-transfer.mp4) · [Download the LeRobot v2.1 episode](nano-table-transfer-lerobot.zip) · [Export manifest, file hashes and native checks](nano-table-transfer-recording.json)
+
+On Evidence, choose **Export episode**, then **Open in Replay**. To open the published example independently, unpack the ZIP and open its `dataset` directory in Studio. The episode contains 1,365 synchronized 480 × 360 frames from each of the head, left wrist and right wrist cameras at 5 Hz. Each Parquet row carries all 17 measured joint positions and their commanded positions in radians. The command includes the integrated wheel position targets sent to the motors. Dataset time zero is the first recorded sample, at simulation step 20. The final sample is step 27,300. The separate policy log records its irregular observation and action times.
+
+Native instrumentation checked the decoded frame count and dimensions of each MP4, every recorded state and action against Parquet and all sample timestamps. It then opened the episode in the existing Studio Replay page. Camera calibration, controller identity, model hashes and the physical verdict accompany the exported episode.
+
+![Studio Replay with the exported Nano camera streams](nano-table-transfer-replay.png)

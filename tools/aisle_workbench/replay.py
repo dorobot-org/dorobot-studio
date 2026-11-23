@@ -1,4 +1,4 @@
-"""Export the inspection's synchronized encoder, command and operator RGB observations."""
+"""Export synchronized robot state, commanded positions and camera images to LeRobot v2.1."""
 
 import json
 from pathlib import Path
@@ -22,15 +22,33 @@ def export(trial: Path, job: Path):
     dataset = job / "dataset"
     rows, names = record["samples"], record["joints"]
     count, width = len(rows), len(names)
-    if count != result["frames"] or [r["step"] for r in rows] != list(range(1, 122, 5)):
+    transfer = result.get("kind") == "table-transfer"
+    if transfer:
+        cameras = {
+            name: trial / "camera" / name
+            for name in ("head", "left_wrist", "right_wrist")
+        }
+        fps, dims = 5, (480, 360)
+        expected_steps = range(20, result["physics_ticks"] + 1, 20)
+        if record["cameras"] != list(cameras) or record["fps"] != fps:
+            raise ValueError(
+                "Camera manifest differs from the three-camera Nano recording"
+            )
+    else:
+        cameras = {"operator": trial / "camera"}
+        fps, dims = 20, (480, 320)
+        expected_steps = range(1, 122, 5)
+    if (
+        not count
+        or count != result["frames"]
+        or [r["step"] for r in rows] != list(expected_steps)
+    ):
         raise ValueError("Incomplete or unsynchronized trial")
     staging = job / "episode"
     meta = staging / "meta"
     frames = staging / "data/chunk-000/episode_000000.parquet"
-    cam = "observation.images.operator"
-    video = staging / "videos/chunk-000" / cam / "episode_000000.mp4"
-    for p in (meta, frames.parent, video.parent):
-        p.mkdir(parents=True)
+    for directory in (meta, frames.parent):
+        directory.mkdir(parents=True)
     features, columns, stats = {}, {}, {}
     for field, source in [("observation.state", "state"), ("action", "action")]:
         values = np.asarray([row[source] for row in rows], dtype=np.float32)
@@ -48,7 +66,7 @@ def export(trial: Path, job: Path):
             ]
         } | {"count": [count]}
     scalars = dict(
-        timestamp=[i / 20 for i in range(count)],
+        timestamp=[i / fps for i in range(count)],
         frame_index=range(count),
         index=range(count),
         episode_index=[0] * count,
@@ -70,62 +88,64 @@ def export(trial: Path, job: Path):
             dtype="float32" if field == "timestamp" else "int64", shape=[1], names=None
         )
     pq.write_table(pa.table(columns), frames)
-    camera = trial / "camera"
-    sums = np.zeros(3)
-    squares = np.zeros(3)
-    low, high = np.ones(3), np.zeros(3)
-    for i in range(count):
-        with Image.open(camera / f"{i:04d}.png") as image:
-            if image.size != (480, 320) or image.mode != "RGB":
-                raise ValueError("Invalid operator frame")
-            rgb = np.asarray(image, dtype=np.float64).reshape(-1, 3) / 255
-            sums += rgb.sum(axis=0)
-            squares += np.square(rgb).sum(axis=0)
-            low, high = (
-                np.minimum(low, rgb.min(axis=0)),
-                np.maximum(high, rgb.max(axis=0)),
+    for name, camera in cameras.items():
+        cam = f"observation.images.{name}"
+        video = staging / "videos/chunk-000" / cam / "episode_000000.mp4"
+        video.parent.mkdir(parents=True)
+        histogram = np.zeros((3, 256), dtype=np.float64)
+        for i in range(count):
+            with Image.open(camera / f"{i:04d}.png") as image:
+                if image.size != dims or image.mode != "RGB":
+                    raise ValueError(f"Invalid frame {i} in {name}")
+                histogram += np.array(image.histogram()).reshape(3, 256)
+        bins = np.arange(256) / 255
+        mean = (histogram @ bins) / histogram.sum(axis=1)
+        variance = (histogram @ (bins * bins)) / histogram.sum(axis=1) - mean**2
+        low = bins[(histogram > 0).argmax(axis=1)]
+        high = bins[255 - (histogram[:, ::-1] > 0).argmax(axis=1)]
+        stats[cam] = {
+            k: v.reshape(3, 1, 1).tolist()
+            for k, v in (
+                ("min", low),
+                ("max", high),
+                ("mean", mean),
+                ("std", np.sqrt(np.maximum(variance, 0))),
             )
-    pixels = count * 480 * 320
-    mean = sums / pixels
-    std = np.sqrt(np.maximum(0, squares / pixels - np.square(mean)))
-    stats[cam] = {
-        k: v.reshape(3, 1, 1).tolist()
-        for k, v in [("min", low), ("max", high), ("mean", mean), ("std", std)]
-    } | {"count": [count]}
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-v",
-            "error",
-            "-nostdin",
-            "-framerate",
-            "20",
-            "-i",
-            str(camera / "%04d.png"),
-            "-frames:v",
-            str(count),
-            "-c:v",
-            "mpeg4",
-            "-q:v",
-            "2",
-            "-pix_fmt",
-            "yuv420p",
-            str(video),
-        ],
-        check=True,
-    )
-    features[cam] = dict(
-        dtype="video",
-        shape=[320, 480, 3],
-        names=["height", "width", "channel"],
-        info={
-            "video.fps": 20,
-            "video.codec": "mpeg4",
-            "video.pix_fmt": "yuv420p",
-            "video.is_depth_map": False,
-            "has_audio": False,
-        },
-    )
+        } | {"count": [count]}
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-nostdin",
+                "-framerate",
+                str(fps),
+                "-i",
+                str(camera / "%04d.png"),
+                "-frames:v",
+                str(count),
+                "-c:v",
+                "mpeg4",
+                "-q:v",
+                "2",
+                "-pix_fmt",
+                "yuv420p",
+                str(video),
+            ],
+            check=True,
+        )
+        features[cam] = dict(
+            dtype="video",
+            shape=[dims[1], dims[0], 3],
+            names=["height", "width", "channel"],
+            info={
+                "video.fps": fps,
+                "video.codec": "mpeg4",
+                "video.pix_fmt": "yuv420p",
+                "video.is_depth_map": False,
+                "has_audio": False,
+            },
+        )
 
     def write(file, obj):
         (meta / file).write_text(json.dumps(obj, allow_nan=False) + "\n")
@@ -138,8 +158,15 @@ def export(trial: Path, job: Path):
         dict(
             trial=trial.name,
             physics_step_s=0.01,
-            first_physics_step=1,
-            operator_camera=cam,
+            first_physics_step=rows[0]["step"],
+            **(
+                dict(
+                    onboard_cameras=list(cameras),
+                    calibration=read("calibration.json")["cameras"],
+                )
+                if transfer
+                else dict(operator_camera="observation.images.operator")
+            ),
             controller_hash=result["controller_hash"],
             controller_provider=plan["provider"],
             policy_model=plan.get("policy_model"),
@@ -153,11 +180,11 @@ def export(trial: Path, job: Path):
         dict(
             codebase_version="v2.1",
             robot_type={"Nano": "adora_nano", "G1": "g1"}[result["robot"]],
-            fps=20,
+            fps=fps,
             total_episodes=1,
             total_frames=count,
             total_tasks=1,
-            total_videos=1,
+            total_videos=len(cameras),
             total_chunks=1,
             chunks_size=1000,
             splits={"train": "0:1"},

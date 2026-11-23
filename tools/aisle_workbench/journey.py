@@ -187,6 +187,82 @@ def main():
             assert abs(result["measured_delta"] + 0.08) < 0.012
         else:
             assert all(result["cubes"][c]["passed"] for c in wanted)
+            import numpy as np
+            import pyarrow.parquet as pq
+
+            click("aisle_evidence.export")
+            saved = done(
+                lambda w: w["dataset"] and not w["busy"],
+                "Onboard episode exported",
+                180,
+            )
+            dataset = Path(saved["dataset"])
+
+            def read(p):
+                return json.loads(p.read_text())
+
+            record = read(Path(row["selected"]) / "recording.json")
+            info = read(dataset / "meta/info.json")
+            count = result["physics_ticks"] // 20
+            assert count == result["frames"] == info["total_frames"]
+            assert info["fps"] == 5 and info["total_videos"] == 3
+            signals = pq.read_table(next(dataset.glob("data/*/*.parquet"))).to_pydict()
+            for feature, field in (
+                ("observation.state", "state"),
+                ("action", "action"),
+            ):
+                assert info["features"][feature]["names"] == record["joints"]
+                np.testing.assert_allclose(
+                    signals[feature],
+                    [v[field] for v in record["samples"]],
+                    rtol=1e-6,
+                    atol=1e-6,
+                )
+            np.testing.assert_allclose(
+                signals["timestamp"], np.arange(count) / 5, atol=0.00003
+            )
+            for cam in ("head", "left_wrist", "right_wrist"):
+                video = (
+                    dataset
+                    / "videos/chunk-000"
+                    / f"observation.images.{cam}"
+                    / "episode_000000.mp4"
+                )
+                data = subprocess.check_output(
+                    [
+                        "ffprobe",
+                        "-v",
+                        "error",
+                        "-count_frames",
+                        "-show_entries",
+                        "stream=nb_read_frames,width,height",
+                        "-of",
+                        "json",
+                        str(video),
+                    ],
+                    text=True,
+                )
+                stream = json.loads(data)["streams"][0]
+                assert (
+                    int(stream["nb_read_frames"]),
+                    stream["width"],
+                    stream["height"],
+                ) == (count, 480, 360)
+            click("aisle_evidence.replay")
+            wait(
+                lambda j: j["state"]["screen"] == "Replay"
+                and j["state"]["frames"] == count,
+                "Onboard episode opened in native Replay",
+            )
+            grab("transfer-replay")
+            checks.append(
+                dict(
+                    check="Native Replay and synchronized encoder/action columns",
+                    cameras=record["cameras"],
+                    frames_per_camera=count,
+                )
+            )
+            (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
         return
     if a.recover:
         page("evidence")

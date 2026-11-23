@@ -4,7 +4,7 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. The four pages take an insp
 
 [Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
 
-[Stand and track a shoulder target on G1](validation/g1-standing.md) · [Move cubes to the table with DeepSeek via Octos](validation/nano-table-transfer.md) · [Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
+[Stand and track a shoulder target on G1](validation/g1-standing.md) · [Move cubes to the table with DeepSeek via Octos](validation/nano-table-transfer.md) · [Three-camera demo](validation/nano-table-transfer.mp4) · [Replayable three-cube dataset](validation/nano-table-transfer-lerobot.zip) · [Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
 
 ## Run from a Studio source checkout
 
