@@ -1,5 +1,6 @@
 //! Routing of one dviz payload into the session state and the visual sink.
 
+use crate::nav_scene::{nav_layer, NavScene};
 use dviz_protocol::{
     parse_message, GraphEdge, GraphNode, GraphUpdate, LogData, LogEntry, LogLevel, MvizMessage,
     NodeDefinition,
@@ -54,6 +55,8 @@ pub struct SessionState {
     pub sink_errors: u64,
     /// Payloads routed.
     pub received: u64,
+    /// The latest navigation layers.
+    pub nav: NavScene,
 }
 
 impl SessionState {
@@ -141,7 +144,18 @@ pub(crate) fn accept<'a>(
             if info.msg_type != msg.msg_type {
                 info.msg_type.clone_from(&msg.msg_type);
             }
-            return info.enabled.then(|| Visual {
+            let enabled = info.enabled;
+            if let Some(layer) = nav_layer(entity) {
+                match state.nav.try_apply(layer, &msg, binary) {
+                    Ok(true) => {}
+                    Ok(false) => return None,
+                    Err(()) => {
+                        state.malformed += 1;
+                        return None;
+                    }
+                }
+            }
+            return enabled.then(|| Visual {
                 entity: entity.to_string(),
                 msg,
                 binary,

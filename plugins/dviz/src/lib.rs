@@ -3,6 +3,7 @@ use dorobot_studio_plugin::*;
 
 pub mod fake;
 mod graph;
+mod nav_scene;
 #[cfg(feature = "rerun")]
 mod rerun_sink;
 mod route;
@@ -13,6 +14,7 @@ pub use graph::{
     hit_test, layout, DvizGraph, DvizGraphAction, DvizGraphRef, DvizGraphWidgetRefExt, GraphLayout,
     Point,
 };
+pub use nav_scene::{nav_layer, GridLayer, NavLayer, NavScene, Pose2D};
 #[cfg(feature = "rerun")]
 pub use rerun_sink::{RerunSink, ViewerOptions};
 pub use route::{route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP, LOG_TEXT_CAP};

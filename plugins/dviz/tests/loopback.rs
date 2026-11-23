@@ -577,6 +577,11 @@ fn reconnect_elsewhere_clears_state() {
     let lidar = matched_publisher(&peer, format!("{first}/world/lidar"));
     let logs = matched_publisher(&peer, format!("{first}/logs"));
     let graph = matched_publisher(&peer, format!("{first}/graph"));
+    let plan = matched_publisher(&peer, format!("{first}/tracer/nav/plan"));
+    let plan_data = json!({"strips": [[[0.0, 0.0, 0.0], [1.0, 2.0, 0.0]]]});
+    plan.put(message("linestrips3d", plan_data, None))
+        .wait()
+        .unwrap();
     let line = json!({"level": "INFO", "message": "before the switch", "node_id": "fake"});
     logs.put(message("log", line, None)).wait().unwrap();
     let update = json!({
@@ -598,6 +603,7 @@ fn reconnect_elsewhere_clears_state() {
             snapshot.entities.contains_key("world/lidar")
                 && !snapshot.logs.is_empty()
                 && !snapshot.edges.is_empty()
+                && snapshot.nav.plan.len() == 2
         }),
         "{:?}",
         session.snapshot()
@@ -609,6 +615,7 @@ fn reconnect_elsewhere_clears_state() {
     assert_eq!(snapshot.received, 0);
     assert!(snapshot.logs.is_empty());
     assert!(snapshot.nodes.is_empty() && snapshot.edges.is_empty());
+    assert!(snapshot.nav.plan.is_empty() && snapshot.nav.updated == 0);
     assert_eq!(
         (snapshot.dropped, snapshot.malformed, snapshot.sink_errors),
         (0, 0, 0)

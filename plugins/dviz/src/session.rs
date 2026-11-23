@@ -7,6 +7,7 @@
 //! are evicted and counted as dropped. A sink that panics is replaced by a
 //! discarding one; receiving goes on.
 
+use crate::nav_scene::NavScene;
 use crate::route::{self, EntityInfo, SessionState, Sink, Visual};
 use dviz_protocol::{GraphEdge, GraphNode, LogEntry, MvizMessage};
 use std::{
@@ -100,6 +101,7 @@ pub struct SessionSnapshot {
     /// Visual messages the sink rejected or panicked on.
     pub sink_errors: u64,
     pub received: u64,
+    pub nav: NavScene,
     pub viewer: ViewerState,
 }
 
@@ -308,6 +310,7 @@ impl DvizSession {
             malformed: state.malformed,
             sink_errors: state.sink_errors,
             received: state.received,
+            nav: state.nav.clone(),
             viewer,
         }
     }
