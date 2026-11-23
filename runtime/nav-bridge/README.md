@@ -17,6 +17,32 @@ cargo test --locked
 cargo clippy --locked --all-targets
 ```
 
+## Installing it for the robot
+
+DORA_NAV starts the bridge from the path in `NAV_VIZ_BRIDGE`. Point that at an installed
+copy, not at this checkout's `target/release`: a rebuild there would change the file of
+the running node.
+
+```bash
+./install.sh /home/nvidia/nvme/dora-lab/opt/nav-bridge                      # target/release/dorobot-nav-bridge
+./install.sh /home/nvidia/nvme/dora-lab/opt/nav-bridge /path/to/release/dorobot-nav-bridge
+```
+
+`install.sh <dest-dir> [<binary>]` copies the binary (default
+`${CARGO_TARGET_DIR:-target}/release/dorobot-nav-bridge`) to `<dest-dir>/dorobot-nav-bridge`
+and `config/tracer.json` to `<dest-dir>/tracer.json`, each as a temporary file renamed over
+the old one (a bridge running from there keeps its file; the next start gets the new
+one), and prints the two lines for `~/.config/dora-nav/env`:
+
+```
+NAV_VIZ_BRIDGE=<dest-dir>/dorobot-nav-bridge
+NAV_VIZ_BRIDGE_CONFIG=<dest-dir>/tracer.json
+```
+
+The new copy runs from the next start of `dora-nav`. `install.sh` refuses a `<dest-dir>`
+with whitespace, quotes or backslashes (Dora splits a node's `args` shell-style) and a
+binary whose `--help` fails.
+
 The tests need no Dora daemon and no network beyond loopback: `tests/dora_node.rs` runs
 the real binary through dora-node-api's integration-testing mode (`DORA_TEST_WITH_INPUTS`,
 inputs and Stop from a JSON file), and every test uses its own `tcp/127.0.0.1:<port>`
@@ -28,9 +54,10 @@ with multicast scouting off.
 dorobot-nav-bridge <config.json>
 ```
 
-It must be started by Dora as a node of the dataflow. Outside Dora it exits with
-"not started by Dora" (code 1); no argument or extra arguments print the usage (code 2),
-`--help` prints it (code 0). Dataflow entry, for example:
+It must be started by Dora as a node of the dataflow. `--help` (alone) prints the usage
+and exits 0 without Dora; anything else outside Dora exits 1 with "not started by Dora"
+and the usage. Under Dora the bridge connects to Dora before it looks at its arguments
+(see "Never failing the dataflow"). Dataflow entry, for example:
 
 ```yaml
   - id: viz_bridge
@@ -67,7 +94,11 @@ and publishes. Inputs must be UInt8 arrays (bytes) or strings.
 
 | Topic `dviz/<robot_id>/...` | Type | When |
 |---|---|---|
-| `map/grid`, `map/cloud`, `robot/pose`, `robot/footprint`, `nav/plan`, `nav/trail`, `nav/goal`, `sensors/scan`, `sensors/cloud`, `nav/status` | see `dviz_protocol::nav_entities` | rate caps from the config |
+| `map/grid`, `map/cloud`, `robot/pose`, `robot/footprint`, `sensors/scan`, `sensors/cloud` | see `dviz_protocol::nav_entities` | rate caps from the config; the maps every 5 s / 10 s |
+| `nav/plan` | `linestrips3d` | each new path at once; the last one again every 2 s (latched: the planner stops publishing when a goal is done, and a Studio that connects later still sees it); an error path clears it (an empty strip, also resent) |
+| `nav/goal` | `arrows3d` | on change and every 2 s; a goal without a yaw is a 0.5 m vertical vector |
+| `nav/trail` | `linestrips3d` | `rates_hz.trail`; cleared by a new goal id, kept when goal_resume resends the same goal as `<id>-r<n>` |
+| `nav/status` | `status` (`NavStatus`) | on change and `rates_hz.status`; `stale` lists the parts (`localization`, `gate`, `chassis`, `speed`) whose input has not arrived for 2 s (their fields keep the last value); the chassis part carries `chassis_control_mode` (1 CAN, 3 RC, -1 no feedback), `chassis_error_code` and `battery_v` from `tracer/state` |
 | `logs` | `log` | node log lines, at most `log_forward_per_node_hz` per node (read once a second); the bridge's own warnings |
 | `nodes` | `node_definition`, one per node | every 5 s |
 | `graph` | `graph_update` | every 5 s, after the node definitions |
@@ -115,13 +146,30 @@ problem is printed on stderr and sent as a WARN log entry naming the file.
 
 ### Never failing the dataflow
 
-Once Dora has started it, the bridge never exits with a failure, so DORA_NAV does not
-depend on it. If it cannot start (config missing or invalid, listen port busy, Zenoh
-error, anything before the worker runs) it prints one line
-`nav-bridge: ERROR: <cause>; publishing nothing, Dora inputs are consumed and dropped until Stop`
-on stderr, consumes and drops every Dora event until Stop or the end of the event
-stream, and exits 0. Check the bridge's Dora log (`out/<dataflow_id>/log_<bridge id>.jsonl`)
-when Studio sees nothing.
+What the bridge guarantees, and what it cannot:
+
+- **From Dora's init on, it never fails.** The first thing the node does is connect to
+  Dora (`DoraNode::init_from_env_force`), then it prints
+  `nav-bridge: started by Dora (dataflow <id>, node <id>)`. Any problem after that (wrong
+  number of arguments, e.g. a config path with a space that Dora split in two; config
+  missing or invalid; listen port busy; Zenoh error) is one line
+  `nav-bridge: ERROR: <cause>; publishing nothing, Dora inputs are consumed and dropped until Stop`
+  on stderr; the node then consumes and drops every Dora event until Stop or the end of
+  the event stream, and exits 0.
+- **Before that it can still fail the start of the whole dataflow.** Dora 1.1 fails the
+  start of every node of a dataflow when one node stops before it subscribes, whatever its
+  exit code, a spawn failure included (a missing or non-executable binary), and Dora
+  rejects the whole dataflow if one of the bridge's inputs names an output that does not
+  exist. The bridge cannot catch either. DORA_NAV's `apps/tracer/autostart.sh` and
+  `viz_overlay.py` guard against them: the overlay checks every input source against the
+  base dataflow, refuses paths Dora would split, and runs `<bridge> --help` before it adds
+  the node; `autostart.sh` starts the dataflow with the bridge without `exec`, waits for it
+  to be Running with every node and for the bridge's `nav-bridge: started by Dora` line in
+  its Dora log (the sign that every node got through Dora's start), and otherwise stops it
+  and starts the plain `tracer_nav.yml`. See DORA_NAV `apps/tracer/README.md`.
+
+Check the bridge's Dora log (`out/<dataflow_id>/log_<bridge id>.jsonl`) when Studio sees
+nothing.
 
 ### Stopping
 

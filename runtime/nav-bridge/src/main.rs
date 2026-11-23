@@ -4,14 +4,14 @@
 use dora_node_api::{DoraNode, Event};
 use dorobot_nav_bridge::config::load_config;
 use dorobot_nav_bridge::logs::LogSources;
-use dorobot_nav_bridge::run::{input_bytes, log_dir, Bridge, Flow, NodeEvent};
+use dorobot_nav_bridge::run::{config_arg, input_bytes, log_dir, Bridge, Flow, NodeEvent, USAGE};
+use std::ffi::OsString;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 /// How long after Stop the bridge waits for its worker to finish and close Zenoh.
 const SHUTDOWN_WAIT: Duration = Duration::from_secs(1);
-const USAGE: &str = "usage: dorobot-nav-bridge <config.json>  (a node of a Dora dataflow; see README.md)";
 
 fn main() {
     let code = run();
@@ -19,41 +19,42 @@ fn main() {
 }
 
 fn run() -> i32 {
-    let mut args = std::env::args_os().skip(1);
-    let config = match (args.next(), args.next()) {
-        (Some(arg), None) if arg == "--help" || arg == "-h" => {
-            println!("{USAGE}");
-            return 0;
-        }
-        (Some(config), None) => PathBuf::from(config),
-        _ => {
-            eprintln!("{USAGE}");
-            return 2;
-        }
-    };
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if matches!(args.as_slice(), [arg] if arg == "--help" || arg == "-h") {
+        println!("{USAGE}");
+        return 0;
+    }
+    // Dora first, before anything that can fail: Dora 1.1 fails the start of every
+    // node of the dataflow when one node stops before it subscribes, whatever its
+    // exit code. Bad arguments are handled below, as a node that idles.
     let (node, mut events) = match DoraNode::init_from_env_force() {
         Ok(node) => node,
         Err(e) => {
-            eprintln!("nav-bridge: not started by Dora: {e}");
+            eprintln!("nav-bridge: not started by Dora: {e}\n{USAGE}");
             return 1;
         }
     };
     // From here on the node is part of a dataflow and must not fail it: whatever
     // goes wrong while starting is reported once and the node only drains events.
+    // DORA_NAV's autostart.sh takes this line in the node's Dora log as the sign that
+    // the dataflow got past Dora's start (every node subscribed): keep its wording.
+    println!("nav-bridge: started by Dora (dataflow {}, node {})", node.dataflow_id(), node.id());
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let logs = log_dir(std::env::var_os("NAV_VIZ_LOG_DIR"), &cwd, &node.dataflow_id().to_string());
     let dataflow = std::env::var_os("NAV_VIZ_DATAFLOW").filter(|v| !v.is_empty()).map(PathBuf::from);
-    let started = load_config(&config).map_err(|e| format!("config: {e}")).and_then(|cfg| {
-        println!(
-            "nav-bridge: robot {}, listening on {}, node logs from {}, graph from {}",
-            cfg.robot_id,
-            cfg.listen.join(", "),
-            logs.display(),
-            dataflow.as_ref().map_or_else(|| "nowhere (NAV_VIZ_DATAFLOW not set)".into(), |p| p.display().to_string())
-        );
-        let sources = LogSources { log_dir: Some(logs), dataflow, own_node: Some(node.id().to_string()) };
-        Bridge::start(cfg, sources)
-    });
+    let started = config_arg(&args)
+        .and_then(|config| load_config(&config).map_err(|e| format!("config: {e}")))
+        .and_then(|cfg| {
+            println!(
+                "nav-bridge: robot {}, listening on {}, node logs from {}, graph from {}",
+                cfg.robot_id,
+                cfg.listen.join(", "),
+                logs.display(),
+                dataflow.as_ref().map_or_else(|| "nowhere (NAV_VIZ_DATAFLOW not set)".into(), |p| p.display().to_string())
+            );
+            let sources = LogSources { log_dir: Some(logs), dataflow, own_node: Some(node.id().to_string()) };
+            Bridge::start(cfg, sources)
+        });
     let mut bridge = started.unwrap_or_else(|cause| {
         eprintln!("nav-bridge: ERROR: {cause}; publishing nothing, Dora inputs are consumed and dropped until Stop");
         Bridge::disabled()

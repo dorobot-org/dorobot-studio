@@ -77,12 +77,13 @@ impl Inbox {
 /// How long the worker sleeps when the inbox is empty; also bounds how late it sees
 /// the stop flag (plus the item in hand).
 const POLL: Duration = Duration::from_millis(10);
-/// Periodic sends (trail, goal, status, maps) are checked this often.
+/// Periodic sends (trail, plan, goal, status, maps) are checked this often.
 const TICK: Duration = Duration::from_millis(50);
-/// Resend rates (Hz): grid map every 5 s, PCD map every 10 s, goal every 2 s.
+/// Resend rates (Hz): grid map every 5 s, PCD map every 10 s, goal and plan every 2 s.
 const GRID_HZ: f32 = 0.2;
 const MAP_CLOUD_HZ: f32 = 0.1;
 const GOAL_HZ: f32 = 0.5;
+const PLAN_HZ: f32 = 0.5;
 
 static ENCODED: AtomicU64 = AtomicU64::new(0);
 static BAD_INPUTS: AtomicU64 = AtomicU64::new(0);
@@ -213,6 +214,9 @@ struct Worker {
     /// Latest `map -> base_footprint` pose; body-frame data is placed with it.
     pose: Option<Odom>,
     goal: Option<GoalMsg>,
+    /// The last plan, latched: the planner stops publishing once a goal is done.
+    /// Empty after an error path; `None` before the first path.
+    plan: Option<Vec<[f32; 2]>>,
     trail: Trail,
     status: StatusBuilder,
     grid: StaticMsg,
@@ -223,6 +227,7 @@ struct Worker {
     trail_rate: RateLimiter,
     status_rate: RateLimiter,
     goal_rate: RateLimiter,
+    plan_rate: RateLimiter,
     grid_rate: RateLimiter,
     map_cloud_rate: RateLimiter,
     logs: LogForward,
@@ -237,6 +242,7 @@ impl Worker {
             out,
             pose: None,
             goal: None,
+            plan: None,
             trail: Trail::new(cfg.trail_min_step_m, cfg.trail_max_points),
             status: StatusBuilder::default(),
             grid,
@@ -247,6 +253,7 @@ impl Worker {
             trail_rate: RateLimiter::new(r.trail),
             status_rate: RateLimiter::new(r.status),
             goal_rate: RateLimiter::new(GOAL_HZ),
+            plan_rate: RateLimiter::new(PLAN_HZ),
             grid_rate: RateLimiter::new(GRID_HZ),
             map_cloud_rate: RateLimiter::new(MAP_CLOUD_HZ),
             logs,
@@ -261,13 +268,13 @@ impl Worker {
             InputFormat::Odometry => self.on_odom(b, now),
             InputFormat::Path => self.on_path(b),
             InputFormat::Goal => self.on_goal(b),
-            InputFormat::GoalStatus => self.on_goal_status(b),
+            InputFormat::GoalStatus => self.on_goal_status(b, now),
             InputFormat::LaserScan => self.on_scan(b, now),
             InputFormat::CloudXyzi => self.on_cloud(b, now),
-            InputFormat::Trust => self.on_state(b, StatusBuilder::on_trust),
-            InputFormat::RefineState => self.on_state(b, StatusBuilder::on_refine),
-            InputFormat::GateState => self.on_state(b, StatusBuilder::on_gate),
-            InputFormat::ChassisState => self.on_state(b, StatusBuilder::on_chassis),
+            InputFormat::Trust => self.on_state(b, StatusBuilder::on_trust, now),
+            InputFormat::RefineState => self.on_state(b, StatusBuilder::on_refine, now),
+            InputFormat::GateState => self.on_state(b, StatusBuilder::on_gate, now),
+            InputFormat::ChassisState => self.on_state(b, StatusBuilder::on_chassis, now),
         };
         if result.is_err() {
             BAD_INPUTS.fetch_add(1, Ordering::Relaxed);
@@ -291,19 +298,25 @@ impl Worker {
             let (trail, color) = (self.trail.points(), self.cfg.colors.trail);
             send(out, ent::NAV_TRAIL, || enc_strip(ent::NAV_TRAIL, trail, color));
         }
+        if let Some(plan) = &self.plan {
+            if out.wants(ent::NAV_PLAN) && self.plan_rate.ready(now) {
+                let color = self.cfg.colors.plan;
+                send(out, ent::NAV_PLAN, || enc_strip(ent::NAV_PLAN, plan, color));
+            }
+        }
         if out.wants(ent::NAV_GOAL) && self.goal_rate.ready(now) {
             let (goal, color) = (self.goal.as_ref(), self.cfg.colors.goal);
             send(out, ent::NAV_GOAL, || enc_goal(goal, color));
         }
         if out.wants(ent::NAV_STATUS) && self.status_rate.ready(now) {
-            let (status, _) = self.status.build();
+            let (status, _) = self.status.build(now);
             send(out, ent::NAV_STATUS, || enc_status(&status));
         }
     }
 
     fn on_odom(&mut self, b: &[u8], now: Instant) -> Result<(), String> {
         let o = formats::parse_odometry(b)?;
-        self.status.on_odom(&o);
+        self.status.on_odom(&o, now);
         self.trail.push([o.x, o.y]);
         let out = &mut *self.out;
         if (out.wants(ent::ROBOT_POSE) || out.wants(ent::ROBOT_FOOTPRINT)) && self.pose_rate.ready(now) {
@@ -318,11 +331,9 @@ impl Worker {
         Ok(())
     }
 
-    /// Path points are already in the map frame; an error path clears the plan.
+    /// Path points are already in the map frame; an error path clears the plan. The
+    /// plan is kept (and resent every 2 s by `tick`) whether or not anyone listens now.
     fn on_path(&mut self, b: &[u8]) -> Result<(), String> {
-        if !self.out.wants(ent::NAV_PLAN) {
-            return Ok(());
-        }
         let path = formats::parse_path(b)?;
         let pts: Vec<[f32; 2]> = if path.error {
             Vec::new()
@@ -330,7 +341,8 @@ impl Worker {
             path.points.iter().map(|p| [p[0] as f32, p[1] as f32]).collect()
         };
         let color = self.cfg.colors.plan;
-        send(&mut *self.out, ent::NAV_PLAN, || enc_strip(ent::NAV_PLAN, &pts, color));
+        let plan = self.plan.insert(pts);
+        send(&mut *self.out, ent::NAV_PLAN, || enc_strip(ent::NAV_PLAN, plan, color));
         Ok(())
     }
 
@@ -346,21 +358,21 @@ impl Worker {
     }
 
     /// A finished current goal (SUCCEEDED, ABORTED, CANCELED) is no longer drawn.
-    fn on_goal_status(&mut self, b: &[u8]) -> Result<(), String> {
+    fn on_goal_status(&mut self, b: &[u8], now: Instant) -> Result<(), String> {
         let (id, state, reason) = formats::parse_goal_status(b)?;
         self.status.on_goal_status(&id, &state, &reason);
         if state != "ACTIVE" && self.goal.as_ref().is_some_and(|g| g.id == id) {
             self.goal = None;
             self.send_goal();
         }
-        self.send_status_if_changed();
+        self.send_status_if_changed(now);
         Ok(())
     }
 
-    fn on_state(&mut self, b: &[u8], apply: fn(&mut StatusBuilder, &Value)) -> Result<(), String> {
+    fn on_state(&mut self, b: &[u8], apply: fn(&mut StatusBuilder, &Value, Instant), now: Instant) -> Result<(), String> {
         let v = formats::parse_json(b)?;
-        apply(&mut self.status, &v);
-        self.send_status_if_changed();
+        apply(&mut self.status, &v, now);
+        self.send_status_if_changed(now);
         Ok(())
     }
 
@@ -413,9 +425,9 @@ impl Worker {
     }
 
     /// Status goes out at once when it changed, besides the periodic send.
-    fn send_status_if_changed(&mut self) {
+    fn send_status_if_changed(&mut self, now: Instant) {
         if self.out.wants(ent::NAV_STATUS) {
-            let (status, changed) = self.status.build();
+            let (status, changed) = self.status.build(now);
             if changed {
                 send(&mut *self.out, ent::NAV_STATUS, || enc_status(&status));
             }
@@ -432,13 +444,13 @@ mod tests {
 
     type Sent = Vec<(String, Vec<u8>)>;
 
-    /// Wants everything, records every put.
+    /// Wants everything but the entities in its deaf list, records every put.
     #[derive(Clone, Default)]
-    struct Fake(Arc<Mutex<Sent>>);
+    struct Fake(Arc<Mutex<Sent>>, Arc<Mutex<Vec<&'static str>>>);
 
     impl Publish for Fake {
-        fn wants(&self, _: &str) -> bool {
-            true
+        fn wants(&self, entity: &str) -> bool {
+            !self.1.lock().unwrap().contains(&entity)
         }
         fn put(&mut self, entity: &str, bytes: Vec<u8>) {
             self.0.lock().unwrap().push((entity.to_owned(), bytes));
@@ -561,6 +573,62 @@ mod tests {
         let sent = out.take(ent::NAV_GOAL);
         assert_eq!(sent.len(), 1);
         assert!(goal(&sent[0]).origins.is_empty());
+    }
+
+    fn path(goal: &str, points: &[[f64; 2]], error: bool) -> Vec<u8> {
+        let poses: Vec<Value> = points.iter().map(|p| serde_json::json!({"x": p[0], "y": p[1]})).collect();
+        serde_json::json!({"header": {"timestamp": 1.0, "frame_id": "map"}, "goal_id": goal, "poses": poses, "error": error})
+            .to_string()
+            .into_bytes()
+    }
+
+    /// The single strip of each `nav/plan` message put since the last call.
+    fn plans(out: &Fake) -> Vec<Vec<[f32; 3]>> {
+        out.take(ent::NAV_PLAN)
+            .iter()
+            .map(|b| {
+                let d: dviz_protocol::LineStrips3DData = serde_json::from_value(parse_message(b).unwrap().0.data).unwrap();
+                assert_eq!(d.strips.len(), 1);
+                d.strips[0].clone()
+            })
+            .collect()
+    }
+
+    /// The planner stops publishing once a goal is done, so the last plan is latched
+    /// (as in RViz): sent at once, then again every 2 s, also to a Studio that
+    /// subscribes later. An error path clears it, for late subscribers too.
+    #[test]
+    fn the_last_plan_is_latched_and_resent_every_2_s() {
+        let (mut w, out) = worker(BridgeConfig::default());
+        let t0 = Instant::now();
+        let at = |s: f32| t0 + Duration::from_secs_f32(s);
+        w.tick(at(0.0));
+        assert!(plans(&out).is_empty(), "no path yet: no plan");
+        // Nobody listens when the plan is made ...
+        out.1.lock().unwrap().push(ent::NAV_PLAN);
+        w.handle("path", &path("C1", &[[0.0, 0.0], [1.0, 0.0]], false), at(0.1));
+        w.tick(at(0.2));
+        assert!(plans(&out).is_empty(), "not sent to nobody");
+        // ... a Studio subscribing later gets it at the next tick, then every 2 s.
+        out.1.lock().unwrap().clear();
+        let c1 = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]];
+        let mut sent = vec![];
+        for s in [0.5, 2.4, 2.5, 4.4, 4.5] {
+            w.tick(at(s));
+            sent.push(plans(&out));
+        }
+        assert_eq!(sent, [vec![c1.clone()], vec![], vec![c1.clone()], vec![], vec![c1.clone()]]);
+        // A new path goes out at once and replaces it.
+        let c2 = vec![[2.0, 0.0, 0.0], [3.0, 1.0, 0.0]];
+        w.handle("path", &path("C2", &[[2.0, 0.0], [3.0, 1.0]], false), at(5.0));
+        assert_eq!(plans(&out), std::slice::from_ref(&c2));
+        w.tick(at(6.5));
+        assert_eq!(plans(&out), [c2]);
+        // An error path clears the plan at once, and the resends stay empty.
+        w.handle("path", &path("C2", &[[2.0, 0.0]], true), at(7.0));
+        assert_eq!(plans(&out), [Vec::<[f32; 3]>::new()]);
+        w.tick(at(8.5));
+        assert_eq!(plans(&out), [Vec::<[f32; 3]>::new()], "a late subscriber sees no stale plan");
     }
 
     #[test]

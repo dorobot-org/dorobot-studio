@@ -531,10 +531,19 @@ pub struct NavStatus {
     pub armed: bool,
     pub estop: bool,
     pub gate_reason: String,
-    /// `tracer/state` mode
+    /// `tracer/state` mode (the chassis node's arm state)
     pub chassis_mode: Option<String>,
     pub chassis_armed: Option<bool>,
     pub chassis_reason: Option<String>,
+    /// `tracer/state` control_mode: 0 standby, 1 CAN, 2 UART, 3 RC, -1 no feedback
+    #[serde(default)]
+    pub chassis_control_mode: Option<i32>,
+    /// `tracer/state` error_code (the base's error bits; 0 none)
+    #[serde(default)]
+    pub chassis_error_code: Option<i32>,
+    /// `tracer/state` battery_v (0 without feedback)
+    #[serde(default)]
+    pub battery_v: Option<f32>,
     pub goal_id: Option<String>,
     /// `pure_pursuit/goal_status` state
     pub goal_state: Option<String>,
@@ -546,6 +555,26 @@ pub struct NavStatus {
     /// Goal command channel enabled (always false until delivery 2)
     #[serde(default)]
     pub cmd_goal_enabled: bool,
+    /// Parts whose input has not arrived for 2 s (or never), by
+    /// [`nav_status_parts`] name: their fields hold the last value received
+    #[serde(default)]
+    pub stale: Vec<String>,
+}
+
+/// Names of the [`NavStatus`] parts that can be stale
+pub mod nav_status_parts {
+    /// `loc_ok`, `loc_reason`, `refine_state` (`loc_trust/status`, `loc_refine/state`)
+    pub const LOCALIZATION: &str = "localization";
+    /// `armed`, `estop`, `gate_reason` (`cmd_gate/state`)
+    pub const GATE: &str = "gate";
+    /// The `chassis_*` fields and `battery_v` (`tracer/state`)
+    pub const CHASSIS: &str = "chassis";
+    /// `v`, `w` (`pose_fuser/map_base`)
+    pub const SPEED: &str = "speed";
+
+    /// Every name above. The goal is not one: `pure_pursuit/goal_status` is sent
+    /// only when it changes, so silence is normal there.
+    pub const ALL: [&str; 4] = [LOCALIZATION, GATE, CHASSIS, SPEED];
 }
 
 /// Entity names published by the navigation bridge (`dviz/<robot_id>/<entity>`)
@@ -784,19 +813,40 @@ mod tests {
             "v": 0.1,
             "w": -0.2,
             "cmd_goal_enabled": true,
+            "stale": ["gate", "speed"],
+            "chassis_control_mode": 3,
+            "chassis_error_code": 4,
+            "battery_v": 25.6,
         });
         let status: NavStatus = serde_json::from_value(json.clone()).unwrap();
         assert!(status.loc_ok && status.armed && status.cmd_goal_enabled);
         assert_eq!(status.goal_id.as_deref(), Some("g1"));
         assert_eq!(status.v, Some(0.1));
+        assert_eq!(status.stale, [nav_status_parts::GATE, nav_status_parts::SPEED]);
+        assert_eq!(status.chassis_control_mode, Some(3));
+        assert_eq!(status.chassis_error_code, Some(4));
+        assert_eq!(status.battery_v, Some(25.6));
         let back: NavStatus = serde_json::from_value(serde_json::to_value(&status).unwrap()).unwrap();
         assert_eq!(back, status);
 
-        // cmd_goal_enabled is optional on the wire and defaults to false
+        // cmd_goal_enabled, stale and the chassis feedback are optional on the wire
+        // (an older bridge): false, nothing stale, none
         let mut legacy = json;
-        legacy.as_object_mut().unwrap().remove("cmd_goal_enabled");
+        for key in ["cmd_goal_enabled", "stale", "chassis_control_mode", "chassis_error_code", "battery_v"] {
+            legacy.as_object_mut().unwrap().remove(key);
+        }
         let status: NavStatus = serde_json::from_value(legacy).unwrap();
         assert!(!status.cmd_goal_enabled);
+        assert!(status.stale.is_empty());
+        assert_eq!((status.chassis_control_mode, status.chassis_error_code, status.battery_v), (None, None, None));
+    }
+
+    #[test]
+    fn nav_status_part_names() {
+        assert_eq!(
+            nav_status_parts::ALL,
+            ["localization", "gate", "chassis", "speed"]
+        );
     }
 
     #[test]

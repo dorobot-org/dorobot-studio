@@ -19,6 +19,20 @@ use std::time::{Duration, Instant};
 /// Inputs queued for the worker; when full the oldest is dropped.
 pub const INBOX_CAP: usize = 64;
 
+pub const USAGE: &str = "usage: dorobot-nav-bridge <config.json>  (a node of a Dora dataflow; see README.md)";
+
+/// The config path: the one argument. Dora splits a node's `args` shell-style, so a
+/// path with a space arrives as two arguments.
+pub fn config_arg(args: &[OsString]) -> Result<PathBuf, String> {
+    match args {
+        [config] => Ok(PathBuf::from(config)),
+        _ => Err(format!(
+            "expected one argument (the config path), got {}: {args:?}; a path with a space is split by Dora ({USAGE})",
+            args.len()
+        )),
+    }
+}
+
 /// One Dora event as the bridge sees it.
 pub enum NodeEvent {
     /// An input; `data` is `None` when it is neither bytes (UInt8) nor a string.
@@ -190,6 +204,15 @@ mod tests {
         assert_eq!(input_bytes(&vec![1u8, 2, 3].into_arrow()), Some(vec![1, 2, 3]));
         assert_eq!(input_bytes(&r#"{"id":"C1"}"#.into_arrow()), Some(br#"{"id":"C1"}"#.to_vec()));
         assert_eq!(input_bytes(&vec![1.0f32].into_arrow()), None);
+    }
+
+    #[test]
+    fn config_arg_is_the_one_argument() {
+        assert_eq!(config_arg(&["/c/tracer.json".into()]), Ok(PathBuf::from("/c/tracer.json")));
+        let none = config_arg(&[]).unwrap_err();
+        assert!(none.starts_with("expected one argument (the config path), got 0: []"), "{none}");
+        let split = config_arg(&["/home/my".into(), "config.json".into()]).unwrap_err();
+        assert!(split.contains("got 2: [\"/home/my\", \"config.json\"]"), "{split}");
     }
 
     #[test]

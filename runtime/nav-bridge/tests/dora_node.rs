@@ -6,6 +6,7 @@
 
 use dviz_protocol::{nav_entities, parse_message, GraphUpdate, LogData};
 use serde_json::{json, Value};
+use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Read};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
@@ -110,8 +111,13 @@ struct Node {
 
 impl Node {
     fn spawn(dir: &Path, config: &Path, env: &[(&str, &Path)]) -> Node {
+        Node::spawn_args(dir, &[config.as_os_str()], env)
+    }
+
+    /// The bridge with these arguments, as Dora's integration-testing mode starts it.
+    fn spawn_args(dir: &Path, args: &[&OsStr], env: &[(&str, &Path)]) -> Node {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_dorobot-nav-bridge"));
-        cmd.arg(config)
+        cmd.args(args)
             .current_dir(dir)
             .env("DORA_TEST_WITH_INPUTS", dir.join("inputs.json"))
             .env("DORA_TEST_WRITE_OUTPUTS_TO", dir.join("outputs.jsonl"))
@@ -372,6 +378,8 @@ fn assert_degraded(node: &mut Node, inputs: usize, cause: &str) {
     assert!(errors[0].contains(cause), "the ERROR line names {cause:?}: {}", errors[0]);
     println!("degraded: {}; {:?}", errors[0], out.last());
     assert!(!stderr.to_lowercase().contains("panic"), "stderr: {stderr}");
+    // The first line, right after Dora's init: DORA_NAV's autostart.sh waits for it.
+    assert!(out.first().is_some_and(|l| l.starts_with("nav-bridge: started by Dora (dataflow ")), "{out:?}");
     let consumed = format!("nav-bridge: {inputs} inputs");
     assert!(out.iter().any(|l| l.starts_with(&consumed)), "all {inputs} inputs consumed: {out:?}");
 }
@@ -400,4 +408,50 @@ fn busy_port_consumes_inputs_and_exits_0_after_stop() {
     assert!(node.line_at("nav-bridge: stopping").is_some(), "{:?}", node.stdout_text());
     drop(held);
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Dora 1.1 fails the start of every node of the dataflow when one node stops before
+/// it subscribes, so bad arguments (a config path with a space is split into two by
+/// Dora) must not end the bridge before Dora is initialized: they are one ERROR line,
+/// then the node idles like any other startup failure.
+#[test]
+fn bad_arguments_under_dora_consume_inputs_and_exit_0() {
+    let _serial = serial();
+    let dir = tmpdir("badargs");
+    let inputs = write_inputs(&dir, 0.1, 1.0, Some(1.5));
+    let cases: [(&[&OsStr], &str); 3] = [
+        (&[], "got 0"),
+        (&[OsStr::new("/home/nvidia/my"), OsStr::new("config.json")], "got 2"),
+        (&[OsStr::new("--help"), OsStr::new("extra")], "got 2"),
+    ];
+    for (args, cause) in cases {
+        let mut node = Node::spawn_args(&dir, args, &[]);
+        assert_degraded(&mut node, inputs, cause);
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// `--help` works without Dora (the overlay in DORA_NAV smoke-runs it before it adds
+/// the node); anything else outside Dora is "not started by Dora", exit 1.
+#[test]
+fn help_without_dora_exits_0_and_anything_else_exits_1() {
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_dorobot-nav-bridge"))
+            .args(args)
+            .env_remove("DORA_TEST_WITH_INPUTS")
+            .env_remove("DORA_NODE_CONFIG")
+            .stdin(Stdio::null())
+            .output()
+            .expect("run dorobot-nav-bridge")
+    };
+    let help = run(&["--help"]);
+    assert!(help.status.success(), "{help:?}");
+    assert!(String::from_utf8_lossy(&help.stdout).starts_with("usage: dorobot-nav-bridge "), "{help:?}");
+    for args in [&[][..], &["config.json"][..], &["a", "b"][..]] {
+        let out = run(args);
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(out.status.code(), Some(1), "{args:?}: {out:?}");
+        assert!(stderr.contains("not started by Dora"), "{args:?}: {stderr}");
+        assert!(stderr.contains("usage: dorobot-nav-bridge "), "{args:?}: {stderr}");
+    }
 }
