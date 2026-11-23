@@ -94,8 +94,8 @@ class Controller:
     def floor(self):
         return self.servo.command(self.sense())["xy"]
 
-    def held_in_wrist_view(self, color):
-        rgb = self.sense()["left_wrist"]
+    def held_in_wrist_view(self, color, data=None):
+        rgb = (self.sense() if data is None else data)["left_wrist"]
         visible = visible_in_jaws(rgb, color)
         self.act("jaw observation", color=color, visible=visible)
         return visible
@@ -134,6 +134,7 @@ class Controller:
     def reach(self, target, steps, subdivisions, vertical=False, supported=False):
         q = self.targets.copy()
         start, _ = self.model.grip(q)
+        waypoints = []
         for p in np.linspace(start, target, subdivisions + 1)[1:]:
             if supported:
                 q = self.model.solve_supported_grasp(p, q)
@@ -141,10 +142,9 @@ class Controller:
                 q = self.model.solve(p, q, down=vertical, attempts=2 if vertical else 4)
             else:
                 q = self.model.solve_nearby(p, q)
-            self.joints(
-                {j: float(q[self.names.index(j)]) for j in self.model.arm},
-                steps // subdivisions,
-            )
+            waypoints.append({j: float(q[self.names.index(j)]) for j in self.model.arm})
+        for command in waypoints:
+            self.joints(command, steps // subdivisions)
 
     def pick(self, xy):
         self.reach(np.r_[xy, 0.115], 250, 1, True)
@@ -152,8 +152,9 @@ class Controller:
         self.joints({self.grip: 0.55}, 180)
         self.reach(np.r_[xy, 0.085], 320, 8, True)
 
-    def table(self):
-        data = self.sense()
+    def table(self, data=None):
+        if data is None:
+            data = self.sense()
         views = []
         for name in ("head", "right_wrist"):
             chain, indices, mount, k, _ = self.servo.cameras[name]
@@ -209,10 +210,11 @@ class Controller:
             self.drive(speed, np.clip(angle * 1.5, -0.4, 0.4))
         raise ValueError("Stereo table docking timed out")
 
-    def back_away(self, color):
+    def back_away(self, color, exposure=None):
         self.phase("back away", color)
         for _ in range(65):
-            edge = self.table()
+            edge = self.table(exposure)
+            exposure = None
             if edge is None or edge["distance"] > 0.57:
                 self.drive()
                 break
@@ -302,7 +304,19 @@ class Controller:
             self.reach(np.r_[place - [0.07, 0], z + 0.10], 240, 9, supported=True)
             for _ in range(10):
                 self.drive()
-            self.back_away(color)
+            exposure = self.sense()
+            if self.held_in_wrist_view(color, exposure):
+                # An open jaw can still carry a cube on its lower fixed finger.
+                # Return above the observed surface and tip the finger sideways.
+                self.reach(np.r_[place, z + 0.078], 320, 10, supported=True)
+                self.joints({"left_j5_roll": 0.15}, 160)
+                self.reach(np.r_[place - [0.07, 0], z + 0.10], 240, 9, supported=True)
+                for _ in range(8):
+                    self.drive()
+                exposure = self.sense()
+                if self.held_in_wrist_view(color, exposure):
+                    raise ValueError(f"{color} is still on the finger after release")
+            self.back_away(color, exposure)
         self.act("finished")
 
 

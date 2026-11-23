@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from nano_rgb_transfer_policy import visible_in_jaws
+from nano_rgb_transfer_policy import Controller, visible_in_jaws
 from run_rgb_transfer import Judge, finger_gap
 
 
@@ -16,6 +16,27 @@ class TransferTests(unittest.TestCase):
         rgb[219:321, 81:231] = [25, 70, 200]
         self.assertTrue(visible_in_jaws(rgb, "blue"))
         self.assertFalse(visible_in_jaws(rgb, "green"))
+
+    def test_unreachable_waypoint_stops_before_moving(self):
+        controller = Controller.__new__(Controller)
+        controller.names = ["arm"]
+        controller.targets = np.zeros(1)
+        sent = []
+
+        def solve(target, q):
+            if target[0] > 0.5:
+                raise ValueError("unreachable")
+            return q
+
+        controller.model = SimpleNamespace(
+            arm=controller.names,
+            grip=lambda q: (np.zeros(3), None),
+            solve_supported_grasp=solve,
+        )
+        controller.joints = lambda cmd, steps: sent.append(cmd)
+        with self.assertRaisesRegex(ValueError, "unreachable"):
+            controller.reach([1.0, 0.0, 0.0], 60, 3, supported=True)
+        self.assertEqual(sent, [])
 
     def test_rotated_finger_box_gives_conservative_gap(self):
         basis = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
