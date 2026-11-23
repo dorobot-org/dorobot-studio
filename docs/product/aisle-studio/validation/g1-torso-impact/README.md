@@ -21,7 +21,7 @@ The manifest SHA-256 for both replicates is `135fdc294115e43d39a008a68a48c775872
 | Full preregistered pass including positive contact on the named torso link | **17/20** | **17/20** |
 | Verified traces and measured motor guard bypasses | 20 verified, 0 bypasses | 20 verified, 0 bypasses |
 
-Cases 2, 6 and 18 contacted only `logo_link` in both executions. The G1 URDF fixes that link to `torso_link` through `logo_joint`. The predeclared criterion specifically requires positive impulse on `torso_link`; all six outcomes remain failed. The stricter 40/40 qualification gate was missed. The archives retain the loaded links and impulses for every case. [First report](replicate-a.json) · [First raw archive](replicate-a.zip) · [Repeat report](replicate-b.json) · [Repeat raw archive](replicate-b.zip) · [G1 URDF](../../../../../data/g1/g1.urdf)
+Cases 2, 6 and 18 contacted only `logo_link` in both executions. The G1 URDF fixes that link to `torso_link` through `logo_joint`. All six outcomes failed because the predeclared criterion requires positive impulse on `torso_link`. The stricter 40/40 qualification gate was missed. The archives retain the loaded links and impulses for every case. [First report](replicate-a.json) · [First raw archive](replicate-a.zip) · [Repeat report](replicate-b.json) · [Repeat raw archive](replicate-b.zip) · [G1 URDF](../../../../../data/g1/g1.urdf)
 
 A separate native DeepSeek trial measured contact on the head, logo and torso links and returned to the stable window in 0.50 s. The Evidence page identifies the contacted links. [Operator trial and restart](native-trial.json) · [Native Evidence page](torso-evidence.png)
 
