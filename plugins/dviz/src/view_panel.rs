@@ -34,48 +34,20 @@ script_mod! {
     use mod.prelude.widgets.*
     use mod.widgets.*
 
-    // Text and fields that carry the theme themselves, as `light` (0 dark,
-    // 1 light) on their draws, like the host's cards and buttons. A plain
-    // Label, TextInput or CheckBox keeps the colours of the stylesheet it was
-    // made under: see `apply_theme`. Colours are `dorobot_ux::tokens::pal`'s,
-    // named beside each; the ink and the field ground are the iOS sheets' own.
-    // Only the text of a check box or toggle is themed: its box and pill keep
-    // the sheet's colours, which read on either card.
+    // Text that carries the theme itself, as `light` (0 dark, 1 light) on its
+    // draws, like the host's cards and buttons. A plain Label or CheckBox keeps
+    // the colours of the stylesheet it was made under: see `apply_theme`.
+    // Colours are `dorobot_ux::tokens::pal`'s, named beside each; the ink is
+    // the iOS sheets' own. Only the text of a check box or toggle is themed:
+    // its box and pill keep the sheet's colours, which read on either card.
+    // The connection fields are the sheet's own TextInput, as in P1 (white
+    // field, dark text, readable on either card): the themed field of
+    // 2026-11-23 could not be typed into on the desktop.
     mod.widgets.DvizLabel = mod.widgets.Label{
         draw_text +: {
             light: instance(0.0)
             get_color: fn() { return mix(#xF5F5F7, #x1C1C1E, self.light) }   // INK_D, INK_L
         }
-    }
-    mod.widgets.DvizTextInput = mod.widgets.TextInput{
-        draw_bg +: {
-            light: instance(0.0)
-            pixel: fn() {
-                let sdf = Sdf2d.viewport(self.pos * self.rect_size)
-                sdf.box(
-                    self.border_size
-                    self.border_size
-                    self.rect_size.x - self.border_size * 2.0
-                    self.rect_size.y - self.border_size * 2.0
-                    self.border_radius
-                )
-                let edge = mix(#x38383A, #xD1D1D6, self.light)              // EDGE_D, EDGE_L
-                let focus = mix(#x0A84FF, #x007AFF, self.light)             // VIO_D, VIO_L
-                sdf.fill_keep(mix(#x1C1C1E, #xFFFFFF, self.light))          // DEEP_D, DEEP_L
-                sdf.stroke(mix(edge, focus, self.focus), self.border_size)
-                return sdf.result
-            }
-        }
-        draw_text +: {
-            light: instance(0.0)
-            get_color: fn() {
-                let ink = mix(#xF5F5F7, #x1C1C1E, self.light)               // INK_D, INK_L
-                let hint = mix(#xAEAEB2, #x636366, self.light)              // DIM_D, DIM_L
-                return mix(ink, hint, self.empty)
-            }
-        }
-        // The caret in the accent, which reads on either ground.
-        draw_cursor +: {color: #x0A84FF}
     }
     mod.widgets.DvizCheckBox = mod.widgets.CheckBox{
         draw_text +: {
@@ -99,11 +71,8 @@ const THEMED: &[(&[LiveId], Themed)] = &[
     (ids!(heading), Themed::Text),
     (ids!(connection), Themed::Bg),
     (ids!(mode_label), Themed::Text),
-    (ids!(mode), Themed::Both),
     (ids!(endpoint_label), Themed::Text),
-    (ids!(endpoint), Themed::Both),
     (ids!(prefix_label), Themed::Text),
-    (ids!(prefix), Themed::Both),
     (ids!(connect), Themed::Both),
     (ids!(disconnect), Themed::Both),
     (ids!(open_viewer), Themed::Both),
@@ -195,12 +164,12 @@ impl DvizViewPanel {
                 connection := mod.widgets.ux.Card{width: Fill height: Fit flow: Down padding: 14.0 spacing: 8.0
                     View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                         mode_label := mod.widgets.DvizLabel{text: "Mode"}
-                        mode := mod.widgets.DvizTextInput{width: 90 height: 36 min_height: 36 text: "peer"}
+                        mode := TextInput{width: 90 height: 36 min_height: 36 text: "peer"}
                         endpoint_label := mod.widgets.DvizLabel{text: "Endpoint"}
-                        endpoint := mod.widgets.DvizTextInput{width: Fill height: 36 min_height: 36
+                        endpoint := TextInput{width: Fill height: 36 min_height: 36
                             empty_text: "tcp/192.168.1.186:7447 · empty for multicast discovery"}
                         prefix_label := mod.widgets.DvizLabel{text: "Prefix"}
-                        prefix := mod.widgets.DvizTextInput{width: 110 height: 36 min_height: 36 text: "dviz"}
+                        prefix := TextInput{width: 110 height: 36 min_height: 36 text: "dviz"}
                     }
                     View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                         connect := mod.widgets.ux.PrimaryButton{text: "Connect"}
@@ -593,6 +562,21 @@ fn entity_text(info: &EntityInfo) -> String {
 mod tests {
     use super::*;
 
+    /// The theme is put on a panel once per theme switch or style reload, not
+    /// on every sync.
+    #[test]
+    fn theme_is_due_once_per_theme_or_reload() {
+        let mut cx = Cx::new(Box::new(|_, _| {}));
+        let mut themed = None;
+        let light = frame::light_mode();
+        assert_eq!(theme_due(&cx, &mut themed), Some(light));
+        assert_eq!(theme_due(&cx, &mut themed), None);
+        assert_eq!(theme_due(&cx, &mut themed), None);
+        cx.reload_generation += 1;
+        assert_eq!(theme_due(&cx, &mut themed), Some(light));
+        assert_eq!(theme_due(&cx, &mut themed), None);
+    }
+
     fn entry(level: LogLevel, message: &str) -> LogEntry {
         LogEntry::new(level, message, "planner")
     }
@@ -795,7 +779,7 @@ mod tests {
         assert_eq!(node_detail(&nodes, &edges, "recorder"), None);
     }
 
-    /// The themed text and field shaders compile for the desktop backends
+    /// The themed text shaders compile for the desktop backends
     /// (no GPU is needed: this is the fork's own shader compiler).
     #[test]
     fn themed_widget_shaders_compile() {
@@ -808,12 +792,6 @@ mod tests {
             let sources = [
                 ("label glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizLabel.draw_text, "glsl", false)})),
                 ("label metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizLabel.draw_text, "metal", false)})),
-                ("input well glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_bg, "glsl", false)})),
-                ("input well metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_bg, "metal", false)})),
-                ("input text glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_text, "glsl", false)})),
-                ("input text metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_text, "metal", false)})),
-                ("input caret glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_cursor, "glsl", false)})),
-                ("input caret metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_cursor, "metal", false)})),
                 ("check box glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizCheckBox.draw_text, "glsl", false)})),
                 ("check box metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizCheckBox.draw_text, "metal", false)})),
                 ("toggle glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizToggle.draw_text, "glsl", false)})),

@@ -16,7 +16,7 @@ use dorobot_studio_core::{
     ui::frame::{self, Themed},
 };
 use dorobot_studio_plugin::*;
-use dviz_protocol::{nav_entities, NavStatus};
+use dviz_protocol::{nav_entities, nav_status_parts, NavStatus};
 use std::time::Duration;
 
 /// A status older than this is stale.
@@ -81,14 +81,20 @@ const SWATCHES: &[(&[LiveId], &str)] = &[
 ];
 
 /// The status line. With a status:
-/// "Localization OK · Gate disarmed (disarmed) · Chassis disarmed · Goal C1 ACTIVE · 0.20 m/s",
-/// each reason in brackets and missing parts left out; "Stale 3.1 s · " in
-/// front once it is older than 2 s. Without one: "Waiting for nav status".
+/// "Localization OK · Gate disarmed (disarmed) · Chassis RC, disarmed (boot) · 25.6 V · Goal C1 ACTIVE · 0.20 m/s",
+/// each reason in brackets and missing parts left out; a part whose input
+/// stopped (`NavStatus::stale`) as "Gate (no data)"; "Stale 3.1 s · " in
+/// front once the whole status is older than 2 s. Without one: "Waiting for
+/// nav status".
 pub fn nav_status_text(status: Option<&NavStatus>, age: Option<Duration>) -> String {
     let Some(status) = status else {
         return "Waiting for nav status".to_string();
     };
-    let mut parts = vec![if status.loc_ok {
+    let stale = |part: &str| status.stale.iter().any(|name| name == part);
+    let no_data = |label: &str| format!("{label} (no data)");
+    let mut parts = vec![if stale(nav_status_parts::LOCALIZATION) {
+        no_data("Localization")
+    } else if status.loc_ok {
         "Localization OK".to_string()
     } else {
         with_reason("Localization not trusted".into(), Some(&status.loc_reason))
@@ -100,18 +106,15 @@ pub fn nav_status_text(status: Option<&NavStatus>, age: Option<Duration>) -> Str
     } else {
         "disarmed"
     };
-    parts.push(with_reason(
-        format!("Gate {gate}"),
-        Some(&status.gate_reason),
-    ));
-    let chassis = match (&status.chassis_mode, status.chassis_armed) {
-        (Some(mode), _) => Some(format!("Chassis {}", flat(mode))),
-        (None, Some(true)) => Some("Chassis armed".to_string()),
-        (None, Some(false)) => Some("Chassis disarmed".to_string()),
-        (None, None) => None,
-    };
-    if let Some(chassis) = chassis {
-        parts.push(with_reason(chassis, status.chassis_reason.as_deref()));
+    parts.push(if stale(nav_status_parts::GATE) {
+        no_data("Gate")
+    } else {
+        with_reason(format!("Gate {gate}"), Some(&status.gate_reason))
+    });
+    if stale(nav_status_parts::CHASSIS) {
+        parts.push(no_data("Chassis"));
+    } else {
+        parts.extend(chassis_parts(status));
     }
     let goal = match (&status.goal_id, &status.goal_state) {
         (Some(id), Some(state)) => Some(format!("Goal {} {}", flat(id), flat(state))),
@@ -122,7 +125,9 @@ pub fn nav_status_text(status: Option<&NavStatus>, age: Option<Duration>) -> Str
     if let Some(goal) = goal {
         parts.push(with_reason(goal, status.goal_reason.as_deref()));
     }
-    if let Some(v) = status.v {
+    if stale(nav_status_parts::SPEED) {
+        parts.push(no_data("Speed"));
+    } else if let Some(v) = status.v {
         parts.push(format!("{v:.2} m/s"));
     }
     let line = parts.join(" · ");
@@ -132,6 +137,77 @@ pub fn nav_status_text(status: Option<&NavStatus>, age: Option<Duration>) -> Str
         }
         _ => line,
     }
+}
+
+/// The chassis: the base's control mode, the node's arm state and its reason,
+/// e.g. "Chassis RC, disarmed (boot)", then the battery and a non-zero error
+/// code as parts of their own. Nothing without chassis fields.
+fn chassis_parts(status: &NavStatus) -> Vec<String> {
+    let control = status.chassis_control_mode.map(|mode| match mode {
+        -1 => "no feedback".to_string(),
+        0 => "standby".to_string(),
+        1 => "CAN".to_string(),
+        2 => "UART".to_string(),
+        3 => "RC".to_string(),
+        other => format!("mode {other}"),
+    });
+    let arm = match (&status.chassis_mode, status.chassis_armed) {
+        (Some(mode), _) => Some(flat(mode)),
+        (None, Some(true)) => Some("armed".to_string()),
+        (None, Some(false)) => Some("disarmed".to_string()),
+        (None, None) => None,
+    };
+    let state = match (control, arm) {
+        (Some(control), Some(arm)) => format!("{control}, {arm}"),
+        (Some(text), None) | (None, Some(text)) => text,
+        (None, None) => return Vec::new(),
+    };
+    let mut parts = vec![with_reason(
+        format!("Chassis {state}"),
+        status.chassis_reason.as_deref(),
+    )];
+    // Without feedback the node reports 0 V.
+    let feedback = status.chassis_control_mode != Some(-1);
+    if let Some(volts) = status
+        .battery_v
+        .filter(|v| feedback && v.is_finite() && *v > 0.0)
+    {
+        parts.push(format!("{volts:.1} V"));
+    }
+    if let Some(code) = status.chassis_error_code.filter(|code| *code != 0) {
+        parts.push(format!("error 0x{code:X}"));
+    }
+    parts
+}
+
+/// The line while the session is not connected, in place of the nav status:
+/// the state, any error, and what to do on the Visualization tab. `None`
+/// when connected.
+pub fn connection_text(
+    connected: bool,
+    listening_for: Option<Duration>,
+    last_error: Option<&str>,
+) -> Option<String> {
+    if connected {
+        return None;
+    }
+    let error = last_error
+        .map(str::trim)
+        .filter(|error| !error.is_empty())
+        .map(|error| format!(" (error: {})", flat(error)))
+        .unwrap_or_default();
+    Some(if listening_for.is_some() {
+        format!(
+            "Listening, no peer found yet{error} — enter the robot's endpoint on the Visualization tab"
+        )
+    } else if error.is_empty() {
+        "Not connected — set Mode and Endpoint on the Visualization tab and press Connect"
+            .to_string()
+    } else {
+        format!(
+            "Not connected{error} — check Mode and Endpoint on the Visualization tab and press Connect"
+        )
+    })
 }
 
 /// Whether a status of this age is stale: older than 2 s, or never received.
@@ -255,13 +331,20 @@ impl DvizNavPanel {
 
     /// Everything from a fresh snapshot.
     fn refresh(&mut self, cx: &mut Cx) {
-        let nav = self.session.snapshot().nav;
+        let snapshot = self.session.snapshot();
+        let nav = snapshot.nav;
         let map = self.root.dviz_map2_d(cx, ids!(map));
         map.set_scene(cx, &nav);
         let age = nav.status_at.map(|at| at.elapsed());
-        let status = self.root.label(cx, ids!(status));
-        status.set_text(cx, &nav_status_text(nav.status.as_ref(), age));
-        let stale = status_is_stale(age);
+        let connection = connection_text(
+            snapshot.connected,
+            snapshot.listening_for,
+            snapshot.last_error.as_deref(),
+        );
+        // Not connected: said in the panel's ink, not greyed like a stale status.
+        let stale = connection.is_none() && status_is_stale(age);
+        let text = connection.unwrap_or_else(|| nav_status_text(nav.status.as_ref(), age));
+        self.root.label(cx, ids!(status)).set_text(cx, &text);
         if self.stale != Some(stale) {
             let mut status = self.root.widget(cx, ids!(status));
             let grey = if stale { 1.0 } else { 0.0 };
@@ -405,6 +488,114 @@ mod tests {
             nav_status_text(Some(&armed), Some(Duration::ZERO)),
             "Localization OK · Gate armed · Chassis CAN (ok) · Goal g7 (blocked) · -0.05 m/s"
         );
+    }
+
+    /// A part whose input stopped (the bridge lists it in `stale`) shows
+    /// "(no data)" instead of its last value; the goal is never stale.
+    #[test]
+    fn stale_parts_show_no_data() {
+        let status = NavStatus {
+            stale: vec![
+                "localization".into(),
+                "gate".into(),
+                "chassis".into(),
+                "speed".into(),
+            ],
+            ..example()
+        };
+        assert_eq!(
+            nav_status_text(Some(&status), Some(Duration::ZERO)),
+            "Localization (no data) · Gate (no data) · Chassis (no data) · Goal C1 ACTIVE · Speed (no data)"
+        );
+        // A part never received is stale too, and shown, even without fields.
+        let only_gate = NavStatus {
+            armed: true,
+            gate_reason: "armed".into(),
+            stale: vec!["localization".into(), "chassis".into(), "speed".into()],
+            ..NavStatus::default()
+        };
+        assert_eq!(
+            nav_status_text(Some(&only_gate), Some(Duration::ZERO)),
+            "Localization (no data) · Gate armed (armed) · Chassis (no data) · Speed (no data)"
+        );
+        // A name the panel does not know is ignored.
+        let odd = NavStatus {
+            stale: vec!["goal".into(), "x".into()],
+            ..example()
+        };
+        assert_eq!(
+            nav_status_text(Some(&odd), Some(Duration::ZERO)),
+            "Localization OK · Gate disarmed (disarmed) · Chassis disarmed · Goal C1 ACTIVE · 0.20 m/s"
+        );
+    }
+
+    /// The chassis part from a real `tracer/state`: the base's control mode
+    /// (1 CAN, 3 RC, -1 no feedback), the node's arm state and reason, the
+    /// battery and a non-zero error code.
+    #[test]
+    fn chassis_control_mode_battery_and_error() {
+        let chassis = |control: Option<i32>,
+                       mode: &str,
+                       reason: &str,
+                       battery: Option<f32>,
+                       error: Option<i32>| {
+            let status = NavStatus {
+                loc_ok: true,
+                chassis_mode: Some(mode.into()),
+                chassis_reason: Some(reason.into()),
+                chassis_control_mode: control,
+                battery_v: battery,
+                chassis_error_code: error,
+                ..NavStatus::default()
+            };
+            nav_status_text(Some(&status), Some(Duration::ZERO))
+        };
+        // {"armed": false, "battery_v": 25.6, "control_mode": 3, "error_code": 4,
+        //  "mode": "disarmed", "reason": "boot", "vehicle_state": 2}
+        assert_eq!(
+            chassis(Some(3), "disarmed", "boot", Some(25.6), Some(4)),
+            "Localization OK · Gate disarmed · Chassis RC, disarmed (boot) · 25.6 V · error 0x4"
+        );
+        assert_eq!(
+            chassis(Some(1), "armed", "", Some(25.14), Some(0)),
+            "Localization OK · Gate disarmed · Chassis CAN, armed · 25.1 V"
+        );
+        // No feedback from the base: the node reports battery 0, error 0.
+        assert_eq!(
+            chassis(Some(-1), "disarmed", "boot", Some(0.0), Some(0)),
+            "Localization OK · Gate disarmed · Chassis no feedback, disarmed (boot)"
+        );
+        assert_eq!(
+            chassis(Some(0), "disarmed", "rc_override", Some(24.0), None),
+            "Localization OK · Gate disarmed · Chassis standby, disarmed (rc_override) · 24.0 V"
+        );
+        // An older bridge sends no control mode: as before.
+        assert_eq!(
+            chassis(None, "disarmed", "boot", None, None),
+            "Localization OK · Gate disarmed · Chassis disarmed (boot)"
+        );
+    }
+
+    /// Not connected, the line says so and where to connect, instead of
+    /// waiting for a status that cannot come.
+    #[test]
+    fn connection_state_comes_before_the_nav_status() {
+        assert_eq!(
+            connection_text(false, None, None).as_deref(),
+            Some(
+                "Not connected — set Mode and Endpoint on the Visualization tab and press Connect"
+            )
+        );
+        assert_eq!(
+            connection_text(false, Some(Duration::from_secs(5)), None).as_deref(),
+            Some("Listening, no peer found yet — enter the robot's endpoint on the Visualization tab")
+        );
+        assert_eq!(
+            connection_text(false, None, Some("connect tcp/1.2.3.4:7450: timed out\nretry")).as_deref(),
+            Some("Not connected (error: connect tcp/1.2.3.4:7450: timed out retry) — check Mode and Endpoint on the Visualization tab and press Connect")
+        );
+        assert_eq!(connection_text(true, None, Some("old")), None);
+        assert_eq!(connection_text(true, None, None), None);
     }
 
     #[test]

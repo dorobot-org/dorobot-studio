@@ -4,9 +4,9 @@
 //! grid changes and drawn as one quad; everything else is drawn again every
 //! frame from the latest [`NavScene`] as vectors: the trail and the plan as
 //! 2 px lines, the footprint as a closed outline with a short heading line,
-//! the goal as an arrow, and the scan as 2 px dots. The wheel zooms about the
-//! pointer and a drag pans; the view can also be fitted to the scene or
-//! follow the robot ([`MapCamera`]).
+//! the goal as an arrow (a cross when it has no yaw), and the scan as 2 px
+//! dots. The wheel zooms about the pointer and a drag pans; the view can also
+//! be fitted to the scene or follow the robot ([`MapCamera`]).
 
 use crate::map_view::{grid_rgba, layer_color, scene_bounds, MapView, NavLayers};
 use crate::nav_scene::{GridLayer, NavScene};
@@ -26,6 +26,8 @@ const HEADING_MIN_PX: f64 = 10.0;
 /// The goal arrow: the least its shaft is drawn at, and its head, in pixels.
 const ARROW_MIN_PX: f64 = 16.0;
 const ARROW_HEAD_PX: f64 = 8.0;
+/// A goal without a direction (sent without a yaw): a cross this wide, in pixels.
+const GOAL_MARK_PX: f64 = 12.0;
 /// Scroll distance of one mouse wheel notch, and the zoom it gives.
 const WHEEL_NOTCH: f64 = 32.0;
 const ZOOM_PER_NOTCH: f64 = 1.2;
@@ -272,6 +274,32 @@ fn polyline(
     }
 }
 
+/// The goal's strokes on screen, from its origin `from` (screen) and its
+/// vector (map metres, x and y): an arrow along the vector, at least
+/// [`ARROW_MIN_PX`] long, or, when the vector has no length on the map (a
+/// goal sent without a yaw is a vertical vector), a cross [`GOAL_MARK_PX`]
+/// wide. Nothing when a value is not finite.
+fn goal_strokes(from: Vec2d, vector: [f32; 2], px_per_m: f64) -> Vec<(Vec2d, Vec2d)> {
+    // Screen y runs down.
+    let along = dvec2(f64::from(vector[0]), -f64::from(vector[1])) * px_per_m;
+    let length = along.length();
+    if !length.is_finite() || !from.x.is_finite() || !from.y.is_finite() {
+        return Vec::new();
+    }
+    if length <= f64::EPSILON {
+        let half = GOAL_MARK_PX / 2.0;
+        return vec![
+            (from + dvec2(-half, -half), from + dvec2(half, half)),
+            (from + dvec2(-half, half), from + dvec2(half, -half)),
+        ];
+    }
+    let direction = along / length;
+    let to = from + direction * length.max(ARROW_MIN_PX);
+    let across = dvec2(-direction.y, direction.x) * (ARROW_HEAD_PX / 2.0);
+    let back = to - direction * ARROW_HEAD_PX;
+    vec![(from, to), (to, back + across), (to, back - across)]
+}
+
 /// The navigation scene from above; see the module documentation.
 #[derive(Script, ScriptHook, Widget)]
 pub struct DvizMap2D {
@@ -393,8 +421,8 @@ impl DvizMap2D {
         }
     }
 
-    /// The goal as an arrow from its origin along its vector, at least
-    /// [`ARROW_MIN_PX`] long.
+    /// The goal: an arrow from its origin along its vector, or a cross when
+    /// it has no direction ([`goal_strokes`]).
     fn goal(&mut self, cx: &mut Cx2d, rect: Rect) {
         let Some((origin, vector)) = self.scene.goal else {
             return;
@@ -402,23 +430,18 @@ impl DvizMap2D {
         let view = self.camera.view;
         let s = view.world_to_screen([f64::from(origin[0]), f64::from(origin[1])]);
         let from = rect.pos + dvec2(s[0], s[1]);
-        let along = dvec2(f64::from(vector[0]), -f64::from(vector[1])) * view.px_per_m;
-        let length = along.length();
-        if length <= f64::EPSILON || !length.is_finite() {
-            return;
-        }
-        let direction = along / length;
-        let to = from + direction * length.max(ARROW_MIN_PX);
-        if !meets(rect, from, to, ARROW_HEAD_PX) {
+        let strokes = goal_strokes(from, vector, view.px_per_m);
+        if !strokes
+            .iter()
+            .any(|(a, b)| meets(rect, *a, *b, f64::from(LINE_PX)))
+        {
             return;
         }
         self.draw_line.color = rgba(layer_color(&self.scene, nav_entities::NAV_GOAL));
         self.draw_line.thickness = LINE_PX;
-        self.draw_line.segment(cx, from, to);
-        let across = dvec2(-direction.y, direction.x) * (ARROW_HEAD_PX / 2.0);
-        let back = to - direction * ARROW_HEAD_PX;
-        self.draw_line.segment(cx, to, back + across);
-        self.draw_line.segment(cx, to, back - across);
+        for (a, b) in strokes {
+            self.draw_line.segment(cx, a, b);
+        }
     }
 
     /// The grid texture over the map's own rectangle.
@@ -729,6 +752,44 @@ mod tests {
         camera.set_follow(true);
         camera.fit();
         assert!(!camera.follow && camera.fitted);
+    }
+
+    /// A goal sent without a yaw has a vertical vector, flat on the map: it is
+    /// a cross of GOAL_MARK_PX at the goal; with a yaw an arrow along it.
+    #[test]
+    fn a_goal_without_a_yaw_is_a_cross_and_with_one_an_arrow() {
+        let at = dvec2(100.0, 50.0);
+        let near = |a: Vec2d, b: Vec2d| (a - b).length() < 1e-9;
+        let cross = goal_strokes(at, [0.0, 0.0], 50.0);
+        assert_eq!(cross.len(), 2, "{cross:?}");
+        let half = GOAL_MARK_PX / 2.0;
+        assert!(
+            near(cross[0].0, at + dvec2(-half, -half)) && near(cross[0].1, at + dvec2(half, half)),
+            "{cross:?}"
+        );
+        assert!(
+            near(cross[1].0, at + dvec2(-half, half)) && near(cross[1].1, at + dvec2(half, -half)),
+            "{cross:?}"
+        );
+        assert!((10.0..=12.0).contains(&GOAL_MARK_PX));
+        // 0.5 m east at 50 px/m: a 25 px shaft and a head at its end.
+        let east = goal_strokes(at, [0.5, 0.0], 50.0);
+        assert_eq!(east.len(), 3);
+        assert!(
+            near(east[0].0, at) && near(east[0].1, at + dvec2(25.0, 0.0)),
+            "{east:?}"
+        );
+        assert!(east[1..]
+            .iter()
+            .all(|(a, _)| near(*a, at + dvec2(25.0, 0.0))));
+        // North is up on screen; a short one is drawn ARROW_MIN_PX long.
+        let north = goal_strokes(at, [0.0, 0.1], 50.0);
+        assert!(
+            near(north[0].1, at + dvec2(0.0, -ARROW_MIN_PX)),
+            "{north:?}"
+        );
+        assert!(goal_strokes(at, [f32::NAN, 0.0], 50.0).is_empty());
+        assert!(goal_strokes(at, [0.5, 0.0], f64::NAN).is_empty());
     }
 
     /// The grid and line shaders compile for the desktop backends (no GPU is

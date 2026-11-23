@@ -46,7 +46,7 @@
 
 ## 连接车上的 DORA_NAV（Navigation 面板）
 
-车上的桥节点 `dorobot-nav-bridge`（`runtime/nav-bridge`）挂在 DORA_NAV 的数据流里，把导航数据整理成 dviz 协议，从 Orin 的 7450 端口发出（Zenoh，不开组播）。车上怎么启用见 `runtime/nav-bridge/README.md` 和 DORA_NAV `apps/tracer/README.md`（`~/.config/dora-nav/env` 里的 `NAV_VIZ_BRIDGE`）。
+车上的桥节点 `dorobot-nav-bridge`（`runtime/nav-bridge`）挂在 DORA_NAV 的数据流里，把导航数据整理成 dviz 协议，从 Orin 的 7450 端口发出（Zenoh，不开组播）。车上怎么启用见 `runtime/nav-bridge/README.md` 和 DORA_NAV `apps/tracer/README.md`：用 `runtime/nav-bridge/install.sh /home/nvidia/nvme/dora-lab/opt/nav-bridge` 装一份，把它打印的 `NAV_VIZ_BRIDGE` / `NAV_VIZ_BRIDGE_CONFIG` 两行写进 `~/.config/dora-nav/env`。桥接不上时 `autostart.sh` 会退回不带桥的数据流，车照常起来。
 
 在 Studio 里：
 
@@ -54,7 +54,7 @@
    - Orin 的 Wi-Fi 地址由 DHCP 分配，会变（2026-11-23 是 `192.168.1.160`），在 Orin 上用 `ip -4 -br addr` 查。
    - 不要用组播模式连车：车上的 Dora 节点自己也在用 Zenoh 组播，会显示 "Connected" 却收不到 dviz 数据。
 2. 需要 3D 时点 "Open 3D window"。
-3. 切到 "Navigation" 标签看 2D 地图。
+3. 切到 "Navigation" 标签看 2D 地图。没连上时这里的状态行写 "Not connected — set Mode and Endpoint on the Visualization tab and press Connect"（或 "Listening, no peer found yet — …"、带错误原因），连接设置只在 "Visualization" 标签里。
 
 两个视图的内容（颜色是车上桥节点配置里的默认值）：
 
@@ -64,12 +64,12 @@
 | `map/cloud` PCD 地图（≤ 5 万点） | — | 浅灰点 |
 | `robot/pose` 车的位姿 | 车头方向短线 | 0.3 m 坐标轴 |
 | `robot/footprint` 足迹 | 绿色框 | 绿色框 |
-| `nav/plan` 规划路径 | 绿线 | 绿线 |
-| `nav/trail` 实际轨迹（从当前目标开始，每 5 cm 一点） | 橙线 | 橙线 |
-| `nav/goal` 当前目标 | 品红箭头 | 品红箭头 |
+| `nav/plan` 规划路径（最后一条每 2 s 重发一次，晚连上的也能看到；规划出错时清空） | 绿线 | 绿线 |
+| `nav/trail` 实际轨迹（从当前目标开始，每 5 cm 一点；丢定位后续行重发的同一目标 `<id>-r<n>` 不清空） | 橙线 | 橙线 |
+| `nav/goal` 当前目标 | 品红箭头；没给朝向的目标是 12 px 的品红叉 | 品红箭头（没给朝向时竖直向上） |
 | `sensors/scan` 激光 | 红点 | 红点 |
 | `sensors/cloud` 实时点云（≈ 5000 点） | — | 按高度着色 |
-| `nav/status` 导航状态 | 面板上方的状态行，超过 2 s 没更新会标 "Stale" | — |
+| `nav/status` 导航状态 | 面板上方的状态行，超过 2 s 没更新会标 "Stale"；某一部分的输入停了 2 s 以上写成 "Gate (no data)" 这样；底盘写控制模式、电池和非零故障码，如 "Chassis RC, disarmed (boot) · 25.6 V · error 0x4" | — |
 
 Navigation 面板的操作：滚轮缩放（以光标为中心），拖动平移（会关掉跟随）；"Fit map" 适应地图，"Follow robot" 让车保持在中间；右侧图例每层一个开关。Wi-Fi 上的急停不是安全装置，遥控器切 RC 才是。
 
@@ -123,3 +123,5 @@ cargo run --locked -p dorobot-plugin-dviz --example fake_publisher -- \
 - Rerun 查看器版本必须是 0.28。
 - “3D window: open” 只说明启动那一刻连上了；之后关掉 Rerun 窗口，这一行不会变，此后的 3D 数据直接丢弃，再点“Open 3D window”会重新启动。
 - 9876 端口上如果已经有进程在监听，Studio 当它是 Rerun 查看器直接连过去（和 Rerun SDK 自己的做法一样），版本只核对 `PATH` 里的 `rerun`。
+- 地图原点带朝向（`map.yaml` 的 `origin` 第三个值不为 0）时，2D 视图里栅格地图按没有旋转画，和其他图层对不齐；现在用的地图原点朝向都是 0。
+- "Visualization" 标签里 Mode / Endpoint / Prefix 三个输入框用的是样式表自带的输入框（白底深色字），不跟着浅色 / 深色主题变：跟着主题变的版本在桌面上点了打不进字（2026-11-23），先换回 P1 的做法。

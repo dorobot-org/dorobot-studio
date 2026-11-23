@@ -284,8 +284,8 @@ fn light_of(cx: &mut Cx, draw: &DrawVars) -> f32 {
 }
 
 /// Where the theme reached the dviz panel: the `connection` card, the
-/// `status` label, the `endpoint` input (well and text), the `connect` button
-/// and, given an entity, the count label of its row.
+/// `status` label, the `connect` button and, given an entity, the count label
+/// of its row.
 fn dviz_theme(cx: &mut Cx, root: &WidgetRef, entity: Option<&str>) -> Vec<(&'static str, f32)> {
     let mut seen = Vec::new();
     let card = root.widget(cx, ids!(connection));
@@ -298,11 +298,6 @@ fn dviz_theme(cx: &mut Cx, root: &WidgetRef, entity: Option<&str>) -> Vec<(&'sta
         "status label",
         light_of(cx, &status.borrow::<Label>().unwrap().draw_text),
     ));
-    let endpoint = root.widget(cx, ids!(endpoint));
-    let input = endpoint.borrow::<TextInput>().unwrap();
-    seen.push(("endpoint well", light_of(cx, &input.draw_bg)));
-    seen.push(("endpoint text", light_of(cx, &input.draw_text)));
-    drop(input);
     let connect = root.widget(cx, ids!(connect));
     seen.push((
         "connect button",
@@ -328,6 +323,15 @@ fn dviz_theme(cx: &mut Cx, root: &WidgetRef, entity: Option<&str>) -> Vec<(&'sta
 fn assert_dviz_theme(cx: &mut Cx, root: &WidgetRef, entity: Option<&str>, light: f64) {
     for (part, value) in dviz_theme(cx, root, entity) {
         assert_eq!(value, light as f32, "{part} at light {light}");
+    }
+    // The connection fields are the stylesheet's own TextInput, as in P1
+    // (white field, dark text, in either theme): a themed field could not be
+    // typed into on the desktop. They carry no `light`.
+    for path in [ids!(mode), ids!(endpoint), ids!(prefix)] {
+        let field = root.widget(cx, path);
+        let input = field.borrow::<TextInput>().unwrap();
+        let (well, text) = (light_of(cx, &input.draw_bg), light_of(cx, &input.draw_text));
+        assert!(well.is_nan() && text.is_nan(), "{path:?} carries light {well} / {text}");
     }
 }
 
@@ -510,8 +514,12 @@ fn nav_panel_syncs_in_both_themes() {
                 "{part} at light {light} after the reload"
             );
         }
+        // The session is not connected: the line says so, and where to connect.
         let status = root.widget(&cx, ids!(status)).text();
-        assert_eq!(status, "Waiting for nav status");
+        assert_eq!(
+            status,
+            "Not connected — set Mode and Endpoint on the Visualization tab and press Connect"
+        );
     }
     cx.with_vm(|vm| {
         let errors = vm.take_errors();
@@ -922,5 +930,147 @@ fn one_policy_plugin_contains_training_and_rollout_with_native_actions() {
     ] {
         let panel = cx.with_vm(|vm| registry.create_instance(id, vm)).unwrap();
         assert!(!panel.root().button(&mut cx, action).is_empty());
+    }
+}
+
+/// The panel mounted and drawn as the host does it, headless (no window): the
+/// root holding every mounted panel, the panel selected, a pass to draw into.
+/// Input goes through `Cx::dispatch_studio_msg`, the platform's own path for
+/// a hosted app's mouse and keyboard: the finger bookkeeping before and after
+/// each event, the event to the app (here: the root), then the key focus
+/// asked for while handling it.
+struct Drawn {
+    cx: Cx,
+    registry: PluginRegistry,
+    pages: WidgetRef,
+    target: ui_checks::UiCheckTarget,
+    time: f64,
+}
+
+const DRAWN_SIZE: Vec2d = Vec2d { x: 1200.0, y: 900.0 };
+
+impl Drawn {
+    fn new(panel: &str) -> Drawn {
+        let slot: std::rc::Rc<std::cell::RefCell<Option<WidgetRef>>> = Default::default();
+        let app = slot.clone();
+        let mut cx = Cx::new(Box::new(move |cx, event| {
+            let root = app.borrow().clone();
+            if let Some(root) = root {
+                root.handle_event(cx, event, &mut Scope::empty());
+            }
+        }));
+        cx.init_cx_os();
+        let mut registry = dorobot_flex::plugins::builtin_plugins();
+        cx.with_vm(|vm| {
+            dorobot_studio_core::register_ui(vm);
+            registry.register_widgets(vm);
+            assert!(vm.take_errors().is_empty());
+        });
+        let pages = cx.with_vm(|vm| {
+            let value = script_eval!(vm, {
+                use mod.prelude.widgets.* use mod.widgets.* View{width: Fill height: Fill}
+            });
+            WidgetRef::script_from_value(vm, value)
+        });
+        registry.mount(&mut cx, &pages).unwrap();
+        registry.select(panel).unwrap();
+        *slot.borrow_mut() = Some(pages.clone());
+        let target = ui_checks::UiCheckTarget::new(&mut cx);
+        let mut drawn = Drawn { cx, registry, pages, target, time: 1.0 };
+        drawn.frame();
+        drawn
+    }
+
+    /// One host frame: the visible panel's sync, then a draw.
+    fn frame(&mut self) {
+        let backend = MockBackend::new();
+        let context = PanelContext {
+            backend: &backend,
+            rig_editing: false,
+            show_help: false,
+            show_details: false,
+            live_controls: false,
+        };
+        self.registry.sync(&mut self.cx, &context);
+        self.target.draw(&mut self.cx, &self.pages, DRAWN_SIZE);
+        self.target.draw(&mut self.cx, &self.pages, DRAWN_SIZE);
+    }
+
+    fn send(&mut self, msg: studio::StudioToApp) {
+        self.cx.dispatch_studio_msg(msg, CxWindowPool::id_zero(), Vec2d::default());
+    }
+
+    /// A left click in the middle of `path` (from the panel's root).
+    fn click(&mut self, panel: &[LiveId], path: &[LiveId]) {
+        let root = self.pages.widget(&self.cx, panel);
+        let rect = root.widget(&self.cx, path).area().rect(&self.cx);
+        assert!(rect.size.x > 0.0 && rect.size.y > 0.0, "{path:?} not drawn: {rect:?}");
+        let at = rect.pos + rect.size / 2.0;
+        // Well apart, so no click counts as a double click.
+        self.time += 2.0;
+        let button_raw_bits = MouseButton::PRIMARY.bits();
+        self.send(studio::StudioToApp::MouseDown(studio::RemoteMouseDown {
+            button_raw_bits,
+            x: at.x,
+            y: at.y,
+            time: self.time,
+            modifiers: Default::default(),
+        }));
+        self.send(studio::StudioToApp::MouseUp(studio::RemoteMouseUp {
+            time: self.time + 0.05,
+            button_raw_bits,
+            x: at.x,
+            y: at.y,
+            modifiers: Default::default(),
+        }));
+    }
+
+    fn type_text(&mut self, text: &str) {
+        self.send(studio::StudioToApp::TextInput(TextInputEvent {
+            input: text.into(),
+            ..Default::default()
+        }));
+    }
+
+    /// What the host does on `Event::LiveEdit` / `ScriptReapply` (a theme
+    /// switch, or the appearance sync at startup): a new reload generation,
+    /// every mounted panel's source replayed, the panels mounted again.
+    fn style_reload(&mut self) {
+        self.cx.reload_generation += 1;
+        self.registry.reapply(&mut self.cx);
+        self.registry.mount(&mut self.cx, &self.pages).unwrap();
+        self.frame();
+    }
+}
+
+/// The user's desktop check: a click on a connection field, then typing,
+/// must change its text, with the host's syncs and draws in between, in both
+/// themes, before and after a style reload.
+#[test]
+fn dviz_connection_fields_take_typed_text() {
+    for (light, reload) in [(0.0, false), (1.0, false), (1.0, true), (0.0, true)] {
+        dorobot_flex::ui::frame::set_light_mode(light);
+        let mut host = Drawn::new("dviz_view");
+        if reload {
+            host.style_reload();
+        }
+        let panel = ids!(dviz_view);
+        for (field, typed) in [
+            (ids!(endpoint), "tcp/192.168.1.160:7450"),
+            (ids!(mode), "x"),
+            (ids!(prefix), "y"),
+        ] {
+            host.click(panel, field);
+            host.frame();
+            host.type_text(typed);
+            host.frame();
+            let root = host.pages.widget(&host.cx, panel);
+            let text = root.text_input(&mut host.cx, field).text();
+            assert!(text.contains(typed), "{field:?} at light {light}, reload {reload}: {text:?}");
+        }
+        host.cx.with_vm(|vm| {
+            let errors = vm.take_errors();
+            assert!(errors.is_empty(), "{errors:?}");
+        });
     }
 }

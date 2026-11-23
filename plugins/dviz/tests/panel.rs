@@ -793,11 +793,13 @@ fn nav_panel_layer_toggles_reach_the_map() {
         note,
         "Wi-Fi e-stop is not a safety device; switch the remote to RC."
     );
+    // The session is not connected: the line says so and where to connect,
+    // in ink (it is not a stale status).
     assert_eq!(
         text(&mut cx, &panel, ids!(status)),
-        "Waiting for nav status"
+        "Not connected — set Mode and Endpoint on the Visualization tab and press Connect"
     );
-    assert_eq!(status_grey(&mut cx, &panel), 1.0, "no status is shown grey");
+    assert_eq!(status_grey(&mut cx, &panel), 0.0, "the connection line is not grey");
     // Each swatch in its layer's (default) colour.
     for (path, rgb) in [
         (ids!(swatch_plan), [0.0, 1.0, 0.0]),
