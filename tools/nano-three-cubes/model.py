@@ -131,3 +131,66 @@ class Kinematics:
                 f"Unreachable target {pos.tolist()}; realized {p.tolist()}"
             )
         return q
+
+    def solve_nearby(self, target, current):
+        """Track a small Cartesian increment on the current IK branch with fixed wrist roll."""
+        current = np.asarray(current, dtype=float)
+        indices = [self.names.index(j) for j in self.arm[:4]]
+        lower, upper = np.array([self.limits[j] for j in self.arm[:4]]).T
+        previous = current[indices]
+        _, orientation = self.grip(current)
+        target = np.asarray(target)
+
+        def residual(values):
+            trial = current.copy()
+            trial[indices] = values
+            point, rotation = self.grip(trial)
+            return np.r_[
+                35.0 * (point - target),
+                0.10 * (rotation[:, 2] - orientation[:, 2]),
+                0.045 * (values - previous),
+            ]
+
+        solution = least_squares(
+            residual,
+            previous,
+            bounds=(
+                np.maximum(lower, previous - 0.32),
+                np.minimum(upper, previous + 0.32),
+            ),
+            max_nfev=90,
+        )
+        result = current.copy()
+        result[indices] = solution.x
+        if np.linalg.norm(self.grip(result)[0] - target) > 0.005:
+            raise ValueError(
+                f"No continuous IK step reaches {target.tolist()} within 5 mm"
+            )
+        return result
+
+    def solve_supported_grasp(self, target, current):
+        """Present the fixed finger beneath the cube and keep the jaw axis level with the table."""
+        q = np.asarray(current, dtype=float).copy()
+        indices = [self.names.index(j) for j in self.arm[:4]]
+        q[self.names.index(self.arm[4])] = 1.35
+        bounds = np.array([self.limits[j] for j in self.arm[:4]]).T
+
+        def residual(values):
+            q[indices] = values
+            point, rotation = self.grip(q)
+            return np.r_[12 * (point - target), rotation[2, 2]]
+
+        for seed in (current[indices], [0.0, 0.8, -2.0, 1.3]):
+            fit = least_squares(residual, seed, bounds=bounds, max_nfev=140)
+            q[indices] = fit.x
+            point, rotation = self.grip(q)
+            if (
+                np.linalg.norm(point - target) < 0.003
+                and abs(rotation[2, 2]) < 0.03
+                and rotation[2, 0] > 0.88
+                and rotation[0, 2] < -0.6
+            ):
+                return q.copy()
+        raise ValueError(
+            f"No level, upward-supported grasp reaches {np.asarray(target).tolist()}"
+        )

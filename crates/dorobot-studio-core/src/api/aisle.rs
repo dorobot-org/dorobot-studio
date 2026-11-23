@@ -280,6 +280,7 @@ impl Workbench {
                 r["measured_rad"]
                     .as_f64()
                     .or_else(|| r["distance_m"].as_f64())
+                    .or_else(|| r["table_contacts"].as_f64())
                     .map(|x| x as f32)
             })
             .collect();

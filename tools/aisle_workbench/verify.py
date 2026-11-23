@@ -28,7 +28,14 @@ def main():
         action="store_const",
         const="octos-deepseek",
     )
+    parser.add_argument(
+        "--transfer",
+        choices=["red", "three"],
+        help="Run and score a Nano floor-to-table journey",
+    )
     args = parser.parse_args()
+    if args.transfer and not args.provider:
+        parser.error("--transfer requires --codex or --octos-deepseek")
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
@@ -67,6 +74,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.transfer:
+                    check.extend(["--transfer", args.transfer])
                 if stage == "recovery":
                     check.append("--recover")
                 else:
@@ -74,7 +83,7 @@ def main():
                         check.append("--" + args.provider)
                     if args.backend == "offscreen":
                         check.append("--screenshots")
-                subprocess.run(check, check=True, timeout=330)
+                subprocess.run(check, check=True, timeout=900 if args.transfer else 330)
                 status = subprocess.check_output(
                     [args.remote, "app", str(process.pid), "status"], text=True
                 )

@@ -55,6 +55,18 @@ class InspectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             worker.validate(plan, self.profile | {"robot": "G1"})
 
+    def test_transfer_requires_nano_and_a_distinct_color_order(self):
+        for order in ["blue", "green,blue,red"]:
+            p = dict(kind="table-transfer", color_order=order)
+            self.assertEqual(worker.validate(p, self.profile), p)
+            with self.assertRaises(ValueError):
+                worker.validate(p, self.profile | {"robot": "G1"})
+        for invalid in ("red,red", "any", None):
+            with self.assertRaises(ValueError):
+                worker.validate(
+                    dict(kind="table-transfer", color_order=invalid), self.profile
+                )
+
     def test_feedback_is_bound_to_retained_controller_and_robot(self):
         with tempfile.TemporaryDirectory() as root:
             run = Path(root)
@@ -81,6 +93,27 @@ class InspectionTests(unittest.TestCase):
             controller.write_text(json.dumps({"joint": "other"}))
             with self.assertRaises(ValueError):
                 worker.measured_feedback(run, self.profile)
+
+    def test_transfer_revision_gets_per_cube_verdict_without_simulator_pose(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            worker.save(run / "controller.json", {"kind": "table-transfer"})
+            worker.save(
+                run / "result.json",
+                dict(
+                    robot="Nano",
+                    model_hash="model",
+                    controller_hash=worker.digest(run / "controller.json"),
+                    requested=["red", "blue"],
+                    phase="carry",
+                    task_success=False,
+                    kind="table-transfer",
+                    cubes={"red": {"passed": True, "final_position_m": [0, 1, 0.56]}},
+                ),
+            )
+            feedback = worker.measured_feedback(run, self.profile)
+            self.assertEqual(feedback["settled"], {"red": True, "blue": False})
+            self.assertNotIn("final_position_m", json.dumps(feedback))
 
     def test_octos_rejects_provider_fallback_or_invalid_schema(self):
         template = {"joint": "shoulder", "delta_rad": -0.06, "supported": True}

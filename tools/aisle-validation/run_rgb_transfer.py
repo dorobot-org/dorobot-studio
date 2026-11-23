@@ -1,0 +1,451 @@
+"""Run a Nano floor-to-table episode in Nexus and score contact, release and settling."""
+
+import argparse
+from collections import Counter, deque
+from importlib.metadata import version
+import io
+import json
+from pathlib import Path
+import struct
+import subprocess
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
+
+import numpy as np
+from PIL import Image
+from aisle.sim.nexus_backend import quat_wxyz_to_matrix
+from verify_arm_reach import ArmModel
+
+from nano_living import (
+    CAMERAS,
+    NAVIGATION_POSTURE,
+    LivingSimulation,
+    WheelGuard,
+    wheel_rates,
+)
+from run_rgb_approach import COLORS, HERE, RECIPE, scene_recipe, worker
+
+MODEL = HERE.parents[1] / "data/adora_nano/adora_nano.urdf"
+POSTURE = NAVIGATION_POSTURE | dict(
+    head_pan_joint=0.25, head_tilt_joint=0.65, left_j6_gripper=-0.25
+)
+
+
+def finger_gap(point, position, rotation, bounds, cube_radius):
+    """Lower bound on surface clearance from an oriented finger box to a cube."""
+    local = rotation.T @ (point - position)
+    center, half = bounds
+    return float(
+        np.linalg.norm(np.maximum(abs(local - center) - half, 0)) - cube_radius
+    )
+
+
+class Judge:
+    def __init__(self, sim, colors):
+        self.colors = colors
+        objects = {s["name"]: b for s, b in zip(sim.specs, sim.bodies)}
+        self.cubes = {name: objects[name] for name in colors}
+        self.table = objects["coffee_table"]
+        self.size = next(
+            np.array(s["size"]) for s in sim.specs if s["name"] == "coffee_table"
+        )
+        self.initial = {n: b.get_pos().copy() for n, b in self.cubes.items()}
+        self.object_ids = {
+            sim.scene.gpu_index(0, b.handles[0]): k for k, b in objects.items()
+        }
+        self.links = {
+            sim.scene.gpu_index(0, sim.robot.link_bodies[0][link.index]): link.name
+            for link in sim.robot.links
+        }
+        self.slots = {link.index: link.name for link in sim.robot.links}
+        bounds = ArmModel(MODEL).bounds
+        self.jaws = [
+            (sim.robot.get_link(name), bounds[name])
+            for name in ("left_finger_a", "left_finger_b")
+        ]
+        self.radii = {
+            s["name"]: np.linalg.norm(s["size"]) / 2
+            for s in sim.specs
+            if s["name"] in colors
+        }
+        self.wheels = {f"wheel_{i}" for i in (1, 2, 3)}
+        self.grasped = Counter()
+        self.collisions = Counter()
+        self.supported = 0
+        self.excursions = Counter()
+        self.tail = {n: deque(maxlen=100) for n in colors}
+        self.phase = "start"
+        xml = ET.parse(MODEL)
+        self.bounds = {
+            j: (float(x.get("lower")), float(x.get("upper")))
+            for j in sim.names
+            if (x := xml.find(f"joint[@name='{j}']/limit")) is not None
+            and x.get("lower")
+        }
+
+    def tick(self, sim):
+        ground = False
+        fingers = {c: set() for c in self.colors}
+        touching_gripper = set()
+        table_support = set()
+        impact = set()
+        state, viewer = sim.scene.state, sim.engine.viewer
+        # Contact manifolds in Nexus 0.2.1 may persist after separation.
+        # Current normal impulses establish load at this physics step.
+        for row in state.debug_rigid_contact_impulses(viewer):
+            if max(row["normal_impulse"], default=0) <= 1e-6:
+                continue
+            pair = {
+                self.object_ids.get(row["body_a"]),
+                self.object_ids.get(row["body_b"]),
+            }
+            if "coffee_table" in pair:
+                table_support.update(pair.intersection(self.colors))
+        for row in state.debug_multibody_contact_impulses(viewer):
+            if row["kind"] != "normal" or row["impulse"] <= 1e-6:
+                continue
+            link, obj = (
+                self.slots.get(row["link"]),
+                self.object_ids.get(row["free_body"]),
+            )
+            if link in self.wheels and obj == "floor":
+                ground = True
+            elif obj in fingers and link in ("left_finger_a", "left_finger_b"):
+                fingers[obj].add(link)
+                touching_gripper.add(obj)
+            elif obj and obj not in COLORS and obj != "floor":
+                impact.add((link, obj))
+        # Keep even unloaded furniture manifolds in the conservative collision audit.
+        for contact in state.debug_contacts(viewer):
+            a, b = contact["body_a"], contact["body_b"]
+            if a not in self.links:
+                a, b = b, a
+            link, obj = self.links.get(a), self.object_ids.get(b)
+            if link and obj and obj not in COLORS and obj != "floor":
+                impact.add((link, obj))
+        self.supported += int(ground)
+        self.collisions.update(f"{self.phase}/{link}/{obj}" for link, obj in impact)
+        q = np.asarray(sim.robot.get_qpos())[sim.dofs]
+        if not np.isfinite(q).all():
+            raise ValueError("Nonfinite measured joint state")
+        for i, j in enumerate(sim.names):
+            if j in self.bounds:
+                lo, hi = self.bounds[j]
+                self.excursions[j] = max(
+                    self.excursions[j], float(max(0, lo - q[i], q[i] - hi))
+                )
+        jaws = [
+            (link.get_pos(), quat_wxyz_to_matrix(link.get_quat()), bounds)
+            for link, bounds in self.jaws
+        ]
+        for n, cube in self.cubes.items():
+            pos = np.asarray(cube.get_pos()).copy()
+            if not np.isfinite(pos).all():
+                raise ValueError("Nonfinite cube state")
+            if len(fingers[n]) == 2 and pos[2] - self.initial[n][2] > 0.05:
+                self.grasped[n] += 1
+            gap = min(
+                finger_gap(pos, p, r, bounds, self.radii[n]) for p, r, bounds in jaws
+            )
+            self.tail[n].append((pos, n in table_support, n in touching_gripper, gap))
+
+    def result(self, sim):
+        table = self.table.get_pos()
+        top = float(table[2] + self.size[2] / 2)
+        cubes = {}
+        for n in self.colors:
+            tail = list(self.tail[n])
+            if not tail:
+                continue
+            positions = np.array([p for p, _, _, _ in tail])
+            contacts = sum(int(supported) for _, supported, _, _ in tail)
+            min_gap = min(gap for _, _, _, gap in tail)
+            detached = min_gap > 0.001 and all(not held for _, _, held, _ in tail)
+            pos = positions[-1]
+            # A 40 mm cube can project half its space diagonal onto either horizontal axis.
+            inside = bool(
+                np.all(np.abs(pos[:2] - table[:2]) + 0.035 < self.size[:2] / 2)
+            )
+            travel = float(np.linalg.norm(np.ptp(positions, axis=0)))
+            passed = (
+                self.grasped[n] >= 20
+                and contacts == 100
+                and detached
+                and inside
+                and top + 0.015 <= pos[2] <= top + 0.037
+                and travel < 0.003
+            )
+            cubes[n] = dict(
+                passed=bool(passed),
+                opposing_finger_airborne_ticks=self.grasped[n],
+                final_position_m=pos.tolist(),
+                table_contact_tail_ticks=contacts,
+                detached=detached,
+                min_finger_clearance_tail_m=min_gap,
+                cube_center_over_table=inside,
+                settle_motion_m=travel,
+            )
+        return dict(
+            cubes=cubes,
+            table_top_m=top,
+            wheel_supported_ticks=self.supported,
+            physics_ticks=sim.tick,
+            robot_furniture_contacts=dict(self.collisions),
+            max_joint_excursion_rad=max(self.excursions.values(), default=0),
+            root_pose_writes=sim.root_pose_writes,
+        )
+
+
+def execute(out, seed, colors, record=False):
+    sim = LivingSimulation(
+        MODEL, specs=scene_recipe(seed), resolution=(480, 360), posture=POSTURE
+    )
+    dof = sim.robot.get_joint("left_j6_gripper").dofs_idx_local
+    sim.robot.set_dofs_kp([5.0], dof)
+    sim.robot.set_dofs_kv([0.25], dof)
+    camera_fields = ("parent_link", "link_from_camera_gl", "intrinsics", "resolution")
+    calibration = {
+        n: {k: sim.camera_specs[n][k] for k in camera_fields} for n in CAMERAS
+    }
+    config = dict(
+        model=str(MODEL), joint_names=sim.names, cameras=calibration, colors=colors
+    )
+    worker.save(out / "calibration.json", config)
+    metadata = worker.describe("Nano")
+    xml = ET.parse(MODEL)
+    speeds = {
+        j: float(xml.find(f"joint[@name='{j}']/limit").get("velocity"))
+        for j in metadata["limits"]
+    }
+    guard = WheelGuard()
+    judge = Judge(sim, colors)
+    policy = HERE / "nano_rgb_transfer_policy.py"
+    source_path = out / "source.json"
+    source = json.loads(source_path.read_text()) if source_path.exists() else {}
+    worker.save(
+        source_path,
+        source
+        | dict(
+            recipe=RECIPE,
+            seed=seed,
+            model_sha256=worker.digest(MODEL),
+            policy_sha256=worker.digest(policy),
+            support_code_hashes={
+                f.name: worker.digest(f)
+                for f in (
+                    HERE / "nano_rgb_table.py",
+                    HERE / "verify_arm_reach.py",
+                    HERE / "nano_rgb_policy.py",
+                    HERE / "nano_living.py",
+                    HERE / "nano_cameras.py",
+                    HERE / "run_rgb_approach.py",
+                    HERE.parent / "nano-three-cubes" / "model.py",
+                    Path(__file__),
+                )
+            },
+            nexus=version("dimforge-nexus3d"),
+        ),
+    )
+
+    rows = []
+    active_color = colors[0]
+
+    def publish():
+        rgb = sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
+        tmp = out / "preview.tmp"
+        tmp.write_bytes(struct.pack(">I", sim.tick) + rgb.tobytes())
+        tmp.replace(out / "preview.rgb")
+        row = dict(
+            kind="table-transfer",
+            step=sim.tick + 1,
+            state=judge.phase,
+            color=active_color,
+            requested=colors,
+            table_contacts=sum(bool(v) and v[-1][1] for v in judge.tail.values()),
+        )
+        rows.append(row)
+        worker.save(out / "progress.json", row)
+        return rgb
+
+    def step():
+        if sim.tick >= 60000:
+            raise ValueError("episode step budget exhausted")
+        sim.robot.control_dofs_position(sim.targets.tolist(), sim.dofs)
+        sim.scene.step()
+        sim.tick += 1
+        judge.tick(sim)
+        if record and sim.tick % 20 == 0:
+            publish()
+
+    def move(command):
+        if command["op"] == "wheel":
+            speed, turn = command["speed"], command["turn"]
+            if not -0.08 <= speed <= 0.13 or not -0.5 <= turn <= 0.5:
+                raise ValueError("wheel command outside the Nano envelope")
+            rates = guard.accept(wheel_rates(speed, 0, turn), guard.next_seq)
+            for _ in range(20):
+                sim.targets[sim.wheel_indices] += rates * 0.01
+                step()
+        else:
+            values = command["values"]
+            count = command["steps"]
+            if (
+                type(count) is not int
+                or not 1 <= count <= 1000
+                or not values
+                or any(
+                    j not in metadata["limits"]
+                    or type(v) not in (int, float)
+                    or not metadata["limits"][j][0] <= v <= metadata["limits"][j][1]
+                    for j, v in values.items()
+                )
+            ):
+                raise ValueError("joint command outside the Nano envelope")
+            indices = [sim.names.index(j) for j in values]
+            start = sim.targets[indices].copy()
+            delta = np.array(list(values.values())) - start
+            count = max(
+                count,
+                int(
+                    np.ceil(
+                        np.max(
+                            1.5 * np.abs(delta) / np.array([speeds[j] for j in values])
+                        )
+                        / 0.01
+                    )
+                ),
+            )
+            for i in range(count):
+                f = (i + 1) / count
+                sim.targets[indices] = start + f * f * (3 - 2 * f) * delta
+                step()
+            for _ in range(20):
+                step()
+
+    phases = []
+    error = None
+    finished = False
+    frame_count = 0
+    with (
+        (out / "actions.jsonl").open("w") as log,
+        (out / "policy.log").open("w") as err,
+        tempfile.TemporaryDirectory() as empty,
+    ):
+        with subprocess.Popen(
+            [sys.executable, str(policy)],
+            cwd=empty,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=err,
+        ) as child:
+            try:
+                child.stdin.write(json.dumps(config).encode() + b"\n")
+                child.stdin.flush()
+                while line := child.stdout.readline():
+                    command = json.loads(line)
+                    op = command["op"]
+                    print(
+                        json.dumps(dict(tick=sim.tick, **command)), file=log, flush=True
+                    )
+                    if op == "sense":
+                        frame_count += 1
+                        packet = dict(
+                            encoders=np.asarray(sim.robot.get_qpos())[sim.dofs],
+                            stamp_ns=np.int64(sim.tick * 10_000_000),
+                        )
+                        for n in CAMERAS:
+                            packet[n] = sim.rig[n].render(
+                                rgb=True, depth=False, segmentation=False
+                            )[0]
+                        data = io.BytesIO()
+                        np.savez(data, **packet)
+                        payload = data.getvalue()
+                        child.stdin.write(struct.pack(">I", len(payload)) + payload)
+                    elif op == "table observation":
+                        child.stdin.write(b'{"ok":true}\n')
+                    elif op in ("wheel", "joint"):
+                        move(command)
+                        child.stdin.write(b'{"ok":true}\n')
+                    elif (
+                        op == "phase"
+                        and command["color"] in colors
+                        and command["name"]
+                        in ("locate", "pick", "carry", "place", "release", "back away")
+                    ):
+                        with (out / "phase-measurements.jsonl").open("a") as private:
+                            print(
+                                json.dumps(dict(next=command, **judge.result(sim))),
+                                file=private,
+                            )
+                        active_color = command["color"]
+                        judge.phase = command["name"]
+                        phases.append(dict(tick=sim.tick, **command))
+                        for name in CAMERAS:
+                            frame = sim.rig[name].render(
+                                rgb=True, depth=False, segmentation=False
+                            )[0]
+                            Image.fromarray(frame).save(
+                                out
+                                / f"{len(phases):02}-{command['color']}-{judge.phase.replace(' ', '-')}-{name}.png"
+                            )
+                        worker.save(out / "phases.json", phases)
+                        child.stdin.write(b'{"ok":true}\n')
+                    elif op == "finished":
+                        finished = True
+                        child.stdin.write(b'{"ok":true}\n')
+                        child.stdin.flush()
+                        break
+                    else:
+                        raise ValueError("Unknown transfer protocol command")
+                    child.stdin.flush()
+                if not finished:
+                    raise ValueError(
+                        "Controller stopped before completing the requested sequence"
+                    )
+            except Exception as exc:
+                error = str(exc)
+            finally:
+                child.stdin.close()
+                if not finished and child.poll() is None:
+                    child.terminate()
+                child.wait(timeout=10)
+    if record:
+        frame = publish()
+        Image.fromarray(frame).save(out / "frame.png")
+        worker.save(out / "trajectory.json", rows)
+    if error and (out / "policy.log").stat().st_size:
+        error = (out / "policy.log").read_text().strip().splitlines()[-1][-350:]
+    result = judge.result(sim)
+    passed = (
+        finished
+        and child.returncode == 0
+        and all(result["cubes"].get(n, {}).get("passed") for n in colors)
+        and not judge.collisions
+        and judge.supported == sim.tick
+        and result["max_joint_excursion_rad"] <= 0.005
+        and not sim.root_pose_writes
+    )
+    return result | dict(
+        passed=bool(passed),
+        error=error,
+        requested=colors,
+        phase=judge.phase,
+        onboard_observations=frame_count,
+        seed=seed,
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--colors", choices=COLORS, nargs="+", default=list(COLORS))
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args()
+    if len(args.colors) != len(set(args.colors)):
+        parser.error("select distinct cubes")
+    args.out.mkdir(parents=True, exist_ok=False)
+    result = execute(args.out, args.seed, args.colors)
+    worker.save(args.out / "result.json", result)
+    print(json.dumps(result, indent=2))
+    sys.exit(0 if result["passed"] else 1)

@@ -2,6 +2,7 @@
 
 import argparse
 import hashlib
+import itertools
 import json
 import math
 import os
@@ -18,6 +19,11 @@ MODELS = {
     "Nano": ("adora_nano/adora_nano.urdf", "left_j2_pitch", "right_j2_pitch"),
     "G1": ("g1/g1.urdf", "left_shoulder_pitch_joint", "right_shoulder_pitch_joint"),
 }
+CUBE_ORDERS = [
+    ",".join(order)
+    for count in (1, 2, 3)
+    for order in itertools.permutations(("red", "green", "blue"), count)
+]
 REFERENCE = "Inspect the left shoulder with a small positive joint movement."
 
 
@@ -58,6 +64,12 @@ def describe(robot):
 
 
 def validate(plan, meta):
+    if plan.get("kind") == "table-transfer":
+        if meta["robot"] != "Nano" or plan.get("color_order") not in CUBE_ORDERS:
+            raise ValueError(
+                "Table transfer requires an ordered selection of distinct Nano floor cubes"
+            )
+        return dict(kind="table-transfer", color_order=plan["color_order"])
     if plan.get("kind") == "visual-approach":
         if (
             meta["robot"] != "Nano"
@@ -99,6 +111,23 @@ def measured_feedback(path, meta):
         raise ValueError(
             "The selected run and controller must match the current robot model"
         )
+    if previous.get("kind") == "table-transfer":
+        # A revision may use the public verdict. World poses and contact geometry stay private.
+        verdicts = {
+            color: previous["cubes"].get(color, {}).get("passed", False)
+            for color in previous["requested"]
+        }
+        return {
+            k: previous[k]
+            for k in (
+                "robot",
+                "kind",
+                "requested",
+                "phase",
+                "task_success",
+                "controller_hash",
+            )
+        } | {"settled": verdicts}
     if previous.get("kind") == "visual-approach":
         return {
             k: previous[k]
@@ -282,18 +311,25 @@ def prepare(args, meta):
         )
         if args.robot == "Nano":
             schema["properties"].update(
-                kind=dict(type="string", enum=["joint-inspection", "visual-approach"]),
+                kind=dict(
+                    type="string",
+                    enum=["joint-inspection", "visual-approach", "table-transfer"],
+                ),
                 color=dict(type="string", enum=["red", "green", "blue"]),
+                color_order=dict(type="string", enum=CUBE_ORDERS),
                 standoff_m=dict(type="number"),
             )
-            schema["required"] += ["kind", "color", "standoff_m"]
+            schema["required"] += ["kind", "color", "standoff_m", "color_order"]
             prompt = (
-                "Select one of two Nano capabilities. For joint-inspection use a fixed-base shoulder "
+                "Select one Nano capability. For joint-inspection use a fixed-base shoulder "
                 "displacement of 0.03–0.15 rad in magnitude, within limits "
                 + json.dumps({j: meta["limits"][j] for j in meta["allowed_joints"]})
                 + ". For visual-approach use the floating base to approach one named red, green or blue "
                 "floor cube and stop 0.40–0.55 metres from it (default 0.45 m). Use only onboard "
-                "RGB and encoders. Picking, placing, unspecified targets, excessive displacements "
+                "RGB and encoders. For table-transfer use the left arm to pick floor cubes and place "
+                "them on the coffee table. Select named colors in their requested order, or red,green,blue "
+                "for all three. This is a development simulation. Other destinations, unspecified "
+                "objects, excessive displacements "
                 "and other motions are unsupported. Set supported=false for these. Fill unused "
                 "fields with legal defaults. Operator instruction: " + args.task
             )
@@ -330,7 +366,7 @@ def simulate(args, meta):
         raise ValueError("Controller and robot model differ")
     control = validate(plan, meta)
     (args.out / "controller.json").write_bytes(original)
-    mobile = control.get("kind") == "visual-approach"
+    mobile = control.get("kind") in ("visual-approach", "table-transfer")
     fixture = (
         "floating base, wheel contact under gravity"
         if mobile
@@ -359,6 +395,23 @@ def simulate(args, meta):
     )
     if mobile:
         sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+        if control["kind"] == "table-transfer":
+            from run_rgb_transfer import execute
+
+            result = execute(
+                args.out,
+                getattr(args, "seed", 0),
+                control["color_order"].split(","),
+                record=True,
+            )
+            return result | dict(
+                robot=args.robot,
+                fixture="living-room",
+                controller_hash=hashlib.sha256(original).hexdigest(),
+                model_hash=meta["model_hash"],
+                kind=control["kind"],
+                task_success=result["passed"],
+            )
         from run_rgb_approach import trial
 
         result = trial(args.out, getattr(args, "seed", 0), plan)

@@ -29,6 +29,7 @@ def main():
         action="store_true",
         help="Verify a previously stopped run after restarting Studio",
     )
+    p.add_argument("--transfer", choices=["red", "three"])
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
@@ -102,6 +103,84 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.transfer:
+        wanted = ["red"] if a.transfer == "red" else ["red", "green", "blue"]
+        if a.recover:
+            page("evidence")
+            row = done(
+                lambda w: w["result"] and w["result"].get("kind") == "table-transfer",
+                "Transfer evidence restored",
+            )
+            assert (
+                row["result"]["task_success"] and row["result"]["requested"] == wanted
+            )
+            (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
+            return
+        page("task")
+        click("aisle_task.nano")
+        click("aisle_task.instruction")
+        remote(
+            "key",
+            "w=0",
+            "c=KeyA",
+            "logo=1" if sys.platform == "darwin" else "ctrl=1",
+            "wait=1",
+        )
+        request = (
+            "Move the red floor cube onto the coffee table."
+            if a.transfer == "red"
+            else "Move all three floor cubes onto the coffee table in red, green, blue order."
+        )
+        remote("text", "w=0", "t=" + request, "wait=1")
+        click(
+            "aisle_task.octos" if a.provider == "octos-deepseek" else "aisle_task.codex"
+        )
+        row = done(
+            lambda w: w["controller"]
+            and w["controller"].get("kind") == "table-transfer"
+            and not w["busy"],
+            "Transfer authored",
+            180,
+        )
+        assert (
+            row["controller"]["color_order"] == ",".join(wanted)
+            and row["controller"]["provider"] == a.provider
+        )
+        grab("transfer-task")
+        page("scene")
+        click("aisle_scene.inspect")
+        done(lambda w: not w["busy"] and w["scene_joints"] == 17, "Nano scene checked")
+        grab("transfer-scene")
+        page("run")
+        click("aisle_run.start_run")
+        live = done(
+            lambda w: w["busy"]
+            and w["progress"]
+            and w["progress"].get("kind") == "table-transfer",
+            "Transfer stream active",
+            90,
+        )
+        step = live["progress"]["step"]
+        done(
+            lambda w: w["busy"] and w["progress"]["step"] > step, "Fresh transfer frame"
+        )
+        grab("transfer-run")
+        row = done(
+            lambda w: not w["busy"]
+            and w["result"]
+            and w["result"].get("kind") == "table-transfer",
+            "Transfer adjudicated",
+            600,
+        )
+        result = row["result"]
+        page("evidence")
+        grab("transfer-evidence")
+        checks.append(dict(check="Transfer physical verdict", **result))
+        (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
+        assert result["task_success"] and all(
+            result["cubes"][c]["passed"] for c in wanted
+        ), result
+        return
     if a.recover:
         page("evidence")
         row = done(

@@ -170,7 +170,8 @@ impl Panel {
             .as_ref()
             .zip(w.progress["step"].as_u64())
             .map(|(p, i)| (p.clone(), i));
-        let mobile = w.progress["kind"] == "visual-approach";
+        let transfer = w.progress["kind"] == "table-transfer";
+        let mobile = transfer || w.progress["kind"] == "visual-approach";
         let height = if mobile { 360 } else { 320 };
         self.label(
             cx,
@@ -184,7 +185,9 @@ impl Panel {
         self.label(
             cx,
             ids!(measure_label),
-            if mobile {
+            if transfer {
+                "Table transfer"
+            } else if mobile {
                 "Cube approach"
             } else {
                 "Measured joint response"
@@ -206,7 +209,14 @@ impl Panel {
                 self.frame = None;
             }
         }
-        let text = if mobile {
+        let text = if transfer {
+            format!(
+                "{} cube · {}\n{:.1} s simulated",
+                w.progress["color"].as_str().unwrap_or(""),
+                w.progress["state"].as_str().unwrap_or("Starting"),
+                w.progress["step"].as_u64().unwrap_or(1).saturating_sub(1) as f64 * 0.01
+            )
+        } else if mobile {
             let distance = w.progress["distance_m"]
                 .as_f64()
                 .map(|v| format!("{v:.3} m"))
@@ -264,11 +274,13 @@ impl PluginPanel for Panel {
             );
             self.light = Some(light);
         }
-        let mobile = match self.page.as_str() {
-            "aisle_evidence" => w.evidence["kind"] == "visual-approach",
-            "aisle_run" if !w.progress.is_null() => w.progress["kind"] == "visual-approach",
-            _ => w.plan["kind"] == "visual-approach",
+        let kind = match self.page.as_str() {
+            "aisle_evidence" => &w.evidence["kind"],
+            "aisle_run" if !w.progress.is_null() => &w.progress["kind"],
+            _ => &w.plan["kind"],
         };
+        let transfer = kind == "table-transfer";
+        let mobile = transfer || kind == "visual-approach";
         self.label(
             cx,
             ids!(context_label),
@@ -298,6 +310,17 @@ impl PluginPanel for Panel {
                 }
                 let detail = if w.plan.is_null() {
                     "Choose a reference task or use an agent to prepare a controller.".into()
+                } else if transfer {
+                    format!(
+                        "Move floor cubes to the coffee table\n{} · {} · revision {}/{}",
+                        w.plan["color_order"]
+                            .as_str()
+                            .unwrap_or("")
+                            .replace(",", " → "),
+                        w.plan["policy_model"].as_str().unwrap_or("Reference"),
+                        w.revision_index().unwrap_or(0) + 1,
+                        w.revisions.len()
+                    )
                 } else if mobile {
                     format!(
                         "Approach {} cube · stop at {:.2} m\n{} · revision {}/{}",
@@ -416,7 +439,41 @@ impl PluginPanel for Panel {
                     }
                 };
                 self.label(cx, ids!(verdict), verdict);
-                let text = if mobile {
+                let text = if transfer {
+                    let mut lines = vec![];
+                    for color in w.evidence["requested"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|s| s.as_str())
+                    {
+                        let record = &w.evidence["cubes"][color];
+                        lines.push(format!(
+                            "{} cube · {} · {} / 100 final table-contact steps",
+                            color,
+                            if record["passed"] == true {
+                                "settled"
+                            } else {
+                                "incomplete"
+                            },
+                            record["table_contact_tail_ticks"]
+                                .as_u64()
+                                .unwrap_or_default()
+                        ));
+                    }
+                    lines.push(format!(
+                        "Wheel support {}/{} steps · {} furniture contact pairs",
+                        w.evidence["wheel_supported_ticks"],
+                        w.evidence["physics_ticks"],
+                        w.evidence["robot_furniture_contacts"]
+                            .as_object()
+                            .map_or(0, |x| x.len())
+                    ));
+                    if let Some(reason) = w.evidence["error"].as_str() {
+                        lines.push(reason.to_owned());
+                    }
+                    lines.join("\n")
+                } else if mobile {
                     format!("{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
                       w.evidence["color"].as_str().unwrap_or(""),w.evidence["standoff_m"].as_f64().unwrap_or_default(),w.evidence["final_distance_m"].as_f64().unwrap_or_default(),w.evidence["wheel_supported_ticks"],w.evidence["physics_ticks"],w.evidence["obstacle_contact_ticks"])
                 } else if let Some(angle) = w.evidence["measured_delta"].as_f64() {
@@ -464,13 +521,21 @@ impl PluginPanel for Panel {
                 self.label(
                     cx,
                     ids!(trace_label),
-                    if mobile {
+                    if transfer {
+                        "Cubes in contact with the tabletop"
+                    } else if mobile {
                         "RGB-estimated range · metres"
                     } else {
                         "Measured joint angle · radians"
                     },
                 );
-                let scale = if mobile && !trace.is_empty() {
+                let scale = if transfer && !trace.is_empty() {
+                    format!(
+                        "Final table contacts {} · {:.1} s simulated",
+                        trace[trace.len() - 1],
+                        w.evidence["physics_ticks"].as_f64().unwrap_or_default() * 0.01
+                    )
+                } else if mobile && !trace.is_empty() {
                     format!(
                         "First {:.3} m                         Last {:.3} m",
                         trace[0],
