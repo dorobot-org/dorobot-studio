@@ -5,10 +5,12 @@
 //! panics, so nothing here may panic on message data: every shape is checked
 //! through serde or by length, and bad input comes back as `Err`.
 
+use crate::map_view::grid_rgba;
+use crate::nav_scene::{nav_layer, NavLayer};
 use crate::route::Sink;
 use dviz_protocol::{
-    binary_formats, parse_points_xyz_f32, Arrows3DData, Boxes3DData, LineStrips3DData, MvizMessage,
-    Points3DData, ScalarData, TextData, Transform3DData,
+    binary_formats, parse_grid2d, parse_points_xyz_f32, Arrows3DData, Boxes3DData, Grid2DHeader,
+    LineStrips3DData, MvizMessage, Points3DData, ScalarData, TextData, Transform3DData,
 };
 use rerun::sink::MemorySinkStorage;
 use rerun::{RecordingStream, RecordingStreamBuilder};
@@ -69,7 +71,14 @@ impl RerunSink {
         let rec = RecordingStreamBuilder::new(app_id)
             .connect_grpc_opts(format!("rerun+http://{addr}/proxy"))
             .map_err(|e| format!("Could not connect to the Rerun viewer at {addr}: {e}"))?;
-        Ok((RerunSink { rec }, version))
+        Ok((RerunSink::new(rec), version))
+    }
+
+    /// Wraps `rec`, whose world is Z-up (as the robot's map frame is).
+    fn new(rec: RecordingStream) -> Self {
+        // A failure only leaves Rerun's default (Y-up) view, so it is not fatal.
+        let _ = rec.log_static("/", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP());
+        Self { rec }
     }
 
     /// Records into memory; for tests.
@@ -77,7 +86,7 @@ impl RerunSink {
         let (rec, storage) = RecordingStreamBuilder::new(app_id)
             .memory()
             .expect("an in-memory recording needs no resources");
-        (RerunSink { rec }, storage)
+        (RerunSink::new(rec), storage)
     }
 
     /// Waits until everything logged so far has reached the sink.
@@ -241,8 +250,87 @@ const POINTS_JSON_COLOR: [u8; 4] = [200, 200, 200, 255];
 const BOXES_COLOR: [u8; 4] = [100, 150, 200, 255];
 const ARROWS_COLOR: [u8; 4] = [255, 100, 100, 255];
 const STRIPS_COLOR: [u8; 4] = [100, 200, 255, 255];
+/// Height (m) that gets the first and the last colour of a coloured cloud.
+const CLOUD_Z_MIN: f32 = -0.5;
+const CLOUD_Z_MAX: f32 = 2.5;
 /// Length (m) of the axes drawn at every `transform3d` entity.
 const TRANSFORM_AXIS_LENGTH: f32 = 0.3;
+
+/// The turbo colour map at `t` in 0..=1 (Mikhailov's polynomial fit).
+fn turbo(t: f32) -> [u8; 4] {
+    let t = t.clamp(0.0, 1.0);
+    let channel = |c: [f32; 6]| {
+        let v = c[0] + t * (c[1] + t * (c[2] + t * (c[3] + t * (c[4] + t * c[5]))));
+        (v.clamp(0.0, 1.0) * 255.0).round() as u8
+    };
+    [
+        channel([
+            0.135_721_38,
+            4.615_392_6,
+            -42.660_322_58,
+            132.131_082_34,
+            -152.942_393_96,
+            59.286_379_43,
+        ]),
+        channel([
+            0.091_402_61,
+            2.194_188_39,
+            4.842_966_58,
+            -14.185_033_33,
+            4.277_298_57,
+            2.829_566_04,
+        ]),
+        channel([
+            0.106_673_3,
+            12.641_946_08,
+            -60.582_048_36,
+            110.362_767_71,
+            -89.903_109_12,
+            27.348_249_73,
+        ]),
+        255,
+    ]
+}
+
+/// Turbo colour of each point by height, from `CLOUD_Z_MIN` to `CLOUD_Z_MAX`.
+fn height_colors(points: &[[f32; 3]]) -> Vec<rerun::Color> {
+    points
+        .iter()
+        .map(|p| {
+            // A NaN height takes the lowest colour.
+            let z = if p[2].is_nan() { CLOUD_Z_MIN } else { p[2] };
+            rgba(turbo((z - CLOUD_Z_MIN) / (CLOUD_Z_MAX - CLOUD_Z_MIN)))
+        })
+        .collect()
+}
+
+/// The `grid2d` picture as a flat two-triangle quad on the ground (z = 0):
+/// the lower-left corner at `origin`, `width * resolution` along x and
+/// `height * resolution` along y, turned by the origin's yaw. Static, so a
+/// viewer that connects later still gets the map.
+fn grid_mesh(header: &Grid2DHeader, cells: &[u8]) -> Result<rerun::Mesh3D, String> {
+    let [ox, oy, yaw] = header.origin;
+    if !header.origin.iter().all(|v| v.is_finite()) {
+        return Err("grid2d origin is not finite".to_string());
+    }
+    let w = header.width as f32 * header.resolution;
+    let h = header.height as f32 * header.resolution;
+    let (sin, cos) = yaw.sin_cos();
+    let corner = |x: f32, y: f32| [ox + x * cos - y * sin, oy + x * sin + y * cos, 0.0];
+    // The picture's row 0 is the largest y (see `grid_rgba`), so v = 1 is y = 0.
+    Ok(rerun::Mesh3D::new([
+        corner(0.0, 0.0),
+        corner(w, 0.0),
+        corner(w, h),
+        corner(0.0, h),
+    ])
+    .with_triangle_indices([[0, 1, 2], [0, 2, 3]])
+    .with_vertex_texcoords([[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]])
+    .with_albedo_texture(
+        rerun::components::ImageFormat::rgba8([header.width, header.height]),
+        grid_rgba(header, cells),
+    ))
+}
 
 fn rgba(c: [u8; 4]) -> rerun::Color {
     rerun::Color::from_unmultiplied_rgba(c[0], c[1], c[2], c[3])
@@ -299,12 +387,16 @@ impl Sink for RerunSink {
                         .get("radius")
                         .and_then(|v| v.as_f64())
                         .map_or(0.03, |v| v as f32);
-                    let color = lenient_color(&msg.data, POINTS_COLOR);
+                    let colors = if nav_layer(entity) == Some(NavLayer::Cloud) {
+                        height_colors(&points)
+                    } else {
+                        vec![rgba(lenient_color(&msg.data, POINTS_COLOR))]
+                    };
                     rec.log(
                         entity,
                         &rerun::Points3D::new(points)
                             .with_radii([radius])
-                            .with_colors([rgba(color)]),
+                            .with_colors(colors),
                     )
                 }
                 _ => {
@@ -312,14 +404,25 @@ impl Sink for RerunSink {
                     let positions = data
                         .positions
                         .ok_or("points3d needs positions or a binary payload")?;
+                    let colors = if nav_layer(entity) == Some(NavLayer::Cloud) {
+                        height_colors(&positions)
+                    } else {
+                        vec![rgba(data.color.unwrap_or(POINTS_JSON_COLOR))]
+                    };
                     rec.log(
                         entity,
                         &rerun::Points3D::new(positions)
                             .with_radii([data.radius.unwrap_or(0.05)])
-                            .with_colors([rgba(data.color.unwrap_or(POINTS_JSON_COLOR))]),
+                            .with_colors(colors),
                     )
                 }
             },
+            "grid2d" => {
+                let header: Grid2DHeader = parse!(msg, Grid2DHeader);
+                let cells = parse_grid2d(&header, binary.ok_or("grid2d needs a binary payload")?)
+                    .ok_or("grid2d payload does not match its header")?;
+                rec.log_static(entity, &grid_mesh(&header, cells)?)
+            }
             "boxes3d" => {
                 let data = parse!(msg, Boxes3DData);
                 let mut boxes = if data.half_sizes {
@@ -584,6 +687,204 @@ mod tests {
                 "transform itself missing for {data}: {schemas:?}"
             );
         }
+    }
+
+    /// Every batch recorded so far for `entity`.
+    fn recorded_batches(
+        storage: &MemorySinkStorage,
+        entity: &str,
+    ) -> Vec<rerun::external::arrow::array::RecordBatch> {
+        storage
+            .take()
+            .into_iter()
+            .filter_map(|msg| match msg {
+                rerun::log::LogMsg::ArrowMsg(_, arrow) => Some(arrow.batch.clone()),
+                _ => None,
+            })
+            .filter(|b| format!("{:?}", b.schema()).contains(&format!("\"/{entity}\"")))
+            .collect()
+    }
+
+    /// The innermost values of every column whose name starts with `prefix`.
+    fn leaves(
+        batches: &[rerun::external::arrow::array::RecordBatch],
+        prefix: &str,
+    ) -> Vec<rerun::external::arrow::array::ArrayRef> {
+        use rerun::external::arrow::array::{Array, FixedSizeListArray, ListArray};
+        let mut out = Vec::new();
+        for b in batches {
+            for (f, c) in b.schema().fields().iter().zip(b.columns()) {
+                if !f.name().starts_with(prefix) {
+                    continue;
+                }
+                let mut a = c.clone();
+                loop {
+                    if let Some(l) = a.as_any().downcast_ref::<ListArray>() {
+                        a = l.values().clone();
+                    } else if let Some(l) = a.as_any().downcast_ref::<FixedSizeListArray>() {
+                        a = l.values().clone();
+                    } else {
+                        break;
+                    }
+                }
+                out.push(a);
+            }
+        }
+        out
+    }
+
+    fn f32_leaves(
+        batches: &[rerun::external::arrow::array::RecordBatch],
+        prefix: &str,
+    ) -> Vec<Vec<f32>> {
+        use rerun::external::arrow::array::Float32Array;
+        leaves(batches, prefix)
+            .iter()
+            .map(|a| {
+                a.as_any()
+                    .downcast_ref::<Float32Array>()
+                    .expect("f32 leaf")
+                    .values()
+                    .to_vec()
+            })
+            .collect()
+    }
+
+    fn grid_message(width: u32, height: u32, origin: [f32; 3]) -> MvizMessage {
+        msg(
+            "grid2d",
+            json!({
+                "width": width, "height": height, "resolution": 0.5,
+                "origin": origin, "kind": "occupancy"
+            }),
+        )
+    }
+
+    #[test]
+    fn grid2d_logs_textured_mesh() {
+        let (mut sink, storage) = RerunSink::memory("test");
+        let cells = vec![0u8; 12];
+        let m = grid_message(4, 3, [1.0, 2.0, 0.0]);
+        assert_eq!(sink.log("tracer/map/grid", &m, Some(&cells)), Ok(()));
+        sink.flush();
+        let batches = recorded_batches(&storage, "tracer/map/grid");
+        let schemas: Vec<String> = batches
+            .iter()
+            .map(|b| format!("{:?}", b.schema()))
+            .collect();
+        for component in [
+            "Mesh3D:vertex_positions",
+            "Mesh3D:vertex_texcoords",
+            "Mesh3D:albedo_texture_buffer",
+            "Mesh3D:albedo_texture_format",
+        ] {
+            assert!(
+                schemas.iter().any(|s| s.contains(component)),
+                "no {component}: {schemas:?}"
+            );
+        }
+        let positions = f32_leaves(&batches, "Mesh3D:vertex_positions");
+        assert_eq!(positions.len(), 1);
+        let xyz = &positions[0];
+        assert_eq!(xyz.len(), 12, "a quad has four vertices");
+        assert!(xyz.chunks(3).all(|p| p[2] == 0.0), "not flat: {xyz:?}");
+        // Unrotated: the quad spans origin .. origin + (4, 3) * 0.5.
+        let xs: Vec<f32> = xyz.chunks(3).map(|p| p[0]).collect();
+        let ys: Vec<f32> = xyz.chunks(3).map(|p| p[1]).collect();
+        assert_eq!(xs.iter().cloned().fold(f32::MAX, f32::min), 1.0);
+        assert_eq!(xs.iter().cloned().fold(f32::MIN, f32::max), 3.0);
+        assert_eq!(ys.iter().cloned().fold(f32::MAX, f32::min), 2.0);
+        assert_eq!(ys.iter().cloned().fold(f32::MIN, f32::max), 3.5);
+        // Static: it must survive a viewer connecting late.
+        assert!(
+            schemas.iter().all(|s| !s.contains("log_time")),
+            "mesh was logged on a timeline: {schemas:?}"
+        );
+    }
+
+    #[test]
+    fn grid2d_yaw_rotates_the_corners() {
+        let (mut sink, storage) = RerunSink::memory("test");
+        let m = grid_message(2, 2, [0.0, 0.0, std::f32::consts::FRAC_PI_2]);
+        assert_eq!(sink.log("map/grid", &m, Some(&[0u8; 4])), Ok(()));
+        sink.flush();
+        let batches = recorded_batches(&storage, "map/grid");
+        let xyz = &f32_leaves(&batches, "Mesh3D:vertex_positions")[0];
+        // A 1 m square turned a quarter turn about its corner spans x in -1..0.
+        let max_x = xyz.chunks(3).map(|p| p[0]).fold(f32::MIN, f32::max);
+        let min_x = xyz.chunks(3).map(|p| p[0]).fold(f32::MAX, f32::min);
+        assert!(max_x.abs() < 1e-5 && (min_x + 1.0).abs() < 1e-5, "{xyz:?}");
+    }
+
+    #[test]
+    fn bad_grid2d_is_an_error_not_a_panic() {
+        let (mut sink, _storage) = RerunSink::memory("test");
+        let m = grid_message(4, 3, [0.0; 3]);
+        assert!(sink.log("map/grid", &m, Some(&[0u8; 5])).is_err());
+        assert!(sink.log("map/grid", &m, None).is_err());
+        let bad = msg("grid2d", json!({"width": "x"}));
+        assert!(sink.log("map/grid", &bad, Some(&[])).is_err());
+        let nan = msg(
+            "grid2d",
+            json!({"width": 1, "height": 1, "resolution": 0.5, "origin": [1e39, 0, 0],
+                   "kind": "occupancy"}),
+        );
+        assert!(sink.log("map/grid", &nan, Some(&[0])).is_err());
+    }
+
+    fn cloud_message() -> (MvizMessage, Vec<u8>) {
+        let bin = xyz_bytes(&[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 2.0]]);
+        let mut m = msg("points3d", json!({}));
+        m.format = Some(binary_formats::POINTS_XYZ_F32.to_string());
+        m.count = Some(3);
+        (m, bin)
+    }
+
+    #[test]
+    fn cloud_colored_by_height() {
+        let (mut sink, storage) = RerunSink::memory("test");
+        let (m, bin) = cloud_message();
+        assert_eq!(sink.log("tracer/sensors/cloud", &m, Some(&bin)), Ok(()));
+        sink.flush();
+        let batches = recorded_batches(&storage, "tracer/sensors/cloud");
+        let colors = leaves(&batches, "Points3D:colors");
+        assert_eq!(colors.len(), 1);
+        let colors = colors[0]
+            .as_any()
+            .downcast_ref::<rerun::external::arrow::array::UInt32Array>()
+            .expect("u32 colors")
+            .values()
+            .to_vec();
+        assert_eq!(colors.len(), 3, "one color per point");
+        assert!(
+            colors[0] != colors[1] && colors[1] != colors[2] && colors[0] != colors[2],
+            "{colors:?}"
+        );
+    }
+
+    #[test]
+    fn other_clouds_keep_one_color() {
+        let (mut sink, storage) = RerunSink::memory("test");
+        let (m, bin) = cloud_message();
+        assert_eq!(sink.log("tracer/sensors/scan", &m, Some(&bin)), Ok(()));
+        sink.flush();
+        let batches = recorded_batches(&storage, "tracer/sensors/scan");
+        assert_eq!(leaves(&batches, "Points3D:colors")[0].len(), 1);
+    }
+
+    #[test]
+    fn root_is_z_up() {
+        let (sink, storage) = RerunSink::memory("test");
+        sink.flush();
+        let batches = recorded_batches(&storage, "");
+        let schemas: Vec<String> = batches
+            .iter()
+            .map(|b| format!("{:?}", b.schema()))
+            .collect();
+        assert!(
+            schemas.iter().any(|s| s.contains("ViewCoordinates:")),
+            "no ViewCoordinates at the root: {schemas:?}"
+        );
     }
 
     #[test]
