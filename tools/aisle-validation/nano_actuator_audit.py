@@ -47,6 +47,10 @@ class MotorWriter:
         self.stream = stream
         self.envelope = envelope
         self.previous = np.asarray(initial, dtype="<f8").copy()
+        if self.previous.shape != envelope.low.shape or not envelope.valid(
+            self.previous, self.previous
+        ):
+            raise ValueError("Invalid starting motor targets")
         stream.write(self.previous.tobytes())
         self.rejected = 0
 

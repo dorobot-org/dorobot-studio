@@ -24,6 +24,7 @@ from nano_living import (
     CAMERAS,
     NAVIGATION_POSTURE,
     LivingSimulation,
+    WHEEL_RADIUS,
     WheelGuard,
     wheel_rates,
 )
@@ -223,7 +224,11 @@ def execute(out, seed, colors, record=False):
         n: {k: sim.camera_specs[n][k] for k in camera_fields} for n in CAMERAS
     }
     config = dict(
-        model=str(MODEL), joint_names=sim.names, cameras=calibration, colors=colors
+        model=str(MODEL),
+        joint_names=sim.names,
+        cameras=calibration,
+        colors=colors,
+        rolling_radius_m=WHEEL_RADIUS,
     )
     worker.save(out / "calibration.json", config)
     metadata = worker.describe("Nano")

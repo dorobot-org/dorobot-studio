@@ -108,7 +108,9 @@ def prepare(directory, controller, seeds=None):
     )
     directory.mkdir(parents=True, exist_ok=False)
     with open(
-        directory / "private-layouts.json", "x", opener=lambda p, flags: os.open(p, flags, 0o600)
+        directory / "private-layouts.json",
+        "x",
+        opener=lambda p, flags: os.open(p, flags, 0o600),
     ) as file:
         json.dump(members, file)
     (directory / "controller.json").write_bytes(controller.read_bytes())
@@ -117,6 +119,19 @@ def prepare(directory, controller, seeds=None):
         manifest_sha256=worker.digest(directory / "suite.json"),
         split=public["split"],
         cases=len(seeds),
+    )
+
+
+def cube_passed(cube, table_height):
+    height = cube["final_position_m"][2]
+    return (
+        cube["opposing_finger_airborne_ticks"] >= 20
+        and cube["table_contact_tail_ticks"] == 100
+        and cube["detached"]
+        and cube["min_finger_clearance_tail_m"] > 0.001
+        and cube["nearest_table_edge_m"] > 0.035
+        and table_height + 0.015 <= height <= table_height + 0.037
+        and cube["settle_motion_m"] < 0.003
     )
 
 
@@ -169,6 +184,11 @@ def receipt(case, member, plan):
         + int(not audit["initial_targets_valid"])
         + r["root_pose_writes"]
     )
+    if any(
+        cube["passed"] != cube_passed(cube, r["table_top_m"])
+        for cube in r["cubes"].values()
+    ):
+        raise ValueError("Cube measurements differ from recorded verdict")
     scored = (
         set(r["cubes"]) == set(COLORS)
         and all(c["passed"] for c in r["cubes"].values())
@@ -190,6 +210,8 @@ def receipt(case, member, plan):
         motor_sha256=audit["sha256"],
         actions_sha256=worker.digest(case / "actions.jsonl"),
         result_sha256=worker.digest(case / "result.json"),
+        calibration_sha256=worker.digest(case / "calibration.json"),
+        source_sha256=worker.digest(case / "source.json"),
         error=r["error"],
         cubes=r["cubes"],
         robot_furniture_contacts=r["robot_furniture_contacts"],

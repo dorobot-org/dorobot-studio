@@ -50,6 +50,8 @@ class Controller:
         self.targets = None
         self.last_stamp = -1
         self.grip = "left_j6_gripper"
+        self.wheel_pair = [self.names.index(f"wheel_{i}_joint") for i in (2, 3)]
+        self.wheel_radius = config["rolling_radius_m"]
 
     def send(self, op, **fields):
         print(json.dumps(dict(op=op, **fields), allow_nan=False), flush=True)
@@ -184,7 +186,7 @@ class Controller:
                 self.drive()
                 continue
             angle = math.atan2(edge["normal"][1], edge["normal"][0])
-            distance = edge["distance"]
+            distance = self.last_rim_distance = edge["distance"]
             self.act(
                 "table observation",
                 distance_m=float(distance),
@@ -205,6 +207,7 @@ class Controller:
                 self.drive()
                 final = self.table()
                 if final is not None:
+                    self.last_rim_distance = final["distance"]
                     return final
                 self.drive()
                 continue
@@ -218,13 +221,24 @@ class Controller:
 
     def back_away(self, color, exposure=None):
         self.phase("back away", color)
+        # Never lower the arm over the table when a wrist or cube occludes its rim.
+        # Opposed wheel displacements cancel yaw during the straight retreat.
+        packet = self.sense() if exposure is None else exposure
+        start = packet["encoders"][self.wheel_pair]
+        required = max(0.0, 0.57 - self.last_rim_distance)
         for _ in range(65):
-            edge = self.table(exposure)
-            exposure = None
-            if edge is None or edge["distance"] > 0.57:
+            edge = self.table(packet)
+            delta = packet["encoders"][self.wheel_pair] - start
+            retreat = self.wheel_radius * (delta[1] - delta[0]) / math.sqrt(3)
+            if (
+                edge is not None
+                and edge["distance"] > 0.57
+                and retreat >= required - 0.07
+            ) or (edge is None and retreat >= required + 0.06):
                 self.drive()
                 break
             self.drive(-0.065, 0)
+            packet = self.sense()
         else:
             raise ValueError("Table clearance was not recovered")
         self.joints(
