@@ -1,0 +1,2 @@
+{"ts":"2026-11-23T17:15:51.801Z","level":"stdout","node":"astar_planner","stream":"stdout","msg":"[astar_planner] ../../modules/planner/global_planner/astar_planner_dora/config/astar_planner_tracer.json: map /home/nvidia/nvme/tracer_slam/maps/garage_20261121/map.yaml (187x208), inscribed 0.09 m, inflation 0.55 m, unknown blocked, replan 1 s","target":null,"fields":null}
+{"ts":"2026-11-23T18:05:18.259Z","level":"stdout","node":"astar_planner","stream":"stdout","msg":"[astar_planner] cancelled","target":null,"fields":null}

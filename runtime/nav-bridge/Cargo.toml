@@ -12,6 +12,7 @@ zenoh = { version = "=1.10.2", default-features = false, features = ["transport_
 dviz-protocol = { path = "../../crates/dviz-protocol" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9"
 
 # Own workspace: not part of the Studio root workspace or runtime/.
 [workspace]

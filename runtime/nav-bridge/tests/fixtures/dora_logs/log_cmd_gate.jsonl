@@ -1,0 +1,3 @@
+{"ts":"2026-11-23T17:15:51.857Z","level":"stdout","node":"cmd_gate","stream":"stdout","msg":"[cmd_gate_dora] ../../modules/safety/cmd_gate_dora/config/cmd_gate_tracer.json: stale_cmd 0.5 s, stale_status 0.5 s, cancel_after 2 s, max_vx 0.200000, max_wz 0.600000; starts DISARMED","target":null,"fields":null}
+{"ts":"2026-11-23T17:15:52.744Z","level":"stdout","node":"cmd_gate","stream":"stdout","msg":"[cmd_gate_dora] disarmed (disarmed)","target":null,"fields":null}
+{"ts":"2026-11-23T18:05:18.178Z","level":"stdout","node":"cmd_gate","stream":"stdout","msg":"[cmd_gate_dora] localization lost for 2 s: goal cancelled","target":null,"fields":null}

@@ -1,0 +1,143 @@
+# Plan 7 M5: the whole Dora navigation stack on the Tracer Mini (Orin; Mid-360 on eno1, base on can_usb). The base is NOT
+# armed at start: tracer_dora_node only listens and cmd_gate outputs zero until a person arms both (tools/tracer_ctl.py arm).
+# Run from this directory (nodes use paths relative to it): dora start tracer_nav.yml --name tracer-nav  (or autostart.sh)
+nodes:
+  - id: livox
+    path: ../../build/modules/drivers/livox_driver/livox_dora_driver
+    env:
+      POINT_CLOUD_FORMAT: MID360
+      LIVOX_CONFIG: ../../modules/drivers/livox_driver/config/MID360_tracer.json
+    outputs: [pointcloud, imu]
+  - id: super_lio
+    path: ../../build/modules/odometry/super_lio_dora/super_lio_dora_node
+    restart_policy: on-failure   # exits 3 on an IMU loop-back; dora restarts it
+    env:
+      CLOUD_BODY: "1"
+    inputs:
+      pointcloud: {source: livox/pointcloud, queue_size: 4}
+      imu: {source: livox/imu, queue_size: 400}
+    outputs: [odom, odom_imu, cloud_world, cloud_body]
+  - id: hdl
+    path: ../../build/modules/localization/hdl_localization_dora/hdl_localization_dora_node
+    args: hdl_tracer_live.json
+    inputs:
+      pointcloud: {source: livox/pointcloud, queue_size: 4}
+      imu: {source: livox/imu, queue_size: 400}
+      initialpose: loc_refine/initialpose
+      manual_initialpose: navcmd/initialpose
+    outputs: [pose]
+  - id: pose_fuser
+    path: ../../build/modules/localization/pose_fuser/pose_fuser_node
+    inputs:
+      odom: {source: super_lio/odom, queue_size: 100}
+      map_pose: {source: hdl/pose, queue_size: 10}
+    outputs: [map_odom, map_base]
+  - id: loc_refine
+    path: ../../build/modules/localization/loc_refine_dora/loc_refine_dora_node
+    env:
+      MAP_PCD: /home/nvidia/nvme/tracer_slam/maps/garage_20261121/map.pcd
+    inputs:
+      cloud_body: {source: super_lio/cloud_body, queue_size: 10}
+      odom: {source: super_lio/odom, queue_size: 100}
+      trust: loc_trust/status
+      map_pose: hdl/pose
+      manual_initialpose: navcmd/initialpose
+    outputs: [initialpose, state, result]
+  - id: loc_trust
+    path: ../../build/modules/localization/loc_trust_dora/loc_trust_dora_node
+    inputs:
+      initialpose: loc_refine/initialpose
+      manual_initialpose: navcmd/initialpose
+      odom: {source: super_lio/odom, queue_size: 100}
+      cloud: {source: super_lio/cloud_body, queue_size: 10}
+      map_pose: {source: hdl/pose, queue_size: 10}
+      map_odom: {source: pose_fuser/map_odom, queue_size: 10}
+    outputs: [status]
+  - id: cloud_to_scan
+    path: ../../build/modules/planner/nav_costmap/cloud_to_scan_dora_node
+    inputs:
+      cloud: {source: super_lio/cloud_body, queue_size: 4}
+    outputs: [scan]
+  - id: navcmd
+    path: ../../modules/interface/nav_command/nav_command.py
+    restart_policy: on-failure   # the disarm / estop channel comes back; tracer disarmed when it failed (NodeFailed)
+    restart_delay: 0.5
+    max_restart_delay: 5.0
+    inputs:
+      tick: dora/timer/millis/100
+    outputs: [arm, estop, goal, initialpose]
+  - id: goal_resume
+    path: ../../build/modules/interface/goal_resume_dora/goal_resume_dora_node
+    args: ../../modules/interface/goal_resume_dora/config/goal_resume_tracer.json
+    inputs:
+      goal: navcmd/goal
+      goal_status: pure_pursuit/goal_status
+      trust: loc_trust/status
+      refine_state: loc_refine/state
+      gate_cancel: cmd_gate/cancel      # M5b: disarm / estop / chassis cancel forgets the goal
+      tick: dora/timer/millis/100
+    outputs: [goal]
+  - id: astar_planner
+    path: ../../build/modules/planner/global_planner/astar_planner_dora/astar_planner_dora_node
+    args: ../../modules/planner/global_planner/astar_planner_dora/config/astar_planner_tracer.json
+    inputs:
+      pose: pose_fuser/map_base
+      goal: goal_resume/goal
+      cancel: cmd_gate/cancel
+      goal_status: pure_pursuit/goal_status
+      scan: cloud_to_scan/scan
+      tick: dora/timer/millis/100
+    outputs: [path]
+  - id: pure_pursuit
+    path: ../../build/modules/planner/local_planner/pure_pursuit_dora/pure_pursuit_dora_node
+    args: ../../modules/planner/local_planner/pure_pursuit_dora/config/pure_pursuit_tracer.json
+    inputs:
+      goal: goal_resume/goal
+      path: astar_planner/path
+      pose: pose_fuser/map_base
+      cancel: cmd_gate/cancel
+      scan: cloud_to_scan/scan
+      tick: dora/timer/millis/50
+    outputs: [cmd_vel, goal_status]
+  - id: cmd_gate
+    path: ../../build/modules/safety/cmd_gate_dora/cmd_gate_dora_node
+    args: ../../modules/safety/cmd_gate_dora/config/cmd_gate_tracer.json
+    inputs:
+      cmd_vel: pure_pursuit/cmd_vel
+      status: loc_trust/status
+      estop: navcmd/estop
+      arm: navcmd/arm
+      chassis: tracer/state             # M5b: the chassis disarmed (RC takeover, fault ...) -> the gate disarms too
+      tick: dora/timer/millis/50
+    outputs: [cmd_vel, state, cancel]
+  - id: tracer
+    path: ../../build/modules/chassis/tracer_dora_node/tracer_dora_node
+    restart_policy: on-failure   # e.g. the USB-CAN adapter vanished (ugv_sdk aborts); it always restarts disarmed
+    restart_delay: 1.0
+    max_restart_delay: 10.0
+    args: ../../modules/chassis/tracer_dora_node/config/tracer_mini.json
+    inputs:
+      cmd_vel: cmd_gate/cmd_vel
+      arm: navcmd/arm
+      estop: navcmd/estop
+      tick: dora/timer/millis/20
+    outputs: [odom, state]
+  - id: nav_logger
+    path: nav_logger.py
+    inputs:
+      refine_state: loc_refine/state
+      refine_initialpose: loc_refine/initialpose
+      trust: loc_trust/status
+      map_base: pose_fuser/map_base
+      hdl_pose: hdl/pose
+      lio_odom: super_lio/odom
+      gate_state: cmd_gate/state
+      gate_cmd: cmd_gate/cmd_vel
+      cancel: cmd_gate/cancel
+      chassis_state: tracer/state
+      goal: goal_resume/goal
+      goal_status: pure_pursuit/goal_status
+      cmd_goal: navcmd/goal
+      cmd_arm: navcmd/arm
+      cmd_estop: navcmd/estop
+      cmd_initialpose: navcmd/initialpose

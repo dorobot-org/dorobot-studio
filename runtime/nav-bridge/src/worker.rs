@@ -1,10 +1,12 @@
 //! Bounded inbox (filled by the Dora event loop) and the worker thread that turns
 //! inputs into dviz messages: parse, place in the map frame, rate-limit, encode, publish.
+//! The worker also forwards node logs and the dataflow graph ([`LogForward`]).
 
 use crate::config::{BridgeConfig, InputFormat};
 use crate::encode::{enc_goal, enc_grid, enc_points, enc_pose, enc_status, enc_strip};
 use crate::formats::{self, GoalMsg, Odom};
 use crate::geom::{footprint_in_map, scan_points, to_map};
+use crate::logs::{LogForward, LogSources};
 use crate::map::{load_occupancy, load_pcd_xyz, voxel_downsample};
 use crate::publish::Publish;
 use crate::rate::RateLimiter;
@@ -98,17 +100,31 @@ pub fn bad_input_count() -> u64 {
 /// Starts the worker thread: takes inputs from `inbox`, parses, rate-limits, encodes
 /// and hands messages to `publisher`; resends the grid map every 5 s and the PCD map
 /// every 10 s. `stop` is checked between items and at least every `POLL`; on exit the
-/// publisher (and its Zenoh session) is dropped.
+/// publisher (and its Zenoh session) is dropped. No node logs or graph: see
+/// [`spawn_worker_with_logs`].
 pub fn spawn_worker(
     cfg: BridgeConfig,
     inbox: Arc<Inbox>,
     publisher: Box<dyn Publish>,
     stop: Arc<AtomicBool>,
 ) -> JoinHandle<()> {
+    spawn_worker_with_logs(cfg, inbox, publisher, stop, LogSources::default())
+}
+
+/// [`spawn_worker`] that also forwards the node logs and the dataflow graph named in
+/// `sources`, and its own warnings (e.g. a map it could not load), as `logs`,
+/// `nodes` and `graph` messages.
+pub fn spawn_worker_with_logs(
+    cfg: BridgeConfig,
+    inbox: Arc<Inbox>,
+    publisher: Box<dyn Publish>,
+    stop: Arc<AtomicBool>,
+    sources: LogSources,
+) -> JoinHandle<()> {
     thread::Builder::new()
         .name("nav-bridge-worker".into())
         .spawn(move || {
-            let mut worker = Worker::new(cfg, publisher);
+            let mut worker = Worker::new(cfg, publisher, sources);
             let mut next_tick = Instant::now();
             while !stop.load(Ordering::Relaxed) {
                 let now = Instant::now();
@@ -159,32 +175,35 @@ impl StaticMsg {
     }
 }
 
-fn load_grid(cfg: &BridgeConfig) -> StaticMsg {
+/// A map that cannot be used is reported on stderr (Dora's log) and as a WARN log
+/// entry for Studio; the bridge goes on without it.
+fn map_problem(logs: &mut LogForward, entity: &str, path: &std::path::Path, problem: &str) -> StaticMsg {
+    let text = format!("{entity} not published: {}: {problem}", path.display());
+    eprintln!("nav-bridge: {text}");
+    logs.warn(text);
+    StaticMsg::Missing
+}
+
+fn load_grid(cfg: &BridgeConfig, logs: &mut LogForward) -> StaticMsg {
     let Some(path) = &cfg.map_yaml else { return StaticMsg::Missing };
     match load_occupancy(path) {
         Ok((header, cells)) => StaticMsg::Pending(Box::new(move || enc_grid(&header, &cells))),
-        Err(e) => {
-            eprintln!("nav-bridge: no map/grid: {e}");
-            StaticMsg::Missing
-        }
+        Err(e) => map_problem(logs, ent::MAP_GRID, path, &e),
     }
 }
 
-fn load_map_cloud(cfg: &BridgeConfig) -> StaticMsg {
+fn load_map_cloud(cfg: &BridgeConfig, logs: &mut LogForward) -> StaticMsg {
     let Some(path) = &cfg.map_pcd else { return StaticMsg::Missing };
     match load_pcd_xyz(path) {
         Ok(points) => {
             let points = voxel_downsample(&points, cfg.map_cloud_voxel_m, cfg.map_cloud_max_points);
             if points.is_empty() {
-                return StaticMsg::Missing;
+                return map_problem(logs, ent::MAP_CLOUD, path, "no finite points");
             }
             let color = cfg.colors.map_cloud;
             StaticMsg::Pending(Box::new(move || enc_points(ent::MAP_CLOUD, &points, Some(color))))
         }
-        Err(e) => {
-            eprintln!("nav-bridge: no map/cloud: {e}");
-            StaticMsg::Missing
-        }
+        Err(e) => map_problem(logs, ent::MAP_CLOUD, path, &e),
     }
 }
 
@@ -206,10 +225,13 @@ struct Worker {
     goal_rate: RateLimiter,
     grid_rate: RateLimiter,
     map_cloud_rate: RateLimiter,
+    logs: LogForward,
 }
 
 impl Worker {
-    fn new(cfg: BridgeConfig, out: Box<dyn Publish>) -> Worker {
+    fn new(cfg: BridgeConfig, out: Box<dyn Publish>, sources: LogSources) -> Worker {
+        let mut logs = LogForward::new(sources, cfg.log_forward_per_node_hz);
+        let (grid, map_cloud) = (load_grid(&cfg, &mut logs), load_map_cloud(&cfg, &mut logs));
         let r = &cfg.rates_hz;
         Worker {
             out,
@@ -217,8 +239,8 @@ impl Worker {
             goal: None,
             trail: Trail::new(cfg.trail_min_step_m, cfg.trail_max_points),
             status: StatusBuilder::default(),
-            grid: load_grid(&cfg),
-            map_cloud: load_map_cloud(&cfg),
+            grid,
+            map_cloud,
             pose_rate: RateLimiter::new(r.pose),
             scan_rate: RateLimiter::new(r.scan),
             cloud_rate: RateLimiter::new(r.cloud),
@@ -227,6 +249,7 @@ impl Worker {
             goal_rate: RateLimiter::new(GOAL_HZ),
             grid_rate: RateLimiter::new(GRID_HZ),
             map_cloud_rate: RateLimiter::new(MAP_CLOUD_HZ),
+            logs,
             cfg,
         }
     }
@@ -251,8 +274,9 @@ impl Worker {
         }
     }
 
-    /// Periodic sends, each only while someone subscribes.
+    /// Periodic sends, each only while someone subscribes; node logs and the graph.
     fn tick(&mut self, now: Instant) {
+        self.logs.tick(now, &mut *self.out);
         let out = &mut *self.out;
         if !matches!(self.grid, StaticMsg::Missing) && out.wants(ent::MAP_GRID) && self.grid_rate.ready(now) {
             self.grid.send(out);
@@ -402,7 +426,8 @@ impl Worker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dviz_protocol::{parse_message, parse_points_xyz_f32, Arrows3DData};
+    use crate::logs;
+    use dviz_protocol::{parse_message, parse_points_xyz_f32, Arrows3DData, LogData};
     use std::path::PathBuf;
 
     type Sent = Vec<(String, Vec<u8>)>;
@@ -432,7 +457,7 @@ mod tests {
 
     fn worker(cfg: BridgeConfig) -> (Worker, Fake) {
         let fake = Fake::default();
-        (Worker::new(cfg, Box::new(fake.clone())), fake)
+        (Worker::new(cfg, Box::new(fake.clone()), LogSources::default()), fake)
     }
 
     fn odom(x: f64, y: f64, yaw: f64) -> Vec<u8> {
@@ -507,6 +532,14 @@ mod tests {
         w.tick(Instant::now());
         assert!(out.take(ent::MAP_GRID).is_empty() && out.take(ent::MAP_CLOUD).is_empty());
         assert_eq!(out.take(ent::NAV_STATUS).len(), 1);
+        // One WARN log per map, naming the problem and the path, for Studio.
+        let warnings: Vec<LogData> = (out.take(logs::LOGS).iter())
+            .map(|b| serde_json::from_value(parse_message(b).unwrap().0.data).unwrap())
+            .collect();
+        assert_eq!(warnings.len(), 2, "{warnings:?}");
+        assert!(warnings.iter().all(|w| w.level == "WARN"));
+        assert!(warnings[0].message.starts_with("map/grid not published: /nonexistent/map.yaml: "));
+        assert!(warnings[1].message.starts_with("map/cloud not published: /nonexistent/map.pcd: "));
         w.handle("pose", &odom(0.0, 0.0, 0.0), Instant::now());
         assert_eq!(out.take(ent::ROBOT_POSE).len(), 1);
     }

@@ -1,6 +1,7 @@
 //! Output side: one Zenoh publisher per dviz entity, drop-style congestion control.
 
 use crate::config::BridgeConfig;
+use crate::logs;
 use dviz_protocol::nav_entities;
 use zenoh::{pubsub::Publisher, qos::CongestionControl, Wait};
 
@@ -43,7 +44,7 @@ impl Publish for ZenohPublish {
 }
 
 /// Peer session listening on `cfg.listen`, multicast scouting off; one publisher per
-/// entity in `nav_entities::ALL` on `dviz/<robot_id>/<entity>`.
+/// entity in `nav_entities::ALL` and `logs::ENTITIES` on `dviz/<robot_id>/<entity>`.
 pub fn zenoh_publisher(cfg: &BridgeConfig) -> Result<Box<dyn Publish>, String> {
     let listen = serde_json::to_string(&cfg.listen).map_err(|e| e.to_string())?;
     let mut config = zenoh::Config::default();
@@ -58,8 +59,9 @@ pub fn zenoh_publisher(cfg: &BridgeConfig) -> Result<Box<dyn Publish>, String> {
     let session = zenoh::open(config)
         .wait()
         .map_err(|e| format!("zenoh open (listen {}): {e}", cfg.listen.join(", ")))?;
-    let mut publishers = Vec::with_capacity(nav_entities::ALL.len());
-    for entity in nav_entities::ALL {
+    let entities = nav_entities::ALL.iter().chain(logs::ENTITIES.iter()).copied();
+    let mut publishers = Vec::with_capacity(nav_entities::ALL.len() + logs::ENTITIES.len());
+    for entity in entities {
         let key = format!("dviz/{}/{entity}", cfg.robot_id);
         let publisher = session
             .declare_publisher(key.clone())

@@ -1,0 +1,1 @@
+{"ts":"2026-11-23T18:28:14.985Z","level":"stdout","node":"loc_trust","stream":"stderr","msg":"[loc_trust_dora] bad map_pose input: [json.exception.type_error.302] type must be number, but is null","target":null,"fields":null}

@@ -1,0 +1,2 @@
+{"ts":"2026-11-23T17:15:55.874Z","level":"stdout","node":"pose_fuser","stream":"stderr","msg":"[pose_fuser] odom clock jumped back or odom restarted (gap > 0.5 s): map->odom cleared until the next map pose","target":null,"fields":null}
+{"ts":"2026-11-23T20:50:56.428Z","level":"stdout","node":"pose_fuser","stream":"stderr","msg":"[pose_fuser] odom clock jumped back or odom restarted (gap > 0.5 s): map->odom cleared until the next map pose","target":null,"fields":null}
