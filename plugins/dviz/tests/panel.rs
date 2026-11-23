@@ -3,8 +3,8 @@
 //! own loopback port and topic prefix, and multicast off, as in `loopback.rs`.
 
 use dorobot_plugin_dviz::{
-    open_viewer, DvizGraphAction, DvizGraphWidgetRefExt, DvizPlugin, DvizSession, DvizViewPanel,
-    SessionOptions,
+    DvizGraphAction, DvizGraphWidgetRefExt, DvizPlugin, DvizSession, DvizViewPanel, SessionOptions,
+    ViewerState,
 };
 use dorobot_studio_core::api::mock::MockBackend;
 use dorobot_studio_plugin::*;
@@ -101,6 +101,44 @@ fn wait_until(timeout: Duration, mut done: impl FnMut() -> bool) -> bool {
         }
         thread::sleep(Duration::from_millis(10));
     }
+}
+
+/// Runs the test `test` alone in a child process of this test binary with
+/// `envs` set (for a process-wide setting such as `PATH`), and asserts that
+/// it passed within a minute; a child still running then is killed.
+#[cfg(feature = "rerun")]
+fn assert_child_passes(test: &str, envs: &[(&str, &std::ffi::OsStr)]) {
+    use std::{fs, process::Stdio};
+    const TIMEOUT: Duration = Duration::from_secs(60);
+    let dir = std::env::temp_dir().join(format!("dviz-panel-child-{}-{test}", std::process::id()));
+    fs::create_dir_all(&dir).expect("child output directory");
+    let (out, err) = (dir.join("stdout"), dir.join("stderr"));
+    let mut command = std::process::Command::new(std::env::current_exe().expect("test binary"));
+    command
+        .args(["--exact", test])
+        .stdin(Stdio::null())
+        .stdout(fs::File::create(&out).expect("stdout file"))
+        .stderr(fs::File::create(&err).expect("stderr file"));
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let mut child = command.spawn().expect("run the test binary");
+    let finished = wait_until(TIMEOUT, || matches!(child.try_wait(), Ok(Some(_))));
+    if !finished {
+        let _ = child.kill();
+    }
+    let status = child.wait().expect("wait for the child");
+    let stdout = fs::read_to_string(&out).unwrap_or_default();
+    let stderr = fs::read_to_string(&err).unwrap_or_default();
+    let _ = fs::remove_dir_all(&dir);
+    assert!(
+        finished,
+        "{test} ran longer than {TIMEOUT:?}:\n{stdout}\n{stderr}"
+    );
+    assert!(
+        status.success() && stdout.contains("1 passed"),
+        "{test} failed:\n{stdout}\n{stderr}"
+    );
 }
 
 /// A test peer listening on a fresh loopback port, for the panel to connect to.
@@ -303,25 +341,13 @@ fn open_viewer_failure_is_shown_and_session_keeps_running() {
     // and the other tests keep their `PATH`.
     #[cfg(feature = "rerun")]
     if std::env::var_os("DVIZ_PANEL_CHILD").is_none() {
-        let output = std::process::Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                "open_viewer_failure_is_shown_and_session_keeps_running",
-            ])
-            .env("PATH", "")
-            .env("DVIZ_PANEL_CHILD", "1")
-            .output()
-            .expect("run the test binary");
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(
-            output.status.success() && stdout.contains("1 passed"),
-            "{stdout}\n{}",
-            String::from_utf8_lossy(&output.stderr)
+        assert_child_passes(
+            "open_viewer_failure_is_shown_and_session_keeps_running",
+            &[("PATH", "".as_ref()), ("DVIZ_PANEL_CHILD", "1".as_ref())],
         );
         return;
     }
 
-    let expected = open_viewer(&DvizSession::new()).unwrap_err();
     let (mut cx, session) = setup();
     let mut panel = new_panel(&mut cx, session);
     let (peer, endpoint) = listening_peer();
@@ -329,6 +355,11 @@ fn open_viewer_failure_is_shown_and_session_keeps_running() {
     connect_through_panel(&mut cx, &mut panel, session, &endpoint, prefix);
 
     assert!(click(&mut cx, &mut panel, ids!(open_viewer)));
+    let expected = match launch_outcome(session) {
+        ViewerState::Failed(error) => format!("3D window: {error}"),
+        other => panic!("no viewer should open here: {other:?}"),
+    };
+    sync(&mut cx, &mut panel);
     let status = text(&mut cx, &panel, ids!(status));
     assert!(status.contains(&expected), "{status}");
 
@@ -351,6 +382,86 @@ fn open_viewer_failure_is_shown_and_session_keeps_running() {
     assert!(status.contains(&expected), "{status}");
     assert!(session.snapshot().connected);
     session.disconnect();
+}
+
+/// Waits for the 3D window's launch to end and returns how it ended.
+fn launch_outcome(session: &DvizSession) -> ViewerState {
+    let mut outcome = ViewerState::Closed;
+    let ended = wait_until(Duration::from_secs(15), || {
+        outcome = session.snapshot().viewer;
+        !matches!(outcome, ViewerState::Closed | ViewerState::Starting)
+    });
+    assert!(ended, "the launch never ended: {outcome:?}");
+    outcome
+}
+
+/// The fake `rerun` answers `--version` only after 1 s, and with 0.20.3, so
+/// the launch is still running when the clicks return and then fails.
+#[cfg(all(feature = "rerun", unix))]
+#[test]
+fn open_viewer_button_returns_at_once_and_shows_the_launch() {
+    use std::{fs, os::unix::fs::PermissionsExt};
+    const TEST: &str = "open_viewer_button_returns_at_once_and_shows_the_launch";
+    if std::env::var_os("DVIZ_PANEL_FAKE_RERUN").is_none() {
+        let dir =
+            std::env::temp_dir().join(format!("dviz-panel-fake-rerun-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let exe = dir.join("rerun");
+        fs::write(
+            &exe,
+            "#!/bin/sh\n\
+             if [ \"$1\" = \"--version\" ]; then\n\
+             sleep 1\necho 'rerun 0.20.3 [rustc 1.80.0] aarch64-unknown-linux-gnu'\nexit 0\nfi\n\
+             exit 0\n",
+        )
+        .unwrap();
+        fs::set_permissions(&exe, fs::Permissions::from_mode(0o755)).unwrap();
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        let path =
+            std::env::join_paths(std::iter::once(dir.clone()).chain(std::env::split_paths(&path)))
+                .unwrap();
+        let result = std::panic::catch_unwind(|| {
+            assert_child_passes(
+                TEST,
+                &[
+                    ("PATH", path.as_os_str()),
+                    ("DVIZ_PANEL_FAKE_RERUN", "1".as_ref()),
+                ],
+            )
+        });
+        let _ = fs::remove_dir_all(&dir);
+        if let Err(panic) = result {
+            std::panic::resume_unwind(panic);
+        }
+        return;
+    }
+
+    let (mut cx, session) = setup();
+    let mut panel = new_panel(&mut cx, session);
+    // The second click lands while the first launch still runs.
+    for _ in 0..2 {
+        let started = Instant::now();
+        assert!(click(&mut cx, &mut panel, ids!(open_viewer)));
+        let took = started.elapsed();
+        assert!(
+            took < Duration::from_millis(100),
+            "the click blocked the UI thread for {took:?}"
+        );
+        let status = text(&mut cx, &panel, ids!(status));
+        assert!(status.contains("3D window: starting"), "{status}");
+    }
+    match launch_outcome(session) {
+        ViewerState::Failed(error) => assert!(error.contains("0.20.3"), "{error}"),
+        other => panic!("a 0.20 viewer was accepted: {other:?}"),
+    }
+    sync(&mut cx, &mut panel);
+    let status = text(&mut cx, &panel, ids!(status));
+    assert!(
+        status.contains("3D window: ") && status.contains("0.20.3"),
+        "{status}"
+    );
+    assert!(!status.contains("starting"), "{status}");
 }
 
 #[test]

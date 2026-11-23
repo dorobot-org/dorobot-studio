@@ -54,6 +54,20 @@ impl Default for SessionOptions {
     }
 }
 
+/// What "Open 3D window" last did.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum ViewerState {
+    /// Not opened in this process yet.
+    #[default]
+    Closed,
+    /// A launch runs on a background thread.
+    Starting,
+    /// Visual messages go to this viewer (its name and version).
+    Open(String),
+    /// Why the last launch failed; the previous sink, if any, stays.
+    Failed(String),
+}
+
 /// A copy of what the panels show.
 #[derive(Debug, Clone, Default)]
 pub struct SessionSnapshot {
@@ -77,6 +91,7 @@ pub struct SessionSnapshot {
     pub dropped: u64,
     pub malformed: u64,
     pub received: u64,
+    pub viewer: ViewerState,
 }
 
 pub struct DvizSession {
@@ -89,6 +104,7 @@ struct Shared {
     sink: Mutex<Box<dyn Sink>>,
     link: Mutex<Link>,
     receivers_alive: AtomicU32,
+    viewer: Mutex<ViewerState>,
 }
 
 #[derive(Default)]
@@ -140,6 +156,7 @@ impl DvizSession {
                 sink: Mutex::new(Box::new(DiscardSink)),
                 link: Mutex::new(Link::default()),
                 receivers_alive: AtomicU32::new(0),
+                viewer: Mutex::new(ViewerState::Closed),
             }),
             control: Mutex::new(Control::default()),
         }
@@ -195,6 +212,54 @@ impl DvizSession {
             .spawn(move || drop(previous));
     }
 
+    /// Opens a viewer and returns at once: `launch` runs on a short-lived
+    /// thread and returns the viewer's sink with its name and version, or
+    /// why there is none. The outcome lands in the snapshot's `viewer`. On
+    /// success the new sink replaces the current one, and the old one is
+    /// dropped on that thread; on failure the current sink stays. Refused,
+    /// with nothing changed, while an earlier launch still runs.
+    pub fn start_viewer<F>(&self, launch: F) -> Result<(), String>
+    where
+        F: FnOnce() -> Result<(Box<dyn Sink>, String), String> + Send + 'static,
+    {
+        {
+            let mut viewer = lock(&self.shared.viewer);
+            if *viewer == ViewerState::Starting {
+                return Err("The 3D window is already starting".into());
+            }
+            *viewer = ViewerState::Starting;
+        }
+        let shared = self.shared.clone();
+        let spawned = thread::Builder::new()
+            .name("dviz-viewer".into())
+            .spawn(move || {
+                // Ends `Starting` even if `launch` panics.
+                let mut report = ViewerReport {
+                    shared: &shared,
+                    state: ViewerState::Failed("The 3D window launch stopped unexpectedly".into()),
+                };
+                let previous = match launch() {
+                    Ok((sink, name)) => {
+                        report.state = ViewerState::Open(name);
+                        Some(mem::replace(&mut *lock(&shared.sink), sink))
+                    }
+                    Err(error) => {
+                        report.state = ViewerState::Failed(error);
+                        None
+                    }
+                };
+                drop(report);
+                // A Rerun stream flushes when dropped, which may take a while.
+                drop(previous);
+            });
+        if let Err(error) = spawned {
+            let error = format!("Could not start the 3D window: {error}");
+            *lock(&self.shared.viewer) = ViewerState::Failed(error.clone());
+            return Err(error);
+        }
+        Ok(())
+    }
+
     pub fn set_entity_enabled(&self, entity: &str, enabled: bool) {
         lock(&self.shared.state).set_entity_enabled(entity, enabled);
     }
@@ -210,6 +275,7 @@ impl DvizSession {
             )
         };
         let receivers_alive = self.shared.receivers_alive.load(Ordering::Relaxed);
+        let viewer = lock(&self.shared.viewer).clone();
         let state = lock(&self.shared.state);
         SessionSnapshot {
             connected,
@@ -224,6 +290,7 @@ impl DvizSession {
             dropped: state.dropped,
             malformed: state.malformed,
             received: state.received,
+            viewer,
         }
     }
 
@@ -289,6 +356,18 @@ fn run(
         while Instant::now() < retry_at && !stop.load(Ordering::Relaxed) {
             thread::sleep(POLL);
         }
+    }
+}
+
+/// Sets the viewer state when dropped, also when a launch panics.
+struct ViewerReport<'a> {
+    shared: &'a Shared,
+    state: ViewerState,
+}
+
+impl Drop for ViewerReport<'_> {
+    fn drop(&mut self) {
+        *lock(&self.shared.viewer) = mem::take(&mut self.state);
     }
 }
 
@@ -565,6 +644,121 @@ mod tests {
         assert!(
             dropped.load(Ordering::Relaxed),
             "the old sink was never dropped"
+        );
+    }
+
+    /// Raises its flag when dropped.
+    struct FlagSink(Arc<AtomicBool>);
+
+    impl Sink for FlagSink {
+        fn log(&mut self, _: &str, _: &MvizMessage, _: Option<&[u8]>) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    impl Drop for FlagSink {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Relaxed);
+        }
+    }
+
+    fn wait_for(timeout: Duration, mut done: impl FnMut() -> bool) -> bool {
+        let deadline = Instant::now() + timeout;
+        while !done() {
+            if Instant::now() >= deadline {
+                return false;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        true
+    }
+
+    #[test]
+    fn start_viewer_launches_off_the_caller_and_swaps_the_sink_after() {
+        let session = DvizSession::new();
+        let old_dropped = Arc::new(AtomicBool::new(false));
+        session.set_sink(Box::new(FlagSink(old_dropped.clone())));
+
+        let started = Instant::now();
+        let launched = session.start_viewer(|| {
+            thread::sleep(Duration::from_millis(500));
+            Ok((
+                Box::new(DiscardSink) as Box<dyn Sink>,
+                "Test 1.0".to_string(),
+            ))
+        });
+        let took = started.elapsed();
+        assert_eq!(launched, Ok(()));
+        assert!(
+            took < Duration::from_millis(100),
+            "start_viewer took {took:?}"
+        );
+        assert_eq!(session.snapshot().viewer, ViewerState::Starting);
+        assert!(
+            !old_dropped.load(Ordering::Relaxed),
+            "sink swapped too early"
+        );
+
+        // Refused while the first launch runs; its launch never runs.
+        let second = session.start_viewer(|| Err("the second launch ran".to_string()));
+        assert!(second.is_err());
+
+        assert!(
+            wait_for(Duration::from_secs(5), || session.snapshot().viewer
+                == ViewerState::Open("Test 1.0".into())),
+            "{:?}",
+            session.snapshot().viewer
+        );
+        assert!(
+            wait_for(Duration::from_secs(5), || old_dropped
+                .load(Ordering::Relaxed)),
+            "the previous sink was never replaced"
+        );
+    }
+
+    #[test]
+    fn failed_launch_is_reported_and_keeps_the_sink() {
+        let session = DvizSession::new();
+        let dropped = Arc::new(AtomicBool::new(false));
+        session.set_sink(Box::new(FlagSink(dropped.clone())));
+
+        assert_eq!(
+            session.start_viewer(|| Err("no viewer here".to_string())),
+            Ok(())
+        );
+        assert!(
+            wait_for(Duration::from_secs(5), || session.snapshot().viewer
+                == ViewerState::Failed("no viewer here".into())),
+            "{:?}",
+            session.snapshot().viewer
+        );
+        thread::sleep(Duration::from_millis(100));
+        assert!(!dropped.load(Ordering::Relaxed), "the sink was replaced");
+
+        // A failure does not block the next attempt.
+        assert_eq!(
+            session.start_viewer(|| Ok((Box::new(DiscardSink) as Box<dyn Sink>, "Test 2".into()))),
+            Ok(())
+        );
+        assert!(wait_for(Duration::from_secs(5), || session
+            .snapshot()
+            .viewer
+            == ViewerState::Open("Test 2".into())));
+    }
+
+    #[test]
+    fn a_panicking_launch_is_reported_not_stuck_starting() {
+        let session = DvizSession::new();
+        session
+            .start_viewer(|| panic!("launch bug"))
+            .expect("the launch starts");
+        assert!(
+            wait_for(Duration::from_secs(5), || matches!(
+                session.snapshot().viewer,
+                ViewerState::Failed(_)
+            )),
+            "{:?}",
+            session.snapshot().viewer
         );
     }
 }

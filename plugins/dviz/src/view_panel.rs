@@ -8,6 +8,7 @@
 
 use crate::{
     open_viewer, DvizGraphWidgetRefExt, DvizSession, EntityInfo, SessionOptions, SessionSnapshot,
+    ViewerState,
 };
 use dorobot_studio_core::{
     api::Backend,
@@ -32,8 +33,6 @@ pub struct DvizViewPanel {
     session: &'static DvizSession,
     /// One row per entity, in the snapshot's (sorted) order.
     rows: Vec<EntityRow>,
-    /// Why the last "Open 3D window" failed, until it succeeds.
-    viewer_error: Option<String>,
     warn_only: bool,
     light: Option<f64>,
     /// Nodes as the graph rather than the list.
@@ -73,7 +72,8 @@ impl DvizViewPanel {
                         disconnect := mod.widgets.ux.ToolButton{text: "Disconnect"}
                         open_viewer := mod.widgets.ux.ToolButton{text: "Open 3D window"}
                     }
-                    status := Label{width: Fill max_lines: 4 text: ""}
+                    // State, hint or error, 3D window; room for one to wrap.
+                    status := Label{width: Fill max_lines: 6 text: ""}
                 }
                 displays := mod.widgets.ux.Card{width: Fill height: Fit flow: Down padding: 14.0 spacing: 6.0
                     Label{text: "Displays"}
@@ -106,7 +106,6 @@ impl DvizViewPanel {
             root: WidgetRef::script_from_value(vm, value),
             session,
             rows: Vec::new(),
-            viewer_error: None,
             warn_only: false,
             light: None,
             graph_view: false,
@@ -120,7 +119,7 @@ impl DvizViewPanel {
         let snapshot = self.session.snapshot();
         self.root
             .label(cx, ids!(status))
-            .set_text(cx, &status_text(&snapshot, self.viewer_error.as_deref()));
+            .set_text(cx, &status_text(&snapshot));
         self.sync_entities(cx, &snapshot.entities);
         self.root
             .label(cx, ids!(logs))
@@ -259,7 +258,10 @@ impl PluginPanel for DvizViewPanel {
         } else if self.root.button(cx, ids!(disconnect)).clicked(actions) {
             self.session.disconnect();
         } else if self.root.button(cx, ids!(open_viewer)).clicked(actions) {
-            self.viewer_error = open_viewer(self.session).err();
+            // Returns at once; the launch reports through the snapshot's
+            // `viewer`, which the status line shows. An error here means a
+            // launch is already running, and the status says "starting".
+            let _ = open_viewer(self.session);
         } else if let Some(warn_only) = self.root.check_box(cx, ids!(log_level)).changed(actions) {
             self.warn_only = warn_only;
         } else if self.root.button(cx, ids!(node_list)).clicked(actions) {
@@ -310,8 +312,8 @@ fn session_options(mode: &str, endpoints: &str, prefix: &str) -> SessionOptions 
 }
 
 /// Connection state and counters, the no-peer hint once the session has
-/// listened that long, then any session or 3D window error.
-fn status_text(snapshot: &SessionSnapshot, viewer_error: Option<&str>) -> String {
+/// listened that long, any session error, then the 3D window's launch.
+fn status_text(snapshot: &SessionSnapshot) -> String {
     let state = if snapshot.connected {
         "Connected"
     } else if snapshot.listening_for.is_some() {
@@ -332,8 +334,11 @@ fn status_text(snapshot: &SessionSnapshot, viewer_error: Option<&str>) -> String
     if let Some(error) = &snapshot.last_error {
         lines.push(format!("Error: {error}"));
     }
-    if let Some(error) = viewer_error {
-        lines.push(format!("3D window: {error}"));
+    match &snapshot.viewer {
+        ViewerState::Closed => {}
+        ViewerState::Starting => lines.push("3D window: starting…".into()),
+        ViewerState::Open(viewer) => lines.push(format!("3D window: open ({viewer})")),
+        ViewerState::Failed(error) => lines.push(format!("3D window: {error}")),
     }
     lines.join("\n")
 }
@@ -476,16 +481,34 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            status_text(&snapshot, None),
+            status_text(&snapshot),
             "Connected · received 7 · dropped 2 · malformed 1"
         );
         snapshot.connected = false;
         snapshot.last_error = Some("no route".into());
+        snapshot.viewer = ViewerState::Failed("no viewer".into());
         assert_eq!(
-            status_text(&snapshot, Some("no viewer")),
+            status_text(&snapshot),
             "Not connected · received 7 · dropped 2 · malformed 1\n\
              Error: no route\n\
              3D window: no viewer"
+        );
+    }
+
+    #[test]
+    fn status_shows_the_3d_window_launch() {
+        let mut snapshot = SessionSnapshot::default();
+        let first = "Not connected · received 0 · dropped 0 · malformed 0";
+        assert_eq!(status_text(&snapshot), first);
+        snapshot.viewer = ViewerState::Starting;
+        assert_eq!(
+            status_text(&snapshot),
+            format!("{first}\n3D window: starting…")
+        );
+        snapshot.viewer = ViewerState::Open("Rerun 0.28.2".into());
+        assert_eq!(
+            status_text(&snapshot),
+            format!("{first}\n3D window: open (Rerun 0.28.2)")
         );
     }
 
@@ -496,12 +519,12 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            status_text(&snapshot, None),
+            status_text(&snapshot),
             "Listening, no peer found yet · received 0 · dropped 0 · malformed 0"
         );
         snapshot.listening_for = Some(Duration::from_secs(2));
         assert_eq!(
-            status_text(&snapshot, None),
+            status_text(&snapshot),
             "Listening, no peer found yet · received 0 · dropped 0 · malformed 0\n\
              Hint: no dviz peer found by multicast; enter the robot's endpoint"
         );
@@ -509,7 +532,7 @@ mod tests {
         snapshot.listening_for = None;
         snapshot.connected = true;
         assert_eq!(
-            status_text(&snapshot, None),
+            status_text(&snapshot),
             "Connected · received 0 · dropped 0 · malformed 0"
         );
     }
