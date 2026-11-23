@@ -27,6 +27,8 @@ const LOG_LINE_CHARS: usize = 160;
 const NO_PEER_HINT_AFTER: Duration = Duration::from_secs(2);
 /// Nodes listed; the `nodes` label holds this many.
 const NODE_LINES: usize = 12;
+/// Entity rows shown; the rest are summed up in one "+N more" line.
+const ENTITY_ROWS: usize = 64;
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -109,6 +111,7 @@ const THEMED: &[(&[LiveId], Themed)] = &[
     (ids!(displays), Themed::Bg),
     (ids!(displays_label), Themed::Text),
     (ids!(no_entities), Themed::Text),
+    (ids!(more_entities), Themed::Text),
     (ids!(log_card), Themed::Bg),
     (ids!(logs_label), Themed::Text),
     (ids!(log_level), Themed::Text),
@@ -211,6 +214,7 @@ impl DvizViewPanel {
                     displays_label := mod.widgets.DvizLabel{text: "Displays"}
                     no_entities := mod.widgets.DvizLabel{text: "No displays yet"}
                     entities := View{width: Fill height: Fit flow: Down spacing: 4.0}
+                    more_entities := mod.widgets.DvizLabel{text: "" visible: false}
                 }
                 View{width: Fill height: Fill flow: Right spacing: 12.0
                     log_card := mod.widgets.ux.Card{width: Fill height: Fill flow: Down padding: 12.0 spacing: 6.0
@@ -306,9 +310,16 @@ impl DvizViewPanel {
     }
 
     fn sync_entities(&mut self, cx: &mut Cx, entities: &BTreeMap<String, EntityInfo>) {
-        if !self.rows.iter().map(|row| &row.name).eq(entities.keys()) {
-            self.rebuild_rows(cx, entities.keys());
+        let (shown, more) = entity_rows(entities);
+        let unchanged = self
+            .rows
+            .iter()
+            .map(|row| &row.name)
+            .eq(shown.iter().copied());
+        if !unchanged {
+            self.rebuild_rows(cx, shown.into_iter());
         }
+        // The rows are the first entities, in the same order.
         for (row, info) in self.rows.iter().zip(entities.values()) {
             row.count.set_text(cx, &entity_text(info));
             if row.toggle.active(cx) != info.enabled {
@@ -318,6 +329,9 @@ impl DvizViewPanel {
         self.root
             .widget(cx, ids!(no_entities))
             .set_visible(cx, self.rows.is_empty());
+        let more_label = self.root.widget(cx, ids!(more_entities));
+        more_label.set_text(cx, more.as_deref().unwrap_or(""));
+        more_label.set_visible(cx, more.is_some());
     }
 
     /// Replaces the rows, in the panel's theme; only runs when the set of
@@ -450,8 +464,8 @@ fn status_text(snapshot: &SessionSnapshot) -> String {
         "Not connected"
     };
     let mut lines = vec![format!(
-        "{state} · received {} · dropped {} · malformed {}",
-        snapshot.received, snapshot.dropped, snapshot.malformed
+        "{state} · received {} · dropped {} · malformed {} · sink errors {}",
+        snapshot.received, snapshot.dropped, snapshot.malformed, snapshot.sink_errors
     )];
     if snapshot
         .listening_for
@@ -558,6 +572,15 @@ fn node_detail(nodes: &[GraphNode], edges: &[GraphEdge], id: &str) -> Option<Str
     ))
 }
 
+/// The names of the entity rows shown, the first `ENTITY_ROWS` in order,
+/// and the "+N more" line for the rest, if any.
+fn entity_rows(entities: &BTreeMap<String, EntityInfo>) -> (Vec<&String>, Option<String>) {
+    let shown = entities.keys().take(ENTITY_ROWS).collect();
+    let more =
+        (entities.len() > ENTITY_ROWS).then(|| format!("+{} more", entities.len() - ENTITY_ROWS));
+    (shown, more)
+}
+
 fn entity_text(info: &EntityInfo) -> String {
     if info.msg_type.is_empty() {
         info.count.to_string()
@@ -606,18 +629,19 @@ mod tests {
             received: 7,
             dropped: 2,
             malformed: 1,
+            sink_errors: 3,
             ..Default::default()
         };
         assert_eq!(
             status_text(&snapshot),
-            "Connected · received 7 · dropped 2 · malformed 1"
+            "Connected · received 7 · dropped 2 · malformed 1 · sink errors 3"
         );
         snapshot.connected = false;
         snapshot.last_error = Some("no route".into());
         snapshot.viewer = ViewerState::Failed("no viewer".into());
         assert_eq!(
             status_text(&snapshot),
-            "Not connected · received 7 · dropped 2 · malformed 1\n\
+            "Not connected · received 7 · dropped 2 · malformed 1 · sink errors 3\n\
              Error: no route\n\
              3D window: no viewer"
         );
@@ -626,7 +650,7 @@ mod tests {
     #[test]
     fn status_shows_the_3d_window_launch() {
         let mut snapshot = SessionSnapshot::default();
-        let first = "Not connected · received 0 · dropped 0 · malformed 0";
+        let first = "Not connected · received 0 · dropped 0 · malformed 0 · sink errors 0";
         assert_eq!(status_text(&snapshot), first);
         snapshot.viewer = ViewerState::Starting;
         assert_eq!(
@@ -648,12 +672,12 @@ mod tests {
         };
         assert_eq!(
             status_text(&snapshot),
-            "Listening, no peer found yet · received 0 · dropped 0 · malformed 0"
+            "Listening, no peer found yet · received 0 · dropped 0 · malformed 0 · sink errors 0"
         );
         snapshot.listening_for = Some(Duration::from_secs(2));
         assert_eq!(
             status_text(&snapshot),
-            "Listening, no peer found yet · received 0 · dropped 0 · malformed 0\n\
+            "Listening, no peer found yet · received 0 · dropped 0 · malformed 0 · sink errors 0\n\
              Hint: no dviz peer found by multicast; enter the robot's endpoint"
         );
         // A link ends the waiting.
@@ -661,7 +685,7 @@ mod tests {
         snapshot.connected = true;
         assert_eq!(
             status_text(&snapshot),
-            "Connected · received 0 · dropped 0 · malformed 0"
+            "Connected · received 0 · dropped 0 · malformed 0 · sink errors 0"
         );
     }
 
@@ -807,6 +831,29 @@ mod tests {
             }
             assert!(vm.take_errors().is_empty());
         });
+    }
+
+    #[test]
+    fn entity_rows_capped_at_64() {
+        let info = EntityInfo {
+            enabled: true,
+            count: 1,
+            msg_type: "points3d".into(),
+        };
+        let entities: BTreeMap<String, EntityInfo> = (0..100)
+            .map(|n| (format!("world/e{n:03}"), info.clone()))
+            .collect();
+        let (rows, more) = entity_rows(&entities);
+        assert_eq!(rows.len(), 64);
+        assert_eq!(rows[0], "world/e000");
+        assert_eq!(rows[63], "world/e063");
+        assert_eq!(more.as_deref(), Some("+36 more"));
+
+        // Exactly 64: every one has its row, and there is no "more" line.
+        let at_limit: BTreeMap<String, EntityInfo> = entities.into_iter().take(64).collect();
+        let (rows, more) = entity_rows(&at_limit);
+        assert_eq!(rows.len(), 64);
+        assert_eq!(more, None);
     }
 
     #[test]

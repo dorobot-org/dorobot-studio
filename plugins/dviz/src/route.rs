@@ -8,6 +8,8 @@ use std::collections::{BTreeMap, VecDeque};
 
 /// Most log entries kept; older ones are pushed out.
 pub const LOG_CAP: usize = 500;
+/// Longest log text kept, in bytes; longer text is cut when it is stored.
+pub const LOG_TEXT_CAP: usize = 2048;
 
 /// Where visual messages (everything except logs and graph updates) go.
 pub trait Sink: Send {
@@ -46,8 +48,10 @@ pub struct SessionState {
     pub entities: BTreeMap<String, EntityInfo>,
     /// Payloads evicted, oldest first, from the full receive queue.
     pub dropped: u64,
-    /// Payloads that could not be parsed, or that the sink rejected.
+    /// Payloads that could not be parsed, or were refused as too large.
     pub malformed: u64,
+    /// Visual messages the sink rejected or panicked on.
+    pub sink_errors: u64,
     /// Payloads routed.
     pub received: u64,
 }
@@ -81,7 +85,7 @@ pub fn route(
             .log(&visual.entity, &visual.msg, visual.binary)
             .is_err()
         {
-            state.malformed += 1;
+            state.sink_errors += 1;
         }
     }
 }
@@ -94,8 +98,8 @@ pub(crate) struct Visual<'a> {
 }
 
 /// The part of `route` that touches only `state`, so the session can drop the
-/// state lock before the sink call. A sink error must then be counted as
-/// `malformed` by the caller.
+/// state lock before the sink call. A sink error must then be counted in
+/// `sink_errors` by the caller.
 pub(crate) fn accept<'a>(
     state: &mut SessionState,
     prefix: &str,
@@ -160,7 +164,7 @@ fn push_log(state: &mut SessionState, data: LogData, timestamp: Option<f64>) {
     }
     state.logs.push_back(LogEntry {
         level: LogLevel::from_str(&data.level),
-        message: data.message,
+        message: truncate(data.message, LOG_TEXT_CAP),
         node_id: data.node_id,
         timestamp: timestamp.unwrap_or(0.0),
         metadata,
@@ -168,6 +172,20 @@ fn push_log(state: &mut SessionState, data: LogData, timestamp: Option<f64>) {
     while state.logs.len() > LOG_CAP {
         state.logs.pop_front();
     }
+}
+
+/// `text` cut to at most `max` bytes, on a character boundary, keeping no
+/// more memory than it needs.
+fn truncate(mut text: String, max: usize) -> String {
+    if text.len() > max {
+        let mut end = max;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
+        text.shrink_to_fit();
+    }
+    text
 }
 
 /// Adds the node if it is new and replaces its incoming edges with the ones
@@ -344,7 +362,7 @@ mod tests {
     }
 
     #[test]
-    fn sink_errors_count_as_malformed() {
+    fn sink_error_counts_separately() {
         let mut state = SessionState::default();
         route(
             &mut state,
@@ -353,8 +371,40 @@ mod tests {
             "dviz/world/lidar",
             &points(),
         );
-        assert_eq!(state.malformed, 1);
+        assert_eq!(state.sink_errors, 1);
+        assert_eq!(state.malformed, 0, "the payload itself was fine");
         assert_eq!(state.entities["world/lidar"].count, 1);
+    }
+
+    #[test]
+    fn long_log_text_is_truncated() {
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        let mut store = |text: &str| {
+            let data = json!({"level": "INFO", "message": text, "node_id": "planner"});
+            route(
+                &mut state,
+                &mut sink,
+                "dviz",
+                "dviz/logs",
+                &message("log", data, None),
+            );
+            state.logs.back().unwrap().message.clone()
+        };
+
+        let long = "x".repeat(5000);
+        let kept = store(&long);
+        assert!(kept.len() <= LOG_TEXT_CAP, "{} bytes kept", kept.len());
+        assert_eq!(kept, long[..LOG_TEXT_CAP]);
+
+        // Cut on a character boundary: multi-byte text does not panic.
+        let wide = "点".repeat(5000);
+        let kept = store(&wide);
+        assert!(kept.len() <= LOG_TEXT_CAP, "{} bytes kept", kept.len());
+        assert!(kept.len() > LOG_TEXT_CAP - '点'.len_utf8());
+        assert!(wide.starts_with(&kept));
+
+        assert_eq!(store("short"), "short");
     }
 
     #[test]

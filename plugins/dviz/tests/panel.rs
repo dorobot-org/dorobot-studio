@@ -510,6 +510,28 @@ fn entity_toggle_disables_routing() {
 }
 
 #[test]
+fn entity_list_shows_64_rows_then_how_many_more() {
+    let (mut cx, session) = setup();
+    let mut panel = new_panel(&mut cx, session);
+    let more = panel.root().widget(&mut cx, ids!(more_entities));
+    assert!(!more.is_empty(), "no more_entities label");
+    for n in 0..70 {
+        session.set_entity_enabled(&format!("world/e{n:02}"), true);
+    }
+    sync(&mut cx, &mut panel);
+
+    let row = |cx: &mut Cx, name: &str| {
+        let path = [live_id!(entities), LiveId::from_str(name), live_id!(toggle)];
+        panel.root().widget(cx, &path)
+    };
+    assert!(!row(&mut cx, "world/e63").is_empty(), "no row for the 64th");
+    assert!(row(&mut cx, "world/e64").is_empty(), "a 65th row was built");
+    assert!(more.visible());
+    assert_eq!(more.text(), "+6 more");
+    assert_no_script_errors(&mut cx);
+}
+
+#[test]
 fn graph_view_builds_without_script_errors_and_shows_node_detail_on_select() {
     let (mut cx, session) = setup();
     let mut panel = new_panel(&mut cx, session);

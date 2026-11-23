@@ -3,14 +3,18 @@
 //! One background thread per connection opens Zenoh (never the caller), then
 //! drains a bounded queue that the subscriber callback fills. The callback
 //! only queues `(topic, payload)`, so it never blocks Zenoh; when the queue is
-//! full the oldest payload is evicted and counted as dropped.
+//! full (`RING_CAP` payloads or `INBOX_BYTES_CAP` bytes) the oldest payloads
+//! are evicted and counted as dropped. A sink that panics is replaced by a
+//! discarding one; receiving goes on.
 
-use crate::route::{self, EntityInfo, SessionState, Sink};
+use crate::route::{self, EntityInfo, SessionState, Sink, Visual};
 use dviz_protocol::{GraphEdge, GraphNode, LogEntry, MvizMessage};
 use std::{
+    any::Any,
     collections::{BTreeMap, VecDeque},
     fmt::Display,
     mem,
+    panic::{self, AssertUnwindSafe},
     sync::{
         atomic::{AtomicBool, AtomicU32, Ordering},
         Arc, Condvar, Mutex, MutexGuard, OnceLock, PoisonError,
@@ -22,6 +26,8 @@ use zenoh::{bytes::ZBytes, key_expr::KeyExpr, sample::Sample, Wait};
 
 /// Payloads queued between the Zenoh callback and the worker.
 pub const RING_CAP: usize = 64;
+/// Most payload bytes queued between the Zenoh callback and the worker.
+pub const INBOX_BYTES_CAP: usize = 64 * 1024 * 1024;
 /// Larger payloads are refused in the callback and counted as malformed.
 const MAX_PAYLOAD: usize = 8 * 1024 * 1024;
 /// Zenoh's connect timeout, and how long named connect endpoints may stay
@@ -64,7 +70,8 @@ pub enum ViewerState {
     Starting,
     /// Visual messages go to this viewer (its name and version).
     Open(String),
-    /// Why the last launch failed; the previous sink, if any, stays.
+    /// Why the last launch failed (the previous sink, if any, stays), or
+    /// that the sink panicked (it was replaced by a discarding one).
     Failed(String),
 }
 
@@ -90,6 +97,8 @@ pub struct SessionSnapshot {
     pub entities: BTreeMap<String, EntityInfo>,
     pub dropped: u64,
     pub malformed: u64,
+    /// Visual messages the sink rejected or panicked on.
+    pub sink_errors: u64,
     pub received: u64,
     pub viewer: ViewerState,
 }
@@ -124,6 +133,8 @@ struct Control {
     /// The latest receiver thread, possibly still finishing after a stop;
     /// the next receiver joins it before it starts.
     thread: Option<JoinHandle<()>>,
+    /// The options of the latest connect, kept across a disconnect.
+    options: Option<SessionOptions>,
 }
 
 /// Visual data goes nowhere until a real sink is set.
@@ -164,7 +175,9 @@ impl DvizSession {
 
     /// Starts receiving with `options`, replacing any current connection.
     /// Returns at once: Zenoh opens on the receiver thread, and its failures
-    /// land in `last_error`. Only invalid options fail here.
+    /// land in `last_error`. Only invalid options fail here. Options other
+    /// than the last connect's (mode, endpoints or prefix) start from a clear
+    /// state: no entities, logs, nodes or edges, and every counter at 0.
     pub fn connect(&self, options: SessionOptions) -> Result<(), String> {
         if let Err(error) = validate(&options) {
             lock(&self.shared.link).last_error = Some(error.clone());
@@ -172,6 +185,13 @@ impl DvizSession {
         }
         let mut control = lock(&self.control);
         self.stop_current(&mut control);
+        // After the stop: a receiver checks its flag under the state lock
+        // before it writes, so the stopped one cannot refill this.
+        let elsewhere = matches!(&control.options, Some(last) if *last != options);
+        if elsewhere {
+            *lock(&self.shared.state) = SessionState::default();
+        }
+        control.options = Some(options.clone());
         // The new thread waits for the previous one, so at most one runs.
         let previous = control.thread.take();
         let stop = Arc::new(AtomicBool::new(false));
@@ -206,10 +226,7 @@ impl DvizSession {
             let mut current = lock(&self.shared.sink);
             mem::replace(&mut *current, sink)
         };
-        // If no thread can be started, the sink is dropped here after all.
-        let _ = thread::Builder::new()
-            .name("dviz-sink-drop".into())
-            .spawn(move || drop(previous));
+        drop_elsewhere(previous);
     }
 
     /// Opens a viewer and returns at once: `launch` runs on a short-lived
@@ -289,6 +306,7 @@ impl DvizSession {
             entities: state.entities.clone(),
             dropped: state.dropped,
             malformed: state.malformed,
+            sink_errors: state.sink_errors,
             received: state.received,
             viewer,
         }
@@ -379,6 +397,15 @@ impl Drop for AliveGuard<'_> {
     }
 }
 
+/// Drops `sink` on a short-lived thread: dropping a Rerun stream flushes it,
+/// which can take seconds. If no thread can be started, it is dropped here
+/// after all.
+fn drop_elsewhere(sink: Box<dyn Sink>) {
+    let _ = thread::Builder::new()
+        .name("dviz-sink-drop".into())
+        .spawn(move || drop(sink));
+}
+
 /// Updates the link status unless this receiver has been stopped.
 fn report(shared: &Shared, stop: &AtomicBool, update: impl FnOnce(&mut Link)) {
     let mut link = lock(&shared.link);
@@ -406,6 +433,11 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
             .map(|(topic, payload)| (topic, payload.to_bytes()));
         let visual = {
             let mut state = lock(&shared.state);
+            // Checked under the lock: once `connect` has stopped this
+            // receiver, it may have cleared the state for other options.
+            if stop.load(Ordering::Relaxed) {
+                break;
+            }
             state.dropped += dropped;
             state.malformed += oversized;
             match &item {
@@ -415,14 +447,54 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
         };
         // The sink may be slow; the state lock is not held across it.
         if let Some(visual) = visual {
-            let delivered = lock(&shared.sink).log(&visual.entity, &visual.msg, visual.binary);
-            if delivered.is_err() {
-                lock(&shared.state).malformed += 1;
+            if !deliver(shared, &visual) {
+                let mut state = lock(&shared.state);
+                if !stop.load(Ordering::Relaxed) {
+                    state.sink_errors += 1;
+                }
             }
         }
     }
     subscriber.undeclare().wait()?;
     session.close().wait()
+}
+
+/// Hands `visual` to the sink; false if the sink rejected it or panicked. A
+/// sink that panics is replaced by a discarding one and the 3D window is
+/// reported as failed, so the receiver goes on.
+fn deliver(shared: &Shared, visual: &Visual<'_>) -> bool {
+    let (crashed, message) = {
+        let mut sink = lock(&shared.sink);
+        let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
+            sink.log(&visual.entity, &visual.msg, visual.binary)
+        }));
+        match outcome {
+            Ok(delivered) => return delivered.is_ok(),
+            // Under the same lock, so this is the sink that panicked.
+            Err(panic) => (
+                mem::replace(&mut *sink, Box::new(DiscardSink)),
+                panic_message(&*panic),
+            ),
+        }
+    };
+    drop_elsewhere(crashed);
+    let mut viewer = lock(&shared.viewer);
+    // A launch under way swaps in its own sink and reports its outcome;
+    // `Starting` also keeps a second launch out until then.
+    if *viewer != ViewerState::Starting {
+        *viewer = ViewerState::Failed(format!("3D sink crashed: {message}"));
+    }
+    false
+}
+
+fn panic_message(panic: &(dyn Any + Send)) -> String {
+    if let Some(message) = panic.downcast_ref::<&str>() {
+        message.to_string()
+    } else if let Some(message) = panic.downcast_ref::<String>() {
+        message.clone()
+    } else {
+        "unknown panic".into()
+    }
 }
 
 /// Reports the session as connected only while it is linked: a peer or
@@ -543,34 +615,62 @@ fn describe(options: &SessionOptions, error: impl Display) -> String {
 }
 
 /// The bounded queue between the Zenoh callback and the worker.
-#[derive(Default)]
 struct Inbox {
     pending: Mutex<Pending>,
     ready: Condvar,
+    /// Most payload bytes queued; `INBOX_BYTES_CAP` by default.
+    bytes_cap: usize,
 }
 
 #[derive(Default)]
 struct Pending {
     queue: VecDeque<(String, ZBytes)>,
+    /// Payload bytes in `queue`.
+    bytes: usize,
     dropped: u64,
     oversized: u64,
 }
 
+impl Default for Inbox {
+    fn default() -> Self {
+        Self::new(INBOX_BYTES_CAP)
+    }
+}
+
 impl Inbox {
-    /// Runs in the Zenoh callback: queue only, evicting the oldest when full.
+    fn new(bytes_cap: usize) -> Self {
+        Self {
+            pending: Mutex::default(),
+            ready: Condvar::new(),
+            bytes_cap,
+        }
+    }
+
+    /// Runs in the Zenoh callback: queue only.
     fn push(&self, sample: Sample) {
         if sample.payload().len() > MAX_PAYLOAD {
             lock(&self.pending).oversized += 1;
             return;
         }
-        let topic = sample.key_expr().as_str().to_string();
-        let payload = sample.payload().clone();
+        self.queue(
+            sample.key_expr().as_str().to_string(),
+            sample.payload().clone(),
+        );
+    }
+
+    /// Queues `payload`, then evicts the oldest payloads while there are
+    /// more than `RING_CAP` or more than `bytes_cap` bytes.
+    fn queue(&self, topic: String, payload: ZBytes) {
         let mut pending = lock(&self.pending);
-        if pending.queue.len() >= RING_CAP {
-            pending.queue.pop_front();
+        pending.bytes += payload.len();
+        pending.queue.push_back((topic, payload));
+        while pending.queue.len() > RING_CAP || pending.bytes > self.bytes_cap {
+            let Some((_, oldest)) = pending.queue.pop_front() else {
+                break;
+            };
+            pending.bytes -= oldest.len();
             pending.dropped += 1;
         }
-        pending.queue.push_back((topic, payload));
         drop(pending);
         self.ready.notify_one();
     }
@@ -586,8 +686,12 @@ impl Inbox {
                 .unwrap_or_else(PoisonError::into_inner)
                 .0;
         }
+        let next = pending.queue.pop_front();
+        if let Some((_, payload)) = &next {
+            pending.bytes -= payload.len();
+        }
         (
-            pending.queue.pop_front(),
+            next,
             mem::take(&mut pending.dropped),
             mem::take(&mut pending.oversized),
         )
@@ -744,6 +848,36 @@ mod tests {
             .snapshot()
             .viewer
             == ViewerState::Open("Test 2".into())));
+    }
+
+    #[test]
+    fn inbox_is_byte_bounded() {
+        assert_eq!(Inbox::default().bytes_cap, INBOX_BYTES_CAP);
+
+        // A 1 MiB cap stands in for the 64 MiB one. Twice the cap goes in, in
+        // too few payloads for `RING_CAP` to evict any.
+        const CAP: usize = 1024 * 1024;
+        const CHUNK: usize = 64 * 1024;
+        const PUSHED: usize = 2 * CAP / CHUNK;
+        const KEPT: usize = CAP / CHUNK;
+        assert!(PUSHED < RING_CAP);
+        let inbox = Inbox::new(CAP);
+        for n in 0..PUSHED {
+            inbox.queue(
+                "dviz/world/lidar".into(),
+                ZBytes::from(vec![n as u8; CHUNK]),
+            );
+            let queued = lock(&inbox.pending).bytes;
+            assert!(queued <= CAP, "{queued} bytes queued after payload {n}");
+        }
+
+        let (oldest, dropped, oversized) = inbox.next(Duration::ZERO);
+        assert!(dropped > 0);
+        assert_eq!(dropped, (PUSHED - KEPT) as u64);
+        assert_eq!(oversized, 0);
+        let (_, oldest) = oldest.expect("the newest payloads stay queued");
+        assert_eq!(oldest.to_bytes()[0], KEPT as u8, "the oldest went first");
+        assert_eq!(lock(&inbox.pending).bytes, CAP - CHUNK);
     }
 
     #[test]

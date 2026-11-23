@@ -2,7 +2,7 @@
 //! `tcp/127.0.0.1:<port>` endpoint and its own topic prefix, with multicast
 //! scouting off, so tests running in parallel never see each other or the LAN.
 
-use dorobot_plugin_dviz::{DvizSession, SessionOptions, Sink, RING_CAP};
+use dorobot_plugin_dviz::{DvizSession, SessionOptions, Sink, ViewerState, RING_CAP};
 use dviz_protocol::{binary_formats, serialize_message, MvizMessage};
 use serde_json::{json, Value};
 use std::{
@@ -153,6 +153,15 @@ struct SetOnDrop<'a>(&'a AtomicBool);
 impl Drop for SetOnDrop<'_> {
     fn drop(&mut self) {
         self.0.store(true, Ordering::Relaxed);
+    }
+}
+
+/// Panics on every message it is given.
+struct PanickingSink;
+
+impl Sink for PanickingSink {
+    fn log(&mut self, _: &str, _: &MvizMessage, _: Option<&[u8]>) -> Result<(), String> {
+        panic!("sink bug");
     }
 }
 
@@ -511,4 +520,119 @@ fn fake_publisher_feeds_every_displayed_kind() {
     assert!(!snapshot.edges.is_empty());
     assert_eq!(snapshot.malformed, 0);
     assert_eq!(snapshot.dropped, 0);
+}
+
+#[test]
+fn panicking_sink_is_replaced() {
+    let prefix = "dviz_test_sink_panic";
+    let (session, peer) = linked_session(prefix);
+    session.set_sink(Box::new(PanickingSink));
+    let lidar = matched_publisher(&peer, format!("{prefix}/world/lidar"));
+
+    lidar.put(points()).wait().unwrap();
+    assert!(
+        wait_until(SETTLE, || session.snapshot().sink_errors == 1),
+        "{:?}",
+        session.snapshot()
+    );
+    match session.snapshot().viewer {
+        ViewerState::Failed(error) => {
+            assert!(error.contains("crashed"), "{error}");
+            assert!(error.contains("sink bug"), "{error}");
+        }
+        other => panic!("the crash was not reported: {other:?}"),
+    }
+
+    // Still receiving, and the panicking sink is gone: it would panic again.
+    for _ in 0..3 {
+        lidar.put(points()).wait().unwrap();
+    }
+    assert!(
+        wait_until(SETTLE, || session.snapshot().received == 4),
+        "{:?}",
+        session.snapshot()
+    );
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.sink_errors, 1);
+    assert_eq!(snapshot.malformed, 0);
+    assert_eq!(snapshot.entities["world/lidar"].count, 4);
+    assert_eq!(snapshot.receivers_alive, 1);
+    assert!(snapshot.connected);
+}
+
+#[test]
+fn reconnect_elsewhere_clears_state() {
+    let (peer, endpoint) = listening_peer();
+    let at = |prefix: &str| SessionOptions {
+        prefix: prefix.into(),
+        ..connect_options("peer", &endpoint)
+    };
+    let (first, second) = ("dviz_test_reset_a", "dviz_test_reset_b");
+    let session = DvizSession::new();
+    session.connect(at(first)).unwrap();
+    assert!(wait_until(SETTLE, || session.snapshot().connected));
+
+    // A backlog behind a slow sink is still draining when the prefix changes.
+    session.set_sink(Box::new(SlowSink));
+    let lidar = matched_publisher(&peer, format!("{first}/world/lidar"));
+    let logs = matched_publisher(&peer, format!("{first}/logs"));
+    let graph = matched_publisher(&peer, format!("{first}/graph"));
+    let line = json!({"level": "INFO", "message": "before the switch", "node_id": "fake"});
+    logs.put(message("log", line, None)).wait().unwrap();
+    let update = json!({
+        "nodes": [{"id": "lidar", "status": "active", "last_seen": 1.0}],
+        "edges": [{"from_node": "lidar", "from_port": "points",
+                   "to_node": "planner", "to_port": "cloud"}],
+        "timestamp": 1.0,
+    });
+    graph
+        .put(message("graph_update", update, None))
+        .wait()
+        .unwrap();
+    for _ in 0..20 {
+        lidar.put(points()).wait().unwrap();
+    }
+    assert!(
+        wait_until(SETTLE, || {
+            let snapshot = session.snapshot();
+            snapshot.entities.contains_key("world/lidar")
+                && !snapshot.logs.is_empty()
+                && !snapshot.edges.is_empty()
+        }),
+        "{:?}",
+        session.snapshot()
+    );
+
+    session.connect(at(second)).unwrap();
+    let snapshot = session.snapshot();
+    assert!(snapshot.entities.is_empty(), "{:?}", snapshot.entities);
+    assert_eq!(snapshot.received, 0);
+    assert!(snapshot.logs.is_empty());
+    assert!(snapshot.nodes.is_empty() && snapshot.edges.is_empty());
+    assert_eq!(
+        (snapshot.dropped, snapshot.malformed, snapshot.sink_errors),
+        (0, 0, 0)
+    );
+    // Nothing of the old prefix's backlog comes in afterwards.
+    thread::sleep(Duration::from_millis(500));
+    let snapshot = session.snapshot();
+    assert!(snapshot.entities.is_empty(), "{:?}", snapshot.entities);
+    assert_eq!(snapshot.received, 0);
+
+    // Connecting again with the same options keeps what came in.
+    assert!(wait_until(SETTLE, || session.snapshot().connected));
+    let scan = matched_publisher(&peer, format!("{second}/world/scan"));
+    scan.put(points()).wait().unwrap();
+    assert!(
+        wait_until(SETTLE, || session
+            .snapshot()
+            .entities
+            .contains_key("world/scan")),
+        "{:?}",
+        session.snapshot()
+    );
+    session.connect(at(second)).unwrap();
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.entities["world/scan"].count, 1);
+    assert_eq!(snapshot.received, 1);
 }

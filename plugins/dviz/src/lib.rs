@@ -15,8 +15,10 @@ pub use graph::{
 };
 #[cfg(feature = "rerun")]
 pub use rerun_sink::{RerunSink, ViewerOptions};
-pub use route::{route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP};
-pub use session::{DvizSession, SessionOptions, SessionSnapshot, ViewerState, RING_CAP};
+pub use route::{route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP, LOG_TEXT_CAP};
+pub use session::{
+    DvizSession, SessionOptions, SessionSnapshot, ViewerState, INBOX_BYTES_CAP, RING_CAP,
+};
 pub use view_panel::DvizViewPanel;
 
 /// Opens the Rerun 3D viewer and routes every visual message into it.
