@@ -1,0 +1,87 @@
+{
+  "seconds": 75.0,
+  "entities": {
+    "map/cloud": {
+      "count": 8,
+      "hz": 0.107,
+      "bytes": 2544744,
+      "max_points": 26499
+    },
+    "map/grid": {
+      "count": 15,
+      "hz": 0.2,
+      "bytes": 586260,
+      "max_points": null
+    },
+    "nav/goal": {
+      "count": 38,
+      "hz": 0.507,
+      "bytes": 5572,
+      "max_points": null
+    },
+    "nav/plan": {
+      "count": 72,
+      "hz": 0.96,
+      "bytes": 66661,
+      "max_points": null
+    },
+    "nav/status": {
+      "count": 374,
+      "hz": 4.987,
+      "bytes": 131604,
+      "max_points": null
+    },
+    "nav/trail": {
+      "count": 148,
+      "hz": 1.973,
+      "bytes": 579934,
+      "max_points": null
+    },
+    "robot/footprint": {
+      "count": 749,
+      "hz": 9.987,
+      "bytes": 249464,
+      "max_points": null
+    },
+    "robot/pose": {
+      "count": 749,
+      "hz": 9.987,
+      "bytes": 145274,
+      "max_points": null
+    },
+    "sensors/cloud": {
+      "count": 303,
+      "hz": 4.04,
+      "bytes": 18203937,
+      "max_points": 5000
+    },
+    "sensors/scan": {
+      "count": 578,
+      "hz": 7.707,
+      "bytes": 4381866,
+      "max_points": 681
+    }
+  },
+  "extra_topics": {
+    "graph": {
+      "count": 15,
+      "hz": 0.2,
+      "bytes": 57505,
+      "max_points": null
+    },
+    "logs": {
+      "count": 107,
+      "hz": 1.427,
+      "bytes": 33854,
+      "max_points": null
+    },
+    "nodes": {
+      "count": 165,
+      "hz": 2.2,
+      "bytes": 79278,
+      "max_points": null
+    }
+  },
+  "total_bytes": 27065953,
+  "total_bytes_per_s": 360879.0
+}
