@@ -55,6 +55,15 @@ class InspectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             worker.validate(plan, self.profile | {"robot": "G1"})
 
+    def test_standing_shoulder_requires_g1_and_bounded_displacement(self):
+        plan = dict(kind="standing-inspection", joint="shoulder", delta_rad=-0.06)
+        g1 = self.profile | {"robot": "G1"}
+        self.assertEqual(worker.validate(plan, g1), plan)
+        with self.assertRaises(ValueError):
+            worker.validate(plan, self.profile)
+        with self.assertRaises(ValueError):
+            worker.validate(plan | {"delta_rad": -0.5}, g1)
+
     def test_transfer_requires_nano_and_a_distinct_color_order(self):
         for order in ["blue", "green,blue,red"]:
             p = dict(kind="table-transfer", color_order=order)

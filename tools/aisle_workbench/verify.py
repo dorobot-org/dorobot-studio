@@ -28,14 +28,18 @@ def main():
         action="store_const",
         const="octos-deepseek",
     )
-    parser.add_argument(
+    scenario = parser.add_mutually_exclusive_group()
+    scenario.add_argument(
+        "--standing", action="store_true", help="Run a floating-base G1 tracking trial"
+    )
+    scenario.add_argument(
         "--transfer",
         choices=["red", "three"],
         help="Run and score a Nano floor-to-table journey",
     )
     args = parser.parse_args()
-    if args.transfer and not args.provider:
-        parser.error("--transfer requires --codex or --octos-deepseek")
+    if (args.standing or args.transfer) and not args.provider:
+        parser.error("Select --codex or --octos-deepseek to author the requested trial")
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
@@ -74,6 +78,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.standing:
+                    check.append("--standing")
                 if args.transfer:
                     check.extend(["--transfer", args.transfer])
                 if stage == "recovery":

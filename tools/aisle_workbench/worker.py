@@ -81,7 +81,8 @@ def validate(plan, meta):
                 "Visual approach requires Nano, one cube color and 0.40–0.55 m standoff"
             )
         return {k: plan[k] for k in ("kind", "color", "standoff_m")}
-    if plan.get("kind", "joint-inspection") != "joint-inspection":
+    standing = plan.get("kind") == "standing-inspection" and meta["robot"] == "G1"
+    if not standing and plan.get("kind", "joint-inspection") != "joint-inspection":
         raise ValueError("Unknown controller capability")
     joint = plan["joint"]
     if joint not in meta["allowed_joints"]:
@@ -97,7 +98,9 @@ def validate(plan, meta):
         )
     if not meta["limits"][joint][0] <= delta <= meta["limits"][joint][1]:
         raise ValueError("Target outside the robot joint limits")
-    return dict(joint=joint, delta_rad=delta)
+    return dict(joint=joint, delta_rad=delta) | (
+        {"kind": "standing-inspection"} if standing else {}
+    )
 
 
 def measured_feedback(path, meta):
@@ -333,6 +336,21 @@ def prepare(args, meta):
                 "and other motions are unsupported. Set supported=false for these. Fill unused "
                 "fields with legal defaults. Operator instruction: " + args.task
             )
+        else:
+            schema["properties"]["kind"] = dict(
+                type="string", enum=["joint-inspection", "standing-inspection"]
+            )
+            schema["required"].append("kind")
+            prompt = (
+                "Select a G1 simulation capability. Use joint-inspection for shoulder inspections by default. "
+                "If the operator explicitly asks to stand while holding or tracking a signed shoulder "
+                "displacement, select standing-inspection. It uses a free pelvis and a 10 second foot-supported "
+                "development trial. For either use one of "
+                + json.dumps(meta["allowed_joints"])
+                + " with signed displacement 0.03–0.15 rad. Reject walking, external pushes, hardware and "
+                "unsupported tasks by setting supported=false. Instruction: "
+                + args.task
+            )
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
@@ -372,6 +390,9 @@ def simulate(args, meta):
         if mobile
         else "fixed-base, zero-gravity inspection"
     )
+    standing = control.get("kind") == "standing-inspection"
+    if standing:
+        fixture = "floating G1, gravity and loaded feet"
     repo = Path(nx.__file__).resolve().parents[3]
     revision = (
         subprocess.check_output(
@@ -387,12 +408,24 @@ def simulate(args, meta):
             adapter=nx.__name__,
             aisle_revision=revision,
             backend=engine.backend_name,
-            fixture_profile="living-room" if mobile else args.fixture,
+            fixture_profile="standing-development"
+            if standing
+            else "living-room"
+            if mobile
+            else args.fixture,
             adapter_hash=digest(Path(nx.__file__)),
             nexus=version("dimforge-nexus3d"),
             fixture=fixture,
         ),
     )
+    if standing:
+        from g1_stand import simulate as standing_trial
+
+        return standing_trial(args.out, Path(meta["model"]), control) | dict(
+            robot=args.robot,
+            controller_hash=hashlib.sha256(original).hexdigest(),
+            model_hash=meta["model_hash"],
+        )
     if mobile:
         sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
         if control["kind"] == "table-transfer":

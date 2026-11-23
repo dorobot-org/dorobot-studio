@@ -170,6 +170,7 @@ impl Panel {
             .as_ref()
             .zip(w.progress["step"].as_u64())
             .map(|(p, i)| (p.clone(), i));
+        let standing = w.progress["kind"] == "standing-inspection";
         let transfer = w.progress["kind"] == "table-transfer";
         let mobile = transfer || w.progress["kind"] == "visual-approach";
         let height = if mobile { 360 } else { 320 };
@@ -187,6 +188,8 @@ impl Panel {
             ids!(measure_label),
             if transfer {
                 "Table transfer"
+            } else if standing {
+                "Standing shoulder tracking"
             } else if mobile {
                 "Cube approach"
             } else {
@@ -229,6 +232,18 @@ Requested {:.2} m",
                 w.progress["state"].as_str().unwrap_or(""),
                 distance,
                 w.progress["standoff_m"].as_f64().unwrap_or_default()
+            )
+        } else if standing {
+            format!(
+                "Shoulder {:+.4} rad · pelvis tilt {:.1}°\n{} · {:.1} s simulated",
+                w.progress["measured_rad"].as_f64().unwrap_or_default(),
+                w.progress["tilt_deg"].as_f64().unwrap_or_default(),
+                if w.progress["both_feet"] == true {
+                    "Both feet loaded"
+                } else {
+                    "Checking foot contact"
+                },
+                w.progress["step"].as_f64().unwrap_or_default() * 0.005
             )
         } else if let Some(angle) = w.progress["measured_rad"].as_f64() {
             format!("{angle:+.5} rad\nPhysics step {} / 121", w.progress["step"])
@@ -279,6 +294,7 @@ impl PluginPanel for Panel {
             "aisle_run" if !w.progress.is_null() => &w.progress["kind"],
             _ => &w.plan["kind"],
         };
+        let standing = kind == "standing-inspection";
         let transfer = kind == "table-transfer";
         let mobile = transfer || kind == "visual-approach";
         self.label(
@@ -293,6 +309,8 @@ impl PluginPanel for Panel {
                 },
                 if mobile {
                     "Living room · grounded Nano"
+                } else if standing {
+                    "G1 · floating-base standing test"
                 } else {
                     "Fixed-base simulation"
                 }
@@ -378,18 +396,24 @@ impl PluginPanel for Panel {
                     ids!(fixture_kind),
                     if mobile {
                         "Living room · gravity 9.81 m/s²"
+                    } else if standing {
+                        "Floor · gravity 9.81 m/s²"
                     } else {
                         "Fixed base · zero gravity"
                     },
                 );
                 for id in [ids!(standard), ids!(compliant)] {
-                    self.root.widget(cx, id).set_visible(cx, !mobile);
+                    self.root
+                        .widget(cx, id)
+                        .set_visible(cx, !mobile && !standing);
                 }
                 self.label(
                     cx,
                     ids!(fixture),
                     if mobile {
                         "Three floor cubes · head and two wrist RGB cameras · wheel drive"
+                    } else if standing {
+                        "Free pelvis · ankle feedback · both feet monitored"
                     } else if w.compliant {
                         "Compliant · position gain 18"
                     } else {
@@ -476,6 +500,11 @@ impl PluginPanel for Panel {
                 } else if mobile {
                     format!("{} cube · requested {:.3} m · final distance {:.3} m\nWheel support {}/{} physics steps · {} obstacle-contact steps",
                       w.evidence["color"].as_str().unwrap_or(""),w.evidence["standoff_m"].as_f64().unwrap_or_default(),w.evidence["final_distance_m"].as_f64().unwrap_or_default(),w.evidence["wheel_supported_ticks"],w.evidence["physics_ticks"],w.evidence["obstacle_contact_ticks"])
+                } else if standing {
+                    format!("{} · requested {:+.3} rad · measured {:+.4} rad\nBoth feet loaded {}/{} steps\nPeak tilt {:.1}° · maximum pelvis drift {:.1} cm",
+                        w.evidence["joint"].as_str().unwrap_or("Shoulder"), w.evidence["requested_delta"].as_f64().unwrap_or_default(),
+                        w.evidence["measured_delta"].as_f64().unwrap_or_default(),w.evidence["both_feet_loaded_steps"], w.evidence["steps"],
+                        w.evidence["peak_tilt_deg"].as_f64().unwrap_or_default(),w.evidence["max_pelvis_drift_m"].as_f64().unwrap_or_default()*100.)
                 } else if let Some(angle) = w.evidence["measured_delta"].as_f64() {
                     format!("{} · {} · {} fixture\nRequested {:+.3} rad    Measured {:+.5} rad    {} observations\nLimits {} over {} physics steps.",
                             w.evidence["robot"].as_str().unwrap_or(""), w.evidence["joint"].as_str().unwrap_or(""),
@@ -539,6 +568,11 @@ impl PluginPanel for Panel {
                     format!(
                         "First {:.3} m                         Last {:.3} m",
                         trace[0],
+                        trace[trace.len() - 1]
+                    )
+                } else if standing && !trace.is_empty() {
+                    format!(
+                        "10 s standing trial · last shoulder angle {:+.4} rad",
                         trace[trace.len() - 1]
                     )
                 } else if let (Some(start), Some(end)) = (trace.first(), trace.last()) {
