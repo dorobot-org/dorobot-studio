@@ -9,6 +9,7 @@ use crate::worker::{spawn_worker_with_logs, Inbox};
 use dora_node_api::DoraArray;
 use std::ffi::OsString;
 use std::io::Write;
+use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -57,22 +58,43 @@ pub struct Bridge {
     stop: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
     worker_dead: bool,
+    /// Started without a worker (see [`Bridge::disabled`]).
+    disabled: bool,
     inputs: u64,
     not_bytes: u64,
 }
 
 impl Bridge {
     /// Opens the Zenoh session (peer, listening on `cfg.listen`) and starts the worker.
+    /// Any failure, a panic included, is an `Err` naming the cause.
     pub fn start(cfg: BridgeConfig, sources: LogSources) -> Result<Bridge, String> {
-        let publisher = zenoh_publisher(&cfg)?;
-        Ok(Bridge::with_publisher(cfg, sources, publisher))
+        let start = move || -> Result<Bridge, String> {
+            let publisher = zenoh_publisher(&cfg)?;
+            Ok(Bridge::with_publisher(cfg, sources, publisher))
+        };
+        panic::catch_unwind(AssertUnwindSafe(start)).unwrap_or_else(|_| Err("start panicked (see above)".into()))
     }
 
     pub fn with_publisher(cfg: BridgeConfig, sources: LogSources, publisher: Box<dyn Publish>) -> Bridge {
         let inbox = Inbox::new(INBOX_CAP);
         let stop = Arc::new(AtomicBool::new(false));
         let worker = spawn_worker_with_logs(cfg, inbox.clone(), publisher, stop.clone(), sources);
-        Bridge { inbox, stop, worker: Some(worker), worker_dead: false, inputs: 0, not_bytes: 0 }
+        Bridge { inbox, stop, worker: Some(worker), worker_dead: false, disabled: false, inputs: 0, not_bytes: 0 }
+    }
+
+    /// For a bridge that could not start (bad config, Zenoh error): no worker, no
+    /// Zenoh. It consumes and drops every event until Stop, so the node never fails
+    /// the dataflow; the caller reports the cause once.
+    pub fn disabled() -> Bridge {
+        Bridge {
+            inbox: Inbox::new(1),
+            stop: Arc::new(AtomicBool::new(true)),
+            worker: None,
+            worker_dead: true,
+            disabled: true,
+            inputs: 0,
+            not_bytes: 0,
+        }
     }
 
     /// One Dora event; never blocks. An input goes into the inbox. If the worker
@@ -136,6 +158,9 @@ impl Bridge {
     }
 
     pub fn summary(&self) -> String {
+        if self.disabled {
+            return format!("nav-bridge: {} inputs, all dropped (not running)", self.inputs);
+        }
         format!(
             "nav-bridge: {} inputs, {} dropped (inbox full), {} not bytes",
             self.inputs,
@@ -273,5 +298,20 @@ mod tests {
         assert!(!bridge.wait(t + Duration::from_millis(300)), "still closing");
         let took = t.elapsed();
         assert!(took >= Duration::from_millis(300) && took < Duration::from_millis(400), "{took:?}");
+    }
+
+    #[test]
+    fn disabled_bridge_consumes_events_until_stop() {
+        let mut bridge = Bridge::disabled();
+        let mut err = Vec::new();
+        for data in [Some(odom()), None] {
+            let event = NodeEvent::Input { id: "pose".into(), data };
+            assert_eq!(bridge.on_event(event, &mut err), Flow::Continue);
+        }
+        assert_eq!(bridge.on_event(NodeEvent::Other, &mut err), Flow::Continue);
+        assert!(err.is_empty(), "the cause was reported at startup: {}", String::from_utf8_lossy(&err));
+        assert_eq!(bridge.on_event(NodeEvent::Stop, &mut err), Flow::Stop);
+        assert!(bridge.wait(Instant::now()), "nothing to wait for");
+        assert_eq!(bridge.summary(), "nav-bridge: 2 inputs, all dropped (not running)");
     }
 }

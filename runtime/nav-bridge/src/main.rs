@@ -6,11 +6,12 @@ use dorobot_nav_bridge::config::load_config;
 use dorobot_nav_bridge::logs::LogSources;
 use dorobot_nav_bridge::run::{input_bytes, log_dir, Bridge, Flow, NodeEvent};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 /// How long after Stop the bridge waits for its worker to finish and close Zenoh.
 const SHUTDOWN_WAIT: Duration = Duration::from_secs(1);
+const USAGE: &str = "usage: dorobot-nav-bridge <config.json>  (a node of a Dora dataflow; see README.md)";
 
 fn main() {
     let code = run();
@@ -19,15 +20,15 @@ fn main() {
 
 fn run() -> i32 {
     let mut args = std::env::args_os().skip(1);
-    let (Some(config), None) = (args.next(), args.next()) else {
-        eprintln!("usage: dorobot-nav-bridge <config.json>  (a node of a Dora dataflow; see README.md)");
-        return 2;
-    };
-    let cfg = match load_config(Path::new(&config)) {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            eprintln!("nav-bridge: config: {e}");
-            return 1;
+    let config = match (args.next(), args.next()) {
+        (Some(arg), None) if arg == "--help" || arg == "-h" => {
+            println!("{USAGE}");
+            return 0;
+        }
+        (Some(config), None) => PathBuf::from(config),
+        _ => {
+            eprintln!("{USAGE}");
+            return 2;
         }
     };
     let (node, mut events) = match DoraNode::init_from_env_force() {
@@ -37,24 +38,26 @@ fn run() -> i32 {
             return 1;
         }
     };
+    // From here on the node is part of a dataflow and must not fail it: whatever
+    // goes wrong while starting is reported once and the node only drains events.
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let logs = log_dir(std::env::var_os("NAV_VIZ_LOG_DIR"), &cwd, &node.dataflow_id().to_string());
     let dataflow = std::env::var_os("NAV_VIZ_DATAFLOW").filter(|v| !v.is_empty()).map(PathBuf::from);
-    println!(
-        "nav-bridge: robot {}, listening on {}, node logs from {}, graph from {}",
-        cfg.robot_id,
-        cfg.listen.join(", "),
-        logs.display(),
-        dataflow.as_ref().map_or_else(|| "nowhere (NAV_VIZ_DATAFLOW not set)".into(), |p| p.display().to_string())
-    );
-    let sources = LogSources { log_dir: Some(logs), dataflow, own_node: Some(node.id().to_string()) };
-    let mut bridge = match Bridge::start(cfg, sources) {
-        Ok(bridge) => bridge,
-        Err(e) => {
-            eprintln!("nav-bridge: {e}");
-            return 1;
-        }
-    };
+    let started = load_config(&config).map_err(|e| format!("config: {e}")).and_then(|cfg| {
+        println!(
+            "nav-bridge: robot {}, listening on {}, node logs from {}, graph from {}",
+            cfg.robot_id,
+            cfg.listen.join(", "),
+            logs.display(),
+            dataflow.as_ref().map_or_else(|| "nowhere (NAV_VIZ_DATAFLOW not set)".into(), |p| p.display().to_string())
+        );
+        let sources = LogSources { log_dir: Some(logs), dataflow, own_node: Some(node.id().to_string()) };
+        Bridge::start(cfg, sources)
+    });
+    let mut bridge = started.unwrap_or_else(|cause| {
+        eprintln!("nav-bridge: ERROR: {cause}; publishing nothing, Dora inputs are consumed and dropped until Stop");
+        Bridge::disabled()
+    });
 
     let mut stderr = std::io::stderr();
     while let Some(event) = events.recv() {

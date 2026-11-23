@@ -28,8 +28,9 @@ with multicast scouting off.
 dorobot-nav-bridge <config.json>
 ```
 
-It must be started by Dora as a node of the dataflow (outside Dora it exits with
-"not started by Dora"). Dataflow entry, for example:
+It must be started by Dora as a node of the dataflow. Outside Dora it exits with
+"not started by Dora" (code 1); no argument or extra arguments print the usage (code 2),
+`--help` prints it (code 0). Dataflow entry, for example:
 
 ```yaml
   - id: viz_bridge
@@ -111,6 +112,16 @@ Every field has a default (the Tracer Mini values below).
 
 A missing or invalid map does not stop the bridge: the layer is not published, the
 problem is printed on stderr and sent as a WARN log entry naming the file.
+
+### Never failing the dataflow
+
+Once Dora has started it, the bridge never exits with a failure, so DORA_NAV does not
+depend on it. If it cannot start (config missing or invalid, listen port busy, Zenoh
+error, anything before the worker runs) it prints one line
+`nav-bridge: ERROR: <cause>; publishing nothing, Dora inputs are consumed and dropped until Stop`
+on stderr, consumes and drops every Dora event until Stop or the end of the event
+stream, and exits 0. Check the bridge's Dora log (`out/<dataflow_id>/log_<bridge id>.jsonl`)
+when Studio sees nothing.
 
 ### Stopping
 

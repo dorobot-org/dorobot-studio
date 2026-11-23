@@ -75,8 +75,9 @@ fn write_map(dir: &Path, w: usize, h: usize) -> PathBuf {
 
 /// Dora integration-test input: `pose` (UInt8 JSON odometry) every 100 ms in
 /// [from, to), one `goal` as a string input at `from`, and a Stop at `stop` (seconds
-/// after the node starts).
-fn write_inputs(dir: &Path, from: f64, to: f64, stop: f64) {
+/// after the node starts); without a Stop the event stream just ends. Returns the
+/// number of inputs.
+fn write_inputs(dir: &Path, from: f64, to: f64, stop: Option<f64>) -> usize {
     let pose = json!({
         "header": {"timestamp": 1.0, "frame_id": "map", "child_frame_id": "base_footprint", "seq": 0},
         "pose": {"position": {"x": 1.0, "y": 2.0, "z": 0.0}, "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}},
@@ -91,9 +92,13 @@ fn write_inputs(dir: &Path, from: f64, to: f64, stop: f64) {
         events.push(json!({"time_offset_secs": t, "type": "Input", "id": "pose", "data": pose, "data_type": "UInt8"}));
         t += 0.1;
     }
-    events.push(json!({"time_offset_secs": stop, "type": "Stop"}));
+    let inputs = events.len();
+    if let Some(stop) = stop {
+        events.push(json!({"time_offset_secs": stop, "type": "Stop"}));
+    }
     let input = json!({"id": "viz_bridge", "events": events});
     std::fs::write(dir.join("inputs.json"), input.to_string()).unwrap();
+    inputs
 }
 
 /// The bridge process; stdout lines are kept with the time they were read.
@@ -257,7 +262,7 @@ fn stop_exits_within_two_seconds_with_a_stalled_reader() {
     let port = free_port();
     let map = write_map(&dir, 2000, 2000);
     let config = write_config(&dir, port, json!({"map_yaml": map}));
-    write_inputs(&dir, 0.2, 3.9, 4.0);
+    write_inputs(&dir, 0.2, 3.9, Some(4.0));
     let mut node = Node::spawn(&dir, &config, &[]);
     // The reader stalls on its first small nav/status message ...
     let mut sub = Subscriber::connect(port);
@@ -299,7 +304,7 @@ fn node_forwards_inputs_logs_graph_and_a_map_warning() {
     std::fs::create_dir_all(&log_dir).unwrap();
     let missing = dir.join("missing/map.yaml");
     let config = write_config(&dir, port, json!({"map_yaml": missing, "map_pcd": null}));
-    write_inputs(&dir, 0.2, 5.9, 6.0);
+    write_inputs(&dir, 0.2, 5.9, Some(6.0));
     let dataflow = fixture("tracer_nav.yml");
     let mut node = Node::spawn(&dir, &config, &[("NAV_VIZ_LOG_DIR", &log_dir), ("NAV_VIZ_DATAFLOW", &dataflow)]);
     let mut sub = Subscriber::connect(port);
@@ -352,5 +357,47 @@ fn node_forwards_inputs_logs_graph_and_a_map_warning() {
     let out = node.stdout_text();
     assert!(out.iter().any(|l| l.contains(" inputs, ") && l.ends_with(", 0 not bytes")), "{out:?}");
     drop(sub);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Ruling: inside a dataflow the bridge never fails. A startup failure is one ERROR
+/// line on stderr naming the cause; then the node consumes (drops) its inputs until
+/// Stop or the end of the event stream and exits 0, so it cannot fail DORA_NAV.
+fn assert_degraded(node: &mut Node, inputs: usize, cause: &str) {
+    let (status, _, stderr) = node.wait(Duration::from_secs(10));
+    let out = node.stdout_text();
+    assert!(status.success(), "{status}; stdout {out:?}; stderr: {stderr}");
+    let errors: Vec<&str> = stderr.lines().filter(|l| l.contains("ERROR")).collect();
+    assert_eq!(errors.len(), 1, "stderr: {stderr}");
+    assert!(errors[0].contains(cause), "the ERROR line names {cause:?}: {}", errors[0]);
+    println!("degraded: {}; {:?}", errors[0], out.last());
+    assert!(!stderr.to_lowercase().contains("panic"), "stderr: {stderr}");
+    let consumed = format!("nav-bridge: {inputs} inputs");
+    assert!(out.iter().any(|l| l.starts_with(&consumed)), "all {inputs} inputs consumed: {out:?}");
+}
+
+#[test]
+fn missing_config_consumes_inputs_and_exits_0_when_the_stream_ends() {
+    let _serial = serial();
+    let dir = tmpdir("noconfig");
+    let inputs = write_inputs(&dir, 0.1, 1.0, None);
+    let missing = dir.join("no/such/config.json");
+    let mut node = Node::spawn(&dir, &missing, &[]);
+    assert_degraded(&mut node, inputs, "no/such/config.json");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn busy_port_consumes_inputs_and_exits_0_after_stop() {
+    let _serial = serial();
+    let dir = tmpdir("busyport");
+    let held = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = held.local_addr().unwrap().port();
+    let config = write_config(&dir, port, json!({}));
+    let inputs = write_inputs(&dir, 0.1, 1.0, Some(1.5));
+    let mut node = Node::spawn(&dir, &config, &[]);
+    assert_degraded(&mut node, inputs, &format!("127.0.0.1:{port}"));
+    assert!(node.line_at("nav-bridge: stopping").is_some(), "{:?}", node.stdout_text());
+    drop(held);
     let _ = std::fs::remove_dir_all(dir);
 }
