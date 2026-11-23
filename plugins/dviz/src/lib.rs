@@ -62,6 +62,7 @@ impl StudioPlugin for DvizPlugin {
 
     fn register(&self, vm: &mut ScriptVm) {
         graph::script_mod(vm);
+        view_panel::script_mod(vm);
     }
 
     fn create(&self, panel: &str, vm: &mut ScriptVm) -> Result<Box<dyn PluginPanel>, String> {

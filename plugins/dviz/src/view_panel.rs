@@ -28,13 +28,145 @@ const NO_PEER_HINT_AFTER: Duration = Duration::from_secs(2);
 /// Nodes listed; the `nodes` label holds this many.
 const NODE_LINES: usize = 12;
 
+script_mod! {
+    use mod.prelude.widgets.*
+    use mod.widgets.*
+
+    // Text and fields that carry the theme themselves, as `light` (0 dark,
+    // 1 light) on their draws, like the host's cards and buttons. A plain
+    // Label, TextInput or CheckBox keeps the colours of the stylesheet it was
+    // made under: see `apply_theme`. Colours are `dorobot_ux::tokens::pal`'s,
+    // named beside each; the ink and the field ground are the iOS sheets' own.
+    // Only the text of a check box or toggle is themed: its box and pill keep
+    // the sheet's colours, which read on either card.
+    mod.widgets.DvizLabel = mod.widgets.Label{
+        draw_text +: {
+            light: instance(0.0)
+            get_color: fn() { return mix(#xF5F5F7, #x1C1C1E, self.light) }   // INK_D, INK_L
+        }
+    }
+    mod.widgets.DvizTextInput = mod.widgets.TextInput{
+        draw_bg +: {
+            light: instance(0.0)
+            pixel: fn() {
+                let sdf = Sdf2d.viewport(self.pos * self.rect_size)
+                sdf.box(
+                    self.border_size
+                    self.border_size
+                    self.rect_size.x - self.border_size * 2.0
+                    self.rect_size.y - self.border_size * 2.0
+                    self.border_radius
+                )
+                let edge = mix(#x38383A, #xD1D1D6, self.light)              // EDGE_D, EDGE_L
+                let focus = mix(#x0A84FF, #x007AFF, self.light)             // VIO_D, VIO_L
+                sdf.fill_keep(mix(#x1C1C1E, #xFFFFFF, self.light))          // DEEP_D, DEEP_L
+                sdf.stroke(mix(edge, focus, self.focus), self.border_size)
+                return sdf.result
+            }
+        }
+        draw_text +: {
+            light: instance(0.0)
+            get_color: fn() {
+                let ink = mix(#xF5F5F7, #x1C1C1E, self.light)               // INK_D, INK_L
+                let hint = mix(#xAEAEB2, #x636366, self.light)              // DIM_D, DIM_L
+                return mix(ink, hint, self.empty)
+            }
+        }
+        // The caret in the accent, which reads on either ground.
+        draw_cursor +: {color: #x0A84FF}
+    }
+    mod.widgets.DvizCheckBox = mod.widgets.CheckBox{
+        draw_text +: {
+            light: instance(0.0)
+            get_color: fn() { return mix(#xF5F5F7, #x1C1C1E, self.light) }
+        }
+    }
+    mod.widgets.DvizToggle = mod.widgets.Toggle{
+        draw_text +: {
+            light: instance(0.0)
+            get_color: fn() { return mix(#xF5F5F7, #x1C1C1E, self.light) }
+        }
+    }
+}
+
+/// Every part of the panel that draws text or a ground, by path from its
+/// root, and which of its draws carry `light`. The entity rows are themed
+/// with [`ROW_THEMED`]; the List / Graph buttons with their selection, by
+/// `sync_node_view`.
+const THEMED: &[(&[LiveId], Themed)] = &[
+    (ids!(heading), Themed::Text),
+    (ids!(connection), Themed::Bg),
+    (ids!(mode_label), Themed::Text),
+    (ids!(mode), Themed::Both),
+    (ids!(endpoint_label), Themed::Text),
+    (ids!(endpoint), Themed::Both),
+    (ids!(prefix_label), Themed::Text),
+    (ids!(prefix), Themed::Both),
+    (ids!(connect), Themed::Both),
+    (ids!(disconnect), Themed::Both),
+    (ids!(open_viewer), Themed::Both),
+    (ids!(status), Themed::Text),
+    (ids!(displays), Themed::Bg),
+    (ids!(displays_label), Themed::Text),
+    (ids!(no_entities), Themed::Text),
+    (ids!(log_card), Themed::Bg),
+    (ids!(logs_label), Themed::Text),
+    (ids!(log_level), Themed::Text),
+    (ids!(logs), Themed::Text),
+    (ids!(node_card), Themed::Bg),
+    (ids!(nodes_label), Themed::Text),
+    (ids!(nodes), Themed::Text),
+    (ids!(node_detail), Themed::Text),
+];
+
+/// One entity row's themed parts, by path from the row.
+const ROW_THEMED: &[(&[LiveId], Themed)] =
+    &[(ids!(toggle), Themed::Text), (ids!(count), Themed::Text)];
+
+/// Puts the theme (`light`: 0 dark, 1 light) on every part of a `dviz_view`
+/// panel that draws text or a ground: [`THEMED`], then each entity row.
+///
+/// Why each part carries `light` instead of following the stylesheet: a
+/// theme switch reloads the stylesheet, and the reload replays a plugin
+/// panel's own source (`PluginRegistry::reapply`), whose prototypes are those
+/// of the sheet the panel was made under. A plain `Label` so keeps that
+/// sheet's ink, and every `light` goes back to its default. See [`theme_due`]
+/// for when to call this.
+pub(crate) fn apply_theme(cx: &mut Cx, root: &WidgetRef, light: f64) {
+    frame::apply_light(cx, root, THEMED, light);
+    let container = root.widget(cx, ids!(entities));
+    let rows: Vec<WidgetRef> = container
+        .borrow::<View>()
+        .map(|view| view.children.iter().map(|(_, row)| row.clone()).collect())
+        .unwrap_or_default();
+    for row in &rows {
+        frame::apply_light(cx, row, ROW_THEMED, light);
+    }
+}
+
+/// The theme to put on a panel when its draws may no longer hold it, `None`
+/// when they do. `themed` is what the panel last applied, `(light, reload
+/// generation)`, and is updated. A panel is due on a theme switch, and after
+/// every style reload (a new `Cx::reload_generation`): the host syncs the
+/// visible panel right after the switch, before the reload, which then resets
+/// every `light` to its default.
+pub(crate) fn theme_due(cx: &Cx, themed: &mut Option<(f64, u64)>) -> Option<f64> {
+    let now = (frame::light_mode(), cx.reload_generation);
+    if *themed == Some(now) {
+        return None;
+    }
+    *themed = Some(now);
+    Some(now.0)
+}
+
 pub struct DvizViewPanel {
     root: WidgetRef,
     session: &'static DvizSession,
     /// One row per entity, in the snapshot's (sorted) order.
     rows: Vec<EntityRow>,
     warn_only: bool,
-    light: Option<f64>,
+    /// `(light, reload generation)` the panel was last themed for.
+    themed: Option<(f64, u64)>,
     /// Nodes as the graph rather than the list.
     graph_view: bool,
     /// The node last clicked in the graph; its detail shows in graph view.
@@ -55,17 +187,17 @@ impl DvizViewPanel {
             use mod.prelude.widgets.*
             use mod.widgets.*
             View{width: Fill height: Fill flow: Down padding: 16.0 spacing: 12.0
-                Label{text: "Visualization"
+                heading := mod.widgets.DvizLabel{text: "Visualization"
                     draw_text +: {text_style: mod.widgets.ux.TEXT_TITLE{}}}
                 connection := mod.widgets.ux.Card{width: Fill height: Fit flow: Down padding: 14.0 spacing: 8.0
                     View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
-                        Label{text: "Mode"}
-                        mode := TextInput{width: 90 height: 36 min_height: 36 text: "peer"}
-                        Label{text: "Endpoint"}
-                        endpoint := TextInput{width: Fill height: 36 min_height: 36
+                        mode_label := mod.widgets.DvizLabel{text: "Mode"}
+                        mode := mod.widgets.DvizTextInput{width: 90 height: 36 min_height: 36 text: "peer"}
+                        endpoint_label := mod.widgets.DvizLabel{text: "Endpoint"}
+                        endpoint := mod.widgets.DvizTextInput{width: Fill height: 36 min_height: 36
                             empty_text: "tcp/192.168.1.186:7447 · empty for multicast discovery"}
-                        Label{text: "Prefix"}
-                        prefix := TextInput{width: 110 height: 36 min_height: 36 text: "dviz"}
+                        prefix_label := mod.widgets.DvizLabel{text: "Prefix"}
+                        prefix := mod.widgets.DvizTextInput{width: 110 height: 36 min_height: 36 text: "dviz"}
                     }
                     View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                         connect := mod.widgets.ux.PrimaryButton{text: "Connect"}
@@ -73,30 +205,30 @@ impl DvizViewPanel {
                         open_viewer := mod.widgets.ux.ToolButton{text: "Open 3D window"}
                     }
                     // State, hint or error, 3D window; room for one to wrap.
-                    status := Label{width: Fill max_lines: 6 text: ""}
+                    status := mod.widgets.DvizLabel{width: Fill max_lines: 6 text: ""}
                 }
                 displays := mod.widgets.ux.Card{width: Fill height: Fit flow: Down padding: 14.0 spacing: 6.0
-                    Label{text: "Displays"}
-                    no_entities := Label{text: "No displays yet"}
+                    displays_label := mod.widgets.DvizLabel{text: "Displays"}
+                    no_entities := mod.widgets.DvizLabel{text: "No displays yet"}
                     entities := View{width: Fill height: Fit flow: Down spacing: 4.0}
                 }
                 View{width: Fill height: Fill flow: Right spacing: 12.0
                     log_card := mod.widgets.ux.Card{width: Fill height: Fill flow: Down padding: 12.0 spacing: 6.0
                         View{width: Fill height: Fit flow: Right spacing: 12.0 align: Align{y: 0.5}
-                            Label{text: "Logs"}
-                            log_level := CheckBox{text: "WARN and above"}
+                            logs_label := mod.widgets.DvizLabel{text: "Logs"}
+                            log_level := mod.widgets.DvizCheckBox{text: "WARN and above"}
                         }
-                        logs := Label{width: Fill max_lines: 12 text: ""}
+                        logs := mod.widgets.DvizLabel{width: Fill max_lines: 12 text: ""}
                     }
                     node_card := mod.widgets.ux.Card{width: Fill height: Fill flow: Down padding: 12.0 spacing: 6.0
                         View{width: Fill height: Fit flow: Right spacing: 6.0 align: Align{y: 0.5}
-                            Label{text: "Nodes"}
+                            nodes_label := mod.widgets.DvizLabel{text: "Nodes"}
                             node_list := mod.widgets.ux.SegmentButton{text: "List"}
                             node_graph := mod.widgets.ux.SegmentButton{text: "Graph"}
                         }
-                        nodes := Label{width: Fill max_lines: 12 text: ""}
+                        nodes := mod.widgets.DvizLabel{width: Fill max_lines: 12 text: ""}
                         // Before the graph: the graph fills what is left.
-                        node_detail := Label{width: Fill max_lines: 6 text: "" visible: false}
+                        node_detail := mod.widgets.DvizLabel{width: Fill max_lines: 6 text: "" visible: false}
                         graph := mod.widgets.DvizGraph{visible: false}
                     }
                 }
@@ -107,11 +239,17 @@ impl DvizViewPanel {
             session,
             rows: Vec::new(),
             warn_only: false,
-            light: None,
+            themed: None,
             graph_view: false,
             selected: None,
             view_buttons: None,
         }
+    }
+
+    /// The theme last put on the panel; the current one before the first.
+    fn light(&self) -> f64 {
+        self.themed
+            .map_or_else(frame::light_mode, |(light, _)| light)
     }
 
     /// Redraws everything from a fresh snapshot.
@@ -133,7 +271,7 @@ impl DvizViewPanel {
     /// Shows the list or the graph, and in graph view the selected node's
     /// detail. The graph is only fed while it is shown.
     fn sync_node_view(&mut self, cx: &mut Cx, snapshot: &SessionSnapshot) {
-        let light = self.light.unwrap_or_else(frame::light_mode);
+        let light = self.light();
         if self.view_buttons != Some((self.graph_view, light)) {
             for (path, on) in [
                 (ids!(node_list), !self.graph_view),
@@ -182,8 +320,10 @@ impl DvizViewPanel {
             .set_visible(cx, self.rows.is_empty());
     }
 
-    /// Replaces the rows; only runs when the set of entities changes.
+    /// Replaces the rows, in the panel's theme; only runs when the set of
+    /// entities changes.
     fn rebuild_rows<'a>(&mut self, cx: &mut Cx, names: impl Iterator<Item = &'a String>) {
+        let light = self.light();
         let container = self.root.widget(cx, ids!(entities));
         let mut rows = Vec::new();
         let mut children = Vec::new();
@@ -193,12 +333,13 @@ impl DvizViewPanel {
                     use mod.prelude.widgets.*
                     use mod.widgets.*
                     View{width: Fill height: Fit flow: Right spacing: 12.0 align: Align{y: 0.5}
-                        toggle := Toggle{text: ""}
-                        count := Label{text: ""}
+                        toggle := mod.widgets.DvizToggle{text: ""}
+                        count := mod.widgets.DvizLabel{text: ""}
                     }
                 });
                 WidgetRef::script_from_value(vm, value)
             });
+            frame::apply_light(cx, &row, ROW_THEMED, light);
             let toggle = row.check_box(cx, ids!(toggle));
             toggle.set_text(name);
             rows.push(EntityRow {
@@ -224,23 +365,10 @@ impl PluginPanel for DvizViewPanel {
     }
 
     fn sync(&mut self, cx: &mut Cx, _: &PanelContext<'_>) {
-        let light = frame::light_mode();
-        if self.light != Some(light) {
-            frame::apply_light(
-                cx,
-                &self.root,
-                &[
-                    (ids!(connection), Themed::Bg),
-                    (ids!(displays), Themed::Bg),
-                    (ids!(log_card), Themed::Bg),
-                    (ids!(node_card), Themed::Bg),
-                    (ids!(connect), Themed::Both),
-                    (ids!(disconnect), Themed::Both),
-                    (ids!(open_viewer), Themed::Both),
-                ],
-                light,
-            );
-            self.light = Some(light);
+        if let Some(light) = theme_due(cx, &mut self.themed) {
+            apply_theme(cx, &self.root, light);
+            // A style reload also reset the List / Graph buttons' selection.
+            self.view_buttons = None;
         }
         self.refresh(cx);
     }
@@ -641,6 +769,44 @@ mod tests {
         );
         // `recorder` only appears in an edge.
         assert_eq!(node_detail(&nodes, &edges, "recorder"), None);
+    }
+
+    /// The themed text and field shaders compile for the desktop backends
+    /// (no GPU is needed: this is the fork's own shader compiler).
+    #[test]
+    fn themed_widget_shaders_compile() {
+        let mut cx = Cx::new(Box::new(|_, _| {}));
+        cx.init_cx_os();
+        cx.with_vm(|vm| {
+            dorobot_studio_core::register_ui(vm);
+            script_mod(vm);
+            assert!(vm.take_errors().is_empty());
+            let sources = [
+                ("label glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizLabel.draw_text, "glsl", false)})),
+                ("label metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizLabel.draw_text, "metal", false)})),
+                ("input well glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_bg, "glsl", false)})),
+                ("input well metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_bg, "metal", false)})),
+                ("input text glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_text, "glsl", false)})),
+                ("input text metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_text, "metal", false)})),
+                ("input caret glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_cursor, "glsl", false)})),
+                ("input caret metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizTextInput.draw_cursor, "metal", false)})),
+                ("check box glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizCheckBox.draw_text, "glsl", false)})),
+                ("check box metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizCheckBox.draw_text, "metal", false)})),
+                ("toggle glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizToggle.draw_text, "glsl", false)})),
+                ("toggle metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizToggle.draw_text, "metal", false)})),
+            ];
+            for (name, value) in sources {
+                let source = vm
+                    .heap()
+                    .string_with(value, |_, text| text.to_string())
+                    .unwrap_or_else(|| panic!("{name}: no source"));
+                assert!(
+                    !source.is_empty() && !source.starts_with("ERRORS"),
+                    "{name}: {source}"
+                );
+            }
+            assert!(vm.take_errors().is_empty());
+        });
     }
 
     #[test]

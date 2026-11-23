@@ -275,6 +275,143 @@ fn dviz_panel_syncs_in_both_themes_without_script_errors() {
     });
 }
 
+/// The `light` instance one draw holds, as its shader reads it; NaN when the
+/// draw declares no `light`, that is when the theme cannot reach it.
+fn light_of(cx: &mut Cx, draw: &DrawVars) -> f32 {
+    let mut light = [f32::NAN];
+    draw.get_instance(cx, live_id!(light), &mut light);
+    light[0]
+}
+
+/// Where the theme reached the dviz panel: the `connection` card, the
+/// `status` label, the `endpoint` input (well and text), the `connect` button
+/// and, given an entity, the count label of its row.
+fn dviz_theme(cx: &mut Cx, root: &WidgetRef, entity: Option<&str>) -> Vec<(&'static str, f32)> {
+    let mut seen = Vec::new();
+    let card = root.widget(cx, ids!(connection));
+    seen.push((
+        "connection card",
+        light_of(cx, &card.borrow::<View>().unwrap().draw_bg),
+    ));
+    let status = root.widget(cx, ids!(status));
+    seen.push((
+        "status label",
+        light_of(cx, &status.borrow::<Label>().unwrap().draw_text),
+    ));
+    let endpoint = root.widget(cx, ids!(endpoint));
+    let input = endpoint.borrow::<TextInput>().unwrap();
+    seen.push(("endpoint well", light_of(cx, &input.draw_bg)));
+    seen.push(("endpoint text", light_of(cx, &input.draw_text)));
+    drop(input);
+    let connect = root.widget(cx, ids!(connect));
+    seen.push((
+        "connect button",
+        light_of(cx, &connect.borrow::<Button>().unwrap().draw_bg),
+    ));
+    if let Some(entity) = entity {
+        let count = root.widget(
+            cx,
+            &[
+                live_id!(entities),
+                LiveId::from_str(entity),
+                live_id!(count),
+            ],
+        );
+        let count = count
+            .borrow::<Label>()
+            .unwrap_or_else(|| panic!("no row for {entity}"));
+        seen.push(("entity row count", light_of(cx, &count.draw_text)));
+    }
+    seen
+}
+
+fn assert_dviz_theme(cx: &mut Cx, root: &WidgetRef, entity: Option<&str>, light: f64) {
+    for (part, value) in dviz_theme(cx, root, entity) {
+        assert_eq!(value, light as f32, "{part} at light {light}");
+    }
+}
+
+#[test]
+fn dviz_panel_follows_theme_round_trip() {
+    let (mut cx, registry) = setup();
+    let mut panel = cx
+        .with_vm(|vm| registry.create_instance("dviz_view", vm))
+        .unwrap();
+    let backend = MockBackend::new();
+    // Entities in the panel's (shared) session give it rows, as their first
+    // messages would. The second arrives with the switch to light, so the
+    // rows are made anew in the same sync that changes the theme.
+    let session = dorobot_plugin_dviz::DvizSession::global();
+    for (light, arriving) in [
+        (0.0, Some("theme/first")),
+        (1.0, Some("theme/second")),
+        (0.0, None),
+    ] {
+        if let Some(entity) = arriving {
+            session.set_entity_enabled(entity, true);
+        }
+        dorobot_flex::ui::frame::set_light_mode(light);
+        panel.sync(
+            &mut cx,
+            &PanelContext {
+                backend: &backend,
+                rig_editing: false,
+                show_help: false,
+                show_details: false,
+                live_controls: false,
+            },
+        );
+        assert_dviz_theme(&mut cx, &panel.root(), Some("theme/first"), light);
+    }
+    cx.with_vm(|vm| {
+        let errors = vm.take_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    });
+}
+
+/// A theme switch reloads the stylesheet. The host syncs the visible panel at
+/// once; the reload (`Event::LiveEdit`, a new `reload_generation`) then
+/// replays every panel's source (`PluginRegistry::reapply`), which puts each
+/// `light` back to its default, and the host syncs again. The panel must come
+/// out of that in the new theme, the List / Graph buttons included.
+#[test]
+fn dviz_panel_keeps_its_theme_across_the_style_reload() {
+    let (mut cx, mut registry) = setup();
+    let pages = cx.with_vm(|vm| {
+        let value = script_eval!(vm, { use mod.prelude.widgets.* use mod.widgets.* View{} });
+        WidgetRef::script_from_value(vm, value)
+    });
+    registry.mount(&mut cx, &pages).unwrap();
+    registry.select("dviz_view").unwrap();
+    let root = pages.widget(&cx, ids!(dviz_view));
+    let backend = MockBackend::new();
+    let context = PanelContext {
+        backend: &backend,
+        rig_editing: false,
+        show_help: false,
+        show_details: false,
+        live_controls: false,
+    };
+    for light in [1.0, 0.0, 1.0] {
+        dorobot_flex::ui::frame::set_light_mode(light);
+        registry.sync(&mut cx, &context);
+        cx.reload_generation += 1;
+        registry.reapply(&mut cx);
+        registry.sync(&mut cx, &context);
+        assert_dviz_theme(&mut cx, &root, None, light);
+        let list = root.widget(&cx, ids!(node_list));
+        let list = list.borrow::<Button>().unwrap();
+        let mut on = [f32::NAN];
+        list.draw_bg.get_instance(&mut cx, live_id!(on), &mut on);
+        assert_eq!(on[0], 1.0, "List shows as selected at light {light}");
+        drop(list);
+    }
+    cx.with_vm(|vm| {
+        let errors = vm.take_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    });
+}
+
 #[test]
 fn plugin_tabs_follow_navigation_and_group_entries_restore_the_last_tab() {
     use dorobot_flex::api::Screen;
