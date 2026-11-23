@@ -187,8 +187,9 @@ impl Sink for RerunSink {
                 }
             }
             "scalar" => {
+                // A time series: Rerun plots it as a curve over log time.
                 let data = parse!(msg, ScalarData);
-                rec.log(entity, &rerun::TextLog::new(format!("{:.4}", data.value)))
+                rec.log(entity, &rerun::Scalars::single(data.value))
             }
             "text" => {
                 let data = parse!(msg, TextData);
@@ -296,6 +297,44 @@ mod tests {
         assert!(
             storage.num_msgs() > baseline,
             "nothing reached the recording"
+        );
+    }
+
+    /// The Arrow schemas (with their metadata) of every chunk recorded so far
+    /// for `entity`, as text.
+    fn recorded_schemas(storage: &MemorySinkStorage, entity: &str) -> Vec<String> {
+        storage
+            .take()
+            .iter()
+            .filter_map(|msg| match msg {
+                rerun::log::LogMsg::ArrowMsg(_, arrow) => {
+                    Some(format!("{:?}", arrow.batch.schema()))
+                }
+                _ => None,
+            })
+            .filter(|schema| schema.contains(&format!("\"/{entity}\"")))
+            .collect()
+    }
+
+    #[test]
+    fn scalar_is_logged_as_a_time_series() {
+        let (mut sink, storage) = RerunSink::memory("test");
+        assert_eq!(
+            sink.log("imu/accel_x", &msg("scalar", json!({"value": 1.5})), None),
+            Ok(())
+        );
+        sink.flush();
+        let schemas = recorded_schemas(&storage, "imu/accel_x");
+        assert!(!schemas.is_empty(), "nothing recorded for imu/accel_x");
+        assert!(
+            schemas
+                .iter()
+                .any(|schema| schema.contains("Scalars:scalars")),
+            "no Scalars component: {schemas:?}"
+        );
+        assert!(
+            !schemas.iter().any(|schema| schema.contains("TextLog")),
+            "logged as text: {schemas:?}"
         );
     }
 
