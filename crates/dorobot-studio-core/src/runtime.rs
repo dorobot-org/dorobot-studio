@@ -18,8 +18,9 @@ pub fn resources() -> Option<PathBuf> {
 }
 
 pub fn root() -> PathBuf {
-    resources()
-        .map(|p| p.join("studio"))
+    std::env::var_os("DOROBOT_STUDIO_SOURCE_ROOT")
+        .map(PathBuf::from)
+        .or_else(|| resources().map(|p| p.join("studio")))
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
 }
 

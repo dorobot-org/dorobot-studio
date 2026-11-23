@@ -1002,6 +1002,7 @@ impl MatchEvent for App {
                         "language": self.language.code(), "untranslated": self.localizer.untranslated(),
                         "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()});
                 probe["aisle_panel"] = serde_json::json!(self.plugins.selected());
+                probe["aisle_source_root"] = serde_json::json!(dorobot_flex::runtime::root().canonicalize().ok());
                 probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"worker_pid":w.worker_pid(),"status":w.status,"scene_joints":w.scene["joint_count"],"progress":w.progress,"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"impact":w.impact,"rgb_timing":w.rgb_timing.name(),"onboard_context":w.onboard_context,"room_editor":w.room_editor,"show_evaluation":w.show_evaluation,"evaluation":w.evaluation,"failure_index":w.failure_index,"room_info":w.room_info,"room_path":w.room_path,"layout_seed":w.layout_seed,"revision":w.revision_index(),"dataset":w.dataset,"result":w.evidence})));
                 dorobot_flex::ux_probe::write(cx,&self.ui,probe,
                     &[

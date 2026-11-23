@@ -80,12 +80,13 @@ def main():
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
+    studio_root = Path(__file__).resolve().parents[2]
     env = os.environ | {
         "MAKEPAD_HAL_BACKEND": args.backend,
         "DOROBOT_UX_REPORT": str(report),
+        "DOROBOT_STUDIO_SOURCE_ROOT": str(studio_root),
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
-    studio_root = Path(__file__).resolve().parents[2]
     # The binary can come from another build directory. Its digest identifies the
     # executable, while these fields identify the workspace observed at launch.
     with args.studio.open("rb") as binary:
@@ -109,6 +110,7 @@ def main():
                     studio_root / f
                     for f in (
                         "Cargo.lock",
+                        "crates/dorobot-studio-core/src/runtime.rs",
                         "plugins/aisle/src/lib.rs",
                         "crates/dorobot-studio-core/src/api/aisle.rs",
                         "dorobot-flex/src/bin/dorobot-flex.rs",
@@ -138,6 +140,16 @@ def main():
                     if process.poll() is not None or time.monotonic() > deadline:
                         raise RuntimeError(f"Studio failed to start. See {log.name}")
                     time.sleep(0.1)
+                if (
+                    Path(
+                        json.loads(report.read_text())["state"].get("aisle_source_root")
+                        or ""
+                    )
+                    != studio_root
+                ):
+                    raise RuntimeError(
+                        "Studio launched against a different source checkout"
+                    )
                 check = [
                     sys.executable,
                     str(Path(__file__).with_name("journey.py")),
@@ -194,6 +206,7 @@ def main():
                         stage=stage,
                         pid=process.pid,
                         observed_dark=state["dark"],
+                        observed_source_root=state["aisle_source_root"],
                         windows=[w.get("sz") for w in windows],
                     )
                 )
