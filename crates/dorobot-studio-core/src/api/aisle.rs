@@ -101,7 +101,11 @@ pub struct Workbench {
 }
 impl Default for Workbench {
     fn default() -> Self {
-        let root = crate::runtime::user_data().join("aisle");
+        Self::with_root(crate::runtime::user_data().join("aisle"))
+    }
+}
+impl Workbench {
+    fn with_root(root: PathBuf) -> Self {
         let mut w = Self {
             robot: Robot::Nano,
             task: REFERENCE.into(),
@@ -148,6 +152,9 @@ impl Default for Workbench {
     }
 }
 impl Workbench {
+    pub fn worker_pid(&self) -> Option<u32> {
+        self.job.as_ref().map(|j| j.child.id())
+    }
     pub fn busy(&self) -> bool {
         self.job.is_some()
     }
@@ -561,7 +568,7 @@ mod tests {
         let dir = fixture();
         let plan = dir.join("controller.json");
         fs::write(&plan, r#"{"joint":"left_j2_pitch","task":"inspection"}"#).unwrap();
-        let mut w = Workbench::default();
+        let mut w = Workbench::with_root(dir.clone());
         w.root = plan.clone(); // A file at the job root makes launch fail deterministically.
         w.revisions = vec![plan.clone()];
         w.load_plan(Some(plan.clone()));
@@ -590,7 +597,7 @@ mod tests {
             .process_group(0)
             .spawn()
             .unwrap();
-        let mut w = Workbench::default();
+        let mut w = Workbench::with_root(dir.clone());
         w.job = Some(Job {
             child,
             dir: dir.clone(),

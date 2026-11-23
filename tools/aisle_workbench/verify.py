@@ -100,6 +100,16 @@ def main():
         requested_size=args.size,
         provider="codex" if args.codex else "reference",
         native_binary_sha256=binary_hash,
+        studio_source_commit=subprocess.check_output(
+            [
+                "git",
+                "-C",
+                str(Path(__file__).resolve().parents[2]),
+                "rev-parse",
+                "HEAD",
+            ],
+            text=True,
+        ).strip(),
         sessions=sessions,
         trials=sorted(p.name for p in (output / "state/aisle").glob("*-run")),
         files={

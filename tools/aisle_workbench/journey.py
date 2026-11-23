@@ -278,12 +278,25 @@ def main():
     done(lambda w: w["revision"] == 1, "G1 later revision")
     page("run")
     click("aisle_run.start_run")
+    group = wait(lambda j: j["state"]["aisle"]["worker_pid"], "run worker started")[
+        "state"
+    ]["aisle"]["worker_pid"]
     click("aisle_run.stop_run")
     row = done(
         lambda w: not w["busy"] and w["result"].get("outcome") == "Stopped",
         "operator stop retained",
     )
     assert (Path(row["selected"]) / "stopped.json").is_file()
+
+    def group_is_stopped(_):
+        processes = subprocess.check_output(["ps", "-axo", "pgid=,stat="], text=True)
+        return not any(
+            p and int(p[0]) == group and not p[1].startswith("Z")
+            for p in (line.split() for line in processes.splitlines())
+        )
+
+    wait(group_is_stopped, "cancelled worker group exited", 5)
+    checks.append(dict(check="cancelled worker group exited", process_group=group))
     page("evidence")
     click("aisle_evidence.previous")
     prior = done(lambda w: w["result"].get("task_success"), "reopen scored evidence")

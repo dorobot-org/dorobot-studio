@@ -173,7 +173,11 @@ def prepare(args, meta):
         robot=args.robot,
         task=args.task,
         provider=args.provider,
-        **({"policy_model": model_name} if model_name else {}),
+        **(
+            {"policy_model": model_name or "Codex (model unreported)"}
+            if args.provider == "codex"
+            else {}
+        ),
         model_hash=meta["model_hash"],
     )
 
@@ -184,11 +188,12 @@ def simulate(args, meta):
     from aisle.sim import nexus_backend as nx
     from importlib.metadata import version
 
-    plan = json.loads(args.controller.read_text())
+    original = args.controller.read_bytes()
+    plan = json.loads(original)
     if plan["model_hash"] != meta["model_hash"] or plan["robot"] != args.robot:
         raise ValueError("Controller and robot model differ")
     control = validate(plan, meta)
-    save(args.out / "controller.json", plan)
+    (args.out / "controller.json").write_bytes(original)
     fixture = "fixed-base, zero-gravity inspection"
     repo = Path(nx.__file__).resolve().parents[3]
     revision = (
@@ -291,7 +296,7 @@ def simulate(args, meta):
         within_limits=in_bounds,
         fixture=args.fixture,
         model_hash=meta["model_hash"],
-        controller_hash=digest(args.controller),
+        controller_hash=hashlib.sha256(original).hexdigest(),
     )
 
 

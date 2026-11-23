@@ -1002,7 +1002,7 @@ impl MatchEvent for App {
                         "language": self.language.code(), "untranslated": self.localizer.untranslated(),
                         "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()});
                 probe["aisle_panel"] = serde_json::json!(self.plugins.selected());
-                probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"status":w.status,"scene_joints":w.scene["joint_count"],"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"revision":w.revision_index(),"dataset":w.dataset,"result":w.evidence})));
+                probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"worker_pid":w.worker_pid(),"status":w.status,"scene_joints":w.scene["joint_count"],"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"revision":w.revision_index(),"dataset":w.dataset,"result":w.evidence})));
                 dorobot_flex::ux_probe::write(cx,&self.ui,probe,
                     &[
                         "page_record.body.right.session",
