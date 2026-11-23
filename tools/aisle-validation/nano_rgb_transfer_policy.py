@@ -331,7 +331,18 @@ class Controller:
                     raise ValueError(f"Lost {color} during two transport attempts")
                 self.joints({self.grip: -0.25}, 120)
                 self.back_away(color)
-                self.joints(dict(head_pan_joint=0.25, head_tilt_joint=0.65), 160)
+                # A dropped cube may lie beside a table leg. Fold the spare arm up
+                # after clearing the rim, before turning to reacquire the cube.
+                self.joints(
+                    dict(
+                        head_pan_joint=0.25,
+                        head_tilt_joint=0.65,
+                        right_j2_pitch=0.10,
+                        right_j3_pitch=-1.45,
+                        right_j4_pitch=-0.45,
+                    ),
+                    200,
+                )
                 self.phase("locate", color)
             self.phase("place", color)
             t = edge["along"]
