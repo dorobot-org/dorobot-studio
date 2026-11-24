@@ -1353,6 +1353,26 @@ fn nav_panel_tools_follow_the_robot_and_send_with_the_token() {
             assert_eq!(tool_button_state(&mut cx, &panel, path), (true, false), "{path:?}");
         }
     }
+    // The 2 s hint keeps the ink even while a goal warning applies, then the
+    // red comes back.
+    assert!(map_action(&mut cx, &mut panel, DvizMapAction::Hint("drag to set the heading")));
+    assert_eq!(text(&mut cx, &panel, ids!(tool_reason)), "drag to set the heading");
+    assert_eq!(reason_red(&mut cx, &panel), 0.0, "the hint is drawn red");
+    // A style reload puts the shader back to its source (not red); the next
+    // sync applies the red again.
+    {
+        let mut line = panel.root().widget(&cx, ids!(tool_reason));
+        script_apply_eval!(cx, line, { draw_text +: { error: 0.0 } });
+    }
+    cx.reload_generation += 1;
+    // The hint has lapsed after 2 s (the status goes stale then: send it again).
+    thread::sleep(Duration::from_millis(2100));
+    robot_is(&mut cx, &mut panel, false, true);
+    assert_eq!(
+        text(&mut cx, &panel, ids!(tool_reason)),
+        "Goals will be refused: e-stop latched (release it on the robot)"
+    );
+    assert_eq!(reason_red(&mut cx, &panel), 1.0, "red not re-applied after the theme switch");
     // Put away and arm it again while disarmed.
     assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
     assert_eq!(map.tool(), None);
