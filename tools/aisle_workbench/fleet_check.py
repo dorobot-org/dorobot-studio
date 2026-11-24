@@ -80,7 +80,9 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             and selected(w)["state"] == "completed",
             "Worker selection recovered",
         )
-        assert len(row["fleet"]["jobs"]) == (1 if args.foreground_cadence else 2)
+        assert len(row["fleet"]["jobs"]) == (
+            1 if args.foreground_cadence or args.fleet_controller else 2
+        )
         page("evidence")
         row = done(
             lambda w: (w["result"] or {}).get("controller_hash")
@@ -155,21 +157,22 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         return
 
     page("task")
-    click("aisle_task.instruction")
-    remote(
-        "key",
-        "w=0",
-        "c=KeyA",
-        "logo=1" if sys.platform == "darwin" else "ctrl=1",
-        "wait=1",
-    )
-    remote(
-        "text",
-        "w=0",
-        "t=Move the red floor cube onto the coffee table.",
-        "wait=1",
-    )
-    click("aisle_task.codex" if args.provider == "codex" else "aisle_task.octos")
+    if not args.fleet_controller:
+        click("aisle_task.instruction")
+        remote(
+            "key",
+            "w=0",
+            "c=KeyA",
+            "logo=1" if sys.platform == "darwin" else "ctrl=1",
+            "wait=1",
+        )
+        remote(
+            "text",
+            "w=0",
+            "t=Move the red floor cube onto the coffee table.",
+            "wait=1",
+        )
+        click("aisle_task.codex" if args.provider == "codex" else "aisle_task.octos")
     row = done(
         lambda w: not w["busy"]
         and (w["controller"] or {}).get("kind") == "table-transfer",
@@ -199,7 +202,10 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         "Connected to Nexus worker",
     )
     slots = row["fleet"]["capabilities"]["slots"]
-    assert slots >= 2 if args.fleet_node else slots == (args.foreground_cadence or 2)
+    if args.fleet_node:
+        assert slots >= (1 if args.fleet_controller else 2)
+    else:
+        assert slots == (args.foreground_cadence or 2)
     run_button("queue_stream")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "stream",
@@ -241,6 +247,33 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         180,
     )
     grab("foreground")
+    if args.fleet_controller:
+        (prepared,) = (args.out.parent / "state/aisle").glob(
+            "*-Nano-prepare/controller.json"
+        )
+        expected = hashlib.sha256(prepared.read_bytes()).hexdigest()
+        row = done(
+            lambda w: observed(w).get("id") == foreground
+            and observed(w).get("state") == "completed",
+            "Registered worker scored the original controller",
+            650,
+        )
+        result = observed(row)["result"]
+        assert result["controller_hash"] == expected and isinstance(
+            result["task_success"], bool
+        )
+        origin, trial = import_and_replay(foreground, result)
+        checks.append(
+            dict(
+                check="Submitted the frozen controller, streamed and recovered its original recording",
+                foreground_id=foreground,
+                origin=origin,
+                trial=trial.name,
+                result=result,
+            )
+        )
+        source.write_text(json.dumps(checks, indent=2))
+        return
     run_button("queue_stream")
     done(
         lambda w: not w["busy"] and "foreground stream" in w["status"],
