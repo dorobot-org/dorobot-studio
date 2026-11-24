@@ -101,16 +101,35 @@ def describe(robot):
             f"Missing {len(missing)} meshes for {robot}, including {missing[0]}. Run tools/fetch_robot_meshes.py g1 for G1."
         )
     limits = {}
+    joints = []
     for joint in tree.findall("joint"):
-        if joint.get("type") == "revolute":
-            lim = joint.find("limit").attrib
+        kind = joint.get("type")
+        if kind == "fixed":
+            continue
+        element = joint.find("limit")
+        lim = element.attrib if element is not None else {}
+        if kind == "revolute":
             limits[joint.get("name")] = [float(lim["lower"]), float(lim["upper"])]
+        joints.append(
+            dict(
+                name=joint.attrib["name"],
+                type=kind,
+                parent=joint.find("parent").attrib["link"],
+                child=joint.find("child").attrib["link"],
+                limits={
+                    key: float(lim[key])
+                    for key in ("lower", "upper", "velocity", "effort")
+                    if key in lim
+                },
+            )
+        )
     return dict(
         robot=robot,
         model=str(model),
         model_hash=digest(model),
         mesh_count=len(meshes),
-        joint_count=sum(j.get("type") != "fixed" for j in tree.findall("joint")),
+        joint_count=len(joints),
+        joints=joints,
         limits=limits,
         allowed_joints=[left, right],
     )

@@ -37,6 +37,7 @@ jobs:
             libxrandr-dev libegl1-mesa-dev libgl1-mesa-dev libdrm-dev python3-numpy python3-pil python3-venv ffmpeg
       - name: Verify archived Studio RGB delivery and robot measurements
         run: |
+          /usr/bin/python3 docs/product/aisle-studio/validation/joint-inspector/check.py
           guide=docs/product/aisle-studio/validation/wall-clock-rgb
           /usr/bin/python3 "$guide/audit.py" "$guide/measurements.zip" --output "$RUNNER_TEMP/wall-clock-rgb.json"
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wall-clock-rgb.json"
