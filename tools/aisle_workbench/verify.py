@@ -94,7 +94,7 @@ def main():
     )
     scenario.add_argument(
         "--observed-author",
-        action="store_true",
+        nargs="?", const="approach", choices=("approach", "transfer"),
         help="Select a target from two actual onboard scene observations",
     )
     scenario.add_argument(
@@ -491,7 +491,7 @@ def main():
                             ["--foreground-cadence", str(args.foreground_cadence)]
                         )
                 if args.observed_author:
-                    check.append("--observed-author")
+                    check.extend(["--observed-author", args.observed_author])
                 if args.moving_target:
                     check.append("--moving-target")
                 if args.wrist_faults:
@@ -557,7 +557,7 @@ def main():
                     timeout = 5400
                 elif args.train_grasp or args.transfer == "three":
                     timeout = 2400
-                elif args.transfer or args.fleet or args.wrist_faults or prior_trial:
+                elif args.transfer or args.observed_author == "transfer" or args.fleet or args.wrist_faults or prior_trial:
                     timeout = 900
                 else:
                     timeout = 330

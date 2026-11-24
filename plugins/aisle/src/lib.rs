@@ -109,6 +109,7 @@ script_mod! {
                 revision_actions := Bar{revise := mod.widgets.ux.ToolButton{text:"Revise with DeepSeek"} revise_codex := mod.widgets.ux.ToolButton{text:"Revise with Codex"}}
             }
             model_card := Card{width:Fill height:Fill Bar{preview_title := Section{text:"Robot preview"} review_controller := mod.widgets.ux.ToolButton{text:"Review changes"}}
+                author_inputs := Body{max_lines:2}
                 diff_scroll := ScrollYView{width:Fill height:Fill flow:Down controller_changes := Body{max_lines:0}}
                 robot := RobotView{width:Fill height:Fill keyboard_controls:false} onboard_photo := VideoPlayer{width:Fill height:Fill}}
         }
@@ -649,6 +650,14 @@ impl PluginPanel for Panel {
                         "Robot preview"
                     },
                 );
+                let inputs = &w.plan["scene_observation"]["author_input"];
+                let label = match (inputs["provider"].as_str(), inputs["images"].as_array()) {
+                    (Some("codex"), Some(images)) if images.len() == 3 => "Sent to Codex · Head and both wrist images plus measured positions",
+                    (Some("octos-deepseek"), Some(images)) if images.is_empty() => "Sent to DeepSeek · Positions measured from onboard RGB",
+                    _ => "",
+                };
+                self.root.widget(cx, ids!(author_inputs)).set_visible(cx, !reviewing && !label.is_empty());
+                self.label(cx, ids!(author_inputs), label);
                 let draft = (w.robot, w.prepared.clone());
                 if self.draft.as_ref() != Some(&draft) {
                     self.root

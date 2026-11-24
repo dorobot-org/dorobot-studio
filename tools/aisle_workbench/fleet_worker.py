@@ -31,17 +31,11 @@ ROOM_FILES = {"room.json", "survey.json", "reference-image", "room-preview.rgb"}
 
 
 def companion_names(plan):
-    from onboard_scene import PACKET, CALIBRATION, SUMMARY, PREVIEW
+    from onboard_scene import observation_files
 
     names = set()
     if "scene_observation" in plan:
-        files = set(plan["scene_observation"]["files"])
-        if files not in (
-            {PACKET, CALIBRATION, SUMMARY},
-            {PACKET, CALIBRATION, SUMMARY, PREVIEW},
-        ):
-            raise ValueError("Unknown onboard scene files")
-        names.update(files)
+        names.update(observation_files(plan["scene_observation"]))
     if "pickup_revision" in plan:
         names.add("revision-observation.npz")
     if "reach_checkpoint" in plan:
@@ -454,6 +448,7 @@ def dispatch(root, request):
             transfer_wrist_timing=["normal", "intermittent", "disconnected"],
             nano_visual_bundles={COMPACT: BUNDLE_SHA256} if available() else {},
             experimental_wrist_clearance=True,
+            onboard_author_images=True,
             background_wall_rgb_periods_s=[0.5, 1, 2, 5],
             host=platform.node(),
             system=platform.system(),

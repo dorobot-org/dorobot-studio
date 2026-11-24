@@ -469,13 +469,19 @@ def octos_controller(prompt, schema, directory, output):
     return actual, usage
 
 
-def request_controller(provider, prompt, schema, output):
+def request_controller(provider, prompt, schema, output, *, camera_input=None):
     output = output.resolve()
     save(output / "schema.json", schema)
-    save(
-        output / "controller-request.json",
-        {"provider": provider, "instruction": prompt, "output_schema": schema},
-    )
+    request = {"provider": provider, "instruction": prompt, "output_schema": schema}
+    image_args = []
+    if camera_input is not None:
+        request["onboard_input"] = camera_input
+        for image in camera_input["images"]:
+            path = output / image["file"]
+            if provider != "codex" or path.parent != output or digest(path) != image["sha256"]:
+                raise ValueError("Onboard image differs from the requested attachment")
+            image_args.extend(["--image", str(path)])
+    save(output / "controller-request.json", request)
     model_name = None
     started = time.monotonic()
     usage = {}
@@ -495,6 +501,7 @@ def request_controller(provider, prompt, schema, output):
                     "--skip-git-repo-check",
                     "--sandbox",
                     "read-only",
+                    *image_args,
                     "--output-schema",
                     str(output / "schema.json"),
                     "-o",
@@ -658,7 +665,7 @@ def prepare(args, meta):
             if args.robot != "Nano":
                 raise ValueError("Onboard scene observation requires the Nano profile")
             sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
-            from onboard_scene import capture
+            from onboard_scene import CALIBRATION, author_input, capture
 
             obstacles, settings = room_for_mobile(args, meta)
             public, observation = capture(
@@ -669,8 +676,19 @@ def prepare(args, meta):
                 obstacles,
                 settings,
             )
+            observation["author_input"] = author_input(args.out, observation, args.provider)
+            calibration = json.loads((args.out / CALIBRATION).read_bytes())
             prompt += (
-                "\nUse only the following onboard measurements for spatial references. y_left_m increases to the robot's left. distance_m is horizontal range. Select only observed targets and reject unresolvable requests. Sensor observation: "
+                "\nOnboard calibration (pixels and metres, OpenGL camera frame, transform from camera to mount link): "
+                + json.dumps(calibration["cameras"])
+            )
+            if observation["author_input"]["images"]:
+                prompt += (
+                    "\nThe three attached RGB images are simultaneous head, left-wrist and "
+                    "right-wrist exposures, in that order. Use these views with their measured positions."
+                )
+            prompt += (
+                "\nUse the following onboard measurements for metric spatial references. y_left_m increases to the robot's left. distance_m is horizontal range. Select only observed targets and reject unresolvable requests. Sensor observation: "
                 + json.dumps(public)
             )
         elif args.robot == "Nano":
@@ -714,7 +732,10 @@ def prepare(args, meta):
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
-        plan, model_name = request_controller(args.provider, prompt, schema, args.out)
+        plan, model_name = request_controller(
+            args.provider, prompt, schema, args.out,
+            **({"camera_input": observation["author_input"]} if observation else {}),
+        )
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
         if moving_color and (
