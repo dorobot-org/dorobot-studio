@@ -4,6 +4,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -59,7 +60,7 @@ def rate(times):
     return (len(times) - 1) * 1e9 / (times[-1] - times[0])
 
 
-def measure(archive, side):
+def measure(archive, side, *, report_reopened_position=False):
     def read(name):
         return json.loads(archive.read(f"{side}/{name}"))
 
@@ -67,10 +68,36 @@ def measure(archive, side):
     plan = archive.read(f"{side}/controller.json")
     timing = read("preview-timing.json")
     restored = read("reopened.json")
-    assert (
-        restored["result"] == result
-        and restored["job"] == read("worker-origin.json")["job"]
-    )
+    assert restored["job"] == read("worker-origin.json")["job"]
+    display = restored["result"]
+    reopen = dict(exact=display == result)
+    if report_reopened_position and not reopen["exact"]:
+        # The original H100 viewer rounded one red-cube X coordinate while
+        # parsing the worker JSON. Report both values and check every other field.
+        position = display["cubes"]["red"]["final_position_m"]
+        raw = result["cubes"]["red"]["final_position_m"][0]
+        assert math.nextafter(raw, position[0]) == position[0] != raw
+        reopen.update(
+            field="cubes.red.final_position_m[0]", worker=raw, displayed=position[0]
+        )
+        position[0] = raw
+        corrected = read("corrected-reopen.json")
+        assert corrected["result"] == result
+        assert corrected["worker_result_sha256"] == digest(
+            archive.read(f"{side}/result.json")
+        )
+        assert (
+            corrected["run"] == restored["trial"] and corrected["backend"] == "headless"
+        )
+        normalized = json.dumps(
+            result, sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
+        assert (
+            digest(normalized.encode()) == corrected["canonical_native_result_sha256"]
+        )
+        reopen["corrected_revision"] = corrected["studio_revision"]
+        reopen["corrected_exact"] = True
+    assert display == result
     manifest = read("mode-manifest.json")
     original, reopened = manifest["sessions"]
     assert (original["stage"], reopened["stage"]) == ("journey", "recovery")
@@ -152,6 +179,8 @@ def measure(archive, side):
         full_seconds=max(bins),
         seconds_below_25=sum(bins[i] < 25 for i in range(max(bins))),
     )
+    if report_reopened_position:
+        rates["reopened_result"] = reopen
     if side == "after":
         reads, renders = timing["camera_requests"], timing["camera_renders"]
         assert set(reads) == set(renders) == set(cameras)
@@ -166,12 +195,18 @@ def measure(archive, side):
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("archive", type=Path)
-    cli.add_argument(
+    mode = cli.add_mutually_exclusive_group()
+    mode.add_argument(
         "--pack",
         nargs=2,
         metavar=("BASELINE", "CANDIDATE"),
         type=Path,
         help="Create a fresh audit archive from two completed native journeys",
+    )
+    mode.add_argument(
+        "--single",
+        action="store_true",
+        help="Audit one worker with shared camera exposures and report its measured rates",
     )
     args = cli.parse_args()
     if not __debug__:
@@ -181,6 +216,24 @@ def main():
             for side, path in zip(("before", "after"), args.pack):
                 pack(z, side, path)
     with ZipFile(args.archive) as z:
+        if args.single:
+            rates, _, result = measure(z, "after", report_reopened_position=True)
+            print(
+                json.dumps(
+                    dict(
+                        **rates,
+                        physics_ticks=result["physics_ticks"],
+                        wheel_supported_ticks=result["wheel_supported_ticks"],
+                        frames_per_camera=result["frames"],
+                        red_cube_table_inset_mm=round(
+                            1000 * result["cubes"]["red"]["nearest_table_edge_m"]
+                        ),
+                        task_success=result["task_success"],
+                    ),
+                    indent=2,
+                )
+            )
+            return
         before, original, left = measure(z, "before")
         after, candidate, right = measure(z, "after")
         if original != candidate:

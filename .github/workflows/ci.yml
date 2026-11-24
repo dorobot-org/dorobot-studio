@@ -106,6 +106,9 @@ jobs:
           python3 -m unittest discover -s tools/aisle_workbench -p test_fleet_bridge.py
           python3 docs/product/aisle-studio/validation/foreground-preview/audit.py
           python3 docs/product/aisle-studio/validation/foreground-preview/compare_exposures.py docs/product/aisle-studio/validation/foreground-preview/exposure-reuse-metal.zip
+          preview=docs/product/aisle-studio/validation/foreground-preview
+          python3 "$preview/compare_exposures.py" --single "$preview/h100-single.zip" > "$RUNNER_TEMP/h100-single.json"
+          cmp "$preview/h100-single.json" "$RUNNER_TEMP/h100-single.json"
           python3 docs/product/aisle-studio/validation/native-cohort-comparison/audit.py
           python3 docs/product/aisle-studio/validation/nano-release-workspace/verify_native_seeds.py
       - name: Test Nexus worker when present

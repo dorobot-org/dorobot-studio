@@ -1,0 +1,12 @@
+{
+  "exported_fps": 5,
+  "playback_fps": 20,
+  "frames_per_view": 1415,
+  "duration_s": 70.75,
+  "replay_sha256": "34646d6e02c7cf31dc9c68e9b90690affda7cdee940f59c7faf9e83e0e3d5fb4",
+  "recording_sha256": {
+    "observation.images.head": "497bb46fcd9784007e94166f307337b98197f826654659927bc7691acb3fca2a",
+    "observation.images.left_wrist": "e8470c29dabe20006fb0ba5f1cc7fbe4c1fe421da1b214dab0d9f695555d0cab",
+    "observation.images.right_wrist": "1358a7bb127faa567439b773eae812a8e24ef505c90f9ced13ec153bc609d217"
+  }
+}

@@ -56,6 +56,19 @@ All 20 transfers maintained wheel support for 6,848 physics ticks. Both foregrou
 
 Run `python3 ../transfer-wrist-timing/capacity.py exposure-reuse-ten.zip` here with NumPy installed to recalculate the table. Add `--git-sources` in a full checkout to compare the recorded source hashes with Git.
 
+## One H100 foreground worker
+
+A single registered Linux worker on an NVIDIA H100 NVL ran the frozen DeepSeek red-cube controller with the default room and recorded all three cameras. The worker published **6,948** distinct head-camera frames at **18.18 FPS**, and the Mac's native Makepad viewport displayed **6,834** at **17.89 FPS**. All 381 complete one-second viewport intervals fell below 25 FPS. At the source's measured rate, even displaying every published frame would fall short of the target. This run used one GPU for the Nano with other users working on the host.
+
+The cube settled 104 mm inside the table edge. Wheel support held for all 6,948 ticks and 316 same-tick camera reads reused an exposure. Studio imported the original worker archive, exported 347 frames per camera and reopened the result after restart. The offline check compares the actual capture ticks, native draw timestamps, controller and motor hashes, recording and reopened verdict. [Measurements](h100-single.json) · [Native session and worker records](h100-single.zip)
+
+The original viewer parsed the cube's X coordinate one binary64 step away from the worker's value. A regression test reproduced the discrepancy on reopening. With correctly rounded JSON parsing enabled, native headless Studio reopened the same H100 result in Evidence and reproduced every recorded value exactly. The archive preserves the original discrepancy and the corrected native result.
+
+```sh
+python3 docs/product/aisle-studio/validation/foreground-preview/compare_exposures.py \
+  --single docs/product/aisle-studio/validation/foreground-preview/h100-single.zip
+```
+
 ## Reproduce the measurements
 
 From the Studio checkout, follow the build, AISLE Python environment and author credential instructions in the [workbench guide](../../README.md). Use a new output directory each time. These commands open the actual Studio binary, send Makepad input events, start independent worker jobs, export and reopen the foreground episode, and restart Studio.
