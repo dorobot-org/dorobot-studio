@@ -102,6 +102,9 @@ pub enum Action {
     DiscardRoomDraft,
     DefaultRoom,
     ShowEvaluation(bool),
+    ShowDevice,
+    DevicePreflight(Option<String>),
+    OpenPreflight,
     Evaluate(String),
     SelectFailure(bool),
     Layout(u8),
@@ -295,6 +298,7 @@ impl Job {
             "export" => "export.json",
             "room" | "room-draft" | "room-apply" => "room-ref.json",
             "evaluate" => "evaluation.json",
+            "device-preflight" => "preflight.json",
             "run" => "result.json",
             "prepare" | "train-reach" | "train-grasp" => "controller.json",
             _ => "scene.json",
@@ -334,6 +338,10 @@ pub struct Workbench {
     pub room_editor: bool,
     pub show_evaluation: bool,
     pub evaluation: Value,
+    pub show_device: bool,
+    pub preflight: Value,
+    device_endpoint: Option<(String, u8)>,
+    preflights: std::collections::BTreeMap<String, PathBuf>,
     pub failure_index: usize,
     evaluation_archive: String,
     pub room_info: Value,
@@ -390,6 +398,10 @@ impl Workbench {
             room_editor: false,
             show_evaluation: false,
             evaluation: Value::Null,
+            show_device: false,
+            preflight: Value::Null,
+            device_endpoint: None,
+            preflights: Default::default(),
             failure_index: 0,
             evaluation_archive: String::new(),
             room_info: Value::Null,
@@ -429,6 +441,8 @@ impl Workbench {
                     && last_evaluation.as_ref().is_none_or(|p| &path > p)
                 {
                     last_evaluation = Some(path);
+                } else if name.ends_with("-device-preflight") {
+                    w.remember_preflight(&path);
                 } else if name.ends_with("-export") {
                     let export = read(&path, "export.json");
                     if let Some(trial) = export.as_ref().and_then(|v| v["trial"].as_str()) {
@@ -573,6 +587,31 @@ impl Workbench {
         };
         serde_json::json!({"robot":robot,"outcome":outcome,"reason":reason})
     }
+    fn remember_preflight(&mut self, dir: &Path) {
+        if let Some(receipt) = read(dir, "preflight.json") {
+            if let Some(trial) = receipt["trial"].as_str() {
+                let path = self.preflights.entry(trial.to_string()).or_default();
+                if dir > path.as_path() {
+                    *path = dir.to_owned();
+                }
+            }
+        }
+    }
+    fn preflight_dir(&self) -> Option<&PathBuf> {
+        self.preflights
+            .get(self.selected.as_ref()?.file_name()?.to_str()?)
+    }
+    fn load_preflight(&mut self) {
+        self.preflight = self
+            .preflight_dir()
+            .and_then(|dir| read(dir, "preflight.json"))
+            .filter(|v| {
+                v["controller_sha256"].is_string()
+                    && v["controller_sha256"] == self.evidence["controller_hash"]
+                    && v["model_sha256"] == self.evidence["model_hash"]
+            })
+            .unwrap_or_default();
+    }
     fn select_run(&mut self, path: PathBuf) {
         self.dataset = self.exports.get(&path).cloned().or_else(|| {
             let legacy = path.join("dataset");
@@ -615,6 +654,23 @@ impl Workbench {
             }
         }
         self.selected = Some(path);
+        self.load_preflight();
+    }
+    fn start_preflight(&mut self, endpoint: Option<String>) -> io::Result<()> {
+        self.device_endpoint = if let Some(endpoint) = endpoint {
+            let (name, domain) = endpoint
+                .trim()
+                .split_once('@')
+                .unwrap_or((endpoint.trim(), "0"));
+            let domain = domain.parse::<u8>().ok().filter(|d| *d <= 232);
+            if name.is_empty() || domain.is_none() {
+                return Err(io::Error::other("Enter a network interface and a DDS domain between 0 and 232, for example en0@0."));
+            }
+            Some((name.to_owned(), domain.unwrap()))
+        } else {
+            None
+        };
+        self.launch("device-preflight", Planner::Reference, None)
     }
     fn launch(
         &mut self,
@@ -627,7 +683,14 @@ impl Workbench {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let dir = self.root.join(format!("{now}-{}-{op}", self.robot.name()));
+        let robot_name = if op == "device-preflight" {
+            self.evidence["robot"]
+                .as_str()
+                .ok_or_else(|| io::Error::other("Select a successful simulation trial"))?
+        } else {
+            self.robot.name()
+        };
+        let dir = self.root.join(format!("{now}-{robot_name}-{op}"));
         let studio = crate::runtime::root();
         let worker = studio.join("tools/aisle_workbench/worker.py");
         if !worker.is_file() {
@@ -651,7 +714,7 @@ impl Workbench {
             .arg("--out")
             .arg(&dir)
             .arg("--robot")
-            .arg(self.robot.name());
+            .arg(robot_name);
         let repo = std::env::var_os("DOROBOT_AISLE_ROOT")
             .map(PathBuf::from)
             .unwrap_or_else(|| studio.join("../AISLE"));
@@ -671,6 +734,23 @@ impl Workbench {
         }
         if let Some(run) = feedback {
             cmd.arg("--feedback").arg(run);
+        }
+        if op == "device-preflight" {
+            let trial = self
+                .selected
+                .as_ref()
+                .ok_or_else(|| io::Error::other("Select a simulation trial first"))?;
+            cmd.arg("--trial").arg(trial);
+            if let Some((interface, domain)) = &self.device_endpoint {
+                cmd.args([
+                    "--device-mode",
+                    "subscribe",
+                    "--device-interface",
+                    interface,
+                    "--dds-domain",
+                    &domain.to_string(),
+                ]);
+            }
         }
         if op == "evaluate" {
             cmd.arg("--archive").arg(&self.evaluation_archive);
@@ -871,7 +951,14 @@ impl Workbench {
                     if revise { self.selected.clone() } else { None },
                 )
             }
+            Action::ShowDevice => {
+                self.show_device = true;
+                self.show_evaluation = false;
+                Ok(())
+            }
+            Action::DevicePreflight(endpoint) => self.start_preflight(endpoint),
             Action::ShowEvaluation(value) => {
+                self.show_device = false;
                 self.show_evaluation = value;
                 Ok(())
             }
@@ -998,8 +1085,13 @@ impl Workbench {
                 }
                 Ok(())
             }
-            Action::Open => {
-                if let Some(p) = &self.selected {
+            Action::Open | Action::OpenPreflight => {
+                let folder = if matches!(action, Action::OpenPreflight) {
+                    self.preflight_dir()
+                } else {
+                    self.selected.as_ref()
+                };
+                if let Some(p) = folder {
                     Command::new(if cfg!(target_os = "macos") {
                         "open"
                     } else {
@@ -1115,6 +1207,10 @@ impl Workbench {
                     }
                 }
                 return;
+            }
+            if job.op == "device-preflight" {
+                self.remember_preflight(&job.dir);
+                self.load_preflight();
             }
             if job.op == "evaluate" {
                 self.evaluation = read(&job.dir, artifact).unwrap_or_default();
