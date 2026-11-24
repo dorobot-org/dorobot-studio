@@ -11,6 +11,7 @@ use std::{collections::BTreeMap, sync::Arc, time::Instant};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NavLayer {
     Grid,
+    Costmap,
     MapCloud,
     Pose,
     Footprint,
@@ -26,6 +27,7 @@ impl NavLayer {
     fn from_name(name: &str) -> Option<Self> {
         Some(match name {
             nav_entities::MAP_GRID => Self::Grid,
+            nav_entities::COSTMAP_GLOBAL => Self::Costmap,
             nav_entities::MAP_CLOUD => Self::MapCloud,
             nav_entities::ROBOT_POSE => Self::Pose,
             nav_entities::ROBOT_FOOTPRINT => Self::Footprint,
@@ -42,6 +44,7 @@ impl NavLayer {
     fn name(self) -> &'static str {
         match self {
             Self::Grid => nav_entities::MAP_GRID,
+            Self::Costmap => nav_entities::COSTMAP_GLOBAL,
             Self::MapCloud => nav_entities::MAP_CLOUD,
             Self::Pose => nav_entities::ROBOT_POSE,
             Self::Footprint => nav_entities::ROBOT_FOOTPRINT,
@@ -57,7 +60,7 @@ impl NavLayer {
     /// The message type this layer carries.
     fn msg_type(self) -> &'static str {
         match self {
-            Self::Grid => "grid2d",
+            Self::Grid | Self::Costmap => "grid2d",
             Self::MapCloud | Self::Scan | Self::Cloud => "points3d",
             Self::Pose => "transform3d",
             Self::Footprint | Self::Plan | Self::Trail => "linestrips3d",
@@ -90,6 +93,7 @@ pub struct GridLayer {
 #[derive(Debug, Clone, Default)]
 pub struct NavScene {
     pub grid: Option<GridLayer>,
+    pub costmap: Option<GridLayer>,
     pub pose: Option<Pose2D>,
     pub footprint: Vec<[f32; 2]>,
     pub plan: Vec<[f32; 2]>,
@@ -130,7 +134,7 @@ impl NavScene {
         match layer {
             // Drawn from the viewer only; nothing to keep but the colour.
             NavLayer::MapCloud | NavLayer::Cloud => {}
-            NavLayer::Grid => self.set_grid(&msg.data, binary)?,
+            NavLayer::Grid | NavLayer::Costmap => self.set_grid(layer, &msg.data, binary)?,
             NavLayer::Pose => self.pose = Some(pose_of(&msg.data)?),
             NavLayer::Footprint => self.footprint = first_strip(&msg.data)?,
             NavLayer::Plan => self.plan = first_strip(&msg.data)?,
@@ -150,14 +154,19 @@ impl NavScene {
         Ok(layer != NavLayer::Status)
     }
 
-    fn set_grid(&mut self, data: &Value, binary: Option<&[u8]>) -> Result<(), ()> {
+    fn set_grid(&mut self, layer: NavLayer, data: &Value, binary: Option<&[u8]>) -> Result<(), ()> {
         let header: Grid2DHeader = serde_json::from_value(data.clone()).map_err(|_| ())?;
         if !header.origin.iter().all(|v| v.is_finite()) {
             return Err(());
         }
         let cells = parse_grid2d(&header, binary.ok_or(())?).ok_or(())?;
-        let generation = self.grid.as_ref().map_or(0, |g| g.generation) + 1;
-        self.grid = Some(GridLayer {
+        let slot = if layer == NavLayer::Costmap {
+            &mut self.costmap
+        } else {
+            &mut self.grid
+        };
+        let generation = slot.as_ref().map_or(0, |g| g.generation) + 1;
+        *slot = Some(GridLayer {
             header,
             cells: Arc::new(cells.to_vec()),
             generation,
@@ -287,6 +296,20 @@ mod tests {
         ] {
             assert_eq!(nav_layer(name), Some(layer), "{name}");
         }
+    }
+
+    #[test]
+    fn costmap_layer_parsed() {
+        let mut scene = NavScene::default();
+        assert_eq!(nav_layer("tracer/costmap/global"), Some(NavLayer::Costmap));
+        let header = json!({"width": 3, "height": 2, "resolution": 0.05,
+                            "origin": [0.0, 0.0, 0.0], "kind": "costmap"});
+        let cells = [0u8, 1, 252, 253, 254, 255];
+        assert!(scene.apply(NavLayer::Costmap, &msg("grid2d", header), Some(&cells)));
+        let costmap = scene.costmap.as_ref().unwrap();
+        assert_eq!(costmap.generation, 1);
+        assert_eq!(costmap.cells.len(), 6);
+        assert!(scene.grid.is_none());
     }
 
     #[test]

@@ -4,7 +4,7 @@
 //! the Rerun sink. Compiled in every build.
 
 use crate::nav_scene::NavScene;
-use dviz_protocol::{nav_entities, Grid2DHeader, GridKind, GRID_FREE, GRID_OCCUPIED};
+use dviz_protocol::{nav_entities, Grid2DHeader};
 
 /// Zoom limits, in screen pixels per map metre.
 pub const MIN_PX_PER_M: f64 = 2.0;
@@ -152,6 +152,7 @@ pub struct NavLayers {
     pub trail: bool,
     pub goal: bool,
     pub scan: bool,
+    pub costmap: bool,
 }
 
 impl Default for NavLayers {
@@ -163,6 +164,7 @@ impl Default for NavLayers {
             trail: true,
             goal: true,
             scan: true,
+            costmap: true,
         }
     }
 }
@@ -175,7 +177,7 @@ pub fn layer_color(scene: &NavScene, entity: &str) -> [u8; 4] {
         return *color;
     }
     match entity {
-        nav_entities::MAP_GRID => UNKNOWN_RGBA,
+        nav_entities::MAP_GRID => [0x70, 0x89, 0x86, 255],
         nav_entities::MAP_CLOUD => [180, 180, 180, 255],
         nav_entities::ROBOT_FOOTPRINT => [0, 200, 0, 255],
         nav_entities::NAV_PLAN => [0, 255, 0, 255],
@@ -186,34 +188,104 @@ pub fn layer_color(scene: &NavScene, entity: &str) -> [u8; 4] {
     }
 }
 
-const FREE_RGBA: [u8; 4] = [254, 254, 254, 255];
-const OCCUPIED_RGBA: [u8; 4] = [0, 0, 0, 255];
-const UNKNOWN_RGBA: [u8; 4] = [205, 205, 205, 255];
+/// RViz's colour for a cell with no data.
+const RVIZ_UNKNOWN: [u8; 3] = [0x70, 0x89, 0x86];
+/// RViz map layer opacity 0.7 and costmap layer opacity 0.5, as alpha bytes.
+const MAP_ALPHA: u8 = 179;
+const COSTMAP_ALPHA: u8 = 128;
 
-/// 占用栅格转 RGBA：空闲 [254,254,254,255]、占用 [0,0,0,255]、未知 [205,205,205,255]；
-/// costmap 先按未知灰处理（交付 ③ 再配色）。输出第 0 行是地图 y 最大的一行（贴图从上往下）。
-pub fn grid_rgba(header: &Grid2DHeader, cells: &[u8]) -> Vec<u8> {
+/// A Nav2 cost value (0 free, 1..=252 inflated, 253 inscribed, 254 lethal,
+/// 255 unknown) as RViz's 0..=100 scale; `None` is unknown.
+pub fn nav2_to_rviz(cost: u8) -> Option<u8> {
+    match cost {
+        0 => Some(0),
+        253 => Some(99),
+        254 => Some(100),
+        255 => None,
+        c => Some((1 + (u32::from(c) - 1) * 97 / 251) as u8),
+    }
+}
+
+/// RViz "map" scheme for a `grid2d` occupancy value (0..=100; anything else
+/// is unknown): white to black, at map opacity 0.7.
+pub fn rviz_map_color(occ: u8) -> [u8; 4] {
+    if occ > 100 {
+        let [r, g, b] = RVIZ_UNKNOWN;
+        return [r, g, b, MAP_ALPHA];
+    }
+    let v = (255 - 255 * u32::from(occ) / 100) as u8;
+    [v, v, v, MAP_ALPHA]
+}
+
+/// RViz "costmap" scheme for an RViz value: 0 transparent, 1..=98 blue to
+/// red, 99 cyan, 100 magenta, `None` unknown; opacity 0.5.
+pub fn rviz_costmap_color(v: Option<u8>) -> [u8; 4] {
+    match v {
+        None => {
+            let [r, g, b] = RVIZ_UNKNOWN;
+            [r, g, b, COSTMAP_ALPHA]
+        }
+        Some(0) => [0, 0, 0, 0],
+        Some(99) => [0, 255, 255, COSTMAP_ALPHA],
+        Some(i) if i >= 100 => [255, 0, 255, COSTMAP_ALPHA],
+        Some(i) => {
+            let v = (255 * u32::from(i) / 100) as u8;
+            [v, 0, 255 - v, COSTMAP_ALPHA]
+        }
+    }
+}
+
+/// The grid as RGBA, one colour per cell. Output row 0 is the largest map y
+/// (a picture runs top to bottom; input row 0 is the smallest y).
+fn grid_pixels(header: &Grid2DHeader, cells: &[u8], color: impl Fn(u8) -> [u8; 4]) -> Vec<u8> {
     let width = header.width as usize;
     let height = header.height as usize;
     let mut out = Vec::with_capacity(cells.len().saturating_mul(4));
     if width == 0 {
         return out;
     }
-    // Input row 0 has the smallest y; the picture starts at the largest y.
     for row in cells.chunks(width).take(height).rev() {
         for &cell in row {
-            let color = match header.kind {
-                GridKind::Occupancy => match cell {
-                    GRID_FREE => FREE_RGBA,
-                    GRID_OCCUPIED => OCCUPIED_RGBA,
-                    _ => UNKNOWN_RGBA,
-                },
-                GridKind::Costmap => UNKNOWN_RGBA,
-            };
-            out.extend_from_slice(&color);
+            out.extend_from_slice(&color(cell));
         }
     }
     out
+}
+
+/// Occupancy grid in RViz's map palette (see `rviz_map_color`).
+pub fn grid_rgba(header: &Grid2DHeader, cells: &[u8]) -> Vec<u8> {
+    grid_pixels(header, cells, rviz_map_color)
+}
+
+/// Nav2 costmap in RViz's costmap palette (see `nav2_to_rviz`).
+pub fn costmap_rgba(header: &Grid2DHeader, cells: &[u8]) -> Vec<u8> {
+    grid_pixels(header, cells, |c| rviz_costmap_color(nav2_to_rviz(c)))
+}
+
+/// Grid lines in screen coordinates: the multiples of `spacing_m` (map
+/// metres) inside the view, as vertical then horizontal segments across it.
+/// Empty for a non-positive spacing or one under a pixel.
+pub fn grid_lines(view: &MapView, spacing_m: f64) -> Vec<([f64; 2], [f64; 2])> {
+    if !(spacing_m.is_finite() && spacing_m > 0.0) || spacing_m * view.px_per_m < 1.0 {
+        return Vec::new();
+    }
+    let [w, h] = view.size;
+    let top_left = view.screen_to_world([0.0, 0.0]);
+    let bottom_right = view.screen_to_world([w, h]);
+    // A hair of slack so a line exactly on the edge stays in.
+    let eps = 1e-9;
+    let first = |lo: f64| ((lo - eps) / spacing_m).ceil() as i64;
+    let last = |hi: f64| ((hi + eps) / spacing_m).floor() as i64;
+    let mut lines = Vec::new();
+    for k in first(top_left[0])..=last(bottom_right[0]) {
+        let x = view.world_to_screen([k as f64 * spacing_m, 0.0])[0];
+        lines.push(([x, 0.0], [x, h]));
+    }
+    for k in first(bottom_right[1])..=last(top_left[1]) {
+        let y = view.world_to_screen([0.0, k as f64 * spacing_m])[1];
+        lines.push(([0.0, y], [w, y]));
+    }
+    lines
 }
 
 #[cfg(test)]
@@ -223,6 +295,7 @@ mod tests {
     use dviz_protocol::nav_entities::{
         NAV_GOAL, NAV_PLAN, NAV_TRAIL, ROBOT_FOOTPRINT, SENSORS_SCAN,
     };
+    use dviz_protocol::GridKind;
 
     #[test]
     fn grid_rgba_colors_and_flip() {
@@ -236,10 +309,73 @@ mod tests {
         let rgba = grid_rgba(&header, &[0, 100, 255, 0]);
         assert_eq!(rgba.len(), 16);
         // First pixel: row 1 (largest y), column 0 = unknown.
-        assert_eq!(rgba[0..4], [205, 205, 205, 255]);
-        assert_eq!(rgba[4..8], [254, 254, 254, 255]); // row 1, column 1 = free
-        assert_eq!(rgba[8..12], [254, 254, 254, 255]); // row 0, column 0 = free
-        assert_eq!(rgba[12..16], [0, 0, 0, 255]); // row 0, column 1 = occupied
+        assert_eq!(rgba[0..4], [0x70, 0x89, 0x86, 179]);
+        assert_eq!(rgba[4..8], [255, 255, 255, 179]); // row 1, column 1 = free
+        assert_eq!(rgba[8..12], [255, 255, 255, 179]); // row 0, column 0 = free
+        assert_eq!(rgba[12..16], [0, 0, 0, 179]); // row 0, column 1 = occupied
+    }
+
+    #[test]
+    fn nav2_to_rviz_table() {
+        assert_eq!(nav2_to_rviz(0), Some(0));
+        assert_eq!(nav2_to_rviz(1), Some(1));
+        assert_eq!(nav2_to_rviz(252), Some(98));
+        assert_eq!(nav2_to_rviz(253), Some(99));
+        assert_eq!(nav2_to_rviz(254), Some(100));
+        assert_eq!(nav2_to_rviz(255), None);
+    }
+
+    #[test]
+    fn rviz_map_palette() {
+        assert_eq!(rviz_map_color(0), [255, 255, 255, 179]);
+        assert_eq!(rviz_map_color(100), [0, 0, 0, 179]);
+        assert_eq!(rviz_map_color(50), [128, 128, 128, 179]);
+        assert_eq!(rviz_map_color(255), [0x70, 0x89, 0x86, 179]);
+    }
+
+    #[test]
+    fn rviz_costmap_palette() {
+        assert_eq!(rviz_costmap_color(Some(0))[3], 0);
+        assert_eq!(rviz_costmap_color(Some(1)), [2, 0, 253, 128]);
+        assert_eq!(rviz_costmap_color(Some(98)), [249, 0, 6, 128]);
+        assert_eq!(rviz_costmap_color(Some(99)), [0, 255, 255, 128]);
+        assert_eq!(rviz_costmap_color(Some(100)), [255, 0, 255, 128]);
+        assert_eq!(rviz_costmap_color(None), [0x70, 0x89, 0x86, 128]);
+    }
+
+    #[test]
+    fn costmap_rgba_converts_and_flips() {
+        let header = Grid2DHeader {
+            width: 2,
+            height: 2,
+            resolution: 0.05,
+            origin: [0.0; 3],
+            kind: GridKind::Costmap,
+        };
+        let rgba = costmap_rgba(&header, &[0, 254, 255, 253]);
+        assert_eq!(rgba.len(), 16);
+        assert_eq!(rgba[0..4], [0x70, 0x89, 0x86, 128]); // row 1, column 0
+        assert_eq!(rgba[4..8], [0, 255, 255, 128]);
+        assert_eq!(rgba[8..12][3], 0); // row 0, column 0 = free, transparent
+        assert_eq!(rgba[12..16], [255, 0, 255, 128]);
+    }
+
+    #[test]
+    fn grid_lines_follow_zoom() {
+        let mut view = MapView {
+            center: [0.0, 0.0],
+            px_per_m: 100.0,
+            size: [800.0, 600.0],
+        };
+        let vertical =
+            |lines: &[([f64; 2], [f64; 2])]| lines.iter().filter(|l| l.0[0] == l.1[0]).count();
+        let lines = grid_lines(&view, 1.0);
+        assert_eq!(vertical(&lines), 9);
+        let first = lines.iter().find(|l| l.0[0] == l.1[0]).unwrap();
+        assert!((first.0[0]).abs() < 1e-9);
+        view.zoom_at([400.0, 300.0], 2.0);
+        assert_eq!(vertical(&grid_lines(&view, 1.0)), 5);
+        assert!(grid_lines(&view, 0.0).is_empty());
     }
 
     fn close(a: [f64; 2], b: [f64; 2]) -> bool {
@@ -417,6 +553,26 @@ mod tests {
     }
 
     #[test]
+    fn scene_without_costmap_draws_nothing_for_it() {
+        let mut scene = scene_with_pose(1.0, 1.0);
+        assert!(scene.costmap.is_none());
+        let before = scene_bounds(&scene);
+        scene.costmap = Some(GridLayer {
+            header: Grid2DHeader {
+                width: 400,
+                height: 400,
+                resolution: 0.05,
+                origin: [-50.0, -50.0, 0.0],
+                kind: GridKind::Costmap,
+            },
+            cells: std::sync::Arc::new(vec![0; 400 * 400]),
+            generation: 1,
+        });
+        // The costmap never changes what the view fits to.
+        assert_eq!(scene_bounds(&scene), before);
+    }
+
+    #[test]
     fn every_layer_is_shown_by_default() {
         let layers = NavLayers::default();
         assert!(
@@ -426,6 +582,7 @@ mod tests {
                 && layers.trail
                 && layers.goal
                 && layers.scan
+                && layers.costmap
         );
     }
 

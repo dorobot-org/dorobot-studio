@@ -18,7 +18,10 @@ pub use graph::{
     Point,
 };
 pub use map2d::{DvizMap2D, DvizMap2DRef, DvizMap2DWidgetRefExt};
-pub use map_view::{grid_rgba, layer_color, scene_bounds, MapView, NavLayers};
+pub use map_view::{
+    costmap_rgba, grid_lines, grid_rgba, layer_color, nav2_to_rviz, rviz_costmap_color,
+    rviz_map_color, scene_bounds, MapView, NavLayers,
+};
 pub use nav_panel::{connection_text, nav_status_text, status_is_stale, DvizNavPanel};
 pub use nav_scene::{nav_layer, GridLayer, NavLayer, NavScene, Pose2D};
 #[cfg(feature = "rerun")]
