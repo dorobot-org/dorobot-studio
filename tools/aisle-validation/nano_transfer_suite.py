@@ -35,6 +35,7 @@ def inputs():
         for name in (
             "nano_transfer_suite.py",
             "run_rgb_transfer.py",
+            "nano_wrist_timing.py",
             "nano_rgb_transfer_policy.py",
             "nano_grasp_estimator.py",
             "nano_rgb_policy.py",
@@ -161,8 +162,19 @@ def receipt(case, member, plan):
         or src.get("controller_sha256") != plan["controller_sha256"]
     ):
         raise ValueError("Episode controller differs from the frozen artifact")
+    selected_clearance = read(case / "controller.json").get("wrist_clearance", False)
+    if (
+        src.get("wrist_clearance", False) != selected_clearance
+        or r.get("wrist_clearance", False) != selected_clearance
+    ):
+        raise ValueError("The release camera selection differs from the controller")
     retained = src["support_code_hashes"]
     expected_files = {Path(path).name: value for path, value in files.items()}
+    if "nano_wrist_timing.py" in expected_files and (
+        retained.get("nano_wrist_timing.py") != expected_files["nano_wrist_timing.py"]
+        or src.get("wrist_rgb_timing") != "normal"
+    ):
+        raise ValueError("Episode used a different wrist clock or camera fixture")
     if "nano_grasp_estimator.py" in expected_files:
         from nano_grasp_estimator import parameters
 

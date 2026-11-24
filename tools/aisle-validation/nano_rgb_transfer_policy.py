@@ -62,6 +62,7 @@ class Controller:
         self.servo = VisualServo(config | {"color": self.colors[0], "standoff_m": 0.45})
         self.max_forward_speed = config.get("max_forward_speed_m_s", 0.13)
         self.track_grasp = bool(config.get("track_grasp"))
+        self.wrist_clearance = config.get("wrist_clearance", False)
         self.resolve_pickup_ambiguity = (
             config.get("grasp_rgb_association", "wrist-agreement-v1")
             == "wrist-agreement-v1"
@@ -252,9 +253,9 @@ class Controller:
         self.joints({self.grip: 0.70}, 55 if self.track_grasp else 200)
         self.reach(np.r_[xy, 0.085], 320, 8, True)
 
-    def table_views(self, data):
+    def table_views(self, data, cameras=("head", "right_wrist")):
         views = []
-        for name in ("head", "right_wrist"):
+        for name in cameras:
             chain, indices, mount, k, _ = self.servo.cameras[name]
             p, r = chain.forward(data["encoders"][indices])
             pose = np.eye(4)
@@ -432,8 +433,14 @@ class Controller:
             occupied = []
             if index:
                 self.drive()
-                views = self.table_views(self.sense())
-                occupied = occupied_table_points(views, edge, self.colors[:index])
+                cameras = CAMERAS if self.wrist_clearance else ("head", "right_wrist")
+                views = self.table_views(self.sense(), cameras)
+                occupied = occupied_table_points(
+                    views,
+                    edge,
+                    self.colors[:index],
+                    include_clipped=self.wrist_clearance,
+                )
             z = edge["height"]
             for along, inset, search in release_candidates(side, edge["span"]):
                 place = (edge["distance"] + inset) * edge["normal"] + along * t

@@ -101,6 +101,13 @@ def main():
         help="Compare still and sliding Nano targets in native Studio",
     )
     scenario.add_argument(
+        "--wrist-faults",
+        nargs="?",
+        const="red",
+        choices=["red", "three"],
+        help="Interrupt the left wrist camera during a Nano grasp and verify the motor hold",
+    )
+    scenario.add_argument(
         "--camera-faults",
         action="store_true",
         help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
@@ -239,6 +246,7 @@ def main():
     if (
         args.standing
         or args.transfer
+        or args.wrist_faults
         or args.camera_faults
         or args.moving_target
         or args.observed_author
@@ -430,6 +438,8 @@ def main():
                     check.append("--observed-author")
                 if args.moving_target:
                     check.append("--moving-target")
+                if args.wrist_faults:
+                    check.extend(["--wrist-faults", args.wrist_faults])
                 if args.camera_faults:
                     check.append("--camera-faults")
                 if args.handoff:
@@ -469,11 +479,15 @@ def main():
                         check.append("--" + args.provider)
                     if args.backend == "offscreen":
                         check.append("--screenshots")
-                timeout = (
-                    1800
-                    if args.train_grasp
-                    else 900 if args.transfer or args.fleet or prior_trial else 330
-                )
+                if args.wrist_faults == "three":
+                    # Allow authoring, three full trials and the UI transitions.
+                    timeout = 2400
+                elif args.train_grasp:
+                    timeout = 1800
+                elif args.transfer or args.fleet or args.wrist_faults or prior_trial:
+                    timeout = 900
+                else:
+                    timeout = 330
                 try:
                     subprocess.run(check, check=True, timeout=timeout)
                 except (subprocess.SubprocessError, KeyboardInterrupt):

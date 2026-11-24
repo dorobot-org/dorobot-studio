@@ -355,6 +355,10 @@ fn compare_transfer(
             continue;
         };
         if source["room_revision_sha256"] != old["room_revision_sha256"]
+            || source["wrist_rgb_timing"].as_str().unwrap_or("normal")
+                != old["wrist_rgb_timing"].as_str().unwrap_or("normal")
+            || source["support_code_hashes"]["nano_wrist_timing.py"]
+                != old["support_code_hashes"]["nano_wrist_timing.py"]
             || source["grasp_motion"] != old["grasp_motion"]
             || (source["grasp_motion"].is_string()
                 && (!source["support_code_hashes"]["nano_moving_grasp.py"].is_string()
@@ -1062,10 +1066,8 @@ impl Workbench {
             cmd.arg("--live-preview");
         }
         if op == "run" || submitting {
-            if self.plan["kind"] == "visual-approach" {
-                cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
-            }
             if mobile {
+                cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
                 cmd.arg("--target-motion").arg(self.target_motion.name());
             }
             cmd.arg("--seed").arg(self.layout_seed.to_string());
@@ -1630,6 +1632,21 @@ mod tests {
         let mut changed = result.clone();
         changed["seed"] = serde_json::json!(2);
         assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
+        let mut wrist = source.clone();
+        wrist["wrist_rgb_timing"] = serde_json::json!("intermittent");
+        wrist["support_code_hashes"]["nano_wrist_timing.py"] = serde_json::json!("guard-v1");
+        fs::write(runs[1].join("source.json"), wrist.to_string()).unwrap();
+        assert!(comparison().is_none());
+        fs::write(runs[0].join("source.json"), wrist.to_string()).unwrap();
+        assert!(comparison().is_some());
+        wrist["wrist_rgb_timing"] = serde_json::json!("disconnected");
+        fs::write(runs[0].join("source.json"), wrist.to_string()).unwrap();
+        assert!(comparison().is_none());
+        wrist["wrist_rgb_timing"] = serde_json::json!("intermittent");
+        wrist["support_code_hashes"]["nano_wrist_timing.py"] = serde_json::json!("guard-v2");
+        fs::write(runs[0].join("source.json"), wrist.to_string()).unwrap();
+        assert!(comparison().is_none());
+        fs::write(runs[0].join("source.json"), source.to_string()).unwrap();
         let mut sliding = source.clone();
         sliding["grasp_motion"] = serde_json::json!("slide-negative");
         sliding["support_code_hashes"]["nano_moving_grasp.py"] = serde_json::json!("fixture-v1");

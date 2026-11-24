@@ -1,5 +1,6 @@
 """Studio-level admission across nodes and recovery after an uncertain submission."""
 
+import base64
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import tempfile
@@ -18,6 +19,7 @@ from fleet_bridge import (
     submit,
     update,
     watch_foreground,
+    verify_wrist_fixture,
 )
 
 
@@ -40,6 +42,39 @@ class WorkspaceAdmissionTests(unittest.TestCase):
 
     def request(self, mode="stream"):
         return dict(op="submit", id=str(uuid4()), robot="Nano", mode=mode)
+
+    def test_import_checks_actual_wrist_fixture_against_the_lease(self):
+        request = dict(
+            controller=base64.b64encode(b'{"kind":"table-transfer"}').decode(),
+            rgb_timing="intermittent",
+        )
+        (self.root / "source.json").write_text('{"wrist_rgb_timing":"intermittent"}')
+        out = self.root / "result.json"
+        out.write_text('{"wrist_timing":{"fixture":"normal"}}')
+        with self.assertRaisesRegex(ValueError, "result.json does not confirm"):
+            verify_wrist_fixture(self.root, request, "completed")
+        out.write_text('{"wrist_timing":"intermittent"}')
+        with self.assertRaisesRegex(ValueError, "result.json does not confirm"):
+            verify_wrist_fixture(self.root, request, "completed")
+        out.write_text('{"wrist_timing":{"fixture":"intermittent"}}')
+        verify_wrist_fixture(self.root, request, "completed")
+        (self.root / "source.json").unlink()
+        with self.assertRaisesRegex(ValueError, "source.json does not confirm"):
+            verify_wrist_fixture(self.root, request, "completed")
+        verify_wrist_fixture(self.root, request, "cancelled")
+        plan = {"kind": "table-transfer", "wrist_clearance": True}
+        request.update(
+            controller=base64.b64encode(json.dumps(plan).encode()).decode(),
+            rgb_timing="normal",
+        )
+        (self.root / "source.json").write_text(
+            '{"wrist_rgb_timing":"normal","wrist_clearance":true}'
+        )
+        out.write_text('{"wrist_timing":{"fixture":"normal"}}')
+        with self.assertRaisesRegex(ValueError, "experimental wrist clearance"):
+            verify_wrist_fixture(self.root, request, "completed")
+        out.write_text('{"wrist_timing":{"fixture":"normal"},"wrist_clearance":true}')
+        verify_wrist_fixture(self.root, request, "completed")
 
     def test_stalled_partial_rgb_plane_times_out(self):
         reader, writer = os.pipe()

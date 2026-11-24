@@ -20,6 +20,7 @@ EVIDENCE = (
     "phases.json",
     "phase-measurements.jsonl",
     "policy.log",
+    "wrist-delivery.jsonl",
 )
 
 

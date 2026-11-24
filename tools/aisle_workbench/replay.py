@@ -1,8 +1,35 @@
 """Export synchronized robot state, commanded positions and camera images to LeRobot v2.1."""
 
+from collections import Counter
+import hashlib
 import json
 from pathlib import Path
 import subprocess
+
+
+def wrist_holds(trial, timing, samples):
+    """Map the last wrist freshness decision at each recorded exposure to a hold flag."""
+    path = trial / "wrist-delivery.jsonl"
+    raw = path.read_bytes() if path.is_file() else b""
+    deliveries = [json.loads(line) for line in raw.splitlines()]
+    faults = Counter(row["fault"] for row in deliveries if row["fault"])
+    if len(deliveries) != timing["received"] or faults != timing["rejected"]:
+        raise ValueError("Wrist delivery trace differs from the measured trial")
+    previous = -1
+    for row in deliveries:
+        tick = row["tick"]
+        if not previous < tick or not 0 <= row["capture_tick"] <= tick:
+            raise ValueError("Wrist delivery times are out of order")
+        previous = tick
+    held = False
+    i = 0
+    flags = []
+    for sample in samples:
+        while i < len(deliveries) and deliveries[i]["tick"] <= sample["step"]:
+            held = bool(deliveries[i]["fault"])
+            i += 1
+        flags.append(int(held))
+    return raw, flags
 
 
 def export(trial: Path, job: Path):
@@ -103,6 +130,20 @@ def export(trial: Path, job: Path):
         episode_index=[0] * count,
         task_index=[0] * count,
     )
+    wrist_meta = {}
+    if transfer and "wrist_timing" in result:
+        raw, scalars["annotation.wrist_rgb_hold"] = wrist_holds(
+            trial, result["wrist_timing"], rows
+        )
+        delivery_log = "wrist-delivery.jsonl"
+        (meta / delivery_log).write_bytes(raw)
+        wrist_meta = dict(
+            wrist_timing=result["wrist_timing"],
+            wrist_delivery_log=f"meta/{delivery_log}",
+            wrist_delivery_sha256=hashlib.sha256(raw).hexdigest(),
+            wrist_video_source="Raw synchronized camera exposure before delivery faults.",
+            wrist_hold_annotation="annotation.wrist_rgb_hold is 1 while the local pick guard holds actuator targets after rejecting a delivery.",
+        )
     for field, values in scalars.items():
         dtype = pa.float32() if field == "timestamp" else pa.int64()
         columns[field] = pa.array(values, type=dtype)
@@ -193,6 +234,7 @@ def export(trial: Path, job: Path):
             **(
                 dict(
                     onboard_cameras=list(cameras),
+                    **wrist_meta,
                     **(
                         {
                             "annotation.gripper_carry": "Evaluator label at the camera exposure. "

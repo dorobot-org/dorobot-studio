@@ -3,10 +3,12 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
+from zipfile import ZipFile
 
 import numpy as np
 
 import nano_transfer_suite as suite
+from nano_suite_evidence import pack
 from nano_actuator_audit import MotorEnvelope, MotorWriter, replay
 
 
@@ -95,6 +97,14 @@ class SuiteTests(unittest.TestCase):
             (report["cases"], report["verified"], report["successes"]), (1, 0, 0)
         )
         self.assertFalse(report["qualified"])
+        archive = self.folder / "interrupted.zip"
+        pack(self.directory, archive)
+        with ZipFile(archive) as z:
+            self.assertEqual(
+                z.read("report.json"), (self.directory / "report.json").read_bytes()
+            )
+            self.assertEqual(z.read("case-000.log"), b"interrupted")
+            self.assertNotIn("case-000/wrist-delivery.jsonl", z.namelist())
 
     def test_hidden_requires_45_successes_and_all_50_audits(self):
         manifest = suite.prepare(self.directory, self.controller)

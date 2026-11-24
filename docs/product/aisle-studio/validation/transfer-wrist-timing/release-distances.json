@@ -1,0 +1,48 @@
+{
+  "three": {
+    "decision_tick": 24252,
+    "sample_tick": 24260,
+    "index": 1212,
+    "distance_to_blue_release_mm": {
+      "head": {
+        "red": [],
+        "green": []
+      },
+      "left_wrist": {
+        "red": [
+          199.0
+        ],
+        "green": [
+          24.6
+        ]
+      },
+      "right_wrist": {
+        "red": [],
+        "green": []
+      }
+    }
+  },
+  "revised": {
+    "decision_tick": 24252,
+    "sample_tick": 24260,
+    "index": 1212,
+    "distance_to_blue_release_mm": {
+      "head": {
+        "red": [],
+        "green": []
+      },
+      "left_wrist": {
+        "red": [
+          263.9
+        ],
+        "green": [
+          85.9
+        ]
+      },
+      "right_wrist": {
+        "red": [],
+        "green": []
+      }
+    }
+  }
+}

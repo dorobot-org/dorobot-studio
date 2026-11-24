@@ -1,0 +1,13 @@
+{
+  "manifest_sha256": "7a344127f816c49c53d12410516fd04f136ea471117cd3e9a68a8fddf126a978",
+  "split": "hidden",
+  "cases": 50,
+  "successes": 40,
+  "verified": 50,
+  "verified_guard_bypasses": 0,
+  "qualified": false,
+  "physics_ticks": 1347106,
+  "received_wrist_exposures": 13928,
+  "zero_joint_excursion_cases": 50,
+  "archive_sha256": "d0fbd5a850de3c14cc3293790ca228fff7cceca9f522b96bbdf2deafb9c4d4d6"
+}

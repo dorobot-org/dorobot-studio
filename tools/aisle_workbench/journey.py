@@ -56,6 +56,7 @@ def main():
     p.add_argument("--survey", type=Path)
     p.add_argument("--evaluation", type=Path)
     p.add_argument("--handoff", action="store_true")
+    p.add_argument("--wrist-faults", nargs="?", const="red", choices=["red", "three"])
     p.add_argument("--camera-faults", action="store_true")
     p.add_argument("--moving-target", action="store_true")
     p.add_argument("--observed-author", action="store_true")
@@ -166,6 +167,10 @@ def main():
 
         native_journey(a, checks, page, click, remote, done, grab, wait)
         return
+    if a.wrist_faults:
+        from wrist_timing_check import native_journey
+
+        return native_journey(a, checks, page, click, remote, done, grab)
     if a.camera_faults:
         from sensor_timing_check import native_journey
 

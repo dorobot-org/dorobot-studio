@@ -142,7 +142,7 @@ script_mod! {
                     Section{text:"Cube motion · world Y"}
                     Bar{still := mod.widgets.ux.ToolButton{text:"Still"} slide_pos := mod.widgets.ux.ToolButton{text:"+Y"} slide_neg := mod.widgets.ux.ToolButton{text:"−Y"}}
                     timing_controls := View{width:Fill height:Fit flow:Down spacing:6.0
-                    Section{text:"Onboard camera timing"}
+                    timing_title := Section{text:"Onboard camera timing"}
                     Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}}
                 }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
@@ -613,7 +613,8 @@ impl PluginPanel for Panel {
                     "Choose a reference task or use an agent to prepare a controller.".into()
                 } else if transfer {
                     format!(
-                        "Move floor cubes to the coffee table\n{} · {} · revision {}/{}",
+                        "Move floor cubes to the coffee table{}\n{} · {} · revision {}/{}",
+                        if w.plan["wrist_clearance"] == true { " · Experimental wrist clearance" } else { "" },
                         w.plan["color_order"]
                             .as_str()
                             .unwrap_or("")
@@ -847,7 +848,16 @@ impl PluginPanel for Panel {
                     .set_visible(cx, mobile);
                 self.root
                     .widget(cx, ids!(timing_controls))
-                    .set_visible(cx, kind == "visual-approach");
+                    .set_visible(cx, mobile);
+                self.label(
+                    cx,
+                    ids!(timing_title),
+                    if transfer {
+                        "Left wrist RGB during pick"
+                    } else {
+                        "Onboard camera timing"
+                    },
+                );
                 for (id, motion) in [
                     (ids!(still) as &[LiveId], TargetMotion::Stationary),
                     (ids!(slide_pos), TargetMotion::PositiveY),
@@ -1233,6 +1243,22 @@ impl PluginPanel for Panel {
                 self.label(cx, ids!(verdict), verdict);
                 let text = if transfer {
                     let mut lines = vec![];
+                    if w.evidence["wrist_clearance"] == true {
+                        lines.push("Experimental wrist clearance".to_string());
+                    }
+                    let wrist = &w.evidence["wrist_timing"];
+                    if let Some(fixture) = wrist["fixture"].as_str() {
+                        let outcome = if wrist["received"] == 0 {
+                            "no pick samples"
+                        } else if wrist["timed_out"] == true {
+                            "stopped on timeout"
+                        } else if wrist["recoveries"].as_u64().unwrap_or(0) > 0 {
+                            "resumed on fresh RGB"
+                        } else {
+                            "fresh"
+                        };
+                        lines.push(format!("Left wrist RGB · {fixture} · {outcome}"));
+                    }
                     if let Some(cubes) = w.evidence["moving_grasp"]["cubes"].as_object() {
                         for (color, slide) in cubes {
                             let contact = &slide["first_contact"];

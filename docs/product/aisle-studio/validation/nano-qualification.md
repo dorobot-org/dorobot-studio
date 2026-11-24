@@ -2,7 +2,7 @@
 
 The simulator varies the initial locations of three colored floor cubes across the reference living room. The local controller receives the head and two wrist RGB streams, the Nano joint encoders and the robot and camera calibration. The evaluator measures cube positions, release, opposing finger contacts under load, the final 100 steps of tabletop contact and wheel support. Every requested cube must settle at least 35 mm inside the table boundary. A run also fails on robot–furniture contact, an actuator guard violation, an incomplete trace or an unverified result.
 
-The preregistered simulation qualification requires 45 whole-task successes in 50 cases, 50 verified receipts and zero measured guard bypasses. The three cohorts use independent random layouts. Their aggregate scores describe performance in this living-room distribution. A paired comparison of controller revisions requires reusing the same layouts.
+The preregistered simulation qualification requires 45 whole-task successes in 50 cases, 50 verified receipts and zero measured guard bypasses. The hidden qualification cohorts use independent random layouts. Their aggregate scores describe performance in this living-room distribution. A paired comparison of controller revisions requires reusing the same layouts.
 
 ## Examine a completed evaluation
 
@@ -73,3 +73,8 @@ The native headless and offscreen sessions each independently verified all 50 ca
 The wrist-confirmed supported recovery met the preregistered gate on **45 of 50 fresh layouts**, with 50 verified records and zero measured guard bypasses. The independent cohorts scored 32/50, 36/50, 43/50 and 45/50. The 45/50 result measures this frozen controller on cohort D. [Protocol, all five failures, raw evidence and native verification](nano-holdout-d/README.md)
 
 [Matched replay of all 50 disclosed cohort D layouts and per-case motor journals](nano-d-matched-replay/README.md)
+
+
+## Cohort E with a gripping-wrist release check
+
+The experimental planner added the gripping wrist to the two cameras used to choose a release point. Following the demonstrated recovery on development layout 0, it scored **40/50 complete tasks** on fresh concealed layouts. All 50 receipts verified, with zero guard bypasses. Five stopped because the planner found no reachable clear release. The new camera choice remains opt-in. [Preregistration, measured failures, raw data and operator instructions](transfer-wrist-timing/README.md)
