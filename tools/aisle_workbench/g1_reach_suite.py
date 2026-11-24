@@ -520,7 +520,14 @@ def verify(archive, expected, *, include_rows=False):
         openings = [{k: r[k] for k in ("salt", "recipe")} for r in reported["rows"]]
         actual = summarize(directory, expected, openings)
         if reported != actual:
-            raise ValueError("Recomputed G1 results differ")
+            for computed, stored in zip(actual["rows"], reported["rows"]):
+                for field, value in computed.items():
+                    if stored.get(field) != value:
+                        raise ValueError(
+                            f"G1 case {computed['index']} differs in {field}: "
+                            f"recorded {stored.get(field)!r}, recomputed {value!r}"
+                        )
+            raise ValueError("Recomputed G1 cohort totals or report fields differ")
     rows = actual.pop("rows")
     return dict(
         **actual,
