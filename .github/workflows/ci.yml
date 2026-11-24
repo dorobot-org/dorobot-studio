@@ -61,8 +61,10 @@ jobs:
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_nano_rgb_transfer.py
 
           guide=docs/product/aisle-studio/validation/nano-release-workspace
-          git fetch --no-tags --depth=1 --filter=blob:none origin e1e804658e375bc7579c13895a7d9f83f2df08ce 476f293006d0ac0f07c71d80501d86b7e925a26a
-          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit_qualification.py" "$guide/cohort-f" --check
+          git fetch --no-tags --depth=1 --filter=blob:none origin e1e804658e375bc7579c13895a7d9f83f2df08ce 476f293006d0ac0f07c71d80501d86b7e925a26a d38d9b3c9fb56e7f9e63de5f622aff774e866cdf 3bec9043281f5a331491d20cf3c918aa6639b413
+          for batch in cohort-f cohort-g; do
+            DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit_qualification.py" "$guide/$batch" --check
+          done
 
       - name: Install Rust
         run: |

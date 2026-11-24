@@ -82,3 +82,7 @@ The experimental planner added the gripping wrist to the two cameras used to cho
 ## Cohort F with continuous visual tracking
 
 The controller tracked previously placed cubes during a bounded turn when it could not reach a clear spot from its initial pose. It completed the full task on **45/50** concealed layouts. All 50 motor journals verified with zero guard bypasses. Five cases stopped before completion. Mac and Linux independently replayed the saved commands and checked the archived verdicts. [Failure seeds, runtime provenance, native Evidence and exact reproduction](nano-release-workspace/cohort-f/README.md)
+
+## Cohort G with a camera-selected turn or sidestep
+
+This experimental candidate scored **38/50** on a separate set of previously hidden layouts. The native verifier retained all 12 failures. All 50 journals verified with zero guard bypasses. [Recorded commands, failures and source-bound evidence](nano-release-workspace/cohort-g/README.md)

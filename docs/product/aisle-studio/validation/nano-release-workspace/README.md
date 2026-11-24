@@ -71,3 +71,5 @@ The native Evidence instrument also rejected a copy with a changed camera packet
 ## Fresh cohort F result
 
 With continuous visual tracking during the placement turn, Nano completed all three transfers on **45 of 50** concealed layouts. Independent replay verified 50 motor journals and 101 synchronized release exposures. It found zero guard bypasses. The PRD threshold was 45 complete transfers. [Inspect all five failures, verify the archive and reproduce a layout](cohort-f/README.md)
+
+The camera-selected replacement completed 38 of 50 independently committed layouts. All journals verified, with zero guard bypasses. The integrated controller remains the continuous tracker from cohort F. [Cohort G outcomes and failure seeds](cohort-g/README.md)
