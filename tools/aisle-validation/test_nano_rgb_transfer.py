@@ -10,10 +10,23 @@ import numpy as np
 
 from nano_rgb_transfer_policy import Controller, release_candidates, visible_in_jaws
 from nano_wrist_timing import WristTiming
-from run_rgb_transfer import Judge, finger_gap
+from run_rgb_transfer import Judge, LiveCameraFrames, finger_gap
 
 
 class TransferTests(unittest.TestCase):
+    def test_live_consumers_share_only_the_same_camera_and_physics_tick(self):
+        head, wrist = Mock(), Mock()
+        head.render.side_effect = [(b"head-1",), (b"head-2",)]
+        wrist.render.side_effect = [(b"wrist-1",), (b"wrist-2",)]
+        frames = LiveCameraFrames({"head": head, "left_wrist": wrist})
+        self.assertEqual(frames.rgb(1, "head"), b"head-1")
+        self.assertEqual(frames.rgb(1, "left_wrist"), b"wrist-1")
+        self.assertEqual(frames.rgb(1, "head"), b"head-1")
+        self.assertEqual(frames.rgb(2, "left_wrist"), b"wrist-2")
+        self.assertEqual(frames.rgb(2, "head"), b"head-2")
+        self.assertEqual(frames.requests, {"head": 3, "left_wrist": 2})
+        self.assertEqual(frames.renders, {"head": 2, "left_wrist": 2})
+
     def test_synchronized_policy_read_rejects_recent_but_misaligned_wrist_image(self):
         with tempfile.TemporaryDirectory() as tmp:
             guard = WristTiming("intermittent", Path(tmp), False)

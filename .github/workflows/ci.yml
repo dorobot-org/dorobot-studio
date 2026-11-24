@@ -49,6 +49,9 @@ jobs:
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
           /usr/bin/python3 "$guide/capacity.py" "$guide/capacity.zip" > "$RUNNER_TEMP/wrist-capacity.json"
           cmp "$guide/capacity.json" "$RUNNER_TEMP/wrist-capacity.json"
+          preview=docs/product/aisle-studio/validation/foreground-preview
+          /usr/bin/python3 "$guide/capacity.py" "$preview/exposure-reuse-ten.zip" > "$RUNNER_TEMP/preview-capacity.json"
+          cmp "$preview/exposure-reuse-ten.json" "$RUNNER_TEMP/preview-capacity.json"
           /usr/bin/python3 "$guide/selection.py" "$guide/selection.zip" > "$RUNNER_TEMP/wrist-selection.json"
           cmp "$guide/selection.json" "$RUNNER_TEMP/wrist-selection.json"
       - name: Replay Nano and G1 cohort comparisons
@@ -99,6 +102,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/aisle_workbench -p test_fleet_bridge.py
           python3 docs/product/aisle-studio/validation/foreground-preview/audit.py
+          python3 docs/product/aisle-studio/validation/foreground-preview/compare_exposures.py docs/product/aisle-studio/validation/foreground-preview/exposure-reuse-metal.zip
           python3 docs/product/aisle-studio/validation/native-cohort-comparison/audit.py
           python3 docs/product/aisle-studio/validation/nano-release-workspace/verify_native_seeds.py
       - name: Test Nexus worker when present
