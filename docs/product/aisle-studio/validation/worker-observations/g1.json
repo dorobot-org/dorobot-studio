@@ -1,0 +1,230 @@
+{
+  "controller_sha256": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+  "source_commit": "c19efe1983d7a3494db2d0640150141698484bb0",
+  "periods": {
+    "1": {
+      "observations": [
+        {
+          "tick": 0,
+          "width": 480,
+          "height": 320,
+          "sha256": "be44ff4327baf5ddc37bf23eee78906f2fe9d782823e4a0c8b042cf5d62f1328"
+        },
+        {
+          "tick": 199,
+          "width": 480,
+          "height": 320,
+          "sha256": "be44ff4327baf5ddc37bf23eee78906f2fe9d782823e4a0c8b042cf5d62f1328"
+        },
+        {
+          "tick": 399,
+          "width": 480,
+          "height": 320,
+          "sha256": "be44ff4327baf5ddc37bf23eee78906f2fe9d782823e4a0c8b042cf5d62f1328"
+        },
+        {
+          "tick": 599,
+          "width": 480,
+          "height": 320,
+          "sha256": "be44ff4327baf5ddc37bf23eee78906f2fe9d782823e4a0c8b042cf5d62f1328"
+        },
+        {
+          "tick": 799,
+          "width": 480,
+          "height": 320,
+          "sha256": "66381ffe8a4bfab44e274e8adacd7b6a1bd9ab0d4509d95e585b098086f1ad6e"
+        },
+        {
+          "tick": 999,
+          "width": 480,
+          "height": 320,
+          "sha256": "66381ffe8a4bfab44e274e8adacd7b6a1bd9ab0d4509d95e585b098086f1ad6e"
+        },
+        {
+          "tick": 1199,
+          "width": 480,
+          "height": 320,
+          "sha256": "66381ffe8a4bfab44e274e8adacd7b6a1bd9ab0d4509d95e585b098086f1ad6e"
+        },
+        {
+          "tick": 1399,
+          "width": 480,
+          "height": 320,
+          "sha256": "66381ffe8a4bfab44e274e8adacd7b6a1bd9ab0d4509d95e585b098086f1ad6e"
+        },
+        {
+          "tick": 1599,
+          "width": 480,
+          "height": 320,
+          "sha256": "66381ffe8a4bfab44e274e8adacd7b6a1bd9ab0d4509d95e585b098086f1ad6e"
+        },
+        {
+          "tick": 1799,
+          "width": 480,
+          "height": 320,
+          "sha256": "66381ffe8a4bfab44e274e8adacd7b6a1bd9ab0d4509d95e585b098086f1ad6e"
+        },
+        {
+          "tick": 1999,
+          "width": 480,
+          "height": 320,
+          "sha256": "66381ffe8a4bfab44e274e8adacd7b6a1bd9ab0d4509d95e585b098086f1ad6e"
+        }
+      ],
+      "verdict": {
+        "kind": "standing-inspection",
+        "task_success": true,
+        "fixture": "standing-impact-development",
+        "disturbance": {
+          "contacts": 2,
+          "normal_impulse_sum_ns": 0.1337575800716877,
+          "links": [
+            "torso_link"
+          ],
+          "recovery_s": 0.5,
+          "last_contact_step": 609,
+          "recovered_step": 709,
+          "passed": true
+        },
+        "wrist_reach": {
+          "link": "right_wrist_yaw_link",
+          "frame": "world",
+          "start_m": [
+            0.20475797355175018,
+            -0.14904311299324036,
+            0.050997160375118256
+          ],
+          "target_m": [
+            0.22333068952396717,
+            -0.14453064464085966,
+            0.0637763002189769
+          ],
+          "final_m": [
+            0.22120243310928345,
+            -0.14453132450580597,
+            0.06530957669019699
+          ],
+          "requested_travel_m": 0.02299161943762938,
+          "final_error_m": 0.0026230540532089517,
+          "max_final_100_error_m": 0.002623589531944677,
+          "tolerance_m": 0.01,
+          "passed": true,
+          "trace_sha256": "8c1a8f176564ee2246a7269d7931d04ece6073028bc438066493d5609ff337fb"
+        },
+        "trunk_pitch_target_rad": 0.0,
+        "trunk_yaw_target_rad": 0.0,
+        "settled_trunk_yaw_rad": -6.354879587888718e-05,
+        "settled_trunk_pitch_rad": 0.12167155735194683,
+        "estimated_positive_joint_work_j": 0.7308872408111555,
+        "estimated_negative_joint_work_j": -0.5623833571132469,
+        "motor_work_sha256": "08abb7d4dd041732b95a17c904454e6dbec7cbef6624137f9b5c35504ddf3433",
+        "joint": "right_shoulder_pitch_joint",
+        "requested_delta": -0.08,
+        "measured_delta": -0.07999997586011887,
+        "within_limits": true,
+        "max_joint_excursion_rad": 0.0,
+        "steps": 2000,
+        "frames": 101,
+        "recording": false,
+        "recorded_frames": 0,
+        "both_feet_loaded_steps": 2000,
+        "floor_contact_links_other_than_feet": [],
+        "peak_tilt_deg": 2.5321360549062057,
+        "max_pelvis_drift_m": 0.0024747438728809357,
+        "root_pose_writes": 0,
+        "robot": "G1",
+        "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+      }
+    },
+    "5": {
+      "observations": [
+        {
+          "tick": 0,
+          "width": 480,
+          "height": 320,
+          "sha256": "be44ff4327baf5ddc37bf23eee78906f2fe9d782823e4a0c8b042cf5d62f1328"
+        },
+        {
+          "tick": 999,
+          "width": 480,
+          "height": 320,
+          "sha256": "5bca587888d9661b24d10e520c0a3d76c7158592e43cdaf186490c08f5061507"
+        },
+        {
+          "tick": 1999,
+          "width": 480,
+          "height": 320,
+          "sha256": "5bca587888d9661b24d10e520c0a3d76c7158592e43cdaf186490c08f5061507"
+        }
+      ],
+      "verdict": {
+        "kind": "standing-inspection",
+        "task_success": true,
+        "fixture": "standing-impact-development",
+        "disturbance": {
+          "contacts": 2,
+          "normal_impulse_sum_ns": 0.13376617804169655,
+          "links": [
+            "torso_link"
+          ],
+          "recovery_s": 0.5,
+          "last_contact_step": 609,
+          "recovered_step": 709,
+          "passed": true
+        },
+        "wrist_reach": {
+          "link": "right_wrist_yaw_link",
+          "frame": "world",
+          "start_m": [
+            0.20475804805755615,
+            -0.1490430384874344,
+            0.05099726468324661
+          ],
+          "target_m": [
+            0.22333075880792053,
+            -0.14453056631128672,
+            0.06377640667793731
+          ],
+          "final_m": [
+            0.22120259702205658,
+            -0.14453135430812836,
+            0.06530959159135818
+          ],
+          "requested_travel_m": 0.022991617165342558,
+          "final_error_m": 0.0026229237858717926,
+          "max_final_100_error_m": 0.002623404564692153,
+          "tolerance_m": 0.01,
+          "passed": true,
+          "trace_sha256": "4bf7f91a940d414cb22d118bc6fe6e3c7c3db5533ee1604135ae0b5fccd4634c"
+        },
+        "trunk_pitch_target_rad": 0.0,
+        "trunk_yaw_target_rad": 0.0,
+        "settled_trunk_yaw_rad": -6.355056168104056e-05,
+        "settled_trunk_pitch_rad": 0.12167154058814049,
+        "estimated_positive_joint_work_j": 0.730879179011012,
+        "estimated_negative_joint_work_j": -0.562376186982168,
+        "motor_work_sha256": "58375c946b5d9be302d6c01c05c20eac2a273f632a40bade92e57974d50dea1a",
+        "joint": "right_shoulder_pitch_joint",
+        "requested_delta": -0.08,
+        "measured_delta": -0.07999996840953827,
+        "within_limits": true,
+        "max_joint_excursion_rad": 0.0,
+        "steps": 2000,
+        "frames": 101,
+        "recording": false,
+        "recorded_frames": 0,
+        "both_feet_loaded_steps": 2000,
+        "floor_contact_links_other_than_feet": [],
+        "peak_tilt_deg": 2.5321337063249483,
+        "max_pelvis_drift_m": 0.0024747494608163834,
+        "root_pose_writes": 0,
+        "robot": "G1",
+        "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+      }
+    }
+  },
+  "max_target_difference_rad": 4.820525646209717e-06,
+  "max_q_after_difference_rad": 2.443733592372155e-06
+}
