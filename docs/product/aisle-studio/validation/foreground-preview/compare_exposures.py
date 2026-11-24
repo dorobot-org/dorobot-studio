@@ -4,6 +4,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -59,6 +60,30 @@ def rate(times):
     return (len(times) - 1) * 1e9 / (times[-1] - times[0])
 
 
+def same_display_value(original, displayed):
+    """Allow one adjacent binary64 value when Studio transcribes a JSON decimal."""
+    if type(original) is not type(displayed):
+        return False
+    if isinstance(original, dict):
+        return original.keys() == displayed.keys() and all(
+            same_display_value(v, displayed[k]) for k, v in original.items()
+        )
+    if isinstance(original, list):
+        return len(original) == len(displayed) and all(
+            same_display_value(a, b) for a, b in zip(original, displayed)
+        )
+    if isinstance(original, float):
+        return (
+            math.isfinite(original)
+            and math.isfinite(displayed)
+            and (
+                original == displayed
+                or math.nextafter(original, displayed) == displayed
+            )
+        )
+    return original == displayed
+
+
 def measure(archive, side):
     def read(name):
         return json.loads(archive.read(f"{side}/{name}"))
@@ -68,7 +93,7 @@ def measure(archive, side):
     timing = read("preview-timing.json")
     restored = read("reopened.json")
     assert (
-        restored["result"] == result
+        same_display_value(result, restored["result"])
         and restored["job"] == read("worker-origin.json")["job"]
     )
     manifest = read("mode-manifest.json")
@@ -166,12 +191,18 @@ def measure(archive, side):
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("archive", type=Path)
-    cli.add_argument(
+    mode = cli.add_mutually_exclusive_group()
+    mode.add_argument(
         "--pack",
         nargs=2,
         metavar=("BASELINE", "CANDIDATE"),
         type=Path,
         help="Create a fresh audit archive from two completed native journeys",
+    )
+    mode.add_argument(
+        "--single",
+        action="store_true",
+        help="Audit one worker with shared camera exposures and report its measured rates",
     )
     args = cli.parse_args()
     if not __debug__:
@@ -181,6 +212,21 @@ def main():
             for side, path in zip(("before", "after"), args.pack):
                 pack(z, side, path)
     with ZipFile(args.archive) as z:
+        if args.single:
+            rates, _, result = measure(z, "after")
+            print(
+                json.dumps(
+                    dict(
+                        **rates,
+                        physics_ticks=result["physics_ticks"],
+                        wheel_supported_ticks=result["wheel_supported_ticks"],
+                        frames_per_camera=result["frames"],
+                        task_success=result["task_success"],
+                    ),
+                    indent=2,
+                )
+            )
+            return
         before, original, left = measure(z, "before")
         after, candidate, right = measure(z, "after")
         if original != candidate:

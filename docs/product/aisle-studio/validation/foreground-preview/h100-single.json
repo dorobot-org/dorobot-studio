@@ -1,0 +1,23 @@
+{
+  "captures": 6948,
+  "source_fps": 18.181120415364916,
+  "draws": 6834,
+  "viewport_fps": 17.890582678942028,
+  "full_seconds": 381,
+  "seconds_below_25": 381,
+  "camera_reads": {
+    "head": 7088,
+    "left_wrist": 555,
+    "right_wrist": 486
+  },
+  "camera_renders": {
+    "head": 6949,
+    "left_wrist": 432,
+    "right_wrist": 432
+  },
+  "shared_reads": 316,
+  "physics_ticks": 6948,
+  "wheel_supported_ticks": 6948,
+  "frames_per_camera": 347,
+  "task_success": true
+}
