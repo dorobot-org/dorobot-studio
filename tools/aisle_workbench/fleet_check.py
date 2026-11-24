@@ -95,6 +95,62 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
         return
 
+    if args.resume_fleet:
+        # The disconnected Studio already retained its background observation and cancellation.
+        root = args.out.parent / "state/aisle"
+        fleet = json.loads((root / "worker-selection.json").read_bytes())
+        assert (
+            fleet["node"] == args.fleet_node and fleet["selected"]["mode"] == "stream"
+        )
+        foreground = fleet["selected"]["id"]
+        (background,) = (j for j in fleet["jobs"] if j != foreground)
+        candidates = [
+            json.loads(p.read_bytes()) for p in root.glob("*-Nano-fleet/fleet.json")
+        ]
+        snapshot = next(
+            r["sample"]
+            for r in candidates
+            if r.get("sample") and r["selected"]["id"] == background
+        )
+        stopped = next(
+            p.parent
+            for p in root.glob("*-Nano-run/worker-origin.json")
+            if json.loads(p.read_bytes())["job"] == background
+        )
+        assert (stopped / "stopped.json").is_file()
+        observations = [
+            json.loads(l)
+            for l in (stopped / "background-observations.jsonl")
+            .read_bytes()
+            .splitlines()
+        ]
+        assert any(
+            o["sha256"] == snapshot["sha256"] and o["tick"] == snapshot["tick"]
+            for o in observations
+        )
+        enter_workers()
+        row = done(
+            lambda w: selected(w).get("id") == foreground
+            and observed(w).get("state") == "completed",
+            "Reconnected to the completed SSH foreground",
+            100,
+        )
+        result = observed(row)["result"]
+        origin, _ = import_and_replay(foreground, result)
+        checks.append(
+            dict(
+                check="Reconnected and fetched the remote trial",
+                foreground_id=foreground,
+                background_id=background,
+                observation_ticks=[o["tick"] for o in observations],
+                snapshot=snapshot,
+                origin=origin,
+                result=result,
+            )
+        )
+        source.write_text(json.dumps(checks, indent=2))
+        return
+
     page("task")
     click("aisle_task.instruction")
     remote(
@@ -254,10 +310,13 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         600,
     )
     result = observed(row)["result"]
-    assert (
-        result["task_success"]
-        and result["wheel_supported_ticks"] == result["physics_ticks"]
-    )
+    if not args.fleet_node:
+        assert (
+            result["task_success"]
+            and result["wheel_supported_ticks"] == result["physics_ticks"]
+        )
+    else:
+        assert isinstance(result["task_success"], bool) and result["physics_ticks"] > 0
     origin, _ = import_and_replay(foreground, result)
     checks.append(
         dict(

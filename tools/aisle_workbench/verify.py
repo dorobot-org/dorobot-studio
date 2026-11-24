@@ -143,7 +143,17 @@ def main():
         "--fleet-node",
         help="Run the two-job native fleet check against this registered worker",
     )
+    parser.add_argument(
+        "--resume-fleet",
+        type=Path,
+        metavar="EARLIER_OUTPUT",
+        help="Reconnect a prior two-job fleet check and fetch its completed foreground",
+    )
     args = parser.parse_args()
+    if args.resume_fleet and (not args.fleet_node or not args.fleet):
+        parser.error(
+            "--resume-fleet needs --fleet and the same registered --fleet-node"
+        )
     if args.fleet_node and (not args.fleet or args.foreground_cadence):
         parser.error("--fleet-node requires the two-job --fleet journey")
     if args.photo_input and (args.survey or not args.transfer):
@@ -189,6 +199,10 @@ def main():
         "DOROBOT_STUDIO_SOURCE_ROOT": str(studio_root),
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
+    if args.resume_fleet:
+        import shutil
+
+        shutil.copytree(args.resume_fleet / "state", output / "state")
     if args.prepared_pickup and not args.revise_pickup:
         parser.error("--prepared-pickup requires --revise-pickup")
     if args.revise_pickup and args.compare_runs:
@@ -329,6 +343,8 @@ def main():
                     check.append("--compare-runs")
                 if args.fleet:
                     check.append("--fleet")
+                    if args.resume_fleet:
+                        check.append("--resume-fleet")
                     if args.fleet_node:
                         check.extend(["--fleet-node", args.fleet_node])
                     if args.foreground_cadence:
