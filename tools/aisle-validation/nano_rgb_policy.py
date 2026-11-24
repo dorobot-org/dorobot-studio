@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 from aisle.kinematics import load_urdf_chain
 
+GRASP_RGB_ASSOCIATION = "wrist-agreement-v1"
 CAMERAS = ("head", "left_wrist", "right_wrist")
 COLORS = ("red", "green", "blue")
 # Nominal wheel support plane in the extended Nano URDF's base_link frame.
