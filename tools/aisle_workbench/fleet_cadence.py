@@ -10,7 +10,13 @@ import sys
 import time
 from zipfile import ZipFile
 
-from fleet_client import check_background_period, send, submission
+from fleet_client import (
+    check_background_period,
+    decode_rgb,
+    poll_observation,
+    send,
+    submission,
+)
 from fleet_artifacts import download
 from fleet_worker import initialize
 from worker import save
@@ -72,15 +78,12 @@ def background(index, node, folder, provider, clock="simulation", period=1):
             raise TimeoutError(
                 f"Background simulation {index} exceeded the test window"
             )
-        job = send(node, dict(op="status", id=ident))
+        job, result = poll_observation(node, ident, last_tick)
         tick = (job.get("progress") or {}).get("step", 0)
         if tick and job["state"] == "running":
             progress.append([tick, time.monotonic_ns()])
-        result = send(node, dict(op="observation", id=ident))
         if result["ready"] and result["tick"] != last_tick:
-            import base64
-
-            pixels = base64.b64decode(result["data"], validate=True)
+            pixels = decode_rgb(result)
             assert len(pixels) == result["width"] * result["height"] * 3
             samples.append(
                 [

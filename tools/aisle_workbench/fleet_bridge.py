@@ -18,7 +18,14 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 from fleet_artifacts import download
-from fleet_client import check_background_period, send, submission, worker_command
+from fleet_client import (
+    check_background_period,
+    decode_rgb,
+    poll_observation,
+    send,
+    submission,
+    worker_command,
+)
 from fleet_worker import ACTIVE, initialize, job_id
 from worker import ROOT, save
 
@@ -229,17 +236,10 @@ def import_trial(root, node, row, status):
     return dest
 
 
-def receive_frame(node, ident, operation, out):
-    reply = send(node, dict(op=operation, id=ident))
+def save_frame(reply, out):
     if not reply["ready"]:
         return None
-    data = base64.b64decode(reply["data"], validate=True)
-    if (
-        reply["width"] != 480
-        or reply["height"] not in (320, 360)
-        or len(data) != 480 * reply["height"] * 3
-    ):
-        raise ValueError("Invalid worker camera frame")
+    data = decode_rgb(reply)
     tmp = out / "preview.tmp"
     tmp.write_bytes(reply["tick"].to_bytes(4, "big") + data)
     tmp.replace(out / "preview.rgb")
@@ -358,7 +358,7 @@ def operate(args):
             info = reconcile(root, row, node)
             frame = None
             if row["mode"] == "stream":
-                frame = receive_frame(node, ident, "frame", args.out)
+                frame = save_frame(send(node, dict(op="frame", id=ident)), args.out)
             save(args.out / "watch.json", dict(job=info, frame=frame))
             if info["state"] not in ACTIVE:
                 return
@@ -376,7 +376,9 @@ def operate(args):
         )
         expected = getattr(args, "controller_sha256", None)
         if expected is not None and req["controller_sha256"] != expected:
-            raise ValueError("Selected controller contents changed before fleet submission")
+            raise ValueError(
+                "Selected controller contents changed before fleet submission"
+            )
         if args.room_hash and req["room_sha256"] != args.room_hash:
             raise ValueError("Selected room revision has changed")
         if op == "observations":
@@ -420,14 +422,19 @@ def operate(args):
     info, trial, sample = None, None, None
     if ident:
         row = record(root, ident)
-        info = reconcile(root, row, node)
+        if op == "sample":
+            if row["state"] == "submitting":
+                reconcile(root, row, node)
+            info, frame = poll_observation(node, ident)
+            update(root, ident, info["state"])
+            sample = save_frame(frame, args.out)
+            if sample is None:
+                raise ValueError("Waiting for the first background RGB exposure")
+        else:
+            info = reconcile(root, row, node)
         if op == "cancel":
             info = send(node, dict(op="cancel", id=ident))
             update(root, ident, info["state"])
-        if op == "sample":
-            sample = receive_frame(node, ident, "observation", args.out)
-            if sample is None:
-                raise ValueError("Waiting for the first background RGB exposure")
         if op == "fetch":
             trial = import_trial(root, node, row, info).name
         info.update(robot=row["robot"], mode=row["mode"])

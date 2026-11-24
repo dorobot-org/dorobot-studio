@@ -43,7 +43,9 @@ def delivery_intervals(archive, name):
     }
 
 
-def compare(earlier, current, datasets):
+def compare(
+    earlier, current, datasets, *, baseline_clock="simulation", baseline_period=1
+):
     results = {}
     with ZipFile(earlier) as baseline, ZipFile(current) as measured:
         for name in ("codex", "deepseek"):
@@ -63,9 +65,10 @@ def compare(earlier, current, datasets):
                 if gpu:
                     original = json.loads(baseline.read(stem + "delivery.json"))
                     assert (
-                        original.get("observation_clock", "simulation") == "simulation"
+                        original.get("observation_clock", "simulation")
+                        == baseline_clock
                     )
-                    assert original.get("observation_period_s", 1) == 1
+                    assert original.get("observation_period_s", 1) == baseline_period
                     assert (
                         after["observation_clock"] == "wall"
                         and after["observation_period_s"] == 0.5

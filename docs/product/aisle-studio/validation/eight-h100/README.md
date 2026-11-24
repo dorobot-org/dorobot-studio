@@ -4,6 +4,8 @@ The Mac runs DoRobot Studio and asks a provider to prepare one controller per se
 
 ## Measured capacity
 
+With combined status and lossless images at the same 0.5-second wall period, 14/14 receivers averaged at least 1 Hz (1.92–2.00 Hz). The native foreground averaged 17.48 FPS with Codex and 17.69 FPS with DeepSeek. All 16 transfers passed. [Paired transfer measurements](lossless-rgb/README.md)
+
 A subsequent run scheduled background images every 0.5 wall seconds using the same controllers and an updated worker. 7 of 14 background receivers averaged at least 1 Hz. The foreground still missed 25 FPS. [Paired measurements, gaps in individual seconds and both datasets](wall-clock/README.md)
 
 | Author | Eight-way overlap | Source camera | Native viewport | Seven background feeds | Nano tasks passed |
