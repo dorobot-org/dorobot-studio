@@ -94,7 +94,7 @@ def audit(run, model, mode, delayed=False):
     }
 
 
-def native_journey(args, checks, page, click, remote, done, grab):
+def native_journey(args, checks, page, click, remote, done, grab, wait):
     model = ROOT / "data/adora_nano/adora_nano.urdf"
     if args.recover:
         page("evidence")
@@ -127,6 +127,30 @@ def native_journey(args, checks, page, click, remote, done, grab):
 
         if mode == "slide-positive" and not delayed:
             grab("moving-cube-scene")
+            if args.size == "1024x768":
+                inspect = "aisle_scene.inspect"
+                controls = wait(
+                    lambda j: j["controls"][inspect]["visible"],
+                    "Scene inspector visible",
+                )["controls"]
+                original_y = controls[inspect]["rect"][1]
+                x, y, w, h = controls["aisle_scene.slide_pos"]["rect"]
+                position = ["w=0", f"x={x + w / 2}", f"y={y + h / 2}", "dx=0", "wait=1"]
+                remote("mouse", "k=scroll", "dy=420", *position)
+                wait(
+                    lambda j: j["controls"][inspect]["rect"][1] < original_y - 20,
+                    "Scrolled to the robot motion limits",
+                )
+                remote("mouse", "k=scroll", "dy=-420", *position)
+                wait(
+                    lambda j: abs(j["controls"][inspect]["rect"][1] - original_y) < 2,
+                    "Fixture controls returned to the top",
+                )
+                checks.append(
+                    dict(
+                        check="Small-window fixture inspector scrolls in both directions"
+                    )
+                )
         previous = row["selected"]
         page("run")
         click("aisle_run.start_run")

@@ -121,7 +121,7 @@ def main():
     if a.moving_target:
         from moving_target_check import native_journey
 
-        native_journey(a, checks, page, click, remote, done, grab)
+        native_journey(a, checks, page, click, remote, done, grab, wait)
         return
     if a.camera_faults:
         from sensor_timing_check import native_journey

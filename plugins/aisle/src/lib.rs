@@ -115,8 +115,10 @@ script_mod! {
                 save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
                 default_room := mod.widgets.ux.ToolButton{text:"Use default room"}
             }
-            inspector := Card{width:285 height:Fill Section{text:"Simulation fixture"} fixture_kind := Body{}
-                Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
+            inspector := Card{width:285 height:Fill padding:0.0
+                fixture_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:16.0 spacing:10.0
+                Section{text:"Simulation fixture"} fixture_kind := Body{}
+                fixed_fixtures := Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
                 standing_fixtures := Bar{
                     level := mod.widgets.ux.ToolButton{text:"Level floor"}
                     impact := mod.widgets.ux.ToolButton{text:"Impact test"}
@@ -132,6 +134,7 @@ script_mod! {
                     Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}
                 }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
+                }
             }
         }
         status := Body{}
@@ -588,11 +591,9 @@ impl PluginPanel for Panel {
                         .button(cx, id)
                         .set_enabled(cx, !w.busy() && w.layout_seed != seed);
                 }
-                for id in [ids!(standard), ids!(compliant)] {
-                    self.root
-                        .widget(cx, id)
-                        .set_visible(cx, !mobile && !standing);
-                }
+                self.root
+                    .widget(cx, ids!(fixed_fixtures))
+                    .set_visible(cx, !mobile && !standing);
                 self.label(
                     cx,
                     ids!(fixture),
@@ -846,7 +847,13 @@ impl PluginPanel for Panel {
                             .flat_map(|m| m.values())
                             .filter_map(|n| n.as_u64())
                             .sum();
-                        detail.push_str(&format!("\nCamera timing {fixture} · {held} withheld observations · {} recoveries", timing["recoveries"]));
+                        let recovered = timing["recoveries"].as_u64().unwrap_or_default();
+                        let noun = if recovered == 1 {
+                            "recovery"
+                        } else {
+                            "recoveries"
+                        };
+                        detail.push_str(&format!("\nCamera timing {fixture} · {held} withheld observations · {recovered} {noun}"));
                         if timing["timed_out"] == true {
                             detail.push_str(" · stopped after timeout");
                         }
