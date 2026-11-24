@@ -1,0 +1,48 @@
+{
+  "old_worker_rejection": "Update the selected worker to use experimental wrist clearance",
+  "lease": "b5794323-5cc3-4d6e-88cc-cb8a5c4c7b3f",
+  "state": "completed",
+  "source": true,
+  "wrist_timing": {
+    "camera": "left_wrist",
+    "phase": "pick",
+    "fixture": "disconnected",
+    "received": 14,
+    "rejected": {
+      "repeated or out-of-order packet": 10
+    },
+    "recoveries": 0,
+    "timed_out": true
+  },
+  "task_success": false,
+  "physics_ticks": 1180,
+  "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+  "local_lease_index": {
+    "query": "SELECT node, id, state, request FROM jobs ORDER BY node, id",
+    "jobs": [
+      {
+        "node": "current",
+        "id": "b5794323-5cc3-4d6e-88cc-cb8a5c4c7b3f",
+        "state": "completed",
+        "controller_sha256": "d8726047d999ffb8c37e9d52a84f926fe868be35193a53cc157534ca6a45c63b",
+        "wrist_clearance": true,
+        "mode": "stream",
+        "rgb_timing": "disconnected"
+      }
+    ],
+    "indexed_jobs_by_worker": {
+      "old": 0,
+      "current": 1
+    }
+  },
+  "imported_evidence_sha256": {
+    "controller.json": "d8726047d999ffb8c37e9d52a84f926fe868be35193a53cc157534ca6a45c63b",
+    "result.json": "aa0d06733be2bd78355b2bec846cb2749cb2c08efa403b8296167d2240ad0bee",
+    "source.json": "698ca49454fdf02422bbbed43a462457bb87a346af04d79fd523e7c74d25b571",
+    "worker-origin.json": "4a551fcd8f498b732d6494fb94b04dcae7a9da32d53c3aeb0d0e6b3fc67e6ffe",
+    "wrist-delivery.jsonl": "12c42e2071f32823740588212cbeda1417ddc45335495b4e99a6c71cad194f3f",
+    "motor-targets.f64": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+    "actions.jsonl": "f06743dbfa5f0a16d707a8449fc378bfb63596a827a960cbfe138fcf976d484a"
+  },
+  "evidence_zip_sha256": "2473ca016f959038bd5771ff21db45ff2de10e362b4552c206b31d5d6458d7c2"
+}

@@ -30,6 +30,8 @@ Both providers independently authored the single-red instruction. Their three co
 
 **40/50** complete three-cube transfers passed with the experimental planner (80%, 95% Wilson interval 67.0–88.8%). The preregistered gate requires 45. All 50 motor journals verified across 1,347,106 physics ticks with zero guard bypasses and zero measured joint-limit excursions. The 13,928 normal wrist observations all had matching capture and receive ticks and matching source and delivered pixel hashes. The runtime retains the established release behavior for ordinary instructions and saved controllers. The operator can explicitly select the three-view policy to reproduce the recovery experiment. This gate applies to manipulation performance. The command-hold and timeout have separate measurements. [Committed inputs](qualification-manifest.json) · [Every scored layout](qualification-report.json) · [Verified totals](qualification.json) · [Full cohort archive](qualification.zip)
 
+In **Evidence → Batch evaluation**, Studio displayed “Qualification failed,” the 45-case requirement and all ten failed layouts. Desktop and compact Makepad instruments opened the next failure, returned to the first, retained the verified score after an unreadable archive, and restored it after restart. [Desktop Evidence page](cohort-e-evidence.png) · [Native verification records](native-evaluations.zip)
+
 | Failed cases | Measured outcome |
 | --- | --- |
 | 9, 15, 16, 19, 36 | No clear release position satisfied the arm reach and observed occupancy checks. Case 16 also lost one wheel-support tick. |
@@ -37,7 +39,18 @@ Both providers independently authored the single-red instruction. Their three co
 | 10 | Blue docking timed out with robot–table contact. |
 | 20, 33 | The controller lost blue and red respectively during transport. |
 
-The previous 45/50 qualification and the new 40/50 result use different layouts. A matched comparison uses the same seeds and independent per-layout verdicts. [Previous qualification](../nano-holdout-d/README.md)
+### Two-view and three-view release on the same 50 layouts
+
+Both planners completed **40/50** with normal camera delivery on the same 50 living-room layouts. The experimental run was the preregistered hidden cohort E. After its layouts were disclosed, we ran the two-view policy once per seed using the same frozen controller, robot, physics and wrist monitor. The earlier 45/50 qualification used cohort D and the same high-level controller. The runtime changed between D and E, including the wrist monitor, transfer execution and perception sources. The 45/50 qualification applies to the recorded D build. [Two-view manifest](matched-baseline-manifest.json) · [Two-view trials and motor records](matched-baseline.zip) · [Verified outcome for every pair](matched-comparison.json) · [Earlier qualification](../nano-holdout-d/README.md)
+
+| Outcome on the same layout | Layouts | What changed |
+| --- | ---: | --- |
+| Both passed | 37 | All three cubes settled on the tabletop and the robot met the motion criteria. |
+| Only two-view passed | 3 | On layouts 9, 19 and 36 the extra occupancy check found no reachable clear release. |
+| Only three-view passed | 3 | The two-view policy stacked green on red on layout 34, and blue on green on layouts 40 and 49. Each upper cube finished about 40 mm above the lower cube, with zero direct tabletop contact in the final 100 ticks. |
+| Both failed | 7 | Both runs retain their individual physical measurements and failure reasons. |
+
+All 100 motor records verified across 2,720,952 physics ticks with zero measured guard bypasses. The 17-target motor journals were byte-identical on 21 of the 50 paired layouts. One pair also had identical high-level action logs, which record observation requests, phase changes, wheel commands and other policy operations. The physics trials ran on the Mac. The Mac and a Linux CPU independently replayed those saved motor records and produced the same comparison file (SHA-256 `690f8f8db8d802fbf5dfb2dfe52c1d10dae5d3773fb709f262d7f6197543a643`). The compact native Evidence page also opened the disclosed two-view suite and restored its development result after restart. The six changed verdicts explain the tradeoff behind the opt-in release decision. These 50 pairs compare the two frozen policy builds. The later operator-selectable build was exercised separately on layout 0 under all three delivery fixtures. [Selection runs](#verify-the-operator-selection)
 
 ## Mac capacity with the wrist monitor running
 
@@ -58,7 +71,7 @@ Both native authors bound the explicit request to `wrist_clearance: true` in the
 
 **Evidence → Export episode** preserves the raw camera videos, 17 encoder values and 17 commanded positions. The LeRobot field `annotation.wrist_rgb_hold` marks frames in which the controller is waiting for a fresh wrist exposure. The capture and delivery timestamps and their pixel digests are in `meta/wrist-delivery.jsonl`. The metadata names the video source and binds the log digest to the episode. The revised delay dataset contains 1,323 frames per camera, including eight hold frames. The timed-out dataset has 59 frames per camera, including ten hold frames.
 
-An older worker that lacked the transfer capability still completed its supported delayed visual-approach task. Its independent judge recorded a final cube range of 0.468 m and full wheel support. A completed remote fault trial is checked again during import against its original lease, source fixture and structured wrist verdict. The current Studio archive reader also replayed the previous 50-layout Nano qualification and recovered all 50 receipts and the 45 successful trials. Comparison in Evidence requires matching wrist-timing implementations and matching sensor fault modes.
+An older worker that lacked the transfer capability still completed its supported delayed visual-approach task. Its independent judge recorded a final cube range of 0.468 m and full wheel support. A completed remote fault trial is checked again during import against its original lease, source fixture and structured wrist verdict. In a separate local worker-service test, Studio rejected the experimental release option on an older worker before allocating a lease. A compatible worker accepted it. Studio imported the failed grasp with the original ten stale wrist exposures and 1,180 physics ticks. [Worker receipt and local lease index](worker-selection.json) · [Imported controller, origin and motor evidence](worker-selection.zip) The current Studio archive reader also replayed the previous 50-layout Nano qualification and recovered all 50 receipts and the 45 successful trials. Comparison in Evidence requires matching wrist-timing implementations and matching sensor fault modes.
 
 ## Reproduce the native experiments
 
@@ -84,4 +97,23 @@ guide=docs/product/aisle-studio/validation/transfer-wrist-timing
 "$DOROBOT_AISLE_PYTHON" "$guide/capacity.py" "$guide/capacity.zip" --git-sources
 ~~~
 
-The archive SHA-256 is `d2a7ff81e76c3b13819385b30069b1e435a696a186fcb049f1e2eaeba2e829aa`. Add `--git-sources` to check the source manifests against the measured commits. [Measured outcomes](measurements.json) · [Original trials and datasets](measurements.zip) · [RGB release distances](release-distances.json)
+To replay all 100 motor journals and compare the release policies by layout seed, use the AISLE Python environment. The verifier was tested at Studio commit `65926336ccac2645a8d512c204b984254435d518`. The command compares the replay with the published result byte for byte.
+
+~~~sh
+guide=docs/product/aisle-studio/validation/transfer-wrist-timing
+(cd "$guide" && shasum -a 256 -c matched.sha256)
+verifier=$(mktemp -d)
+git archive 65926336ccac2645a8d512c204b984254435d518 \
+  tools/aisle-validation tools/aisle_workbench tools/nano-three-cubes \
+  data/adora_nano/adora_nano.urdf | tar -x -C "$verifier"
+comparison="$verifier/comparison.json"
+"$DOROBOT_AISLE_PYTHON" "$verifier/tools/aisle-validation/nano_suite_evidence.py" compare \
+  "$guide/matched-baseline.zip" "$guide/qualification.zip" \
+  --baseline-manifest 4f48725017d38217788b90704c12383e63de7bf03263fc9d867de1784d6194dc \
+  --candidate-manifest 7a344127f816c49c53d12410516fd04f136ea471117cd3e9a68a8fddf126a978 > "$comparison"
+cmp "$guide/matched-comparison.json" "$comparison"
+~~~
+
+On Linux, `sha256sum -c matched.sha256` performs the same checksum verification. To inspect either archive in Studio, copy it into its own folder together with the corresponding public manifest named `suite.json`. Open **Evidence → Batch evaluation**, enter the archive path, and choose **Verify evaluation**.
+
+The measurement archive SHA-256 is `d2a7ff81e76c3b13819385b30069b1e435a696a186fcb049f1e2eaeba2e829aa`. Add `--git-sources` to check the source manifests against the measured commits. [Measured outcomes](measurements.json) · [Original trials and datasets](measurements.zip) · [RGB release distances](release-distances.json)
