@@ -765,6 +765,8 @@ def main():
             "run",
             "export",
             "room",
+            "room-draft",
+            "room-apply",
             "evaluate",
             "train-reach",
             "train-grasp",
@@ -883,6 +885,34 @@ def main():
             save(
                 args.out / "evaluation.json",
                 verify(args.archive, expected, include_trials=True),
+            )
+            return
+        if args.operation == "room-apply":
+            if args.robot != "Nano" or args.room_revision is None:
+                raise ValueError("Choose a Nano room draft")
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            room_for_mobile(args, describe("Nano"))
+            ref = json.loads(args.room_revision.with_name("room-ref.json").read_bytes())
+            if ref != {
+                "sha256": args.room_hash,
+                "revision": args.room_revision.parent.name,
+            }:
+                raise ValueError("The reviewed draft identity has changed")
+            save(args.out / "room-ref.json", ref)
+            return
+        if args.operation == "room-draft":
+            if args.robot != "Nano" or args.room_source is None:
+                raise ValueError("Select a Nano reference photo input")
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from photo_room import draft_room
+            from run_rgb_approach import scene_recipe
+
+            draft_room(
+                args.room_source.resolve(),
+                args.out,
+                scene_recipe(args.seed),
+                describe("Nano")["model_hash"],
+                args.provider,
             )
             return
         if args.operation == "room":

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "image": "../room-survey/reference.png",
+  "description": "Add the teal ottoman in the foreground. Keep the existing sofa and coffee table.",
+  "floor_marks": [
+    {
+      "pixel": [
+        230.03,
+        342.87
+      ],
+      "metres": [
+        -0.4,
+        -1
+      ]
+    },
+    {
+      "pixel": [
+        489.97,
+        445.36
+      ],
+      "metres": [
+        1.7,
+        -1
+      ]
+    },
+    {
+      "pixel": [
+        546.1,
+        339.44
+      ],
+      "metres": [
+        1.7,
+        0.25
+      ]
+    },
+    {
+      "pixel": [
+        329.11,
+        279.4
+      ],
+      "metres": [
+        -0.4,
+        0.25
+      ]
+    },
+    {
+      "pixel": [
+        341.3,
+        315.16
+      ],
+      "metres": [
+        0.1,
+        -0.24
+      ]
+    },
+    {
+      "pixel": [
+        504.44,
+        371.68
+      ],
+      "metres": [
+        1.55,
+        -0.3
+      ]
+    }
+  ]
+}

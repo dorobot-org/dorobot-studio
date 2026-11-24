@@ -62,4 +62,8 @@ Use `--remote /path/to/makepad-remote` for a locally built client. Omit `--codex
 
 Use `--octos-deepseek` in place of `--codex` in the native verification command to run the Nano approach and both G1 authoring turns through Octos. See the [measured provider comparison](validation/provider-comparison.md).
 
+The frozen three-cube Nano controller met the simulation qualification gate on 45/50 hidden layouts. [Cohort D and replayable evidence](validation/nano-holdout-d/README.md)
+
 For a recorded Nano transfer, Evidence can train a wrist detector from the exported dataset and evaluate the resulting revision on another layout. [Reproduce the three-cube training and comparison](validation/nano-grasp-checkpoint/README.md)
+
+To draft room geometry from a reference image and operator description, use **Draft from reference photo** on Scene. [Input format, review flow and measured native trials](validation/photo-room/README.md)
