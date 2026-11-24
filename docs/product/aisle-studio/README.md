@@ -10,6 +10,8 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 [Watch DeepSeek place three cubes in observed left-to-right order](validation/onboard-authoring/three-cubes.mp4)
 
+[Rerun a disclosed Nano layout and inspect the onboard images behind a placement decision](validation/nano-release-workspace/README.md)
+
 [Compare two Nano or G1 evaluations in the native Evidence page](validation/native-cohort-comparison/README.md)
 
 [Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
