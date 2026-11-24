@@ -42,7 +42,7 @@ jobs:
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wall-clock-rgb.json"
           guide=docs/product/aisle-studio/validation/transfer-wrist-timing
           /usr/bin/python3 -m venv --system-site-packages "$RUNNER_TEMP/wrist-python"
-          "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: pyarrow==26.0.1
+          "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: numpy==2.5.5 pyarrow==26.0.1
           "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit.py" "$guide/measurements.zip" --datasets --output "$RUNNER_TEMP/wrist-timing.json"
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
       - name: Install Rust
