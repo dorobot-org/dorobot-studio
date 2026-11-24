@@ -1,0 +1,13 @@
+{
+  "baseline/controller.json": "fd9dcab6ee4c76bb7a25252a0006c67ab81fd4ac838641d033f1373bbaed42b2",
+  "codex/controller-request.json": "ce281a8049972b46c604da62dc8af2843cdd5d1a6ee7494e9d37988f8dee00fb",
+  "codex/controller.json": "572689d2f502225075aaac728f6cae766a6ecc1a32e16d55ec51b55b90b590d2",
+  "codex/provider-metrics.json": "0d9a2b26f5143984ce4a50535c3f3c8d70a1b61496fec3ec197e633f490280e3",
+  "codex/reply.json": "4e2647e94664eb5f4a81bd1968be45be7a33c93ff6d3e838c8fb0be1688d7c45",
+  "codex/revision-observation.npz": "996576a5f4c681dcdaf396f3f402968e2f1dbe1750d11e6ae0b70c21842a34f8",
+  "deepseek/controller-request.json": "e2cfed8b9d6682c8979c2698ba4bc012ce9673ed4ab1a619faab0837ee50dcb5",
+  "deepseek/controller.json": "b886ae59fb94b594428f3fd0c41dde6b5148fe803c3a0b5d1e7012378ebf304c",
+  "deepseek/provider-metrics.json": "dfa8c35a4ecc7bf7405884c8015bcf97e69f40ed1d00cd3ca64386428064b7b1",
+  "deepseek/reply.json": "36d3c25d4a39ff17c6905465f620f5408a37f31a7ff58d49f0c4d3659d3a58a2",
+  "deepseek/revision-observation.npz": "996576a5f4c681dcdaf396f3f402968e2f1dbe1750d11e6ae0b70c21842a34f8"
+}

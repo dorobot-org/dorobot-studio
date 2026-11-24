@@ -1,0 +1,10 @@
+{
+  "kind": "table-transfer",
+  "color_order": "red,green,blue",
+  "track_grasp": true,
+  "robot": "Nano",
+  "task": "Revise the failed moving pickup. Use our onboard RGB observations to track the cubes as the arm descends and place all three moving floor cubes on the coffee table in red, green, blue order.",
+  "provider": "reference",
+  "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+  "grasp_association": "all-views-unique-v1"
+}
