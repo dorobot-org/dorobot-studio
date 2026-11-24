@@ -114,6 +114,7 @@ pub enum Action {
     Open,
     Export,
     TrainReach,
+    TrainGrasp,
 }
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
@@ -256,7 +257,7 @@ impl Job {
             "room" | "room-draft" | "room-apply" => "room-ref.json",
             "evaluate" => "evaluation.json",
             "run" => "result.json",
-            "prepare" | "train-reach" => "controller.json",
+            "prepare" | "train-reach" | "train-grasp" => "controller.json",
             _ => "scene.json",
         }
     }
@@ -429,7 +430,10 @@ impl Workbench {
     }
     fn restore_profile(&mut self) {
         let suffix = format!("-{}-prepare", self.robot.name());
-        let trained_suffix = format!("-{}-train-reach", self.robot.name());
+        let trained_suffix = match self.robot {
+            Robot::Nano => "-Nano-train-grasp",
+            Robot::G1 => "-G1-train-reach",
+        };
         self.revisions = fs::read_dir(&self.root)
             .into_iter()
             .flatten()
@@ -438,7 +442,7 @@ impl Workbench {
             .filter(|p| {
                 p.file_name().is_some_and(|n| {
                     let name = n.to_string_lossy();
-                    name.ends_with(&suffix) || name.ends_with(&trained_suffix)
+                    name.ends_with(&suffix) || name.ends_with(trained_suffix)
                 })
             })
             .map(|p| p.join("controller.json"))
@@ -644,14 +648,14 @@ impl Workbench {
                 );
             }
         }
-        if op == "train-reach" {
+        if matches!(op, "train-reach" | "train-grasp") {
             cmd.arg("--dataset").arg(
                 self.dataset
                     .as_ref()
-                    .ok_or_else(|| io::Error::other("Export the selected G1 episode first"))?,
+                    .ok_or_else(|| io::Error::other("Export the selected episode first"))?,
             );
         }
-        if op == "export" || op == "train-reach" {
+        if matches!(op, "export" | "train-reach" | "train-grasp") {
             cmd.arg("--trial").arg(
                 self.selected
                     .as_ref()
@@ -831,6 +835,7 @@ impl Workbench {
                 }
                 Ok(())
             }
+            Action::TrainGrasp => self.launch("train-grasp", Planner::Reference, None),
             Action::TrainReach => self.launch("train-reach", Planner::Reference, None),
             Action::Export => self.launch("export", Planner::Reference, None),
             Action::Inspect => self.launch("scene", Planner::Reference, None),
@@ -928,7 +933,7 @@ impl Workbench {
                 }
                 self.dataset = Some(dataset);
             }
-            if job.op == "prepare" || job.op == "train-reach" {
+            if matches!(job.op, "prepare" | "train-reach" | "train-grasp") {
                 let p = job.dir.join(artifact);
                 self.revisions.push(p.clone());
                 self.load_plan(Some(p));

@@ -1,0 +1,45 @@
+{
+  "method": "nano-wrist-carry-logistic-v1",
+  "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+  "teacher_controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+  "dataset_sha256": "ed0e79fa85e33bf00d64b40bc0da046c2df97a5bd8f787c54388d9c4df51cee3",
+  "teacher_trial": "teacher",
+  "frames": 1187,
+  "colors": [
+    "red",
+    "green",
+    "blue"
+  ],
+  "positives": 518,
+  "negatives": 3043,
+  "features": [
+    "color_fraction",
+    "aperture_fraction",
+    "upper_left",
+    "upper_right",
+    "middle_left",
+    "middle_right",
+    "lower_left",
+    "lower_right",
+    "gripper_rad",
+    "wrist_roll_rad"
+  ],
+  "ridge": 0.01,
+  "files": {
+    "data/chunk-000/episode_000000.parquet": "313cb8aa9ae057ca263bfc1f8752c86fec9c9aff6caed374dbad3000cfeb9ff7",
+    "meta/aisle.json": "f60c01af412ddae614ddf6b74fa033e5bc64ab0150c0d7675fd80ab4c9aae9ca",
+    "meta/episodes.jsonl": "d03c9169c4c09557d218598aaa20b922e25092dc1bd35b2c2b3bb2a963bb4fc1",
+    "meta/episodes_stats.jsonl": "718577dabebafbb177fea5a54aca428091fe1abaf9786bdf66ea3183deff5a3a",
+    "meta/info.json": "a241f6a0e9eb4074f48c58a6322a48fc5dfee238a07ac22b1f34155e80fa2bbe",
+    "meta/tasks.jsonl": "3d2e1a4a9fb9d0b20f0a688978bf3186dc2aaeabccc72bb586c7764cea1e8047",
+    "videos/chunk-000/observation.images.head/episode_000000.mp4": "b710ec76c311c21c38e492b2a90915f22383fd19002c1af74464b1b16ee71802",
+    "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": "465fad42065ea8f72f8f5fe0433bb8f2f0ddfa40396508f56c18aa91212e6802",
+    "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": "27ae51ba46c3ccaf74471fd1acd725482e717701fa547a1ea6ade08ca8358374"
+  },
+  "training_confusion": {
+    "tp": 518,
+    "fp": 92,
+    "tn": 2951,
+    "fn": 0
+  }
+}

@@ -72,6 +72,30 @@ def export(trial: Path, job: Path):
                 ("std", np.std),
             ]
         } | {"count": [count]}
+    label_colors = record.get("label_colors")
+    if label_colors is not None:
+        if not transfer or label_colors != result["requested"] or not label_colors:
+            raise ValueError("Nano contact label order must match the recorded task")
+        labels = np.asarray([r["airborne_in_jaw"] for r in rows])
+        if labels.shape != (count, len(label_colors)) or labels.dtype != np.bool_:
+            raise ValueError("Invalid frame-synchronized Nano contact labels")
+        field = "annotation.gripper_carry"
+        values = labels.astype(np.uint8)
+        columns[field] = pa.array(
+            values.tolist(), type=pa.list_(pa.uint8(), len(label_colors))
+        )
+        features[field] = dict(
+            dtype="uint8", shape=[len(label_colors)], names=label_colors
+        )
+        stats[field] = {
+            k: fn(values, axis=0).tolist()
+            for k, fn in [
+                ("min", np.min),
+                ("max", np.max),
+                ("mean", np.mean),
+                ("std", np.std),
+            ]
+        } | {"count": [count]}
     scalars = dict(
         timestamp=[i / fps for i in range(count)],
         frame_index=range(count),
@@ -169,6 +193,15 @@ def export(trial: Path, job: Path):
             **(
                 dict(
                     onboard_cameras=list(cameras),
+                    **(
+                        {
+                            "annotation.gripper_carry": "Evaluator label at the camera exposure. "
+                            "Positive finger contact, no other supporting body, and cube center "
+                            "more than 0.05 m above its initial height."
+                        }
+                        if label_colors
+                        else {}
+                    ),
                     calibration=read("calibration.json")["cameras"],
                     optical_calibration_source=read("calibration.json").get(
                         "optical_calibration_source", "Nominal simulation optics"

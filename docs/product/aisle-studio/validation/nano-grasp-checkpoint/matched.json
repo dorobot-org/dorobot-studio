@@ -1,0 +1,152 @@
+[
+  {
+    "variant": "baseline",
+    "layout": 1,
+    "controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+    "result_sha256": "84b9b235ad3ae1484bc56db10898d20ace308bfc71dab5adbdc6d380200c2506",
+    "task_success": true,
+    "error": null,
+    "physics_ticks": 29302,
+    "wheel_supported_ticks": 29302,
+    "audit": {
+      "format": "little-endian float64, initial targets then one row per physics tick",
+      "applied_rows": 29302,
+      "invalid_rows": 0,
+      "unmatched_ticks": 0,
+      "initial_targets_valid": true,
+      "sha256": "19e2cc88b24c1876f4ed73d867efd06f0a6a485a9b0b333cf53cb5018e7c3984",
+      "passed": true
+    },
+    "cubes": {
+      "red": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3859,
+        "final_position_m": [
+          0.21079476177692413,
+          0.7025464177131653,
+          0.5599989295005798
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.3016122092292722,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.1025464177131653,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      },
+      "green": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 4930,
+        "final_position_m": [
+          0.08186639100313187,
+          0.7309473752975464,
+          0.5599989891052246
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.3787585717901146,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.1309473752975464,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      },
+      "blue": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3216,
+        "final_position_m": [
+          0.3375718295574188,
+          0.713355541229248,
+          0.5599989891052246
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.28074945715746963,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.11335554122924807,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      }
+    },
+    "furniture_contacts": {}
+  },
+  {
+    "variant": "learned",
+    "layout": 1,
+    "controller_sha256": "3cdee923459740a7556b26ecff411e8132b439636eeae89351f14fdd3f158d04",
+    "result_sha256": "2ab677d64164e1cf201b452b6753aa3638565b1d3ca9c959a0e566ff9a0a26c9",
+    "task_success": true,
+    "error": null,
+    "physics_ticks": 29302,
+    "wheel_supported_ticks": 29302,
+    "audit": {
+      "format": "little-endian float64, initial targets then one row per physics tick",
+      "applied_rows": 29302,
+      "invalid_rows": 0,
+      "unmatched_ticks": 0,
+      "initial_targets_valid": true,
+      "sha256": "19e2cc88b24c1876f4ed73d867efd06f0a6a485a9b0b333cf53cb5018e7c3984",
+      "passed": true
+    },
+    "cubes": {
+      "red": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3859,
+        "final_position_m": [
+          0.21079476177692413,
+          0.7025464177131653,
+          0.5599989295005798
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.3016122092292722,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.1025464177131653,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      },
+      "green": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 4930,
+        "final_position_m": [
+          0.08186639100313187,
+          0.7309473752975464,
+          0.5599989891052246
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.3787585717901146,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.1309473752975464,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      },
+      "blue": {
+        "passed": true,
+        "opposing_finger_airborne_ticks": 3216,
+        "final_position_m": [
+          0.3375718295574188,
+          0.713355541229248,
+          0.5599989891052246
+        ],
+        "table_contact_tail_ticks": 100,
+        "detached": true,
+        "min_finger_clearance_tail_m": 0.28074945715746963,
+        "cube_center_over_table": true,
+        "nearest_table_edge_m": 0.11335554122924807,
+        "required_table_inset_m": 0.035,
+        "settle_motion_m": 0.0
+      }
+    },
+    "furniture_contacts": {},
+    "replay": {
+      "decisions": 15,
+      "confusion": {
+        "tp": 11,
+        "tn": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "checkpoint": "fe3c72e7559ffa8a0ca3209e745da9392eb47886631ca4ca257844a3c4a3b68c"
+    }
+  }
+]
