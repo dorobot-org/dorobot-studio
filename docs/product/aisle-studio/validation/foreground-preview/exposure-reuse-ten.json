@@ -1,0 +1,162 @@
+{
+  "builds": {
+    "10-half-deepseek": {
+      "source_commit": "5f6bab2d9e09019cc1b94af21ee8a3dab74c2252",
+      "native_binary_sha256": "3a8fe79f828744f4c856353cca7355f224ee3828bbc8385f844d2bd1a9bf6889",
+      "source_manifest_sha256": "3054d1556b20ca11900b743e28a8ceb140a9167f308fd49a72e3cf9cdb169ec7"
+    },
+    "10-half-codex": {
+      "source_commit": "0f452797d704eaf0fe9e155ae896a0eadaefc448",
+      "native_binary_sha256": "3a8fe79f828744f4c856353cca7355f224ee3828bbc8385f844d2bd1a9bf6889",
+      "source_manifest_sha256": "3054d1556b20ca11900b743e28a8ceb140a9167f308fd49a72e3cf9cdb169ec7"
+    }
+  },
+  "10-half-deepseek": {
+    "period_s": 0.5,
+    "provider": "deepseek-v4-flash",
+    "shared_seconds": 93.265908542,
+    "viewport_fps": 28.59262257329718,
+    "draws": 2667,
+    "complete_draw_seconds": 93,
+    "seconds_below_25_fps": 1,
+    "worker_publication_hz": [
+      2.000035031086696,
+      1.9999871802767677,
+      2.0001611571361164,
+      1.9998969909831215,
+      2.000067064410904,
+      2.0001698189369304,
+      2.000231109600035,
+      2.0000182515179086,
+      2.0001867624979464
+    ],
+    "client_delivery_hz": [
+      2.005342855086925,
+      2.003522549116743,
+      1.9897617169441963,
+      1.9997899977284683,
+      1.9976436838846725,
+      1.9970021067414097,
+      1.9993852079616552,
+      1.9991849764184733,
+      2.0046828126361036
+    ],
+    "published_received_in_window": [
+      [
+        187,
+        187
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        187,
+        186
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        186,
+        186
+      ]
+    ],
+    "meets_cadence": true,
+    "transfers": 10,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "supported_ticks": 6848,
+    "exported_frames": 342
+  },
+  "10-half-codex": {
+    "period_s": 0.5,
+    "provider": "gpt-6.2-astra",
+    "shared_seconds": 92.238781792,
+    "viewport_fps": 28.473544089948536,
+    "draws": 2627,
+    "complete_draw_seconds": 92,
+    "seconds_below_25_fps": 0,
+    "worker_publication_hz": [
+      2.000002766308174,
+      2.0000750683912965,
+      1.99993189849385,
+      1.999971506788451,
+      1.9998785428954877,
+      2.0005887552325694,
+      2.0001619179989625,
+      2.000442750079555,
+      2.000039763085618
+    ],
+    "client_delivery_hz": [
+      2.000622493317095,
+      1.9995367393956285,
+      1.992723214419398,
+      2.0014489296380824,
+      2.000202711674364,
+      2.001394467942721,
+      2.006521295080326,
+      2.0023284554376883,
+      2.0057665278822365
+    ],
+    "published_received_in_window": [
+      [
+        185,
+        184
+      ],
+      [
+        184,
+        184
+      ],
+      [
+        184,
+        183
+      ],
+      [
+        184,
+        184
+      ],
+      [
+        184,
+        185
+      ],
+      [
+        184,
+        184
+      ],
+      [
+        185,
+        185
+      ],
+      [
+        184,
+        184
+      ],
+      [
+        184,
+        185
+      ]
+    ],
+    "meets_cadence": true,
+    "transfers": 10,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "supported_ticks": 6848,
+    "exported_frames": 342
+  }
+}

@@ -43,6 +43,19 @@ A separate pair held the delivered left-wrist image at tick 1,080 while physics 
 
 Run `python3 compare_exposures.py exposure-reuse-metal.zip` from this directory. To compare fresh runs, pass a new archive path followed by `--pack BASELINE_NATIVE_DIR CANDIDATE_NATIVE_DIR`. Each directory must contain a completed and restarted `--fleet --fleet-node ... --fleet-controller ...` journey. The checker reads each saved camera file from the original workspaces when packing a pair.
 
+## Ten sessions with shared camera exposures
+
+On the 128 GiB M3 Max, each author prepared ten independent red-cube transfers. One worker streamed its 480 × 360 head camera to the 1440 × 900 offscreen Makepad viewport. The other nine delivered a fresh onboard RGB image on a 0.5-second wall-clock schedule. The authors ran in separate batches. The two batches used the same Studio binary and runtime source files.
+
+| Controller author | Time with all ten advancing | Native foreground | Slowest background | Full seconds below 25 FPS | Transfers passed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| DeepSeek V4 Flash via Octos | 93.27 s | 28.59 FPS | 1.990 Hz | 1 / 93 | 10 / 10 |
+| Codex GPT-6.2 Astra | 92.24 s | 28.47 FPS | 1.993 Hz | 0 / 92 | 10 / 10 |
+
+All 20 transfers maintained wheel support for 6,848 physics ticks. Both foreground datasets reopened after a Studio restart with 342 frames per camera. This is a capacity test of one stationary red transfer per session on the same layout. Provider calls prepared the program before simulation. [Per-receiver rates and exact source revisions](exposure-reuse-ten.json) · [Native draw times, author receipts, worker observations and motor journals](exposure-reuse-ten.zip)
+
+Run `python3 ../transfer-wrist-timing/capacity.py exposure-reuse-ten.zip` here with NumPy installed to recalculate the table. Add `--git-sources` in a full checkout to compare the recorded source hashes with Git.
+
 ## Reproduce the measurements
 
 From the Studio checkout, follow the build, AISLE Python environment and author credential instructions in the [workbench guide](../../README.md). Use a new output directory each time. These commands open the actual Studio binary, send Makepad input events, start independent worker jobs, export and reopen the foreground episode, and restart Studio.

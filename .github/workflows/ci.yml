@@ -49,6 +49,9 @@ jobs:
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
           /usr/bin/python3 "$guide/capacity.py" "$guide/capacity.zip" > "$RUNNER_TEMP/wrist-capacity.json"
           cmp "$guide/capacity.json" "$RUNNER_TEMP/wrist-capacity.json"
+          preview=docs/product/aisle-studio/validation/foreground-preview
+          /usr/bin/python3 "$guide/capacity.py" "$preview/exposure-reuse-ten.zip" > "$RUNNER_TEMP/preview-capacity.json"
+          cmp "$preview/exposure-reuse-ten.json" "$RUNNER_TEMP/preview-capacity.json"
           /usr/bin/python3 "$guide/selection.py" "$guide/selection.zip" > "$RUNNER_TEMP/wrist-selection.json"
           cmp "$guide/selection.json" "$RUNNER_TEMP/wrist-selection.json"
       - name: Replay Nano and G1 cohort comparisons
