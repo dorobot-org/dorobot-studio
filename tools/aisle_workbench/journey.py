@@ -66,6 +66,7 @@ def main():
     p.add_argument("--compare-cohorts", nargs=2, type=Path)
     p.add_argument("--reject-cohort", type=Path)
     p.add_argument("--handoff", action="store_true")
+    p.add_argument("--revision-selection", action="store_true")
     p.add_argument("--wrist-faults", nargs="?", const="red", choices=["red", "three"])
     p.add_argument("--camera-faults", action="store_true")
     p.add_argument("--moving-target", action="store_true")
@@ -193,6 +194,10 @@ def main():
 
         native_journey(a, checks, page, click, remote, done, grab)
         return
+    if a.revision_selection:
+        from selection_check import native_journey
+
+        return native_journey(a, checks, page, click, remote, done, grab)
     if a.handoff:
 
         def enter_task(instruction):

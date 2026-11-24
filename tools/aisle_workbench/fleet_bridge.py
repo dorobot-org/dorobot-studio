@@ -374,6 +374,9 @@ def operate(args):
             str(uuid4()),
             args.room_revision,
         )
+        expected = getattr(args, "controller_sha256", None)
+        if expected is not None and req["controller_sha256"] != expected:
+            raise ValueError("Selected controller contents changed before fleet submission")
         if args.room_hash and req["room_sha256"] != args.room_hash:
             raise ValueError("Selected room revision has changed")
         if op == "observations":

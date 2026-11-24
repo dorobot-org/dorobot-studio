@@ -3,6 +3,7 @@
 import base64
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import json
 import os
@@ -13,6 +14,7 @@ from uuid import uuid4
 
 from fleet_bridge import (
     foreground_packets,
+    operate,
     journal,
     reconcile,
     record,
@@ -30,6 +32,28 @@ class WorkspaceAdmissionTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.nodes = {"a": "a", "b": "b"}
         self.rows = {}
+
+    def test_changed_selected_controller_is_rejected_before_lease(self):
+        path = self.root / "controller.json"
+        path.write_text('{"robot":"Nano","model_hash":"test"}')
+        args = SimpleNamespace(
+            out=self.root / "result",
+            node="a",
+            job_id=None,
+            fleet_action="stream",
+            controller=path,
+            controller_sha256="0" * 64,
+            seed=0,
+            fixture="standard",
+            room_revision=None,
+        )
+        with (
+            patch("fleet_bridge.nodes", return_value=self.nodes),
+            patch("fleet_bridge.submit") as send,
+        ):
+            with self.assertRaisesRegex(ValueError, "contents changed"):
+                operate(args)
+            send.assert_not_called()
 
     def transport(self, node, request):
         key = (node, request["id"])

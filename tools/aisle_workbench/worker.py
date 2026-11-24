@@ -749,6 +749,9 @@ def simulate(args, meta):
     from importlib.metadata import version
 
     original = args.controller.read_bytes()
+    expected = getattr(args, "controller_sha256", None)
+    if expected is not None and hashlib.sha256(original).hexdigest() != expected:
+        raise ValueError("Selected controller contents changed before simulation")
     plan = json.loads(original)
     if plan["model_hash"] != meta["model_hash"] or plan["robot"] != args.robot:
         raise ValueError("Controller and robot model differ")
@@ -1079,6 +1082,7 @@ def main():
     p.add_argument("--task", default=REFERENCE)
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
+    p.add_argument("--controller-sha256", help="Digest of the revision selected in Studio")
     p.add_argument("--previous-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--current-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--trial", type=Path)

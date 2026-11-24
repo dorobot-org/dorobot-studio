@@ -1,5 +1,6 @@
 //! Local simulation jobs shared by the four AISLE Studio panels.
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::{
@@ -176,6 +177,13 @@ impl WorkerAction {
 }
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
+}
+fn save_selection(root: &Path, name: &str, value: &Value) -> io::Result<()> {
+    fs::create_dir_all(root)?;
+    let mut temporary = tempfile::NamedTempFile::new_in(root)?;
+    serde_json::to_writer(temporary.as_file_mut(), value)?;
+    temporary.persist(root.join(name))?;
+    Ok(())
 }
 #[derive(Clone, Copy, Debug)]
 pub enum RevisionSide {
@@ -511,6 +519,7 @@ pub struct Workbench {
     pub selected: Option<PathBuf>,
     pub history: Vec<PathBuf>,
     pub prepared: Option<PathBuf>,
+    prepared_sha256: Option<String>,
     pub trace: Vec<f32>,
     pub live: Option<PathBuf>,
     pub revisions: Vec<PathBuf>,
@@ -582,6 +591,7 @@ impl Workbench {
             selected: None,
             history: Vec::new(),
             prepared: None,
+            prepared_sha256: None,
             trace: Vec::new(),
             live: None,
             revisions: Vec::new(),
@@ -676,6 +686,14 @@ impl Workbench {
         if let Some(alias) = w.fleet["node"].as_str() {
             w.worker_node = alias.to_owned();
         }
+        match read(&w.root, "task-robot.json")
+            .as_ref()
+            .and_then(Value::as_str)
+        {
+            Some("G1") => w.robot = Robot::G1,
+            Some("Nano") => w.robot = Robot::Nano,
+            _ => {}
+        }
         w.restore_profile();
         w
     }
@@ -743,11 +761,23 @@ impl Workbench {
                     name.ends_with(&suffix) || name.ends_with(trained_suffix)
                 })
             })
+            .filter(|p| {
+                read(p, "controller.json").is_some_and(|plan| plan["robot"] == self.robot.name())
+            })
             .map(|p| p.join("controller.json"))
-            .filter(|p| p.is_file())
             .collect();
         self.revisions.sort();
-        self.load_plan(self.revisions.last().cloned());
+        self.plan = Value::Null;
+        self.task = REFERENCE.to_owned();
+        self.prepared = None;
+        self.prepared_sha256 = None;
+        if let Err(error) = self.restore_revision() {
+            self.status = format!(
+                "Could not restore the {} controller. {error}. Choose a revision in Task.",
+                self.robot.name()
+            );
+            self.error = Some(self.status.clone());
+        }
         let suffix = format!("-{}-run", self.robot.name());
         self.live = self
             .history
@@ -764,14 +794,72 @@ impl Workbench {
             .and_then(|p| read(p, "progress.json"))
             .unwrap_or_default();
     }
-    fn load_plan(&mut self, path: Option<PathBuf>) {
-        self.plan = path
-            .as_ref()
-            .and_then(|p| read(p.parent()?, "controller.json"))
-            .unwrap_or_default();
-        self.task = self.plan["task"].as_str().unwrap_or(REFERENCE).to_owned();
-        self.prepared = path;
+    fn revision_preference(&self) -> String {
+        format!("selected-{}-controller.json", self.robot.name())
     }
+
+    fn restore_revision(&mut self) -> io::Result<()> {
+        let bytes = match fs::read(self.root.join(self.revision_preference())) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                // Older workspaces have no saved choice. Keep their latest-revision behavior.
+                if let Some(path) = self.revisions.last().cloned() {
+                    self.activate_revision(path, None, false)?;
+                }
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        };
+        let selection: Value = serde_json::from_slice(&bytes)?;
+        let name = selection["revision"]
+            .as_str()
+            .ok_or_else(|| io::Error::other("Invalid saved revision"))?;
+        let hash = selection["sha256"]
+            .as_str()
+            .ok_or_else(|| io::Error::other("Missing saved controller digest"))?;
+        let path = self
+            .revisions
+            .iter()
+            .find(|p| p.parent().and_then(Path::file_name) == Some(name.as_ref()))
+            .cloned()
+            .ok_or_else(|| io::Error::other("Saved revision is unavailable"))?;
+        self.activate_revision(path, Some(hash), false)
+    }
+
+    fn activate_revision(
+        &mut self,
+        path: PathBuf,
+        expected: Option<&str>,
+        remember: bool,
+    ) -> io::Result<()> {
+        let bytes = fs::read(&path)?;
+        let hash = format!("{:x}", Sha256::digest(&bytes));
+        if expected.is_some_and(|s| s != hash) {
+            return Err(io::Error::other("Saved controller contents changed"));
+        }
+        let plan: Value = serde_json::from_slice(&bytes)?;
+        if plan["robot"] != self.robot.name() {
+            return Err(io::Error::other("Controller belongs to a different robot"));
+        }
+        if remember {
+            let dir = path
+                .parent()
+                .and_then(Path::file_name)
+                .and_then(|n| n.to_str())
+                .ok_or_else(|| io::Error::other("Invalid controller revision directory"))?;
+            save_selection(
+                &self.root,
+                &self.revision_preference(),
+                &serde_json::json!({"revision":dir,"sha256":hash}),
+            )?;
+        }
+        self.task = plan["task"].as_str().unwrap_or(REFERENCE).to_owned();
+        self.plan = plan;
+        self.prepared = Some(path);
+        self.prepared_sha256 = Some(hash);
+        Ok(())
+    }
+
     pub fn revision_index(&self) -> Option<usize> {
         self.revisions
             .iter()
@@ -1114,6 +1202,11 @@ impl Workbench {
                     "standard"
                 },
             ]);
+            cmd.arg("--controller-sha256").arg(
+                self.prepared_sha256
+                    .as_ref()
+                    .ok_or_else(|| io::Error::other("Select a controller in Task first"))?,
+            );
             cmd.arg("--controller").arg(
                 self.prepared
                     .as_ref()
@@ -1198,15 +1291,15 @@ impl Workbench {
         }
         self.error = None;
         let result = match action {
-            Action::Select(r) => {
-                if self.robot != r {
+            Action::Select(r) if self.robot != r => {
+                save_selection(&self.root, "task-robot.json", &Value::from(r.name())).map(|()| {
                     self.robot = r;
                     self.scene = Value::Null;
-                    self.restore_profile();
                     self.status = "Ready".into();
-                }
-                Ok(())
+                    self.restore_profile();
+                })
             }
+            Action::Select(_) => Ok(()),
             Action::Prepare {
                 task,
                 planner,
@@ -1300,15 +1393,19 @@ impl Workbench {
                 .map_err(|_| io::Error::other("Enter a layout seed from 0 to 4294967295"))
                 .and_then(|seed| self.save_layout(seed)),
             Action::OlderPlan | Action::NewerPlan => {
-                if let Some(i) = self.revision_index() {
-                    let index = if matches!(action, Action::OlderPlan) {
-                        i.saturating_sub(1)
-                    } else {
-                        (i + 1).min(self.revisions.len() - 1)
-                    };
-                    self.load_plan(Some(self.revisions[index].clone()));
+                let index = match (self.revision_index(), matches!(action, Action::OlderPlan)) {
+                    (Some(i), true) => i.saturating_sub(1),
+                    (Some(i), false) => (i + 1).min(self.revisions.len() - 1),
+                    (None, true) => 0,
+                    (None, false) => self.revisions.len().saturating_sub(1),
+                };
+                if let Some(path) = self.revisions.get(index).cloned() {
+                    self.activate_revision(path, None, true).map(|()| {
+                        self.status = format!("{} controller selected", self.robot.name());
+                    })
+                } else {
+                    Ok(())
                 }
-                Ok(())
             }
             Action::TrainGrasp => self.launch("train-grasp", Planner::Reference, None),
             Action::TrainReach => self.launch("train-reach", Planner::Reference, None),
@@ -1560,7 +1657,11 @@ impl Workbench {
             if matches!(job.op, "prepare" | "train-reach" | "train-grasp") {
                 let p = job.dir.join(artifact);
                 self.revisions.push(p.clone());
-                self.load_plan(Some(p));
+                if let Err(error) = self.activate_revision(p, None, true) {
+                    self.status = format!("Could not select the prepared controller. {error}");
+                    self.error = Some(self.status.clone());
+                    return;
+                }
             }
             if job.op == "run" {
                 self.select_run(job.dir);
@@ -1634,6 +1735,56 @@ mod tests {
         ));
         fs::create_dir(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn restores_per_robot_revision_and_rejects_modified_or_missing_selection() {
+        let root = fixture("selected-revision");
+        for (name, robot) in [
+            ("1-Nano-prepare", "Nano"),
+            ("2-Nano-train-grasp", "Nano"),
+            ("3-G1-prepare", "G1"),
+            ("4-G1-train-reach", "G1"),
+        ] {
+            let dir = root.join(name);
+            fs::create_dir(&dir).unwrap();
+            fs::write(
+                dir.join("controller.json"),
+                serde_json::json!({"task":name,"robot":robot}).to_string(),
+            )
+            .unwrap();
+        }
+        let mut w = Workbench::with_root(root.clone());
+        assert_eq!(w.task, "2-Nano-train-grasp");
+        w.dispatch(Action::OlderPlan);
+        assert_eq!(w.task, "1-Nano-prepare");
+        w.dispatch(Action::Select(Robot::G1));
+        assert_eq!(w.task, "4-G1-train-reach");
+        w.dispatch(Action::OlderPlan);
+        let mut reopened = Workbench::with_root(root.clone());
+        assert_eq!(reopened.robot, Robot::G1);
+        assert_eq!(reopened.task, "3-G1-prepare");
+        reopened.dispatch(Action::Select(Robot::Nano));
+        assert_eq!(reopened.task, "1-Nano-prepare");
+
+        let originally_selected = reopened.prepared.clone().unwrap();
+        let mut bytes = fs::read(&originally_selected).unwrap();
+        bytes.push(b' ');
+        fs::write(&originally_selected, bytes).unwrap();
+        let mut recovered = Workbench::with_root(root.clone());
+        assert!(recovered.prepared.is_none() && recovered.plan.is_null());
+        assert!(recovered.status.contains("contents changed"));
+        recovered.dispatch(Action::NewerPlan);
+        assert_eq!(recovered.task, "2-Nano-train-grasp");
+        assert!(recovered.error.is_none());
+        fs::remove_file(recovered.prepared.as_ref().unwrap()).unwrap();
+        let mut missing = Workbench::with_root(root.clone());
+        assert!(missing.prepared.is_none() && missing.status.contains("unavailable"));
+        missing.dispatch(Action::OlderPlan);
+        assert_eq!(missing.task, "1-Nano-prepare");
+        fs::write(root.join("selected-Nano-controller.json"), "{").unwrap();
+        assert!(Workbench::with_root(root.clone()).prepared.is_none());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -1761,11 +1912,15 @@ mod tests {
     fn failed_prepare_keeps_runnable_revision() {
         let dir = fixture("failed-prepare");
         let plan = dir.join("controller.json");
-        fs::write(&plan, r#"{"joint":"left_j2_pitch","task":"inspection"}"#).unwrap();
+        fs::write(
+            &plan,
+            r#"{"robot":"Nano","joint":"left_j2_pitch","task":"inspection"}"#,
+        )
+        .unwrap();
         let mut w = Workbench::with_root(dir.clone());
         w.root = plan.clone(); // A file at the job root makes launch fail deterministically.
         w.revisions = vec![plan.clone()];
-        w.load_plan(Some(plan.clone()));
+        w.activate_revision(plan.clone(), None, false).unwrap();
         w.dispatch(Action::Prepare {
             task: "new instruction".into(),
             planner: Planner::Codex,
