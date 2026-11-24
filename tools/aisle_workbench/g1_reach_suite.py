@@ -15,7 +15,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import numpy as np
 
-from g1_stand import impact_parameters, launch_position
+from g1_stand import DEFAULT_IMPACT_AIM, impact_parameters, launch_position
 from worker import MODELS, ROOT, describe, digest, save, validate
 
 HERE = Path(__file__).resolve().parent
@@ -131,7 +131,7 @@ def prepare(directory, controller, match=None):
         directory / "suite.json",
         dict(
             profile="g1-standing-reach-v1",
-            impact_aim=old.get("impact_aim", "pelvis-v1") if match else "torso-v2",
+            impact_aim=old.get("impact_aim", "pelvis-v1") if match else DEFAULT_IMPACT_AIM,
             **({"matched_manifest_sha256": referenced} if match else {}),
             cases=20,
             required=20,
@@ -368,7 +368,7 @@ def score(case, m, opening):
         <= 0.005,
         "Actuator target exceeded position or rate limit": bypasses == 0,
     }
-    if m.get("impact_aim") == "torso-v2":
+    if m.get("impact_aim", "pelvis-v1") != "pelvis-v1":
         conditions["Calibrated impact missed the torso link"] = any(
             c["link"] == "torso_link" for c in contacts
         )
