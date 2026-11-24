@@ -633,6 +633,9 @@ impl PluginPanel for Panel {
                 if w.plan["track_grasp"] == true {
                     detail.push_str("\nWrist-guided interception during descent");
                 }
+                if let Some(cap) = w.plan["max_forward_speed_m_s"].as_f64() {
+                    detail.push_str(&format!("\nForward speed limit · {cap:.3} m/s"));
+                }
                 if let Some(reason) = w.plan["pickup_revision"]["rationale"].as_str() {
                     let revision = &w.plan["pickup_revision"];
                     let label = |v: &str| {
@@ -1262,6 +1265,21 @@ impl PluginPanel for Panel {
                         w.evidence["wheel_supported_ticks"],
                         w.evidence["physics_ticks"]
                     ));
+                    if let Some(gaps) = w.evidence["unsupported_wheel_ranges"].as_array() {
+                        for gap in gaps.iter().take(2) {
+                            if let (Some(start), Some(end), Some(phase)) = (
+                                gap["first_step"].as_u64(),
+                                gap["last_step"].as_u64(),
+                                gap["phase"].as_str(),
+                            ) {
+                                let ticks = if start == end { start.to_string() } else { format!("{start}–{end}") };
+                                lines.push(format!("Wheel support lost · {phase} · tick {ticks}"));
+                            }
+                        }
+                        if gaps.len() > 2 {
+                            lines.push(format!("{} more intervals in result.json", gaps.len() - 2));
+                        }
+                    }
                     let audit = &w.evidence["actuator_audit"];
                     if audit.is_object() {
                         lines.push(format!(

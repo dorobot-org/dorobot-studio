@@ -107,6 +107,23 @@ class InspectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "tracking"):
             worker.validate(plan | {"track_grasp": "true"}, self.profile)
 
+    def test_transfer_forward_speed_bound_includes_existing_controllers(self):
+        original = dict(kind="table-transfer", color_order="red")
+        self.assertEqual(worker.validate(original, self.profile), original)
+        for cap in (0.025, 0.04, 0.13):
+            plan = original | dict(max_forward_speed_m_s=cap)
+            self.assertEqual(worker.validate(plan, self.profile), plan)
+        for cap in (True, None, 0, 0.14, float("nan"), float("inf")):
+            with self.assertRaisesRegex(ValueError, "forward speed"):
+                worker.validate(
+                    original | dict(max_forward_speed_m_s=cap), self.profile
+                )
+        with self.assertRaisesRegex(ValueError, "forward speed"):
+            worker.validate(
+                dict(kind="visual-approach", color="red", max_forward_speed_m_s=0.06),
+                self.profile,
+            )
+
     def test_association_requires_tracking_and_a_known_rule(self):
         plan = dict(kind="table-transfer", color_order="red", track_grasp=True)
         for rule in worker.GRASP_ASSOCIATIONS:

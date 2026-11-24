@@ -264,7 +264,9 @@ def measured_feedback(path, meta, output=None):
             color: previous["cubes"].get(color, {}).get("passed", False)
             for color in previous["requested"]
         }
-        pickup = {}
+        from wheel_support import feedback as wheel_feedback
+
+        pickup = wheel_feedback(path, previous, json.loads(parent.read_bytes()))
         failure = previous.get("last_pickup_observation")
         if failure and failure.get("color") in previous["requested"]:
             if failure.get("stopped_tick") != previous["physics_ticks"]:
@@ -588,6 +590,19 @@ def prepare(args, meta):
             )
         elif args.robot == "Nano":
             prompt += "\nIf selecting the target requires comparing its current position with others and no onboard measurements are provided, reject the request."
+        if feedback and "wheel_support" in feedback:
+            schema["properties"]["max_forward_speed_m_s"] = dict(
+                anyOf=[
+                    dict(type="number", minimum=0.025, maximum=0.13),
+                    dict(type="null"),
+                ]
+            )
+            schema["required"].append("max_forward_speed_m_s")
+            prompt += (
+                "\nFor a Nano table transfer you may revise its positive forward speed limit in metres/second, from 0.025 to 0.13. "
+                "Use the recorded support verdict, active commands and operator instruction. Return null to keep the previous forward limit, "
+                "or for a different capability. The limit preserves braking, reverse motion, steering and the existing wheel-support test."
+            )
         if feedback and "stopped_pickup" in feedback:
             schema["properties"].update(
                 association_choice=dict(
@@ -613,6 +628,12 @@ def prepare(args, meta):
         plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
+    if feedback and "wheel_support" in feedback and args.provider != "reference":
+        if plan.get("max_forward_speed_m_s") is None:
+            plan.pop("max_forward_speed_m_s", None)
+            previous_limit = feedback["wheel_support"]["max_forward_speed_m_s"]
+            if plan.get("kind") == "table-transfer" and previous_limit != 0.13:
+                plan["max_forward_speed_m_s"] = previous_limit
     revision = None
     if feedback and "stopped_pickup" in feedback and args.provider != "reference":
         choice = plan.get("association_choice")

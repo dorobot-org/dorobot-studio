@@ -51,6 +51,12 @@ def main():
     )
     scenario = parser.add_mutually_exclusive_group()
     scenario.add_argument(
+        "--revise-drive",
+        type=Path,
+        metavar="FAILED_TRIAL",
+        help="Revise the Nano forward speed after measured wheel-support loss",
+    )
+    scenario.add_argument(
         "--revise-pickup",
         type=Path,
         metavar="FAILED_TRIAL",
@@ -183,6 +189,7 @@ def main():
         or args.moving_target
         or args.observed_author
         or args.revise_pickup
+        or args.revise_drive
     ) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     if args.foreground_cadence and (not args.fleet or not args.provider):
@@ -205,7 +212,8 @@ def main():
         shutil.copytree(args.resume_fleet / "state", output / "state")
     if args.prepared_pickup and not args.revise_pickup:
         parser.error("--prepared-pickup requires --revise-pickup")
-    if args.revise_pickup and args.compare_runs:
+    prior_trial = args.revise_pickup or args.revise_drive
+    if prior_trial and args.compare_runs:
         parser.error("Select one recorded-trial journey")
     if args.revise_pickup:
         result = json.loads((args.revise_pickup / "result.json").read_bytes())
@@ -215,12 +223,18 @@ def main():
             parser.error(
                 "--revise-pickup requires a stopped Nano pickup with a camera packet"
             )
-    if args.compare_runs or args.revise_pickup:
+    if args.revise_drive:
+        result = json.loads((args.revise_drive / "result.json").read_bytes())
+        if result.get("task_success") is not False or not result.get(
+            "unsupported_wheel_ranges"
+        ):
+            parser.error(
+                "--revise-drive requires a scored trial with lost wheel support"
+            )
+    if args.compare_runs or prior_trial:
         import shutil
 
-        for index, source in enumerate(
-            args.compare_runs or [args.revise_pickup], start=1
-        ):
+        for index, source in enumerate(args.compare_runs or [prior_trial], start=1):
             if (
                 not (source / "recording.json").is_file()
                 or not (source / "result.json").is_file()
@@ -335,6 +349,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.revise_drive:
+                    check.append("--revise-drive")
                 if args.prepared_pickup:
                     check.append("--prepared-pickup")
                 if args.revise_pickup:
@@ -398,7 +414,7 @@ def main():
                     1800
                     if args.train_grasp
                     else 900
-                    if args.transfer or args.fleet or args.revise_pickup
+                    if args.transfer or args.fleet or prior_trial
                     else 330
                 )
                 try:
