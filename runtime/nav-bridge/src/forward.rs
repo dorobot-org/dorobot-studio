@@ -7,7 +7,7 @@ use dviz_protocol::{CmdAck, CmdKind, CmdRequest, CmdResult};
 use std::io::Write;
 use std::net::{SocketAddr, UdpSocket};
 use std::panic::AssertUnwindSafe;
-use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
+use std::sync::mpsc::{channel, sync_channel, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -219,12 +219,26 @@ impl CommandLanes {
                 answer_forwarded(&reply_log, p.job, &p.req, outcome);
             }
         });
+        // Jobs the stop thread cannot hand on are dropped on a third thread: dropping a Replier
+        // may do I/O or panic, and nothing on the send thread may run Replier code.
+        let (discard_tx, discard_rx) = channel::<(Job, Option<String>)>();
+        let discard_log = log.clone();
+        let discard_thread = std::thread::spawn(move || {
+            for (job, line) in discard_rx {
+                if let Some(line) = line {
+                    let mut w = discard_log.lock().unwrap_or_else(|e| e.into_inner());
+                    let _ = w.write_all(line.as_bytes());
+                    let _ = w.flush();
+                }
+                let _ = std::panic::catch_unwind(AssertUnwindSafe(move || drop(job)));
+            }
+        });
         let stop_thread = std::thread::spawn(move || {
             for job in stop_rx {
                 let req = match &job.request {
                     Ok(r) => r.clone(),
                     Err(_) => {
-                        answer(&log, job, None, CmdResult::BadRequest, "malformed command request");
+                        let _ = discard_tx.send((job, None));
                         continue;
                     }
                 };
@@ -232,19 +246,19 @@ impl CommandLanes {
                 let sock = send_step(target, &nav_command_payload(&req));
                 let pending = Pending { sock, job, req, deadline };
                 if let Err(TrySendError::Full(p) | TrySendError::Disconnected(p)) = pending_tx.try_send(pending) {
-                    // Sent, but nobody can take the answer: drop the ack (the asker times out).
+                    // Sent, but nobody can take the answer: the ack is dropped (the asker times out).
+                    let Pending { sock, job, req, .. } = p;
+                    drop(sock);
                     let line = format!(
                         "nav-bridge: cmd {} {} sent, ack lost (reply thread busy or gone)\n",
-                        clean(&p.req.cmd),
-                        clean(&p.req.id)
+                        clean(&req.cmd),
+                        clean(&req.id)
                     );
-                    let mut w = log.lock().unwrap_or_else(|e| e.into_inner());
-                    let _ = w.write_all(line.as_bytes());
-                    let _ = w.flush();
+                    let _ = discard_tx.send((job, Some(line)));
                 }
             }
         });
-        CommandLanes { main, stop, threads: vec![main_thread, stop_thread, reply_thread] }
+        CommandLanes { main, stop, threads: vec![main_thread, stop_thread, reply_thread, discard_thread] }
     }
 
     /// False when the lane is full (the asker will time out) or its thread is gone.
@@ -599,6 +613,62 @@ mod tests {
         for i in 0..40 {
             let (_, v) = f.rx.recv_timeout(LONG).unwrap_or_else(|_| panic!("estop {i} not sent"));
             assert_eq!(v["cmd"], "estop");
+        }
+        drop(release_tx);
+        l.stop();
+    }
+
+    /// Dropping it blocks until the test releases (`block`) or panics (`!block`).
+    struct DropReplier {
+        release: Arc<Mutex<mpsc::Receiver<()>>>,
+        block: bool,
+    }
+    impl Replier for DropReplier {
+        fn reply(self: Box<Self>, _ack: &CmdAck) {}
+    }
+    impl Drop for DropReplier {
+        fn drop(&mut self) {
+            if self.block {
+                let _ = self.release.lock().unwrap_or_else(|e| e.into_inner()).recv();
+            } else if !std::thread::panicking() {
+                panic!("replier drop blew up");
+            }
+        }
+    }
+
+    #[test]
+    fn overflow_never_runs_replier_on_send_thread() {
+        let f = fake(|_| Some(true));
+        let gate = Arc::new(GateSlot::new());
+        let l = lanes(f.addr, LONG, &gate, &SharedBuf::default());
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let release = Arc::new(Mutex::new(release_rx));
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let estop = r#"{"cmd":"estop","id":"s1-aaaa"}"#;
+        let mk = |replier: Box<dyn Replier>| Job {
+            request: dviz_protocol::parse_cmd_request(estop.as_bytes()),
+            replier,
+        };
+        // hold the reply thread
+        let held = BlockedReplier { entered: entered_tx, release: release.clone() };
+        let mut submits = vec![Instant::now()];
+        assert!(l.submit(mk(Box::new(held))));
+        entered_rx.recv_timeout(LONG).unwrap();
+        // overflow the 16-slot reply queue; dropping each of these blocks, then panics
+        let mut sent = 1;
+        for i in 0..60 {
+            let replier = DropReplier { release: release.clone(), block: i < 30 };
+            submits.push(Instant::now());
+            assert!(l.submit(mk(Box::new(replier))), "estop {i}");
+            sent += 1;
+            std::thread::sleep(Duration::from_millis(3));
+        }
+        assert_eq!(submits.len(), sent);
+        for (i, submitted) in submits.iter().enumerate() {
+            let (at, v) = f.rx.recv_timeout(LONG).unwrap_or_else(|_| panic!("estop {i} not sent"));
+            assert_eq!(v["cmd"], "estop");
+            let took = at.saturating_duration_since(*submitted);
+            assert!(took < Duration::from_millis(50), "estop {i} took {took:?}");
         }
         drop(release_tx);
         l.stop();
