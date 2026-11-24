@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import worker
@@ -130,6 +131,32 @@ class InspectionTests(unittest.TestCase):
             "Move the red cube onto the coffee table. Then move the nearest cube.",
         ):
             self.assertIsNone(worker.named_cube_transfer(instruction))
+
+    def test_author_receives_the_named_target_and_an_overbroad_reply_is_rejected(self):
+        task = "Please put the green cube on the coffee table."
+        args = SimpleNamespace(
+            robot="Nano",
+            task=task,
+            feedback=None,
+            provider="octos-deepseek",
+            out=Path("."),
+        )
+        reply = dict(
+            supported=True, kind="table-transfer", color_order="red,green,blue"
+        )
+        with patch.object(
+            worker, "request_controller", return_value=(reply, "test-model")
+        ) as author:
+            with self.assertRaisesRegex(ValueError, "only the green cube"):
+                worker.prepare(args, self.profile)
+        schema = author.call_args.args[2]
+        self.assertEqual(schema["properties"]["color_order"]["enum"], ["green"])
+        self.assertEqual(schema["properties"]["kind"]["enum"], ["table-transfer"])
+        # An older plan with no instruction still uses the existing action-envelope check.
+        self.assertEqual(
+            worker.validate(reply, self.profile),
+            dict(kind="table-transfer", color_order="red,green,blue"),
+        )
 
     def test_transfer_requires_nano_and_a_distinct_color_order(self):
         for order in ["blue", "green,blue,red"]:
