@@ -9,6 +9,8 @@ mod nav_panel;
 mod nav_scene;
 #[cfg(feature = "rerun")]
 mod rerun_sink;
+#[cfg(feature = "rerun")]
+mod robot_model;
 mod route;
 mod session;
 mod view_panel;

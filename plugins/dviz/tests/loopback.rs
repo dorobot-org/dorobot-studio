@@ -774,3 +774,94 @@ fn disable_clears_while_zenoh_is_down() {
     assert_eq!(clears[0].thread.as_deref(), Some("dviz-zenoh"));
     session.disconnect();
 }
+
+/// A status from a bridge configured with the Tracer Mini body model.
+fn status_with_model() -> Vec<u8> {
+    let data = json!({"loc_ok": true, "loc_reason": "", "armed": false, "estop": false,
+                      "gate_reason": "", "robot_model": "tracer_mini"});
+    message("status", data, None)
+}
+
+const MODEL: &str = "tracer/robot/pose/model";
+
+#[test]
+fn model_ref_sent_once_per_connection() {
+    let prefix = "dviz_test_model";
+    let (peer, endpoint) = listening_peer();
+    let options = SessionOptions {
+        prefix: prefix.into(),
+        ..connect_options("peer", &endpoint)
+    };
+    let session = DvizSession::new();
+    let sink = ThreadRecordingSink::default();
+    session.set_sink(Box::new(sink.clone()));
+    for connection in 1..=2 {
+        session.connect(options.clone()).unwrap();
+        assert!(
+            wait_until(SETTLE, || session.snapshot().connected),
+            "{:?}",
+            session.snapshot().last_error
+        );
+        let status = matched_publisher(&peer, format!("{prefix}/tracer/nav/status"));
+        let before = session.snapshot().received;
+        for _ in 0..3 {
+            status.put(status_with_model()).wait().unwrap();
+        }
+        assert!(
+            wait_until(SETTLE, || session.snapshot().received == before + 3),
+            "{:?}",
+            session.snapshot()
+        );
+        thread::sleep(Duration::from_millis(300));
+        let models = sink.calls("log", MODEL);
+        assert_eq!(
+            models.len(),
+            connection,
+            "connection {connection}: {models:?}"
+        );
+        assert!(
+            models
+                .iter()
+                .all(|call| call.thread.as_deref() == Some("dviz-zenoh")),
+            "{models:?}"
+        );
+        drop(status);
+        session.disconnect();
+        assert!(wait_until(STOP_WAIT, || session.snapshot().receivers_alive == 0));
+    }
+    assert_eq!(session.snapshot().sink_errors, 0);
+}
+
+#[test]
+fn model_resent_to_a_new_viewer() {
+    let prefix = "dviz_test_model_viewer";
+    let (session, peer) = linked_session(prefix);
+    let first = ThreadRecordingSink::default();
+    session.set_sink(Box::new(first.clone()));
+    let status = matched_publisher(&peer, format!("{prefix}/tracer/nav/status"));
+    status.put(status_with_model()).wait().unwrap();
+    assert!(
+        wait_until(SETTLE, || first.calls("log", MODEL).len() == 1),
+        "{:?}",
+        session.snapshot()
+    );
+
+    // A viewer opened later gets the model too, with no traffic.
+    let second = ThreadRecordingSink::default();
+    let viewer = second.clone();
+    session
+        .start_viewer(move || Ok((Box::new(viewer) as Box<dyn Sink>, "Test".to_string())))
+        .unwrap();
+    assert!(
+        wait_until(Duration::from_secs(1), || second.calls("log", MODEL).len()
+            == 1),
+        "the new viewer never got the model"
+    );
+    thread::sleep(Duration::from_millis(300));
+    assert_eq!(first.calls("log", MODEL).len(), 1);
+    assert_eq!(second.calls("log", MODEL).len(), 1);
+    assert_eq!(
+        second.calls("log", MODEL)[0].thread.as_deref(),
+        Some("dviz-zenoh")
+    );
+}

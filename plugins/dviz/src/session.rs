@@ -6,8 +6,8 @@
 //! full (`RING_CAP` payloads or `INBOX_BYTES_CAP` bytes) the oldest payloads
 //! are evicted and counted as dropped. A sink that panics is replaced by a
 //! discarding one; receiving goes on. Only that thread calls the sink: other
-//! sink work (clearing an entity switched off) is queued in the state and
-//! done there before the next message.
+//! sink work (clearing an entity switched off, sending the robot body model)
+//! is queued in the state and done there before the next message.
 
 use crate::nav_scene::NavScene;
 use crate::route::{self, EntityInfo, SessionState, Sink, SinkAction, Visual};
@@ -192,8 +192,13 @@ impl DvizSession {
         // After the stop: a receiver checks its flag under the state lock
         // before it writes, so the stopped one cannot refill this.
         let elsewhere = matches!(&control.options, Some(last) if *last != options);
-        if elsewhere {
-            *lock(&self.shared.state) = SessionState::default();
+        {
+            let mut state = lock(&self.shared.state);
+            if elsewhere {
+                *state = SessionState::default();
+            } else {
+                state.start_connection();
+            }
         }
         control.options = Some(options.clone());
         // The new thread waits for the previous one, so at most one runs.
@@ -221,24 +226,22 @@ impl DvizSession {
         self.stop_current(&mut lock(&self.control));
     }
 
-    /// Where visual messages go from now on. Does not wait for the previous
+    /// Where visual messages go from now on; the robot body model, if a
+    /// status named one, is sent to it again. Does not wait for the previous
     /// sink to go away: dropping a Rerun stream flushes it, which can take
     /// seconds while its viewer is still starting, so it is dropped on a
     /// short-lived thread, after the sink lock is released.
     pub fn set_sink(&self, sink: Box<dyn Sink>) {
-        let previous = {
-            let mut current = lock(&self.shared.sink);
-            mem::replace(&mut *current, sink)
-        };
-        drop_elsewhere(previous);
+        drop_elsewhere(replace_sink(&self.shared, sink));
     }
 
     /// Opens a viewer and returns at once: `launch` runs on a short-lived
     /// thread and returns the viewer's sink with its name and version, or
     /// why there is none. The outcome lands in the snapshot's `viewer`. On
-    /// success the new sink replaces the current one, and the old one is
-    /// dropped on that thread; on failure the current sink stays. Refused,
-    /// with nothing changed, while an earlier launch still runs.
+    /// success the new sink replaces the current one (as `set_sink` does),
+    /// and the old one is dropped on that thread; on failure the current
+    /// sink stays. Refused, with nothing changed, while an earlier launch
+    /// still runs.
     pub fn start_viewer<F>(&self, launch: F) -> Result<(), String>
     where
         F: FnOnce() -> Result<(Box<dyn Sink>, String), String> + Send + 'static,
@@ -262,7 +265,7 @@ impl DvizSession {
                 let previous = match launch() {
                     Ok((sink, name)) => {
                         report.state = ViewerState::Open(name);
-                        Some(mem::replace(&mut *lock(&shared.sink), sink))
+                        Some(replace_sink(&shared, sink))
                     }
                     Err(error) => {
                         report.state = ViewerState::Failed(error);
@@ -409,6 +412,15 @@ impl Drop for AliveGuard<'_> {
     }
 }
 
+/// Makes `sink` the current one and returns the previous one. The new sink
+/// has not drawn the robot body model, so that is queued for it again. One
+/// lock at a time: the sink's, then the state's.
+fn replace_sink(shared: &Shared, sink: Box<dyn Sink>) -> Box<dyn Sink> {
+    let previous = mem::replace(&mut *lock(&shared.sink), sink);
+    lock(&shared.state).queue_model();
+    previous
+}
+
 /// Drops `sink` on a short-lived thread: dropping a Rerun stream flushes it,
 /// which can take seconds. If no thread can be started, it is dropped here
 /// after all.
@@ -452,11 +464,12 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
             }
             state.dropped += dropped;
             state.malformed += oversized;
-            let actions = state.take_sink_actions();
             let visual = match &item {
                 Some((topic, bytes)) => route::accept(&mut state, &options.prefix, topic, bytes),
                 None => None,
             };
+            // After `accept`, which may queue the body model a status names.
+            let actions = state.take_sink_actions();
             (actions, visual)
         };
         // The sink may be slow; the state lock is not held across it.
@@ -478,8 +491,9 @@ fn take_actions(shared: &Shared, stop: &AtomicBool) -> VecDeque<SinkAction> {
 
 /// Hands `actions` and then `visual` to the sink, without the state lock,
 /// and counts what failed in `sink_errors`. The actions go first: they were
-/// queued before `visual` was accepted, so a clear only removes older data,
-/// also when its entity has been switched on again since.
+/// queued before `visual` was accepted, or while accepting it, so a clear
+/// only removes older data, also when its entity has been switched on again
+/// since.
 fn apply(
     shared: &Shared,
     stop: &AtomicBool,

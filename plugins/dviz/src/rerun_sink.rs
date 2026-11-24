@@ -8,7 +8,8 @@
 
 use crate::map_view::{grid_rgba, nav2_to_rviz, rviz_costmap_color, COSTMAP_ALPHA};
 use crate::nav_scene::{nav_layer, NavLayer};
-use crate::route::Sink;
+use crate::robot_model;
+use crate::route::{Sink, MODEL_REF};
 use dviz_protocol::{
     binary_formats, nav_entities, parse_grid2d, parse_points_xyz_f32, Arrows3DData, Boxes3DData,
     Grid2DHeader, GridKind, LineStrips3DData, MvizMessage, Points3DData, ScalarData, TextData,
@@ -36,6 +37,8 @@ pub struct RerunSink {
     statics: BTreeSet<String>,
     /// Per grid lines path, the map extent (whole metres) drawn there.
     grid_lines: BTreeMap<String, [i64; 4]>,
+    /// The body model name last reported as unknown, so it is reported once.
+    unknown_model: Option<String>,
 }
 
 /// Which viewer `RerunSink::launch` starts, and where it listens.
@@ -89,6 +92,7 @@ impl RerunSink {
             rec,
             statics: BTreeSet::new(),
             grid_lines: BTreeMap::new(),
+            unknown_model: None,
         }
     }
 
@@ -730,6 +734,25 @@ impl Sink for RerunSink {
             "text" => {
                 let data = parse!(msg, TextData);
                 self.log_now(entity, &rerun::TextLog::new(data.text))
+            }
+            MODEL_REF => {
+                let name = msg
+                    .data
+                    .get("name")
+                    .and_then(|name| name.as_str())
+                    .ok_or("model_ref needs a name")?;
+                let Some(model) = robot_model::model(name) else {
+                    if self.unknown_model.as_deref() != Some(name) {
+                        rerun::external::log::warn!(
+                            "dviz: no robot body model {name:?}; none drawn"
+                        );
+                        self.unknown_model = Some(name.to_string());
+                    }
+                    return Ok(());
+                };
+                // Static, below the pose: it moves with the pose, a viewer
+                // that connects later gets it, and a clear of the pose hides it.
+                self.log_static(entity, &robot_model::asset(model)?)
             }
             _ => Ok(()),
         }
@@ -1758,6 +1781,59 @@ mod tests {
         ] {
             assert!(sink.log("bad", &msg(ty, data), None).is_err(), "{ty}");
         }
+    }
+
+    const MODEL: &str = "tracer/robot/pose/model";
+
+    #[test]
+    fn model_ref_logs_static_asset() {
+        use rerun::external::arrow::array::StringArray;
+        let (mut sink, storage) = RerunSink::memory("test");
+        let model_ref = msg("model_ref", json!({"name": "tracer_mini"}));
+        assert_eq!(sink.log(MODEL, &model_ref, None), Ok(()));
+        sink.flush();
+        let batches = of_entity(&take_batches(&storage), MODEL);
+        assert!(has_column(&batches, "Asset3D:blob"), "no Asset3D");
+        assert!(batches.iter().all(is_static), "not static");
+        let blobs = rows(&batches, "Asset3D:blob");
+        assert_eq!(blobs.len(), 1);
+        let embedded = crate::robot_model::model("tracer_mini").unwrap();
+        assert_eq!(blobs[0].len(), embedded.len(), "not the whole model");
+        let media = rows(&batches, "Asset3D:media_type");
+        let media = media[0]
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .expect("a media type is text");
+        assert_eq!(media.value(0), "model/stl");
+        assert_eq!(
+            u32_leaves(&batches, "Asset3D:albedo_factor"),
+            [packed([64, 64, 64, 255])],
+            "not dark grey"
+        );
+
+        // Switching the pose off hides the model below it, static as it is.
+        assert_eq!(sink.clear("tracer/robot/pose"), Ok(()));
+        sink.flush();
+        let statics: Vec<_> = of_entity(&take_batches(&storage), MODEL)
+            .into_iter()
+            .filter(is_static)
+            .collect();
+        assert_eq!(bool_rows(&statics, "Clear:is_recursive"), [false]);
+    }
+
+    #[test]
+    fn unknown_robot_model_logs_nothing() {
+        let (mut sink, storage) = RerunSink::memory("test");
+        for _ in 0..2 {
+            let foo = msg("model_ref", json!({"name": "foo"}));
+            assert_eq!(sink.log(MODEL, &foo, None), Ok(()));
+        }
+        sink.flush();
+        let batches = take_batches(&storage);
+        assert!(!has_column(&batches, "Asset3D:"), "an asset was logged");
+        // A model_ref without a name is bad data.
+        let nameless = msg("model_ref", json!({}));
+        assert!(sink.log(MODEL, &nameless, None).is_err());
     }
 
     /// Runs in a child process with an empty `PATH` so other tests keep theirs.

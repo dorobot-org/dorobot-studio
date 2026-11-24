@@ -2,8 +2,8 @@
 
 use crate::nav_scene::{nav_layer, NavLayer, NavScene};
 use dviz_protocol::{
-    parse_message, GraphEdge, GraphNode, GraphUpdate, LogData, LogEntry, LogLevel, MvizMessage,
-    NodeDefinition,
+    nav_entities, parse_message, GraphEdge, GraphNode, GraphUpdate, LogData, LogEntry, LogLevel,
+    MvizMessage, NodeDefinition,
 };
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -28,6 +28,11 @@ pub trait Sink: Send {
     }
 }
 
+/// Studio's own message type, never taken from the wire: the robot body
+/// model `data.name` (`NavStatus::robot_model`), drawn at its entity, which
+/// is below the robot pose.
+pub(crate) const MODEL_REF: &str = "model_ref";
+
 /// Sink work that does not come with a received payload. `SessionState`
 /// queues it; the session's worker hands it to the sink before the next
 /// message, so the UI thread never calls the sink.
@@ -35,14 +40,36 @@ pub trait Sink: Send {
 pub(crate) enum SinkAction {
     /// `Sink::clear` of this entity.
     Clear(String),
+    /// `Sink::log` of a `MODEL_REF` message for the body model `name` at
+    /// `entity` (`<pose>/model`).
+    Model { entity: String, name: String },
 }
 
 impl SinkAction {
     pub(crate) fn apply(&self, sink: &mut dyn Sink) -> Result<(), String> {
         match self {
             SinkAction::Clear(entity) => sink.clear(entity),
+            SinkAction::Model { entity, name } => {
+                let model_ref = MvizMessage {
+                    msg_type: MODEL_REF.to_string(),
+                    timestamp: None,
+                    data: serde_json::json!({ "name": name }),
+                    format: None,
+                    count: None,
+                };
+                sink.log(entity, &model_ref, None)
+            }
         }
     }
+}
+
+/// The robot body model of the current connection, from the first status
+/// that named one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RobotModel {
+    /// The robot pose entity the model is drawn below.
+    pose: String,
+    name: String,
 }
 
 /// Records `(entity, msg_type)` for every `log` and the entity of every
@@ -104,24 +131,85 @@ pub struct SessionState {
     /// The latest navigation layers.
     pub nav: NavScene,
     /// Sink work waiting for the next routing, oldest first; at most one
-    /// clear per entity.
+    /// clear per entity and one body model.
     pub(crate) sink_actions: VecDeque<SinkAction>,
+    /// The body model this connection's status named, if any yet.
+    robot_model: Option<RobotModel>,
 }
 
 impl SessionState {
     /// Turns sink delivery for `entity` on or off; counting goes on either
     /// way. Switching it off also queues a clear of what the sink shows for
-    /// it, which the next routing (the session's worker) carries out.
+    /// it, which the next routing (the session's worker) carries out. That
+    /// clear takes the body model below the robot pose too, so switching the
+    /// pose back on queues the model again.
     pub fn set_entity_enabled(&mut self, entity: &str, enabled: bool) {
         let info = self
             .entities
             .entry(entity.to_string())
             .or_insert_with(|| EntityInfo::new(entity));
         let was_enabled = mem::replace(&mut info.enabled, enabled);
-        let clear = SinkAction::Clear(entity.to_string());
-        if was_enabled && !enabled && !self.sink_actions.contains(&clear) {
-            self.sink_actions.push_back(clear);
+        let model_pose = self.robot_model.as_ref().is_some_and(|m| m.pose == entity);
+        if !was_enabled && enabled && model_pose {
+            self.queue_model();
+        } else if was_enabled && !enabled {
+            if model_pose {
+                // Still queued, it would show up again after the clear.
+                self.sink_actions
+                    .retain(|action| !matches!(action, SinkAction::Model { .. }));
+            }
+            let clear = SinkAction::Clear(entity.to_string());
+            if !self.sink_actions.contains(&clear) {
+                self.sink_actions.push_back(clear);
+            }
         }
+    }
+
+    /// Starts a new connection: the next status that names a body model
+    /// sends it again.
+    pub(crate) fn start_connection(&mut self) {
+        self.robot_model = None;
+        self.sink_actions
+            .retain(|action| !matches!(action, SinkAction::Model { .. }));
+    }
+
+    /// Queues the body model for the sink, if a status named one and its
+    /// pose entity is on (a pose not seen yet counts as on). Also for a sink
+    /// that has not drawn it yet, such as a viewer opened since.
+    pub(crate) fn queue_model(&mut self) {
+        let Some(model) = &self.robot_model else {
+            return;
+        };
+        let pose_on = self
+            .entities
+            .get(&model.pose)
+            .map_or_else(|| EntityInfo::new(&model.pose).enabled, |info| info.enabled);
+        let action = SinkAction::Model {
+            entity: format!("{}/model", model.pose),
+            name: model.name.clone(),
+        };
+        if pose_on && !self.sink_actions.contains(&action) {
+            self.sink_actions.push_back(action);
+        }
+    }
+
+    /// Notes the body model the status just received on `status_entity`
+    /// names, once per connection, and queues it below that robot's pose.
+    fn note_robot_model(&mut self, status_entity: &str) {
+        if self.robot_model.is_some() {
+            return;
+        }
+        let Some(name) = self.nav.status.as_ref().and_then(|s| s.robot_model.clone()) else {
+            return;
+        };
+        let robot = status_entity
+            .strip_suffix(nav_entities::NAV_STATUS)
+            .unwrap_or_default();
+        self.robot_model = Some(RobotModel {
+            pose: format!("{robot}{}", nav_entities::ROBOT_POSE),
+            name,
+        });
+        self.queue_model();
     }
 
     /// The queued sink work, oldest first, leaving none queued.
@@ -130,10 +218,10 @@ impl SessionState {
     }
 }
 
-/// Routes one payload received on `topic`: first the queued sink work (such
-/// as clears of entities switched off), then logs and graph messages update
+/// Routes one payload received on `topic`: logs and graph messages update
 /// `state`; any other type registers its entity and, if that entity is
-/// enabled, goes to `sink`.
+/// enabled, goes to `sink`, after the queued sink work (such as clears of
+/// entities switched off, or the body model a status named).
 pub fn route(
     state: &mut SessionState,
     sink: &mut dyn Sink,
@@ -141,12 +229,13 @@ pub fn route(
     topic: &str,
     payload: &[u8],
 ) {
+    let visual = accept(state, prefix, topic, payload);
     for action in state.take_sink_actions() {
         if action.apply(sink).is_err() {
             state.sink_errors += 1;
         }
     }
-    if let Some(visual) = accept(state, prefix, topic, payload) {
+    if let Some(visual) = visual {
         if sink
             .log(&visual.entity, &visual.msg, visual.binary)
             .is_err()
@@ -207,14 +296,20 @@ pub(crate) fn accept<'a>(
             if let Some(layer) = nav_layer(entity) {
                 match state.nav.try_apply(layer, &msg, binary) {
                     Ok(true) => {}
-                    Ok(false) => return None,
+                    // A status: not drawn, but it may name the body model.
+                    Ok(false) => {
+                        state.note_robot_model(entity);
+                        return None;
+                    }
                     Err(()) => {
                         state.malformed += 1;
                         return None;
                     }
                 }
             }
-            return enabled.then(|| Visual {
+            // Only the session makes a `MODEL_REF`; one from the wire is
+            // counted, not drawn.
+            return (enabled && msg.msg_type != MODEL_REF).then(|| Visual {
                 entity: entity.to_string(),
                 msg,
                 binary,
@@ -465,6 +560,121 @@ mod tests {
             &log_line(2),
         );
         assert_eq!(state.sink_errors, 1);
+    }
+
+    const POSE: &str = "tracer/robot/pose";
+    const MODEL: &str = "tracer/robot/pose/model";
+
+    fn status(robot_model: Option<&str>) -> Vec<u8> {
+        let data = json!({"loc_ok": true, "loc_reason": "", "armed": false, "estop": false,
+                          "gate_reason": "", "robot_model": robot_model});
+        message("status", data, None)
+    }
+
+    fn pose() -> Vec<u8> {
+        message("transform3d", json!({"translation": [1.0, 2.0, 0.0]}), None)
+    }
+
+    /// How often the sink was given the body model at `entity`.
+    fn models(sink: &CountingSink, entity: &str) -> usize {
+        sink.calls
+            .iter()
+            .filter(|(e, kind)| e == entity && kind == "model_ref")
+            .count()
+    }
+
+    #[test]
+    fn model_relogged_after_pose_reenable() {
+        fn send(state: &mut SessionState, sink: &mut CountingSink, topic: &str) {
+            let payload = if topic.ends_with("status") {
+                status(Some("tracer_mini"))
+            } else {
+                pose()
+            };
+            route(state, sink, "dviz", topic, &payload);
+        }
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        let (status_topic, pose_topic) = ("dviz/tracer/nav/status", "dviz/tracer/robot/pose");
+        send(&mut state, &mut sink, pose_topic);
+        route(&mut state, &mut sink, "dviz", status_topic, &status(None));
+        assert_eq!(models(&sink, MODEL), 0, "sent before a status named it");
+
+        // With the first status that names it, below the pose, once.
+        for _ in 0..3 {
+            send(&mut state, &mut sink, status_topic);
+        }
+        assert_eq!(models(&sink, MODEL), 1);
+
+        // Off: the pose is cleared (and the model with it), nothing is sent.
+        state.set_entity_enabled(POSE, false);
+        send(&mut state, &mut sink, status_topic);
+        send(&mut state, &mut sink, pose_topic);
+        assert_eq!(sink.clears, [POSE]);
+        assert_eq!(models(&sink, MODEL), 1);
+
+        // On again: sent again with the next routing, once.
+        state.set_entity_enabled(POSE, true);
+        send(&mut state, &mut sink, status_topic);
+        send(&mut state, &mut sink, pose_topic);
+        assert_eq!(models(&sink, MODEL), 2);
+
+        // Off, on and off before the next routing: cleared, not sent.
+        state.set_entity_enabled(POSE, false);
+        state.set_entity_enabled(POSE, true);
+        state.set_entity_enabled(POSE, false);
+        send(&mut state, &mut sink, status_topic);
+        assert_eq!(sink.clears, [POSE, POSE]);
+        assert_eq!(models(&sink, MODEL), 2);
+
+        // On twice: sent once.
+        state.set_entity_enabled(POSE, true);
+        state.set_entity_enabled(POSE, true);
+        send(&mut state, &mut sink, pose_topic);
+        send(&mut state, &mut sink, pose_topic);
+        assert_eq!(models(&sink, MODEL), 3);
+
+        // Another entity switched off and on does not send it.
+        state.set_entity_enabled("tracer/nav/plan", false);
+        state.set_entity_enabled("tracer/nav/plan", true);
+        send(&mut state, &mut sink, pose_topic);
+        assert_eq!(models(&sink, MODEL), 3);
+
+        // `model_ref` is Studio's own message: one from the wire is not sent.
+        let wire = message("model_ref", json!({"name": "tracer_mini"}), None);
+        route(
+            &mut state,
+            &mut sink,
+            "dviz",
+            "dviz/tracer/robot/pose/model",
+            &wire,
+        );
+        assert_eq!(models(&sink, MODEL), 3);
+        assert_eq!(state.sink_errors, 0);
+    }
+
+    #[test]
+    fn model_waits_until_the_pose_is_on() {
+        // A robot without an id prefix: `nav/status` and `robot/pose`.
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        state.set_entity_enabled("robot/pose", false);
+        let named = status(Some("tracer_mini"));
+        route(&mut state, &mut sink, "dviz", "dviz/nav/status", &named);
+        assert_eq!(models(&sink, "robot/pose/model"), 0, "sent while off");
+
+        state.set_entity_enabled("robot/pose", true);
+        route(&mut state, &mut sink, "dviz", "dviz/logs", &log_line(0));
+        assert_eq!(models(&sink, "robot/pose/model"), 1);
+        route(&mut state, &mut sink, "dviz", "dviz/nav/status", &named);
+        assert_eq!(models(&sink, "robot/pose/model"), 1);
+
+        // A new connection sends it again with the next status naming it.
+        state.start_connection();
+        route(&mut state, &mut sink, "dviz", "dviz/logs", &log_line(1));
+        assert_eq!(models(&sink, "robot/pose/model"), 1);
+        route(&mut state, &mut sink, "dviz", "dviz/nav/status", &named);
+        assert_eq!(models(&sink, "robot/pose/model"), 2);
     }
 
     #[test]

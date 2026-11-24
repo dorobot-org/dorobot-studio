@@ -13,3 +13,7 @@ Files moved from dviz (dorobot-org/dviz, commit 5276598, Apache-2.0):
   simulator used by the synthetic publisher).
 
 plugins/dviz is distributed under Apache-2.0 for the same reason.
+
+plugins/dviz/assets/tracer_mini.stl is a simplified copy of the Tracer Mini
+body mesh of tracer-mini-ros2 (Apache-2.0); its source, history and changes
+are in plugins/dviz/assets/NOTICE-tracer-mini.md.
