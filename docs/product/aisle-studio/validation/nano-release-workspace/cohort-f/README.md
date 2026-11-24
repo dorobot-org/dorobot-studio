@@ -56,3 +56,9 @@ cmp "$scratch/expected-motors.f64" "$scratch/trial/motor-targets.f64"
 ```
 
 The fresh trial stays in the temporary directory. Its outcome is outside the original 50-case denominator.
+
+The separate run reproduced the same red-grasp stop after 10,794 steps and matched the original motor file byte for byte. [Disclosed rerun record](disclosed-reproduction.json)
+
+## Wrist-camera fault checks on layout 0
+
+The same Codex-authored program completed the task with normal wrist images in 23,724 steps. When wrist delivery was interrupted during the first pick, it held all 17 motor targets for 160 steps (1.6 s), resumed on a fresh exposure and completed the task in 26,462 steps. With a sustained disconnect it held the targets for 180 steps and stopped at tick 1180. The native Makepad journey restored the recorded timeout after a restart. These three checks are separate from the 50 nominal-timing layouts. [Motor journals, camera packets, delivery logs and native checks](native-wrist-timing.zip)
