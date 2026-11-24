@@ -38,15 +38,29 @@ def retained_background(root, jobs, foreground):
         json.loads(p.read_bytes()) for p in root.glob("*-Nano-fleet/fleet.json")
     ]
     snapshot = next(
-        r["sample"]
-        for r in candidates
-        if r.get("sample") and r["selected"]["id"] == background
+        (
+            r["sample"]
+            for r in candidates
+            if r.get("sample") and r["selected"]["id"] == background
+        ),
+        None,
     )
+    if snapshot is None:
+        return dict(background_id=background, background_evidence="no saved snapshot")
     stopped = next(
-        p.parent
-        for p in root.glob("*-Nano-run/worker-origin.json")
-        if json.loads(p.read_bytes())["job"] == background
+        (
+            p.parent
+            for p in root.glob("*-Nano-run/worker-origin.json")
+            if json.loads(p.read_bytes())["job"] == background
+        ),
+        None,
     )
+    if stopped is None:
+        return dict(
+            background_id=background,
+            background_evidence="snapshot without a downloaded trial",
+            unverified_snapshot=snapshot,
+        )
     assert (stopped / "stopped.json").is_file()
     observations = [
         json.loads(l)
