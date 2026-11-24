@@ -95,6 +95,10 @@ pub enum Action {
         source: String,
         edit: String,
     },
+    SetRoomEnvironment {
+        ambient: String,
+        friction: String,
+    },
     DraftRoom {
         source: String,
         planner: Planner,
@@ -510,6 +514,10 @@ impl Job {
         let _ = self.child.wait();
     }
 }
+enum RoomRequest {
+    Survey { source: String, edit: String },
+    Environment { ambient: String, friction: String },
+}
 pub struct Workbench {
     pub robot: Robot,
     pub task: String,
@@ -549,7 +557,7 @@ pub struct Workbench {
     pub room_draft_info: Value,
     room_draft_receipt: Value,
     room_selection: Value,
-    room_request: Option<(String, String)>,
+    room_request: Option<RoomRequest>,
     pub layout_seed: u32,
     pub comparison: Option<f64>,
     pub transfer_comparison: Option<TransferComparison>,
@@ -1119,15 +1127,20 @@ impl Workbench {
             cmd.arg("--provider").arg(planner.name());
         }
         if matches!(op, "room" | "room-draft") {
-            let (source, edit) = self
-                .room_request
-                .as_ref()
-                .ok_or_else(|| io::Error::other("Choose a survey or edit the selected room"))?;
-            if !source.trim().is_empty() {
-                cmd.arg("--room-source").arg(source.trim());
-            }
-            if !edit.trim().is_empty() {
-                cmd.arg("--room-edit").arg(edit.trim());
+            match self.room_request.take() {
+                Some(RoomRequest::Survey { source, edit }) => {
+                    if !source.trim().is_empty() {
+                        cmd.arg("--room-source").arg(source.trim());
+                    }
+                    if !edit.trim().is_empty() {
+                        cmd.arg("--room-edit").arg(edit.trim());
+                    }
+                }
+                Some(RoomRequest::Environment { ambient, friction }) if self.room_path.is_some() => {
+                    cmd.arg(format!("--room-ambient={}", ambient.trim()));
+                    cmd.arg(format!("--floor-friction={}", friction.trim()));
+                }
+                _ => return Err(io::Error::other("Choose a survey or edit the selected room")),
             }
             cmd.arg("--seed").arg(self.layout_seed.to_string());
         }
@@ -1376,7 +1389,7 @@ impl Workbench {
             }
             Action::DefaultRoom => self.save_room(Value::Null),
             Action::DraftRoom { source, planner } => {
-                self.room_request = Some((source, String::new()));
+                self.room_request = Some(RoomRequest::Survey { source, edit: String::new() });
                 self.launch("room-draft", planner, None)
             }
             Action::ApplyRoomDraft => self.launch("room-apply", Planner::Reference, None),
@@ -1387,7 +1400,11 @@ impl Workbench {
                 Ok(())
             }
             Action::ImportRoom { source, edit } => {
-                self.room_request = Some((source, edit));
+                self.room_request = Some(RoomRequest::Survey { source, edit });
+                self.launch("room", Planner::Reference, None)
+            }
+            Action::SetRoomEnvironment { ambient, friction } => {
+                self.room_request = Some(RoomRequest::Environment { ambient, friction });
                 self.launch("room", Planner::Reference, None)
             }
             Action::ToggleOnboardContext => {

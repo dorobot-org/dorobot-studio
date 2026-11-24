@@ -62,6 +62,7 @@ def main():
     p.add_argument("--train-reach", action="store_true")
     p.add_argument("--photo-input", type=Path)
     p.add_argument("--survey", type=Path)
+    p.add_argument("--edit-environment", action="store_true")
     p.add_argument("--evaluation", type=Path)
     p.add_argument("--compare-cohorts", nargs=2, type=Path)
     p.add_argument("--reject-cohort", type=Path)
@@ -76,6 +77,8 @@ def main():
     p.add_argument("--revise-pickup", action="store_true")
     p.add_argument("--compare-runs", action="store_true")
     a = p.parse_args()
+    if a.edit_environment and not a.survey:
+        p.error("--edit-environment requires --survey")
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
 
@@ -417,6 +420,9 @@ def main():
             if a.survey:
                 assert row["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
                 assert row["result"]["room_revision_sha256"]
+                if a.edit_environment:
+                    assert row["room_info"]["settings"]["ambient_rgb"] == [0.40, 0.42, 0.44]
+                    assert row["room_info"]["settings"]["floor_friction"] == 0.80
             (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
             return
         page("task")
@@ -558,6 +564,13 @@ def main():
             )
             assert saved["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
             grab("survey-edited")
+            if a.edit_environment:
+                from room_environment_check import edit_environment
+
+                saved = edit_environment(saved, report, remote, fill_survey, click, done, grab)
+                from worker import digest
+
+                conditions_sha = digest(Path(saved["room_path"]))
             click("aisle_scene.robot_mode")
         if a.impact:
             click("aisle_scene.impact")
@@ -879,6 +892,10 @@ def main():
                 calibration = json.loads((run / "calibration.json").read_text())
                 scene = json.loads((run / "room.json").read_text())
                 assert calibration["cameras"] == scene["settings"]["cameras"]
+                if a.edit_environment:
+                    assert result["room_revision_sha256"] == conditions_sha
+                    assert scene["settings"]["ambient_rgb"] == [0.40, 0.42, 0.44]
+                    assert scene["settings"]["floor_friction"] == 0.80
             assert result["seed"] == a.layout
             assert all(result["cubes"][c]["passed"] for c in wanted)
             import numpy as np

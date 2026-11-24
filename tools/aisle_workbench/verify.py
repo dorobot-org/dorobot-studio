@@ -185,6 +185,7 @@ def main():
         type=Path,
         help="Import and edit the Nano reference survey during a transfer",
     )
+    parser.add_argument("--edit-environment", action="store_true", help="Edit Nexus lighting and friction in a surveyed Nano room")
     parser.add_argument(
         "--prepared-pickup",
         type=Path,
@@ -248,6 +249,8 @@ def main():
         parser.error("--fleet-node requires a registered-worker --fleet journey")
     if args.photo_input and (args.survey or not args.transfer):
         parser.error("--photo-input requires a transfer without --survey")
+    if args.edit_environment and not args.survey:
+        parser.error("--edit-environment requires --survey")
     if args.survey and not args.transfer:
         parser.error("--survey requires --transfer")
     if args.train_grasp and not args.transfer:
@@ -513,6 +516,8 @@ def main():
                     check.extend(["--photo-input", str(args.photo_input.resolve())])
                 if args.survey:
                     check.extend(["--survey", str(args.survey.resolve())])
+                    if args.edit_environment:
+                        check.append("--edit-environment")
                 if args.device_preflight:
                     check.append("--device-preflight")
                 if args.pickup_motion:

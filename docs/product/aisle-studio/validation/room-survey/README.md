@@ -8,6 +8,8 @@ To use your own image, supply an upright PNG or JPEG, a short description, and a
 
 An optional `camera_calibration` supplies a source description, the Nano URDF SHA-256 and all three 480 × 360 rectified cameras. Each camera supplies its mounting link, rigid `link_from_camera_gl` transform and centered pinhole intrinsic matrix. Nexus renders the declared mount and focal length. The reference image and surveyed geometry stay with the operator and evaluator. The controller receives calibrated onboard RGB, joint encoders and timestamps. Optional `ambient_rgb` and `floor_friction` values in `environment` set the actual sensor lighting and floor collider inputs.
 
+For an accepted survey, **Save environment** revises lighting and floor friction directly in Studio. [Operator steps and measured Nexus response](../room-environment/README.md)
+
 Each accepted edit creates a new room directory containing the photo, portable survey, revision and annotated preview. Invalid edits preserve the previous selection. A run verifies the selected revision hash and archives its inputs with the episode. The measured obstacle centers come from the Nexus bodies. Lifting objects, nonplanar rooms, free-form mesh reconstruction and automatic object labeling would require additional reconstruction methods.
 
 To estimate a camera mount from observations, supply its link-frame landmarks and upright RGB exposures in the calibration file. Studio shows how closely each fitted mount predicts independent image points. [Fit and validate the head and wrist camera mounts](camera-mounts.md)
