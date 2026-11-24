@@ -43,6 +43,27 @@ def gpu_sampler(stop, node, out):
                 file=log,
                 flush=True,
             )
+            process_map = out.with_name("gpu-processes.txt")
+            rows = result.stdout.splitlines()
+            if (
+                not process_map.exists()
+                and result.returncode == 0
+                and len(rows) == 8
+                and all(int(row.split(",")[2]) > 2000 for row in rows)
+            ):
+                processes = subprocess.run(
+                    [*cmd[:-1], "nvidia-smi pmon -c 1"],
+                    text=True,
+                    capture_output=True,
+                    timeout=25,
+                )
+                active = {
+                    row.split()[0]
+                    for row in processes.stdout.splitlines()
+                    if "C+G" in row and "python" in row
+                }
+                if len(active) == 8:
+                    process_map.write_text(processes.stdout)
             stop.wait(4)
 
 
