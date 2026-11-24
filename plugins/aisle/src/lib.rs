@@ -513,6 +513,7 @@ impl PluginPanel for Panel {
                     (ids!(photo_card), Themed::Bg),
                     (ids!(cohort), Themed::Bg),
                     (ids!(device), Themed::Bg),
+                    (ids!(decision_card), Themed::Bg),
                     (ids!(survey_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
