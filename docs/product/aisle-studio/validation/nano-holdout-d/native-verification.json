@@ -1,0 +1,320 @@
+{
+  "headless": {
+    "source_commit": "7c4a473bc886a48ea77844e3c03115f482eb5c10",
+    "binary_sha256": "1fe8d01538bfc2acd48b73f8e19a3c8f5958848e1d39d5fdcc471f7c21d44fe4",
+    "backend": "headless",
+    "size": "1024x768",
+    "journey": [
+      {
+        "check": "Layout archive verified",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 Nano",
+        "evaluation": {
+          "archive_sha256": "e9eca578e5f264b8cffcc9dbaa0b42800cd6aa1255fd839b86723dd7c59bbe9f",
+          "cases": 50,
+          "failures": [
+            {
+              "index": 0,
+              "reasons": [
+                "No loaded wheel contact for 1 physics steps"
+              ],
+              "seed": 2633501484
+            },
+            {
+              "index": 19,
+              "reasons": [
+                "ValueError: Could not align the cube with the left arm",
+                "blue \u00b7 15.5 mm rim margin"
+              ],
+              "seed": 3925987226
+            },
+            {
+              "index": 26,
+              "reasons": [
+                "ValueError: Lost red after two normal carries and a supported carry",
+                "red \u00b7 0/100 table contacts, center -554.3 mm above tabletop",
+                "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -659.2 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -959.1 mm rim margin, center -554.3 mm above tabletop",
+                "locate/left_wrist_cam/coffee_table \u00b7 1203 contact steps",
+                "pick/left_wrist_cam/coffee_table \u00b7 55 contact steps",
+                "carry/left_wrist_housing/coffee_table \u00b7 471 contact steps",
+                "carry/left_wrist_cam/coffee_table \u00b7 93 contact steps"
+              ],
+              "seed": 1779371468
+            },
+            {
+              "index": 29,
+              "reasons": [
+                "blue \u00b7 24.5 mm rim margin"
+              ],
+              "seed": 1917984048
+            },
+            {
+              "index": 37,
+              "reasons": [
+                "ValueError: Lost green after two normal carries and a supported carry",
+                "green \u00b7 0/100 table contacts, -241.6 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -388.1 mm rim margin, center -554.3 mm above tabletop"
+              ],
+              "seed": 4064448367
+            }
+          ],
+          "interval_95": [
+            0.7863976856252035,
+            0.9565242350681096
+          ],
+          "manifest_sha256": "949e2dc1e704cbad9b461ad203b8fb42b6d3e76aae4459211f3f3a4d6b53bb61",
+          "qualified": true,
+          "requirement": 45,
+          "split": "hidden",
+          "successes": 45,
+          "verified": 50,
+          "verified_guard_bypasses": 0
+        }
+      },
+      {
+        "check": "Second failed layout opened",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 Nano"
+      },
+      {
+        "check": "First failed layout reopened",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 Nano"
+      },
+      {
+        "check": "Unreadable archive rejected",
+        "robot": "Nano",
+        "status": "[Errno 2] No such file or directory: '/Users/yuechen/home/aisle-studio-artifacts/nano-holdout-20261123-d/missing-archive-for-ui-check.zip'"
+      }
+    ],
+    "recovery": [
+      {
+        "check": "Layout evaluation restored",
+        "robot": "Nano",
+        "status": "Ready",
+        "evaluation": {
+          "archive_sha256": "e9eca578e5f264b8cffcc9dbaa0b42800cd6aa1255fd839b86723dd7c59bbe9f",
+          "cases": 50,
+          "failures": [
+            {
+              "index": 0,
+              "reasons": [
+                "No loaded wheel contact for 1 physics steps"
+              ],
+              "seed": 2633501484
+            },
+            {
+              "index": 19,
+              "reasons": [
+                "ValueError: Could not align the cube with the left arm",
+                "blue \u00b7 15.5 mm rim margin"
+              ],
+              "seed": 3925987226
+            },
+            {
+              "index": 26,
+              "reasons": [
+                "ValueError: Lost red after two normal carries and a supported carry",
+                "red \u00b7 0/100 table contacts, center -554.3 mm above tabletop",
+                "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -659.2 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -959.1 mm rim margin, center -554.3 mm above tabletop",
+                "locate/left_wrist_cam/coffee_table \u00b7 1203 contact steps",
+                "pick/left_wrist_cam/coffee_table \u00b7 55 contact steps",
+                "carry/left_wrist_housing/coffee_table \u00b7 471 contact steps",
+                "carry/left_wrist_cam/coffee_table \u00b7 93 contact steps"
+              ],
+              "seed": 1779371468
+            },
+            {
+              "index": 29,
+              "reasons": [
+                "blue \u00b7 24.5 mm rim margin"
+              ],
+              "seed": 1917984048
+            },
+            {
+              "index": 37,
+              "reasons": [
+                "ValueError: Lost green after two normal carries and a supported carry",
+                "green \u00b7 0/100 table contacts, -241.6 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -388.1 mm rim margin, center -554.3 mm above tabletop"
+              ],
+              "seed": 4064448367
+            }
+          ],
+          "interval_95": [
+            0.7863976856252035,
+            0.9565242350681096
+          ],
+          "manifest_sha256": "949e2dc1e704cbad9b461ad203b8fb42b6d3e76aae4459211f3f3a4d6b53bb61",
+          "qualified": true,
+          "requirement": 45,
+          "split": "hidden",
+          "successes": 45,
+          "verified": 50,
+          "verified_guard_bypasses": 0
+        }
+      }
+    ]
+  },
+  "offscreen": {
+    "source_commit": "7c4a473bc886a48ea77844e3c03115f482eb5c10",
+    "binary_sha256": "1fe8d01538bfc2acd48b73f8e19a3c8f5958848e1d39d5fdcc471f7c21d44fe4",
+    "backend": "offscreen",
+    "size": "1440x900",
+    "journey": [
+      {
+        "check": "Layout archive verified",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 Nano",
+        "evaluation": {
+          "archive_sha256": "e9eca578e5f264b8cffcc9dbaa0b42800cd6aa1255fd839b86723dd7c59bbe9f",
+          "cases": 50,
+          "failures": [
+            {
+              "index": 0,
+              "reasons": [
+                "No loaded wheel contact for 1 physics steps"
+              ],
+              "seed": 2633501484
+            },
+            {
+              "index": 19,
+              "reasons": [
+                "ValueError: Could not align the cube with the left arm",
+                "blue \u00b7 15.5 mm rim margin"
+              ],
+              "seed": 3925987226
+            },
+            {
+              "index": 26,
+              "reasons": [
+                "ValueError: Lost red after two normal carries and a supported carry",
+                "red \u00b7 0/100 table contacts, center -554.3 mm above tabletop",
+                "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -659.2 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -959.1 mm rim margin, center -554.3 mm above tabletop",
+                "locate/left_wrist_cam/coffee_table \u00b7 1203 contact steps",
+                "pick/left_wrist_cam/coffee_table \u00b7 55 contact steps",
+                "carry/left_wrist_housing/coffee_table \u00b7 471 contact steps",
+                "carry/left_wrist_cam/coffee_table \u00b7 93 contact steps"
+              ],
+              "seed": 1779371468
+            },
+            {
+              "index": 29,
+              "reasons": [
+                "blue \u00b7 24.5 mm rim margin"
+              ],
+              "seed": 1917984048
+            },
+            {
+              "index": 37,
+              "reasons": [
+                "ValueError: Lost green after two normal carries and a supported carry",
+                "green \u00b7 0/100 table contacts, -241.6 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -388.1 mm rim margin, center -554.3 mm above tabletop"
+              ],
+              "seed": 4064448367
+            }
+          ],
+          "interval_95": [
+            0.7863976856252035,
+            0.9565242350681096
+          ],
+          "manifest_sha256": "949e2dc1e704cbad9b461ad203b8fb42b6d3e76aae4459211f3f3a4d6b53bb61",
+          "qualified": true,
+          "requirement": 45,
+          "split": "hidden",
+          "successes": 45,
+          "verified": 50,
+          "verified_guard_bypasses": 0
+        }
+      },
+      {
+        "check": "Second failed layout opened",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 Nano"
+      },
+      {
+        "check": "First failed layout reopened",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 Nano"
+      },
+      {
+        "check": "Unreadable archive rejected",
+        "robot": "Nano",
+        "status": "[Errno 2] No such file or directory: '/Users/yuechen/home/aisle-studio-artifacts/nano-holdout-20261123-d/missing-archive-for-ui-check.zip'"
+      }
+    ],
+    "recovery": [
+      {
+        "check": "Layout evaluation restored",
+        "robot": "Nano",
+        "status": "Ready",
+        "evaluation": {
+          "archive_sha256": "e9eca578e5f264b8cffcc9dbaa0b42800cd6aa1255fd839b86723dd7c59bbe9f",
+          "cases": 50,
+          "failures": [
+            {
+              "index": 0,
+              "reasons": [
+                "No loaded wheel contact for 1 physics steps"
+              ],
+              "seed": 2633501484
+            },
+            {
+              "index": 19,
+              "reasons": [
+                "ValueError: Could not align the cube with the left arm",
+                "blue \u00b7 15.5 mm rim margin"
+              ],
+              "seed": 3925987226
+            },
+            {
+              "index": 26,
+              "reasons": [
+                "ValueError: Lost red after two normal carries and a supported carry",
+                "red \u00b7 0/100 table contacts, center -554.3 mm above tabletop",
+                "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -659.2 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -959.1 mm rim margin, center -554.3 mm above tabletop",
+                "locate/left_wrist_cam/coffee_table \u00b7 1203 contact steps",
+                "pick/left_wrist_cam/coffee_table \u00b7 55 contact steps",
+                "carry/left_wrist_housing/coffee_table \u00b7 471 contact steps",
+                "carry/left_wrist_cam/coffee_table \u00b7 93 contact steps"
+              ],
+              "seed": 1779371468
+            },
+            {
+              "index": 29,
+              "reasons": [
+                "blue \u00b7 24.5 mm rim margin"
+              ],
+              "seed": 1917984048
+            },
+            {
+              "index": 37,
+              "reasons": [
+                "ValueError: Lost green after two normal carries and a supported carry",
+                "green \u00b7 0/100 table contacts, -241.6 mm rim margin, center -554.3 mm above tabletop",
+                "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -388.1 mm rim margin, center -554.3 mm above tabletop"
+              ],
+              "seed": 4064448367
+            }
+          ],
+          "interval_95": [
+            0.7863976856252035,
+            0.9565242350681096
+          ],
+          "manifest_sha256": "949e2dc1e704cbad9b461ad203b8fb42b6d3e76aae4459211f3f3a4d6b53bb61",
+          "qualified": true,
+          "requirement": 45,
+          "split": "hidden",
+          "successes": 45,
+          "verified": 50,
+          "verified_guard_bypasses": 0
+        }
+      }
+    ]
+  }
+}

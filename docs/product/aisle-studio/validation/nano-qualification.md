@@ -67,3 +67,7 @@ The folded-arm three-cube demo also passed on this candidate with its original c
 The archive SHA-256 is `77cf1ee21be8041ca0ad9d332d48ef55978ce8ad87c1df85ea35399e2ce31857`. The three cohorts scored 32/50, 36/50 and 43/50. Their independent draws do not establish a paired treatment effect.
 
 The native headless and offscreen sessions each independently verified all 50 cases, navigated the failed layouts, rejected a missing replacement and restored cohort C on restart. [Native verification](nano-holdout-c/native-verification.json) · [Studio Evidence page](nano-holdout-c/studio.png)
+
+## Cohort D
+
+The wrist-confirmed supported recovery met the preregistered gate on **45 of 50 fresh layouts**, with 50 verified records and zero measured guard bypasses. The independent cohorts scored 32/50, 36/50, 43/50 and 45/50. The 45/50 result measures this frozen controller on cohort D. [Protocol, all five failures, raw evidence and native verification](nano-holdout-d/README.md)
