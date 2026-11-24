@@ -123,7 +123,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         "Connected to Nexus worker",
     )
     assert row["fleet"]["capabilities"]["slots"] == (
-        4 if args.foreground_cadence else 2
+        args.foreground_cadence or 2
     )
     run_button("queue_stream")
     row = done(
