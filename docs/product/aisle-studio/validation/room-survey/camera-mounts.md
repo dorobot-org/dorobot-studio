@@ -56,6 +56,8 @@ Both Mac sessions authored the red-cube transfer in **Task**, rejected a deliber
 
 DeepSeek via Octos also authored a full three-cube task on the same layout. It retried blue after its first placement attempt. Red, green and blue finished 120, 123 and 138 mm inside the table edge, with 100 consecutive table-contact ticks each. The Nano kept wheel support for all 28,302 ticks, with zero joint-limit excursions and zero furniture contacts. Studio exported 1,415 frames per camera and reopened the result after restart.
 
+The replay shows the head, left wrist and right wrist cameras from left to right. It plays the original 5 Hz recordings at 4× speed and includes every synchronized frame. [Watch all three placements in 71 seconds](three-cameras.mp4)
+
 All four runs used byte-identical room and survey files. Each run's realized camera intrinsics and mount transforms exactly matched the accepted revision. The motor journals replayed against the URDF with zero invalid rows. The H100 rate measures publications on the worker. The archive includes the original motor journals, controller identities, onboard optics, native journeys and H100 publication timestamps. [Download the trial measurements](camera-mount-trials.zip)
 
 ```sh
