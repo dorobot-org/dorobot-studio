@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from collections import Counter, deque
 from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -63,6 +64,64 @@ class TransferTests(unittest.TestCase):
         self.assertTrue(
             all(span[0] <= y <= span[1] and depth >= 0.085 for y, depth, _ in choices)
         )
+
+    def test_placement_turn_tracks_cube_across_wrist_views(self):
+        controller = Controller.__new__(Controller)
+        controller.release_slot = Mock(return_value=True)
+        controller.drive = Mock()
+        controller.act = Mock()
+        controller.table_views = Mock(return_value=[])
+        controller.release_observation = Mock()
+        controller.held_in_wrist_view = Mock(return_value=True)
+        controller.table = lambda sample: sample["rim"]
+        controller.release_landmarks = lambda sample, *_: sample["cubes"]
+
+        def packet(angle, keys, along_shift):
+            normal = np.array([np.cos(angle), np.sin(angle)])
+            tangent = np.array([-normal[1], normal[0]])
+            rim = dict(
+                normal=normal,
+                along=tangent,
+                distance=0.3,
+                height=0.54,
+                span=[-0.2, 0.25],
+            )
+            return {
+                "rim": rim,
+                "cubes": {
+                    key: 0.43 * normal + (0.15 + along_shift) * tangent for key in keys
+                },
+            }
+
+        # The right wrist sees the cube initially. A shared exposure lets the
+        # controller keep tracking when only the left wrist sees it after the turn.
+        start = packet(0.0, ["right"], 0)
+        mid = packet(0.1, ["left", "right"], 0.002)
+        end = packet(0.20, ["left"], 0.004)
+        controller.sense = Mock(side_effect=[mid, end, end])
+        with patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]):
+            rim, obstacles = controller.reposition_for_release(
+                start["rim"], [np.array([0.43, 0.15])], start, "green", ["red"]
+            )
+        expected = 0.43 * rim["normal"] + 0.154 * rim["along"]
+        np.testing.assert_allclose(obstacles, [expected])
+        self.assertTrue(
+            any(
+                call.kwargs.get("initial_view_match") is False
+                for call in controller.act.call_args_list
+            )
+        )
+        controller.release_observation.assert_called_once()
+        controller.held_in_wrist_view.assert_called_once_with("green", end)
+
+        # With no common landmark between consecutive views the base must brake.
+        controller.sense = Mock(return_value=packet(0.1, ["left"], 0))
+        controller.release_observation.reset_mock()
+        controller.drive.reset_mock()
+        with self.assertRaisesRegex(ValueError, "consecutive"):
+            controller.reposition_for_release(start["rim"], [], start, "green", ["red"])
+        self.assertEqual(controller.drive.call_args.kwargs, {})
+        controller.release_observation.assert_not_called()
 
     def test_blue_background_does_not_confirm_grasp(self):
         rgb = np.zeros((360, 480, 3), np.uint8)

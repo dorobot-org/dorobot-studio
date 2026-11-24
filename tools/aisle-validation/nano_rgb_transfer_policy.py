@@ -314,6 +314,176 @@ class Controller:
             self.drive(speed, np.clip(angle * 1.5, -0.4, 0.4))
         raise ValueError("Stereo table docking timed out")
 
+    def release_slot(self, edge, occupied):
+        along_axis = edge["along"]
+        side = np.clip(
+            along_axis @ np.array([0.40, 0.155]),
+            edge["span"][0] + 0.009,
+            edge["span"][1] - 0.009,
+        )
+        for along, inset, search in release_candidates(side, edge["span"]):
+            place = (edge["distance"] + inset) * edge["normal"] + along * along_axis
+            if any(np.linalg.norm(place - point) < 0.078 for point in occupied):
+                continue
+            try:
+                inbound, outbound = self.release_paths(place, edge["height"])
+            except UnreachableGrasp:
+                continue
+            return place, inbound, outbound, inset, search
+        return None
+
+    def release_observation(self, packet, edge, color):
+        self.act(
+            "release observation",
+            stamp_ns=int(packet["stamp_ns"]),
+            color=color,
+            height_m=float(edge["height"]),
+            distance_m=float(edge["distance"]),
+            normal=edge["normal"].tolist(),
+            along=edge["along"].tolist(),
+            span_m=list(edge["span"]),
+        )
+
+    def release_landmarks(self, packet, edge, colors):
+        """Use one complete, unambiguous silhouette per camera and color."""
+        landmarks = {}
+        for camera, view in zip(
+            CAMERAS, self.table_views(packet, CAMERAS), strict=True
+        ):
+            for color in colors:
+                points = occupied_table_points([view], edge, [color])
+                if len(points) == 1:
+                    landmarks[camera, color] = points[0]
+        return landmarks
+
+    def reposition_for_release(self, edge, occupied, packet, color, prior_colors):
+        # A turn in place changes where the left arm can reach on the observed rim.
+        # Try both directions before considering a larger change of heading.
+        for angle in (0.20, -0.20, 0.30, -0.30):
+            cs, sn = math.cos(angle), math.sin(angle)
+            rotate = np.array([[cs, -sn], [sn, cs]])
+            predicted = edge | {
+                "normal": rotate @ edge["normal"],
+                "along": rotate @ edge["along"],
+            }
+            if self.release_slot(predicted, [rotate @ p for p in occupied]) is not None:
+                break
+        else:
+            raise ValueError(
+                "No reachable clear release point within the bounded placement turn"
+            )
+
+        landmarks = self.release_landmarks(packet, edge, prior_colors)
+        if not landmarks:
+            raise ValueError("Cannot track an earlier cube through a placement turn")
+        original = edge["normal"]
+        tangent = np.array([-original[1], original[0]])
+
+        previous_landmarks = {key: point @ tangent for key, point in landmarks.items()}
+        initial_landmarks = previous_landmarks
+        tangent_shift = 0.0
+
+        def observed_rim(sample):
+            nonlocal previous_landmarks, tangent_shift
+            rim = self.table(sample)
+            if rim is None:
+                raise ValueError("Lost the table rim during the placement turn")
+            drift = rim["distance"] - edge["distance"]
+            heading = math.atan2(rim["normal"] @ tangent, rim["normal"] @ original)
+            self.act(
+                "table observation",
+                placement_yaw_rad=heading,
+                standoff_change_m=float(drift),
+                color=color,
+            )
+            if abs(drift) > 0.025 or abs(heading) > abs(angle) + 0.06:
+                raise ValueError(
+                    "Placement turn exceeded its observed standoff or heading limit"
+                )
+            axis = np.array([-rim["normal"][1], rim["normal"][0]])
+            fresh = {
+                key: point @ axis
+                for key, point in self.release_landmarks(
+                    sample, rim, prior_colors
+                ).items()
+            }
+            direct = fresh.keys() & initial_landmarks.keys()
+            reference = initial_landmarks if direct else previous_landmarks
+            common = sorted(fresh.keys() & reference.keys())
+            if not common:
+                raise ValueError(
+                    "Lost the observed cubes across consecutive placement-turn images"
+                )
+            offsets = [fresh[key] - reference[key] for key in common]
+            shift = float(np.median(offsets)) + (0.0 if direct else tangent_shift)
+            if (
+                abs(shift) > 0.05
+                or abs(shift - tangent_shift) > 0.025
+                or np.ptp(offsets) > 0.045
+            ):
+                raise ValueError(
+                    "Cube motion across the placement turn is inconsistent"
+                )
+            tangent_shift = shift
+            previous_landmarks = fresh
+            self.act(
+                "table observation",
+                matched_landmarks=len(common),
+                initial_view_match=bool(direct),
+                observed_tangent_shift_m=shift,
+                color=color,
+            )
+            return rim, heading
+
+        self.act("table observation", placement_yaw_goal_rad=angle, color=color)
+        heading = 0.0
+        try:
+            for _ in range(50):
+                error = heading - angle
+                if abs(error) < 0.012:
+                    break
+                self.drive(turn=np.clip(1.5 * error, -0.16, 0.16))
+                packet = self.sense()
+                _, heading = observed_rim(packet)
+            else:
+                raise ValueError(
+                    "Could not align the arm workspace with the observed tabletop"
+                )
+        finally:
+            self.drive()
+        packet = self.sense()
+        current, heading = observed_rim(packet)
+        self.release_observation(packet, current, color)
+        if abs(heading - angle) > 0.035 or not self.held_in_wrist_view(color, packet):
+            raise ValueError(
+                "Cannot confirm placement heading and carried cube after braking"
+            )
+        new_normal = current["normal"]
+        new_tangent = np.array([-new_normal[1], new_normal[0]])
+        self.last_rim_distance = current["distance"]
+        seen = occupied_table_points(
+            self.table_views(packet, CAMERAS),
+            current,
+            prior_colors,
+            include_clipped=True,
+        )
+        # Retain occluded detections using the measured rim and matched cube motion.
+        kept = []
+        for point in occupied:
+            inset = point @ original - edge["distance"]
+            along = point @ tangent + tangent_shift
+            kept.append(
+                (current["distance"] + inset) * new_normal + along * new_tangent
+            )
+        self.act(
+            "table observation",
+            fresh_occupants=len(seen),
+            retained_occupants=len(kept),
+            observed_tangent_shift_m=tangent_shift,
+            color=color,
+        )
+        return current, seen + kept
+
     def back_away(self, color, exposure=None):
         if self.last_rim_distance is None:
             raise ValueError("Retreat requires a rim observed during this approach")
@@ -424,53 +594,39 @@ class Controller:
                 )
                 self.phase("locate", color)
             self.phase("place", color)
-            t = edge["along"]
-            side = np.clip(
-                t @ np.array([0.40, 0.155]),
-                edge["span"][0] + 0.009,
-                edge["span"][1] - 0.009,
-            )
             occupied = []
             if index:
                 self.drive()
                 cameras = CAMERAS if self.wrist_clearance else ("head", "right_wrist")
                 observation = self.sense()
-                views = self.table_views(observation, cameras)
                 if self.wrist_clearance:
-                    self.act(
-                        "release observation", stamp_ns=int(observation["stamp_ns"]),
-                        color=color, height_m=float(edge["height"]), distance_m=float(edge["distance"]),
-                        normal=edge["normal"].tolist(), along=edge["along"].tolist(),
-                        span_m=list(edge["span"]),
-                    )
+                    self.release_observation(observation, edge, color)
                 occupied = occupied_table_points(
-                    views,
+                    self.table_views(observation, cameras),
                     edge,
                     self.colors[:index],
                     include_clipped=self.wrist_clearance,
                 )
-            z = edge["height"]
-            for along, inset, search in release_candidates(side, edge["span"]):
-                place = (edge["distance"] + inset) * edge["normal"] + along * t
-                if any(np.linalg.norm(place - p) < 0.078 for p in occupied):
-                    continue
-                try:
-                    inbound, outbound = self.release_paths(place, z)
-                except UnreachableGrasp:
-                    continue
-                self.follow(inbound, 340)
-                self.act(
-                    "table observation",
-                    release_xy_m=place.tolist(),
-                    observed_occupants=len(occupied),
-                    release_search=search,
-                    inset_m=inset,
+            selection = self.release_slot(edge, occupied)
+            if selection is None and index and self.wrist_clearance:
+                edge, occupied = self.reposition_for_release(
+                    edge, occupied, observation, color, self.colors[:index]
                 )
-                break
-            else:
+                selection = self.release_slot(edge, occupied)
+            if selection is None:
                 raise ValueError(
                     "No reachable clear release point on the visible tabletop"
                 )
+            place, inbound, outbound, inset, search = selection
+            z = edge["height"]
+            self.follow(inbound, 340)
+            self.act(
+                "table observation",
+                release_xy_m=place.tolist(),
+                observed_occupants=len(occupied),
+                release_search=search,
+                inset_m=inset,
+            )
             self.phase("release", color)
             self.joints({self.grip: -0.25}, 180)
             self.follow(outbound, 240)
