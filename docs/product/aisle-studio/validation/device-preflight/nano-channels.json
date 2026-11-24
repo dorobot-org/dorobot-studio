@@ -1,0 +1,86 @@
+[
+  {
+    "trial": "1795474685321732000-Nano-run",
+    "robot": "Nano",
+    "controller_sha256": "6b02a6890efbe151b60c1bb37b28329ff302cd3be2e2b22c376833272a7a1c6b",
+    "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "simulation_result_sha256": "8f1dc768d2a83db5454ccc19065832029a6d64fac7463fc9f2c7615e8eabbc96",
+    "kind": "visual-approach",
+    "motor_commands_sent": 0,
+    "physical_qualification": false,
+    "required_capabilities": [
+      "arms",
+      "joint_feedback",
+      "mobile_base",
+      "head",
+      "cameras"
+    ],
+    "missing_capabilities": [
+      "arms",
+      "joint_feedback",
+      "head",
+      "cameras"
+    ],
+    "adapter": "Adora Nano \u00b7 Feetech base",
+    "adapter_profile_sha256": "2d05780f5044d3d98647f7308afd6ad196f08d0f4709238dc443e824e267ff2f",
+    "state": "Adapter incomplete",
+    "wheels": [
+      "wheel_2_joint",
+      "wheel_1_joint",
+      "wheel_3_joint"
+    ],
+    "capabilities": {
+      "mobile_base": true,
+      "strafe": true,
+      "arms": false,
+      "head": false,
+      "cameras": false,
+      "joint_feedback": false,
+      "measured_odometry": false
+    },
+    "reason": "The installed profile maps 3 wheels. Missing for this trial: arms, joint feedback, head, cameras."
+  },
+  {
+    "trial": "1795531683703770000-Nano-run",
+    "robot": "Nano",
+    "controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "simulation_result_sha256": "4aa58104c66cd75c417a4a49c1058dc4d7a04ef7411c5e8e0e5884153608ac0a",
+    "kind": "table-transfer",
+    "motor_commands_sent": 0,
+    "physical_qualification": false,
+    "required_capabilities": [
+      "arms",
+      "joint_feedback",
+      "mobile_base",
+      "head",
+      "cameras",
+      "measured_odometry"
+    ],
+    "missing_capabilities": [
+      "arms",
+      "joint_feedback",
+      "head",
+      "cameras",
+      "measured_odometry"
+    ],
+    "adapter": "Adora Nano \u00b7 Feetech base",
+    "adapter_profile_sha256": "2d05780f5044d3d98647f7308afd6ad196f08d0f4709238dc443e824e267ff2f",
+    "state": "Adapter incomplete",
+    "wheels": [
+      "wheel_2_joint",
+      "wheel_1_joint",
+      "wheel_3_joint"
+    ],
+    "capabilities": {
+      "mobile_base": true,
+      "strafe": true,
+      "arms": false,
+      "head": false,
+      "cameras": false,
+      "joint_feedback": false,
+      "measured_odometry": false
+    },
+    "reason": "The installed profile maps 3 wheels. Missing for this trial: arms, joint feedback, head, cameras, measured odometry."
+  }
+]
