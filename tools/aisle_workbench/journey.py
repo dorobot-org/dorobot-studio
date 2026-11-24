@@ -480,6 +480,54 @@ def main():
                 "Surveyed footprint imported",
             )
             first = saved["room_path"]
+            mounts = (
+                saved["room_info"].get("settings", {}).get("camera_mount_checks", {})
+            )
+            if mounts:
+                labels = {
+                    "head": "Head",
+                    "left_wrist": "Left wrist",
+                    "right_wrist": "Right wrist",
+                }
+                lines = [
+                    f"{labels[k]} · {v['max_check_px']:.2f} px max on {v['check_points']} check points"
+                    for k, v in mounts.items()
+                ]
+                wait(
+                    lambda j: all(
+                        line in j["controls"]["aisle_scene.room_detail"]["text"]
+                        for line in lines
+                    ),
+                    "Camera validation visible on Scene",
+                )
+                checks.append(
+                    dict(
+                        check="Displayed independent camera reprojection checks",
+                        cameras=mounts,
+                    )
+                )
+                grab("survey-camera-fit")
+                archived = Path(first).with_name("survey.json")
+                bad = json.loads(archived.read_bytes())
+                bad["image"] = str(archived.with_name("reference-image"))
+                name = next(iter(mounts))
+                point = next(
+                    m
+                    for m in bad["camera_calibration"]["cameras"][name]["landmarks"]
+                    if m["use"] == "check"
+                )
+                point["pixel"][0] += 10 if point["pixel"][0] < 240 else -10
+                incorrect = a.out.parent / "incorrect-camera-survey.json"
+                incorrect.write_text(json.dumps(bad))
+                fill_survey("survey_path", str(incorrect))
+                click("aisle_scene.import_survey")
+                stopped = done(
+                    lambda w: not w["busy"]
+                    and "check landmark reprojection" in w["status"],
+                    "Rejected the incorrect camera measurement",
+                )
+                assert stopped["room_path"] == first
+                checks[-1]["reason"] = stopped["status"]
             fill_survey("geometry", "ottoman 0 0 0.35")
             click("aisle_scene.save_geometry")
             failed = done(

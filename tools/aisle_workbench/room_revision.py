@@ -75,18 +75,23 @@ def sensor_settings(sheet, source, model_sha):
     if "floor_friction" in values and not 0 <= values["floor_friction"] <= 2:
         raise ValueError("Choose a floor friction coefficient from zero to two")
     if "camera_calibration" in sheet:
-        from nano_cameras import validate_rig
+        from camera_survey import resolve_mounts
 
         spec = sheet["camera_calibration"]
+        calibration_dir = source.parent
         if isinstance(spec, str):
-            spec = json.loads((source.parent / spec).read_text())
+            path = source.parent / spec
+            spec = json.loads(path.read_text())
+            calibration_dir = path.parent
         if not model_sha or spec["model_sha256"] != model_sha or not spec.get("source"):
             raise ValueError(
                 "Camera calibration needs the matching Nano model hash and source"
             )
-        validate_rig(spec["cameras"], (480, 360))
+        cameras, reports = resolve_mounts(spec, calibration_dir)
         sheet["camera_calibration"] = spec
-        values["cameras"] = spec["cameras"]
+        values["cameras"] = cameras
+        if reports:
+            values["camera_mount_checks"] = reports
         values["calibration_source"] = str(spec["source"])
     return values
 
