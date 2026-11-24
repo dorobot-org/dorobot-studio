@@ -45,3 +45,12 @@ The archived development attempts include the full motor and camera evidence and
 The continuous landmark tracker recovered layout 36 and completed one of the five original failures. It stopped on 9 because the apparent displacement between frames was inconsistent and on 15 and 19 because consecutive views had no common complete silhouette. All three cubes settled on 16, which still failed continuous wheel support. All five motor journals verified with zero guard bypasses. All four control layouts passed. The original motor journals matched byte for byte on the three disclosed control seeds from cohort E.
 
 Open **Evidence → Evaluations**, select `tracked/evidence.zip` as the current archive and `original/evidence.zip` as the baseline, then click **Compare archives**. Keep each adjacent `suite.json` in its own directory. The native comparison counted one gain, four layouts failing both and zero regressions. It reopened the same comparison after restart. [Original capture](original/evidence.zip) · [Tracked turn](tracked/evidence.zip) · [Native comparison](matched-development.png) · [Instrument checks](native-comparison.json)
+
+### Onboard views during the successful turn
+
+In layout 36, the Nano was holding blue with red and green already on the table. The first exposure was taken at 264.12 s of simulation time. After a turn of about 11.3°, it measured the rim again at 265.92 s. Its observed standoff changed by 6 mm. The robot combined two fresh detections with three retained detections and chose a release 105 mm inside the observed near edge. A cube can appear in more than one camera, so the detection count can exceed the physical cube count. All three cubes remained in direct tabletop contact for the final 100 physics ticks.
+
+| Simulated time | Head | Left wrist holding blue | Right wrist |
+| --- | --- | --- | --- |
+| 264.12 s | ![Head before turning](26412-head.png) | ![Left wrist before turning](26412-left_wrist.png) | ![Right wrist before turning](26412-right_wrist.png) |
+| 265.92 s | ![Head after braking](26592-head.png) | ![Left wrist after braking](26592-left_wrist.png) | ![Right wrist after braking](26592-right_wrist.png) |
