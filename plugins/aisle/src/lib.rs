@@ -852,6 +852,19 @@ impl PluginPanel for Panel {
                     }
                     let impact = &w.evidence["disturbance"];
                     if impact.is_object() {
+                        if let Some(links) = impact["links"].as_array() {
+                            let labels = links
+                                .iter()
+                                .filter_map(|link| link.as_str())
+                                .map(|name| name.trim_end_matches("_link").replace('_', " "))
+                                .collect::<Vec<_>>();
+                            if labels.is_empty() {
+                                summary.push_str("\nNo block contact recorded");
+                            } else {
+                                summary
+                                    .push_str(&format!("\nBlock contacted {}", labels.join(", ")));
+                            }
+                        }
                         let recovery = impact["recovery_s"]
                             .as_f64()
                             .map(|t| format!("stable after {t:.2} s"))

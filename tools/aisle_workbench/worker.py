@@ -560,6 +560,7 @@ def simulate(args, meta):
             control,
             impact=impact,
             reach_weights=weights,
+            impact_aim=getattr(args, "impact_aim", "torso-v2"),
             parameters=json.loads(impact_recipe.read_text()) if impact_recipe else None,
         ) | dict(
             **(
@@ -748,6 +749,12 @@ def main():
     p.add_argument("--trial", type=Path)
     p.add_argument("--archive", type=Path)
     p.add_argument("--dataset", type=Path)
+    p.add_argument(
+        "--impact-aim",
+        choices=["pelvis-v1", "torso-v2"],
+        default="torso-v2",
+        help="Calibration of the simulated G1 impact",
+    )
     p.add_argument("--onboard-context", action="store_true")
     p.add_argument(
         "--rgb-timing",
