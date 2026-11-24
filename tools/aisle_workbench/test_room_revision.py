@@ -1,4 +1,7 @@
 import json
+from zipfile import ZipFile
+
+import numpy as np
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -52,6 +55,62 @@ class RoomTests(unittest.TestCase):
             )["obstacles"],
             result["obstacles"],
         )
+
+    def test_measured_camera_mounts_survive_moving_the_survey(self):
+        with ZipFile(EXAMPLE.with_name("nano-camera-survey.zip")) as archive:
+            archive.extractall(self.root / "example")
+        example = self.root / "example"
+        expected = json.loads((example / "fixture-truth.json").read_bytes())["cameras"]
+        survey = example / "survey.json"
+        fit = import_room(survey, self.saved, SCENE)
+        for name, report in fit["settings"]["camera_mount_checks"].items():
+            self.assertEqual((report["fit_points"], report["check_points"]), (9, 5))
+            self.assertLess(report["max_check_px"], 1)
+            actual = np.array(fit["settings"]["cameras"][name]["link_from_camera_gl"])
+            truth = np.array(expected[name]["link_from_camera_gl"])
+            self.assertLess(np.linalg.norm(actual[:3, 3] - truth[:3, 3]), 0.001)
+            cosine = (np.trace(actual[:3, :3].T @ truth[:3, :3]) - 1) / 2
+            self.assertLess(np.degrees(np.arccos(np.clip(cosine, -1, 1))), 0.3)
+        example.rename(self.root / "moved-away")
+        again = self.root / "edit"
+        again.mkdir()
+        updated = import_room(
+            self.saved / "survey.json",
+            again,
+            SCENE,
+            "ottoman 1.38 -0.45 0.35",
+            digest(self.saved / "room.json"),
+        )
+        self.assertEqual(updated["settings"], fit["settings"])
+        self.assertNotIn("images", fit["settings"])
+        stored = json.loads((again / "survey.json").read_bytes())
+        self.assertEqual(len(stored["camera_calibration"]["images"]), 42)
+        rig = stored["camera_calibration"]
+        ref = rig["cameras"]["head"]["landmarks"][0]["image"]
+        rig["images"][ref] = rig["images"][
+            rig["cameras"]["left_wrist"]["landmarks"][0]["image"]
+        ]
+        with self.assertRaisesRegex(ValueError, "digest differs"):
+            sensor_settings(stored, again / "survey.json", MODEL_SHA)
+
+    def test_held_out_landmarks_are_distinct_and_checked(self):
+        from camera_survey import fit_mount
+
+        with ZipFile(EXAMPLE.with_name("nano-camera-survey.zip")) as archive:
+            row = json.loads(archive.read("captures/landmarks.json"))["cameras"][
+                "left_wrist"
+            ]
+        check = next(p for p in row["landmarks"] if p["use"] == "check")
+        check["pixel"][0] += 12
+        with self.assertRaisesRegex(
+            ValueError, "left_wrist check landmark reprojection"
+        ):
+            fit_mount("left_wrist", row)
+        check["link_m"] = next(
+            p["link_m"] for p in row["landmarks"] if p["use"] == "fit"
+        )
+        with self.assertRaisesRegex(ValueError, "distinct"):
+            fit_mount("left_wrist", row)
 
     def test_modified_survey_cannot_change_a_saved_revision(self):
         parent = digest(self.saved / "room.json")

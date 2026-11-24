@@ -14,6 +14,8 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 ## Operator guides
 
+[Fit the Nano camera mounts from surveyed RGB landmarks and verify them in Scene](validation/room-survey/camera-mounts.md)
+
 [Choose an earlier controller revision and run it after restarting Studio](validation/controller-selection/README.md)
 
 [Revise a Nano controller after a measured loss of wheel support](validation/nano-forward-speed/README.md)

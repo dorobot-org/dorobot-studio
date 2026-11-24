@@ -817,6 +817,21 @@ impl PluginPanel for Panel {
                             b["size"][2].as_f64().unwrap_or_default()
                         ));
                     }
+                    if let Some(checks) = info["settings"]["camera_mount_checks"].as_object() {
+                        for (name, label) in [
+                            ("head", "Head"),
+                            ("left_wrist", "Left wrist"),
+                            ("right_wrist", "Right wrist"),
+                        ] {
+                            if let Some(check) = checks.get(name) {
+                                if let (Some(error), Some(count)) =
+                                    (check["max_check_px"].as_f64(), check["check_points"].as_u64())
+                                {
+                                    text.push(format!("{label} · {error:.2} px max on {count} check points"));
+                                }
+                            }
+                        }
+                    }
                     self.label(cx, ids!(room_detail), &text.join("\n"));
                     self.root
                         .button(cx, ids!(import_survey))
