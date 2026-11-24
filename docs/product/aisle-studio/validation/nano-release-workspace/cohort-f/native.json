@@ -85,7 +85,7 @@
     {
       "check": "Unreadable archive rejected",
       "robot": "Nano",
-      "status": "[Errno 2] No such file or directory: '/Users/yuechen/home/aisle-transfer-wrist-timing/docs/product/aisle-studio/validation/nano-release-workspace/cohort-f/missing-archive-for-ui-check.zip'"
+      "status": "[Errno 2] No such file or directory: '<studio-checkout>/docs/product/aisle-studio/validation/nano-release-workspace/cohort-f/missing-archive-for-ui-check.zip'"
     }
   ],
   "recovery": [
