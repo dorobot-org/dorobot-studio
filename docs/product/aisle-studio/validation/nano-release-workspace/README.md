@@ -71,3 +71,7 @@ The Studio verifier contains a versioned catalog of published output digests key
 The native Codex run placed red on layout 3006510755 in 11,286 ticks. A separate local fleet worker accepted the same seed and reproduced that motor journal. DeepSeek through Octos placed all three cubes on layout 3856023877 in 28,802 ticks. Its journal matched the Codex-authored cohort run on that layout. Both native processes reopened their result after restart, and both exported LeRobot episodes retained the exact seed in `meta/aisle.json` under `simulation_source.seed`. The archive includes both controllers, measured motor commands, output metadata, native instrument receipts and the fleet lease. [Native and fleet evidence](native-seeds.zip) · [Independent seed and motor check](verify_native_seeds.py)
 
 The native Evidence instrument also rejected a copy with a changed camera packet and a regenerated adjacent receipt and restored the preceding verified comparison after restart. [Tampered-capture test](native-output-integrity.json)
+
+## Fresh cohort F result
+
+With continuous visual tracking during the placement turn, Nano completed all three transfers on **45 of 50** concealed layouts. Independent replay verified 50 motor journals and 101 synchronized release exposures. It found zero guard bypasses. The PRD threshold was 45 complete transfers. [Inspect all five failures, verify the archive and reproduce a layout](cohort-f/README.md)
