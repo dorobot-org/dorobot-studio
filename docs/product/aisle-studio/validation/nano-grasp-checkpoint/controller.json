@@ -1,0 +1,68 @@
+{
+  "kind": "table-transfer",
+  "color_order": "red,green,blue",
+  "robot": "Nano",
+  "task": "Move all three floor cubes onto the coffee table in red, green, blue order.",
+  "provider": "octos-deepseek",
+  "policy_model": "deepseek-v4-flash",
+  "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+  "grasp_estimator": {
+    "method": "nano-wrist-carry-logistic-v1",
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "teacher_controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+    "dataset_sha256": "ed0e79fa85e33bf00d64b40bc0da046c2df97a5bd8f787c54388d9c4df51cee3",
+    "features": [
+      "color_fraction",
+      "aperture_fraction",
+      "upper_left",
+      "upper_right",
+      "middle_left",
+      "middle_right",
+      "lower_left",
+      "lower_right",
+      "gripper_rad",
+      "wrist_roll_rad"
+    ],
+    "mean": [
+      0.034798654664212135,
+      0.1608610927692649,
+      0.17456601256591353,
+      0.15006145448684693,
+      0.17241623180966065,
+      0.15764431813294513,
+      0.16516298024301387,
+      0.14522752054344296,
+      0.044870360348104536,
+      0.5608636606403735
+    ],
+    "scale": [
+      0.06771184941347701,
+      0.3473427893015765,
+      0.3783659256758688,
+      0.32042215971076865,
+      0.3770950695150504,
+      0.33751614130116636,
+      0.3646329299744961,
+      0.32434448941621963,
+      0.29674401049438104,
+      0.6393585103021467
+    ],
+    "weights": [
+      0.06565350700007273,
+      0.4578159403343665,
+      0.5389198140638232,
+      0.40062371028675026,
+      0.5535569583772851,
+      0.49792692577216696,
+      0.6127994818384058,
+      0.06522830481034846,
+      0.9578276603657008,
+      0.5516279085684634
+    ],
+    "bias": -4.526582245134007,
+    "training_sha256": "9ed5922decaba716807a6304f1bc83c136f66188e4fb46e0dd78f0c2f15fd988"
+  },
+  "grasp_checkpoint": "fe3c72e7559ffa8a0ca3209e745da9392eb47886631ca4ca257844a3c4a3b68c",
+  "training_dataset": "ed0e79fa85e33bf00d64b40bc0da046c2df97a5bd8f787c54388d9c4df51cee3",
+  "parent_controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a"
+}
