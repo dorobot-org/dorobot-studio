@@ -1001,6 +1001,12 @@ impl MatchEvent for App {
                         "recording": self.backend.record().recording, "saved": self.backend.record().saved, "discarded": self.backend.record().discarded,
                         "language": self.language.code(), "untranslated": self.localizer.untranslated(),
                         "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()});
+                if self.plugins.selected() == Some("aisle_run") {
+                    let camera = self.ui.widget(cx, ids!(aisle_run.camera));
+                    probe["aisle_camera_label_draw_ns"] = serde_json::json!(camera
+                        .borrow::<dorobot_flex::widgets::video_player::VideoPlayer>()
+                        .and_then(|v| v.label_draw_ns()));
+                }
                 probe["aisle_panel"] = serde_json::json!(self.plugins.selected());
                 probe["aisle_source_root"] = serde_json::json!(dorobot_flex::runtime::root().canonicalize().ok());
                 probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"worker_pid":w.worker_pid(),"workers_open":w.workers_open,"background_period_s":w.background_period_s,"observation_clock":w.observation_clock.name(),"fleet":w.fleet,"worker_observation":w.worker_observation,"status":w.status,"scene_joints":w.scene["joint_count"],"progress":w.progress,"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"impact":w.impact,"rgb_timing":w.rgb_timing.name(),"target_motion":w.target_motion.name(),"onboard_context":w.onboard_context,"room_editor":w.room_editor,"show_device":w.show_device,"preflight":w.preflight,"show_evaluation":w.show_evaluation,"evaluation":w.evaluation,"failure_index":w.failure_index,"room_draft":w.room_draft_info,"room_draft_path":w.room_draft_path,"room_info":w.room_info,"room_path":w.room_path,"layout_seed":w.layout_seed,"revision":w.revision_index(),"dataset":w.dataset,"transfer_comparison":w.transfer_comparison,"decision_observation":w.decision,"result":w.evidence})));

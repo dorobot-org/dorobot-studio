@@ -13,7 +13,7 @@ The display uses draw intervals from the preceding two seconds, measured at the 
 | M3 Max, 1440 × 900 offscreen, Codex-authored Nano | 30.6 FPS | The red cube reached the table. Studio switched to the background job’s snapshot, then recovered the original 342-frame foreground episode after restart. |
 | One H100 NVL, 1024 × 768 headless Studio, DeepSeek controller authored through Octos | 17.7 FPS | The red cube reached the table. Both the evidence and the 347-frame export reopened after restart. |
 
-These readings are short samples of the on-screen counter. Immediately before interrupting the H100 camera receiver, Studio drew 35 intervals over 1.982 seconds. The operator saw **Stream stalled** after 2.094 seconds of the interruption, then **Waiting for frames**, then a new FPS value. The original simulation kept running on the same worker lease throughout. [Native draw timestamps](native-draws.json) · [Label sequence during interruption](worker-stall.json)
+Both UI checks used the same macOS Studio binary. In the H100 check, Linux ran the Nexus worker and Studio received its frames over SSH. These readings are short samples of the on-screen counter. Immediately before interrupting the H100 camera receiver, Studio drew 35 intervals over 1.982 seconds. The operator saw **Stream stalled** after 2.094 seconds of the interruption, then **Waiting for frames**, then a new FPS value. The original simulation kept running on the same worker lease throughout. [Native draw timestamps](native-draws.json) · [Label sequence during interruption](worker-stall.json)
 
 The direct local path also ran the floating-base G1 standing reach with its development impact fixture and draw tracing disabled. Its external operator camera showed about 6 FPS during the trial and returned to its static heading on completion. Both feet stayed loaded for 2,000 steps. The episode contains 101 frames and reopened after restart. [G1 camera labels, impact and recovery](g1-local.json)
 
@@ -39,3 +39,37 @@ python audit.py --check
 ```
 
 [Raw samples](render-samples.zip) · [Machine-readable comparisons](render-comparison.json) · [Measurement program and arguments](render_probe.py)
+
+### Rerun the H100 measurement
+
+Run these commands from this directory using the H100 worker’s Python with AISLE, the Nano assets, and dimforge-nexus3d 0.2.1 available. Each invocation creates a new output directory and initializes a new Nexus engine on the selected GPU.
+
+```sh
+repo=$(git rev-parse --show-toplevel)
+work=$(mktemp -d)
+unzip -p ../eight-h100/lossless-rgb/measurements.zip codex/gpu1/motor-targets.f64 > "$work/motor-targets.f64"
+for setting in reference floor 2048 1024; do
+  python render_probe.py "$repo" "$work/motor-targets.f64" "$work/$setting" "$setting"
+done
+python render_probe.py "$repo" "$work/motor-targets.f64" "$work/repeat" reference
+```
+
+For the isolated 0.3.0 comparison, install the wheel in a private directory and put it first on the worker interpreter’s import path. The resulting configuration uses the original shadow settings.
+
+```sh
+python -m pip install --no-deps --target "$work/wheel" dimforge-nexus3d==0.3.0
+python - "$work/wheel" render_probe.py "$repo" "$work/motor-targets.f64" "$work/nexus-0.3.0" reference <<'PY'
+import importlib.metadata
+from pathlib import Path
+import runpy
+import sys
+
+wheel = Path(sys.argv.pop(1)).resolve()
+sys.path.insert(0, str(wheel))
+import nexus3d
+assert Path(nexus3d.__file__).resolve().is_relative_to(wheel)
+assert importlib.metadata.version("dimforge-nexus3d") == "0.3.0"
+sys.argv.pop(0)
+runpy.run_path(sys.argv[0], run_name="__main__")
+PY
+```

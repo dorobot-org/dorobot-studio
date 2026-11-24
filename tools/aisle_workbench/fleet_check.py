@@ -79,39 +79,57 @@ def retained_background(root, jobs, foreground):
 
 
 def verify_camera_rate(args, wait):
-    """Find the native label's one-decimal rate in the recent distinct draw intervals."""
+    """Recompute the native label from the exact draw used to update its text."""
     control = "aisle_run.camera_label"
     title = "Foreground worker camera · "
+
+    def live(report):
+        label = report["controls"][control]
+        return (
+            label["visible"]
+            and label["text"].startswith(title)
+            and label["text"].endswith(" FPS")
+            and report["state"].get("aisle_camera_label_draw_ns") is not None
+        )
+
+    first_reading = wait(live, "Run displayed a foreground frame rate", 60)
+    ready = first_reading["state"]["aisle_camera_label_draw_ns"] + 2_000_000_000
     ui = wait(
-        lambda r: r["controls"][control]["visible"]
-        and r["controls"][control]["text"].startswith(title)
-        and r["controls"][control]["text"].endswith(" FPS"),
-        "Run page displayed a measured foreground frame rate",
+        lambda report: live(report)
+        and report["state"]["aisle_camera_label_draw_ns"] >= ready,
+        "Run displayed a full window of foreground draws",
         60,
     )
+    endpoint = ui["state"]["aisle_camera_label_draw_ns"]
     label = ui["controls"][control]["text"]
-    rate = float(label.removeprefix(title).removesuffix(" FPS"))
-    trace = (args.out / "journey-draws.jsonl").read_bytes().splitlines(keepends=True)
-    draws = [json.loads(line) for line in trace if line.endswith(b"\n")]
-    source = draws[-1]["source"]
     ticks, times = [], []
-    for draw in draws:
-        if draw["source"] != source:
-            ticks.clear()
-            times.clear()
-        elif not ticks or draw["tick"] != ticks[-1]:
-            ticks.append(draw["tick"])
-            times.append(draw["elapsed_ns"])
-    for end in reversed(range(len(times))):
-        if times[-1] - times[end] > 2_000_000_000:
-            break
-        first = bisect_right(times, times[end] - 2_000_000_000, hi=end)
-        span = (times[end] - times[first]) / 1e9
-        if span >= 0.5 and f"{(end - first) / span:.1f}" == f"{rate:.1f}":
-            return dict(check="Visible Run page FPS matched native draw timestamps",
-                        label=label, first_tick=ticks[first], last_tick=ticks[end],
-                        intervals=end-first, seconds=span)
-    raise AssertionError(f"{label} did not match the recent RGB draw timestamps")
+    source = None
+    with (args.out / "journey-draws.jsonl").open("rb") as trace:
+        for line in trace:
+            draw = json.loads(line)
+            if draw["source"] != source or (ticks and draw["tick"] < ticks[-1]):
+                ticks.clear()
+                times.clear()
+                source = draw["source"]
+            if not ticks or draw["tick"] != ticks[-1]:
+                ticks.append(draw["tick"])
+                times.append(draw["elapsed_ns"])
+            if draw["elapsed_ns"] >= endpoint:
+                break
+    assert times and times[-1] == endpoint, "No draw for the displayed label timestamp"
+    first = bisect_right(times, endpoint - 2_000_000_000)
+    span = (endpoint - times[first]) / 1e9
+    intervals = len(times) - first - 1
+    assert span >= 0.5 and label == f"{title}{intervals / span:.1f} FPS"
+    return dict(
+        check="Visible Run page FPS matched native draw timestamps",
+        label=label,
+        first_tick=ticks[first],
+        last_tick=ticks[-1],
+        label_draw_ns=endpoint,
+        intervals=intervals,
+        seconds=span,
+    )
 
 
 def native_journey(args, checks, page, click, remote, done, grab, wait):

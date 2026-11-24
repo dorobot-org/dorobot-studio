@@ -201,7 +201,11 @@ pub struct VideoPlayer {
     #[rust]
     overlay_text: String,
     #[rust]
-    measured_draw: Option<(std::path::PathBuf, u64)>,
+    measured_draw: Option<u64>,
+    #[rust]
+    measured_source: Option<std::path::PathBuf>,
+    #[rust]
+    label_draw_ns: Option<u64>,
     #[rust]
     draw_trace: Option<std::fs::File>,
     #[rust]
@@ -304,12 +308,12 @@ impl Widget for VideoPlayer {
 
         let step = self.view.draw_walk(cx, scope, walk);
         if step.is_done() {
-            if let Some((source, tick)) = self.measured_draw.take() {
+            if let Some(tick) = self.measured_draw.take() {
                 let now = draw_time();
                 self.viewport_cadence.record(tick, now);
                 if let Some(file) = &mut self.draw_trace {
                     use std::io::Write;
-                    let row = serde_json::json!({"source": source, "tick": tick, "elapsed_ns": now.as_nanos() as u64});
+                    let row = serde_json::json!({"source": self.measured_source, "tick": tick, "elapsed_ns": now.as_nanos() as u64});
                     let _ = writeln!(file, "{row}");
                 }
             }
@@ -319,6 +323,10 @@ impl Widget for VideoPlayer {
 }
 
 impl VideoPlayer {
+    pub fn label_draw_ns(&self) -> Option<u64> {
+        self.label_draw_ns
+    }
+
     /// Update frame info display (rendered onto video frame)
     pub fn set_frame_info(&mut self, _cx: &mut Cx, current: u64, total: u64) {
         self.current_frame = current;
@@ -348,6 +356,8 @@ impl VideoPlayer {
     /// Clear video display
     pub fn clear(&mut self, cx: &mut Cx) {
         self.measured_draw = None;
+        self.measured_source = None;
+        self.label_draw_ns = None;
         self.viewport_cadence = ViewportCadence::default();
         self.has_video = false;
         self.placeholder_decoder = None;
@@ -399,7 +409,12 @@ impl VideoPlayer {
                     .ok();
             }
         }
-        self.measured_draw = Some((source.to_owned(), tick));
+        if self.measured_source.as_deref() != Some(source) {
+            self.measured_source = Some(source.to_owned());
+            self.viewport_cadence = ViewportCadence::default();
+            self.label_draw_ns = None;
+        }
+        self.measured_draw = Some(tick);
     }
     pub fn set_frame(&mut self, cx: &mut Cx, width: usize, height: usize, data: &[u8]) {
         // Track video dimensions for overlay positioning
@@ -710,10 +725,15 @@ macro_rules! delegate_ref_method {
 
 impl VideoPlayerRef {
     pub fn live_cadence(&self) -> String {
-        self.borrow().map_or_else(
-            || "Waiting for frames".into(),
-            |v| v.viewport_cadence.display(draw_time()),
-        )
+        let Some(mut view) = self.borrow_mut() else {
+            return "Waiting for frames".into();
+        };
+        view.label_draw_ns = view
+            .viewport_cadence
+            .times
+            .back()
+            .map(|t| t.as_nanos() as u64);
+        view.viewport_cadence.display(draw_time())
     }
 
     delegate_ref_method!(set_frame_info, cx, current: u64, total: u64);
