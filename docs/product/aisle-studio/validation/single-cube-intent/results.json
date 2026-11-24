@@ -1,0 +1,169 @@
+{
+  "instruction": "Move the red floor cube onto the coffee table.",
+  "previous_native_draft": {
+    "kind": "table-transfer",
+    "color_order": "red,green,blue",
+    "robot": "Nano",
+    "task": "Move the red floor cube onto the coffee table.",
+    "provider": "octos-deepseek",
+    "policy_model": "deepseek-v4-flash",
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+  },
+  "before_physics_rejection": {
+    "message": "The operator requested only the red cube. Revise the controller before running it."
+  },
+  "new_runs": {
+    "codex": {
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "red",
+        "robot": "Nano",
+        "task": "Move the red floor cube onto the coffee table.",
+        "provider": "codex",
+        "policy_model": "gpt-6.2-astra",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "provider": {
+        "provider": "codex",
+        "model": "gpt-6.2-astra",
+        "wall_seconds": 6.667972333030775
+      },
+      "result": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3182,
+            "final_position_m": [
+              0.1555689126253128,
+              0.7180509567260742,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.29385481821736925,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.11805095672607424,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 6848,
+        "unsupported_wheel_ranges": [],
+        "physics_ticks": 6848,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "red"
+        ],
+        "phase": "back away",
+        "onboard_observations": 128,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 6848,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 342,
+        "recording": true,
+        "carry_annotations": true,
+        "grasp_checkpoint": null,
+        "training_dataset": null,
+        "seed": 0,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": true
+      }
+    },
+    "octos-deepseek": {
+      "controller": {
+        "kind": "table-transfer",
+        "color_order": "red",
+        "robot": "Nano",
+        "task": "Move the red floor cube onto the coffee table.",
+        "provider": "octos-deepseek",
+        "policy_model": "deepseek-v4-flash",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "provider": {
+        "provider": "octos-deepseek",
+        "model": "deepseek-v4-flash",
+        "wall_seconds": 2.2800770830363035,
+        "input_tokens": 6307,
+        "output_tokens": 203
+      },
+      "result": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3182,
+            "final_position_m": [
+              0.1555689126253128,
+              0.7180509567260742,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.29385481821736925,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.11805095672607424,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 6848,
+        "unsupported_wheel_ranges": [],
+        "physics_ticks": 6848,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "red"
+        ],
+        "phase": "back away",
+        "onboard_observations": 128,
+        "measured_room_bodies": {},
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 6848,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 342,
+        "recording": true,
+        "carry_annotations": true,
+        "grasp_checkpoint": null,
+        "training_dataset": null,
+        "seed": 0,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": null,
+        "room_obstacles": [],
+        "task_success": true
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import worker
@@ -105,6 +106,57 @@ class InspectionTests(unittest.TestCase):
             worker.validate(plan | {"kind": "visual-approach"}, self.profile)
         with self.assertRaisesRegex(ValueError, "tracking"):
             worker.validate(plan | {"track_grasp": "true"}, self.profile)
+
+    def test_single_named_transfer_binds_saved_and_new_controllers(self):
+        for color in ("red", "blue", "green"):
+            plan = dict(
+                kind="table-transfer",
+                task=f"Move the {color} floor cube onto the coffee table.",
+            )
+            self.assertEqual(
+                worker.validate(plan | {"color_order": color}, self.profile)[
+                    "color_order"
+                ],
+                color,
+            )
+            for wrong in [
+                dict(color_order="red,green,blue"),
+                dict(kind="visual-approach", color=color),
+            ]:
+                with self.assertRaisesRegex(ValueError, "operator requested only"):
+                    worker.validate(plan | wrong, self.profile)
+        for instruction in (
+            "Move all three floor cubes onto the coffee table in red, green, blue order.",
+            "Move the cube left of the red cube onto the coffee table.",
+            "Move the red cube onto the coffee table. Then move the nearest cube.",
+        ):
+            self.assertIsNone(worker.named_cube_transfer(instruction))
+
+    def test_author_receives_the_named_target_and_an_overbroad_reply_is_rejected(self):
+        task = "Please put the green cube on the coffee table."
+        args = SimpleNamespace(
+            robot="Nano",
+            task=task,
+            feedback=None,
+            provider="octos-deepseek",
+            out=Path("."),
+        )
+        reply = dict(
+            supported=True, kind="table-transfer", color_order="red,green,blue"
+        )
+        with patch.object(
+            worker, "request_controller", return_value=(reply, "test-model")
+        ) as author:
+            with self.assertRaisesRegex(ValueError, "only the green cube"):
+                worker.prepare(args, self.profile)
+        schema = author.call_args.args[2]
+        self.assertEqual(schema["properties"]["color_order"]["enum"], ["green"])
+        self.assertEqual(schema["properties"]["kind"]["enum"], ["table-transfer"])
+        # An older plan with no instruction still uses the existing action-envelope check.
+        self.assertEqual(
+            worker.validate(reply, self.profile),
+            dict(kind="table-transfer", color_order="red,green,blue"),
+        )
 
     def test_transfer_requires_nano_and_a_distinct_color_order(self):
         for order in ["blue", "green,blue,red"]:

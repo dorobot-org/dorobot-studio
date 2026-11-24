@@ -6,6 +6,7 @@ import itertools
 import json
 import math
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -84,7 +85,27 @@ def describe(robot):
     )
 
 
+def named_cube_transfer(task):
+    """Recognize an unambiguous single-cube request, leaving spatial and compound instructions to the author."""
+    normalized = " ".join(task.lower().split())
+    match = re.fullmatch(
+        r"(?:please )?(?:move|place|put|carry|transfer) (?:only )?(?:the |a )?"
+        r"(red|green|blue) (?:floor )?cube (?:from the (?:ground|floor) )?"
+        r"(?:on|onto|to) (?:the |a )?coffee table[.!]?",
+        normalized,
+    )
+    return match.group(1) if match else None
+
+
 def validate(plan, meta):
+    if meta["robot"] == "Nano" and isinstance(plan.get("task"), str):
+        named = named_cube_transfer(plan["task"])
+        if named and (
+            plan.get("kind") != "table-transfer" or plan.get("color_order") != named
+        ):
+            raise ValueError(
+                f"The operator requested only the {named} cube. Revise the controller before running it."
+            )
     tracking = plan.get("track_grasp", False)
     if type(tracking) is not bool or (
         tracking and plan.get("kind") != "table-transfer"
@@ -445,13 +466,16 @@ def prepare(args, meta):
             + args.task
         )
         if args.robot == "Nano":
+            named = named_cube_transfer(args.task)
             schema["properties"].update(
                 kind=dict(
                     type="string",
-                    enum=["joint-inspection", "visual-approach", "table-transfer"],
+                    enum=["table-transfer"]
+                    if named
+                    else ["joint-inspection", "visual-approach", "table-transfer"],
                 ),
                 color=dict(type="string", enum=["red", "green", "blue"]),
-                color_order=dict(type="string", enum=CUBE_ORDERS),
+                color_order=dict(type="string", enum=[named] if named else CUBE_ORDERS),
                 track_grasp=dict(type="boolean"),
                 standoff_m=dict(type="number"),
             )
@@ -528,7 +552,7 @@ def prepare(args, meta):
         plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
-    validated = validate(plan, meta)
+    validated = validate(plan | {"task": args.task}, meta)
     if observation and validated.get("kind") in ("visual-approach", "table-transfer"):
         selected = (
             [validated["color"]]
