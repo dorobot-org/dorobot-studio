@@ -45,9 +45,11 @@ fn fresh(at: Option<Instant>, now: Instant) -> bool {
 }
 
 impl StatusBuilder {
-    /// `robot_model` is sent in every status, as the body model Studio draws.
-    pub fn new(robot_model: Option<String>) -> StatusBuilder {
-        StatusBuilder { cur: NavStatus { robot_model, ..NavStatus::default() }, ..StatusBuilder::default() }
+    /// `robot_model` (the body model Studio draws) and `cmd_goal_enabled` (goals and
+    /// initial poses accepted, decided once at start) are sent in every status.
+    pub fn new(robot_model: Option<String>, cmd_goal_enabled: bool) -> StatusBuilder {
+        let cur = NavStatus { robot_model, cmd_goal_enabled, ..NavStatus::default() };
+        StatusBuilder { cur, ..StatusBuilder::default() }
     }
 
     /// `status == 0` means NORMAL (trusted).
@@ -149,11 +151,25 @@ mod tests {
     #[test]
     fn status_carries_robot_model() {
         let now = Instant::now();
-        let mut b = StatusBuilder::new(Some("tracer_mini".into()));
+        let mut b = StatusBuilder::new(Some("tracer_mini".into()), false);
         assert_eq!(b.build(now).0.robot_model.as_deref(), Some("tracer_mini"));
         feed(&mut b, now);
         assert_eq!(b.build(now).0.robot_model.as_deref(), Some("tracer_mini"));
         assert_eq!(StatusBuilder::default().build(now).0.robot_model, None);
+    }
+
+    /// Goals / initial poses enabled on the robot, decided once at start: in every status.
+    #[test]
+    fn status_carries_cmd_goal_enabled() {
+        let now = Instant::now();
+        let mut on = StatusBuilder::new(None, true);
+        assert!(on.build(now).0.cmd_goal_enabled);
+        feed(&mut on, now);
+        on.on_goal_status("C1", "SUCCEEDED", "");
+        assert!(on.build(now).0.cmd_goal_enabled);
+        let mut off = StatusBuilder::new(Some("tracer_mini".into()), false);
+        feed(&mut off, now);
+        assert!(!off.build(now).0.cmd_goal_enabled);
     }
 
     #[test]

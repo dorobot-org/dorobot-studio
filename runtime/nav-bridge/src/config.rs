@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
 /// Wire format of a Dora input.
@@ -105,6 +106,22 @@ impl Default for CmdConfig {
             reply_timeout_ms: 1000,
             max_goal_per_s: 2.0,
         }
+    }
+}
+
+impl CmdConfig {
+    /// `forward` as an address. nav_command listens on 127.0.0.1 only, so any other
+    /// address, a host name or port 0 is refused; the error names the value.
+    pub fn forward_addr(&self) -> Result<SocketAddr, String> {
+        let bad = |why: &str| format!("cmd.forward {:?}: {why}", self.forward);
+        let addr: SocketAddr = self.forward.parse().map_err(|_| bad("not an <ip>:<port> address"))?;
+        if addr.ip() != IpAddr::V4(Ipv4Addr::LOCALHOST) {
+            return Err(bad("must be 127.0.0.1:<port> (nav_command listens on 127.0.0.1 only)"));
+        }
+        if addr.port() == 0 {
+            return Err(bad("port 0"));
+        }
+        Ok(addr)
     }
 }
 
@@ -236,6 +253,29 @@ mod tests {
         let c: BridgeConfig = serde_json::from_str(r#"{"cmd":{"goal_enabled":true}}"#).unwrap();
         assert!(c.cmd.goal_enabled);
         assert_eq!(c.cmd.forward, "127.0.0.1:9998");
+    }
+
+    /// Ruling R7: nav_command listens on 127.0.0.1 only, so anything else is refused.
+    #[test]
+    fn forward_must_be_ipv4_loopback() {
+        let f = |s: &str| CmdConfig { forward: s.into(), ..CmdConfig::default() }.forward_addr();
+        assert_eq!(f("127.0.0.1:9998"), Ok("127.0.0.1:9998".parse().unwrap()));
+        assert_eq!(f("127.0.0.1:19998").map(|a| a.port()), Ok(19998));
+        for bad in [
+            "0.0.0.0:9998",
+            "192.168.1.5:9998",
+            "127.0.0.2:9998",
+            "[::1]:9998",
+            "localhost:9998",
+            "127.0.0.1",
+            "127.0.0.1:0",
+            " 127.0.0.1:9998",
+            "",
+        ] {
+            let err = f(bad).expect_err(bad);
+            assert!(err.starts_with("cmd.forward "), "{err}");
+            assert!(err.contains(&format!("{bad:?}")), "names the value: {err}");
+        }
     }
 
     #[test]

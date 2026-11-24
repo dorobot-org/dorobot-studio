@@ -10,7 +10,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-/// How long after Stop the bridge waits for its worker to finish and close Zenoh.
+/// How long after Stop the bridge waits for its worker, its command channel and the
+/// Zenoh session close to finish.
 const SHUTDOWN_WAIT: Duration = Duration::from_secs(1);
 
 fn main() {
@@ -46,9 +47,11 @@ fn run() -> i32 {
         .and_then(|config| load_config(&config).map_err(|e| format!("config: {e}")))
         .and_then(|cfg| {
             println!(
-                "nav-bridge: robot {}, listening on {}, node logs from {}, graph from {}",
+                "nav-bridge: robot {}, listening on {}, commands on dviz/{}/cmd to {}, node logs from {}, graph from {}",
                 cfg.robot_id,
                 cfg.listen.join(", "),
+                cfg.robot_id,
+                cfg.cmd.forward,
                 logs.display(),
                 dataflow.as_ref().map_or_else(|| "nowhere (NAV_VIZ_DATAFLOW not set)".into(), |p| p.display().to_string())
             );
@@ -76,8 +79,8 @@ fn run() -> i32 {
         }
     }
 
-    // Stop (or the end of the event stream). The worker leaves its loop at once, then
-    // closes Zenoh while Dora's side is torn down here.
+    // Stop (or the end of the event stream). The worker leaves its loop at once while
+    // Dora's side is torn down here; `wait` then ends the command channel and closes Zenoh.
     println!("nav-bridge: stopping");
     let deadline = Instant::now() + SHUTDOWN_WAIT;
     bridge.request_stop();
@@ -94,12 +97,13 @@ fn run() -> i32 {
 /// Ends the process at once: flushes stdout and stderr, then `_exit(2)`.
 ///
 /// After Stop the worker has left its loop, so all that can still be running is the
-/// Zenoh session close, which a connected but stalled Studio reader holds up for
-/// seconds (zenoh-link-tcp sets a 10 s `SO_LINGER`). Neither returning from `main` nor
-/// `std::process::exit` is safe then: both run the exit-time destructors of
-/// `zenoh-shm`'s statics (compiled in by dora-node-api) while the close still uses them,
-/// which panics. `_exit` runs no destructors; the kernel closes the sockets without
-/// lingering. Nothing else is pending: the bridge writes no files, and stdio is flushed.
+/// command channel's end (queued commands answered) and the Zenoh session close, which a
+/// connected but stalled Studio reader holds up for seconds (zenoh-link-tcp sets a 10 s
+/// `SO_LINGER`). Neither returning from `main` nor `std::process::exit` is safe then:
+/// both run the exit-time destructors of `zenoh-shm`'s statics (compiled in by
+/// dora-node-api) while the close still uses them, which panics. `_exit` runs no
+/// destructors; the kernel closes the sockets without lingering. Nothing else is
+/// pending: the bridge writes no files, and stdio is flushed.
 fn exit_now(code: i32) -> ! {
     let _ = std::io::stdout().flush();
     let _ = std::io::stderr().flush();

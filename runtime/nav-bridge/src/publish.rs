@@ -1,4 +1,5 @@
-//! Output side: one Zenoh publisher per dviz entity, drop-style congestion control.
+//! Output side: the bridge's Zenoh session and one publisher per dviz entity,
+//! drop-style congestion control.
 
 use crate::config::BridgeConfig;
 use crate::logs;
@@ -43,9 +44,10 @@ impl Publish for ZenohPublish {
     }
 }
 
-/// Peer session listening on `cfg.listen`, multicast scouting off; one publisher per
-/// entity in `nav_entities::ALL` and `logs::ENTITIES` on `dviz/<robot_id>/<entity>`.
-pub fn zenoh_publisher(cfg: &BridgeConfig) -> Result<Box<dyn Publish>, String> {
+/// The bridge's Zenoh session: peer mode, listening on `cfg.listen`, no outgoing
+/// connections, multicast scouting off. The bridge owns it; the publishers and the
+/// command queryable are declared on it.
+pub fn open_session(cfg: &BridgeConfig) -> Result<zenoh::Session, String> {
     let listen = serde_json::to_string(&cfg.listen).map_err(|e| e.to_string())?;
     let mut config = zenoh::Config::default();
     for (key, value) in [
@@ -56,9 +58,16 @@ pub fn zenoh_publisher(cfg: &BridgeConfig) -> Result<Box<dyn Publish>, String> {
     ] {
         config.insert_json5(key, value).map_err(|e| format!("zenoh config {key}: {e}"))?;
     }
-    let session = zenoh::open(config)
+    zenoh::open(config)
         .wait()
-        .map_err(|e| format!("zenoh open (listen {}): {e}", cfg.listen.join(", ")))?;
+        .map_err(|e| format!("zenoh open (listen {}): {e}", cfg.listen.join(", ")))
+}
+
+/// One publisher per entity in `nav_entities::ALL` and `logs::ENTITIES` on
+/// `dviz/<robot_id>/<entity>`, declared on `session`. It holds a clone of the session:
+/// dropping it (the worker ending or dying) closes the session only if nobody else
+/// holds one.
+pub fn zenoh_publisher_on(session: &zenoh::Session, cfg: &BridgeConfig) -> Result<Box<dyn Publish>, String> {
     let entities = nav_entities::ALL.iter().chain(logs::ENTITIES.iter()).copied();
     let mut publishers = Vec::with_capacity(nav_entities::ALL.len() + logs::ENTITIES.len());
     for entity in entities {
@@ -70,7 +79,14 @@ pub fn zenoh_publisher(cfg: &BridgeConfig) -> Result<Box<dyn Publish>, String> {
             .map_err(|e| format!("zenoh publisher {key}: {e}"))?;
         publishers.push((entity, publisher));
     }
-    Ok(Box::new(ZenohPublish { publishers, _session: session }))
+    Ok(Box::new(ZenohPublish { publishers, _session: session.clone() }))
+}
+
+/// [`open_session`] and [`zenoh_publisher_on`] in one: the publisher is the session's
+/// only holder, so dropping it closes the session.
+pub fn zenoh_publisher(cfg: &BridgeConfig) -> Result<Box<dyn Publish>, String> {
+    let session = open_session(cfg)?;
+    zenoh_publisher_on(&session, cfg)
 }
 
 #[cfg(test)]
@@ -89,6 +105,19 @@ mod tests {
         };
         let err = zenoh_publisher(&cfg).err().unwrap();
         assert!(err.contains("dviz/a//b"), "{err}");
+    }
+
+    /// The bridge owns the session: dropping the publisher (the worker ending or dying)
+    /// leaves it open for the command queryable.
+    #[test]
+    fn publisher_shares_the_bridge_session() {
+        let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let cfg = BridgeConfig { listen: vec![format!("tcp/127.0.0.1:{port}")], ..BridgeConfig::default() };
+        let session = open_session(&cfg).unwrap();
+        let publisher = zenoh_publisher_on(&session, &cfg).unwrap();
+        drop(publisher);
+        assert!(!session.is_closed());
+        session.close().wait().unwrap();
     }
 
     #[test]

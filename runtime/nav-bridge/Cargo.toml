@@ -19,5 +19,9 @@ serde_yaml = "0.9"
 name = "dviz_probe"
 test = true
 
+[[example]]
+name = "dviz_cmd"
+test = true
+
 # Own workspace: not part of the Studio root workspace or runtime/.
 [workspace]

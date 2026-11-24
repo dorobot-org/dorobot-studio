@@ -5,21 +5,28 @@
 //!
 //! The tests run one at a time (`serial`): `encoded_count` is process-wide, and the
 //! push-latency test should not share the CPU with another bridge.
+//!
+//! The command tests run the whole bridge (`run::Bridge`) with its queryable on
+//! `dviz/tracer/cmd`; `cmd.forward` always points at a fake nav_command on an ephemeral
+//! `127.0.0.1` UDP port, never at the robot's 9998.
 
-use dorobot_nav_bridge::config::{BridgeConfig, Rates};
-use dorobot_nav_bridge::publish::{zenoh_publisher, Publish};
+use dorobot_nav_bridge::config::{BridgeConfig, CmdConfig, Rates};
+use dorobot_nav_bridge::logs::LogSources;
+use dorobot_nav_bridge::publish::{open_session, zenoh_publisher, Publish};
+use dorobot_nav_bridge::run::{Bridge as NodeBridge, NodeEvent};
 use dorobot_nav_bridge::worker::{encoded_count, spawn_worker, Inbox};
 use dviz_protocol::{
-    nav_entities, parse_grid2d, parse_message, parse_points_xyz_f32, Grid2DHeader,
-    GridKind, LineStrips3DData, Transform3DData,
+    cmd_key, nav_entities, parse_cmd_ack, parse_grid2d, parse_message, parse_points_xyz_f32, CmdAck,
+    CmdResult, Grid2DHeader, GridKind, LineStrips3DData, NavStatus, Transform3DData,
 };
 use serde_json::json;
 use std::{
-    net::TcpListener,
-    path::PathBuf,
+    net::{SocketAddr, TcpListener, UdpSocket},
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex, MutexGuard,
+        mpsc, Arc, Mutex, MutexGuard,
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -457,4 +464,237 @@ fn stop_flag_exits_within_one_second() {
     let took = bridge.stop();
     println!("stop took {took:?}");
     assert!(took < Duration::from_secs(1), "stop took {took:?}");
+}
+
+// ---- command channel (the whole bridge: session, queryable, lanes, gate slot) ----
+
+const TOKEN: &str = "zl-t0ken-value";
+const ARMED: &[u8] = br#"{"armed":true,"estop":false,"reason":""}"#;
+
+/// Fake nav_command on `127.0.0.1:<ephemeral>`: answers `{"ok":true}` and hands each
+/// datagram (as JSON) to `rx`.
+struct FakeNav {
+    addr: SocketAddr,
+    rx: mpsc::Receiver<serde_json::Value>,
+}
+
+fn fake_nav() -> FakeNav {
+    let sock = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let addr = sock.local_addr().unwrap();
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let mut buf = [0u8; 2048];
+        while let Ok((n, from)) = sock.recv_from(&mut buf) {
+            let v = serde_json::from_slice(&buf[..n]).unwrap_or(serde_json::Value::Null);
+            if tx.send(v).is_err() {
+                return;
+            }
+            let _ = sock.send_to(br#"{"ok":true,"outputs":[]}"#, from);
+        }
+    });
+    FakeNav { addr, rx }
+}
+
+/// `<tmp>/cmd_token` holding `TOKEN` and a newline, with `mode`.
+fn token_file(name: &str, mode: u32) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("navbridge-zl-tok-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("cmd_token");
+    std::fs::write(&path, format!("{TOKEN}\n")).unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+    path
+}
+
+/// Listen on `port`, forward commands to `forward`; without `token` the token file does
+/// not exist.
+fn cmd_cfg(port: u16, forward: SocketAddr, goal_enabled: bool, token: Option<&Path>) -> BridgeConfig {
+    let token_file = token.map_or_else(|| "/nonexistent/navbridge-zl/cmd_token".to_owned(), |p| p.display().to_string());
+    let cmd = CmdConfig { goal_enabled, token_file, forward: forward.to_string(), ..CmdConfig::default() };
+    BridgeConfig { cmd, ..bridge_cfg(port) }
+}
+
+fn start_node(cfg: BridgeConfig) -> NodeBridge {
+    NodeBridge::start(cfg, LogSources::default()).expect("bridge start")
+}
+
+fn gate_input(bytes: &[u8]) -> NodeEvent {
+    NodeEvent::Input { id: "gate_state".into(), data: Some(bytes.to_vec()) }
+}
+
+/// A Studio-like client session connected only to the bridge.
+fn client(port: u16) -> zenoh::Session {
+    let mut config = zenoh::Config::default();
+    config.insert_json5("mode", r#""client""#).unwrap();
+    config.insert_json5("connect/endpoints", &format!(r#"["tcp/127.0.0.1:{port}"]"#)).unwrap();
+    config.insert_json5("listen/endpoints", "[]").unwrap();
+    config.insert_json5("scouting/multicast/enabled", "false").unwrap();
+    zenoh::open(config).wait().expect("client session")
+}
+
+/// One query on `dviz/tracer/cmd`: the first reply's ack, or `None` when the query ends
+/// without one (no queryable, or `timeout`).
+fn ask(session: &zenoh::Session, json: &str, timeout: Duration) -> Option<CmdAck> {
+    let replies = session.get(cmd_key("dviz", "tracer")).payload(json.to_owned()).timeout(timeout).wait().ok()?;
+    let reply = replies.recv().ok()?;
+    let sample = reply.result().ok()?;
+    Some(parse_cmd_ack(&sample.payload().to_bytes()).expect("reply is a CmdAck"))
+}
+
+/// Waits until the bridge answers a harmless command (`arm` is never allowed).
+fn ready(session: &zenoh::Session) -> bool {
+    wait_until(Duration::from_secs(5), || {
+        ask(session, r#"{"cmd":"arm","id":"zl-ready"}"#, Duration::from_millis(500))
+            .is_some_and(|a| a.result == CmdResult::NotAllowed)
+    })
+}
+
+fn goal_json(id: &str, token: &str) -> String {
+    format!(r#"{{"cmd":"goal","id":"{id}","token":"{token}","x":1.5,"y":-0.5,"yaw":0.25}}"#)
+}
+
+fn last_status(sub: &Subscriber) -> NavStatus {
+    let (m, _) = parse_message(&sub.last(nav_entities::NAV_STATUS).expect("no nav/status")).unwrap();
+    serde_json::from_value(m.data).unwrap()
+}
+
+#[test]
+fn query_round_trip_goal_ok() {
+    let _serial = serial();
+    let port = free_port();
+    let nav = fake_nav();
+    let token = token_file("roundtrip", 0o600);
+    let mut bridge = start_node(cmd_cfg(port, nav.addr, true, Some(&token)));
+    let session = client(port);
+    assert!(ready(&session), "the bridge never answered a command query");
+    let mut err = Vec::new();
+    bridge.on_event(gate_input(ARMED), &mut err);
+
+    let ack = ask(&session, &goal_json("zl-goal-1", TOKEN), Duration::from_secs(3)).expect("no reply to the goal");
+    assert_eq!(ack.result, CmdResult::Ok, "{ack:?}");
+    assert_eq!((ack.id.as_str(), ack.cmd.as_str()), ("zl-goal-1", "goal"));
+    let sent = nav.rx.recv_timeout(Duration::from_secs(1)).expect("nav_command got nothing");
+    assert_eq!(sent["cmd"], "goal");
+    assert_eq!(sent["id"], "zl-goal-1");
+    assert_eq!((sent["x"].as_f64(), sent["y"].as_f64(), sent["yaw"].as_f64()), (Some(1.5), Some(-0.5), Some(0.25)));
+    assert!(sent.get("token").is_none(), "{sent}");
+    assert!(err.is_empty(), "{}", String::from_utf8_lossy(&err));
+    assert!(bridge.wait(Instant::now() + Duration::from_secs(2)), "bridge did not stop");
+}
+
+#[test]
+fn estop_works_with_channel_closed() {
+    let _serial = serial();
+    let port = free_port();
+    let nav = fake_nav();
+    let mut bridge = start_node(cmd_cfg(port, nav.addr, false, None));
+    let session = client(port);
+    assert!(ready(&session), "the bridge never answered a command query");
+
+    let ack = ask(&session, r#"{"cmd":"estop","id":"zl-estop-1"}"#, Duration::from_secs(3)).expect("no reply to estop");
+    assert_eq!(ack.result, CmdResult::Ok, "{ack:?}");
+    assert_eq!(nav.rx.recv_timeout(Duration::from_secs(1)).expect("estop not forwarded")["cmd"], "estop");
+
+    bridge.on_event(gate_input(ARMED), &mut Vec::new());
+    let ack = ask(&session, &goal_json("zl-goal-2", TOKEN), Duration::from_secs(3)).expect("no reply to the goal");
+    assert_eq!(ack.result, CmdResult::Disabled, "{ack:?}");
+    assert!(nav.rx.recv_timeout(Duration::from_millis(200)).is_err(), "the goal reached nav_command");
+    assert!(bridge.wait(Instant::now() + Duration::from_secs(2)), "bridge did not stop");
+}
+
+/// Output whose every put panics: the worker thread dies on its first send.
+struct PanicsOnPut;
+
+impl Publish for PanicsOnPut {
+    fn wants(&self, _: &str) -> bool {
+        true
+    }
+
+    fn put(&mut self, _: &str, _: Vec<u8>) {
+        panic!("test: worker output failed");
+    }
+}
+
+#[test]
+fn estop_forwarded_after_worker_died() {
+    let _serial = serial();
+    let port = free_port();
+    let nav = fake_nav();
+    let cfg = cmd_cfg(port, nav.addr, false, None);
+    let session = open_session(&cfg).expect("bridge session");
+    let mut bridge = NodeBridge::start_with(cfg, LogSources::default(), session, Box::new(PanicsOnPut)).expect("start");
+    // The first tick puts nav/status, so the worker dies at once; the bridge says so once.
+    let mut err = Vec::new();
+    let died = wait_until(Duration::from_secs(3), || {
+        bridge.on_event(NodeEvent::Other, &mut err);
+        !err.is_empty()
+    });
+    assert!(died, "the worker did not die");
+    assert!(String::from_utf8_lossy(&err).contains("worker thread has stopped"));
+
+    let client = client(port);
+    assert!(ready(&client), "no command query answered after the worker died");
+    let ack = ask(&client, r#"{"cmd":"estop","id":"zl-estop-2"}"#, Duration::from_secs(3)).expect("no reply to estop");
+    assert_eq!(ack.result, CmdResult::Ok, "{ack:?}");
+    assert_eq!(nav.rx.recv_timeout(Duration::from_secs(1)).expect("estop not forwarded")["cmd"], "estop");
+    assert!(bridge.wait(Instant::now() + Duration::from_secs(2)), "bridge did not stop");
+}
+
+/// `cmd_goal_enabled` in nav/status: the switch on and a usable token; a token file
+/// that group or others can read is not usable.
+#[test]
+fn status_reports_cmd_goal_enabled() {
+    let _serial = serial();
+    for (mode, want) in [(0o600, true), (0o644, false)] {
+        let port = free_port();
+        let nav = fake_nav();
+        let token = token_file(&format!("status{mode:o}"), mode);
+        let mut bridge = start_node(cmd_cfg(port, nav.addr, true, Some(&token)));
+        let sub = Subscriber::connect(port, Duration::ZERO);
+        assert!(wait_until(Duration::from_secs(3), || sub.has(nav_entities::NAV_STATUS)), "no nav/status");
+        assert_eq!(last_status(&sub).cmd_goal_enabled, want, "token file mode {mode:o}");
+        assert!(bridge.wait(Instant::now() + Duration::from_secs(2)), "bridge did not stop");
+    }
+}
+
+/// Ruling R7: `cmd.forward` that is not `127.0.0.1:<port>` turns the command channel
+/// off (no queryable, `cmd_goal_enabled` false) but the bridge keeps publishing.
+#[test]
+fn bad_forward_declares_no_queryable_and_keeps_publishing() {
+    let _serial = serial();
+    let port = free_port();
+    let token = token_file("badforward", 0o600);
+    let mut cfg = cmd_cfg(port, "127.0.0.1:1".parse().unwrap(), true, Some(&token));
+    cfg.cmd.forward = "192.0.2.1:19997".into(); // TEST-NET-1: never routed, and not loopback
+    let mut bridge = start_node(cfg);
+    let sub = Subscriber::connect(port, Duration::ZERO);
+    let published = wait_until(Duration::from_secs(3), || {
+        bridge.on_event(NodeEvent::Input { id: "pose".into(), data: Some(odom(1.0, 2.0, 0.0)) }, &mut Vec::new());
+        thread::sleep(Duration::from_millis(20));
+        sub.has(nav_entities::ROBOT_POSE) && sub.has(nav_entities::NAV_STATUS)
+    });
+    assert!(published, "the bridge stopped publishing data");
+    assert!(!last_status(&sub).cmd_goal_enabled);
+    let session = client(port);
+    let ack = ask(&session, r#"{"cmd":"estop","id":"zl-estop-3"}"#, Duration::from_secs(1));
+    assert!(ack.is_none(), "a queryable answered: {ack:?}");
+    assert!(bridge.wait(Instant::now() + Duration::from_secs(2)), "bridge did not stop");
+}
+
+/// `wait` closes everything within its deadline; afterwards nobody answers on `cmd`.
+#[test]
+fn stop_closes_within_deadline() {
+    let _serial = serial();
+    let port = free_port();
+    let nav = fake_nav();
+    let mut bridge = start_node(cmd_cfg(port, nav.addr, false, None));
+    let session = client(port);
+    assert!(ready(&session), "the bridge never answered a command query");
+
+    let t = Instant::now();
+    assert!(bridge.wait(t + Duration::from_secs(1)), "not closed within 1 s");
+    println!("bridge closed in {:?}", t.elapsed());
+    let ack = ask(&session, r#"{"cmd":"estop","id":"zl-estop-4"}"#, Duration::from_secs(1));
+    assert!(ack.is_none(), "answered after stop: {ack:?}");
+    assert!(nav.rx.recv_timeout(Duration::from_millis(200)).is_err(), "estop forwarded after stop");
 }

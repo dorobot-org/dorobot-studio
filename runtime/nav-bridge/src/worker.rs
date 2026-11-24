@@ -103,31 +103,32 @@ pub fn bad_input_count() -> u64 {
 /// Starts the worker thread: takes inputs from `inbox`, parses, rate-limits, encodes
 /// and hands messages to `publisher`; resends the grid map every 5 s and the PCD map
 /// every 10 s. `stop` is checked between items and at least every `POLL`; on exit the
-/// publisher (and its Zenoh session) is dropped. No node logs or graph: see
-/// [`spawn_worker_with_logs`].
+/// publisher is dropped (with its Zenoh session, unless someone else holds that). No
+/// node logs or graph, and `cmd_goal_enabled` false: see [`spawn_worker_with_logs`].
 pub fn spawn_worker(
     cfg: BridgeConfig,
     inbox: Arc<Inbox>,
     publisher: Box<dyn Publish>,
     stop: Arc<AtomicBool>,
 ) -> JoinHandle<()> {
-    spawn_worker_with_logs(cfg, inbox, publisher, stop, LogSources::default())
+    spawn_worker_with_logs(cfg, inbox, publisher, stop, LogSources::default(), false)
 }
 
 /// [`spawn_worker`] that also forwards the node logs and the dataflow graph named in
 /// `sources`, and its own warnings (e.g. a map it could not load), as `logs`,
-/// `nodes` and `graph` messages.
+/// `nodes` and `graph` messages; `cmd_goal_enabled` goes into every `nav/status`.
 pub fn spawn_worker_with_logs(
     cfg: BridgeConfig,
     inbox: Arc<Inbox>,
     publisher: Box<dyn Publish>,
     stop: Arc<AtomicBool>,
     sources: LogSources,
+    cmd_goal_enabled: bool,
 ) -> JoinHandle<()> {
     thread::Builder::new()
         .name("nav-bridge-worker".into())
         .spawn(move || {
-            let mut worker = Worker::new(cfg, publisher, sources);
+            let mut worker = Worker::new(cfg, publisher, sources, cmd_goal_enabled);
             let mut next_tick = Instant::now();
             while !stop.load(Ordering::Relaxed) {
                 let now = Instant::now();
@@ -242,7 +243,7 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(cfg: BridgeConfig, out: Box<dyn Publish>, sources: LogSources) -> Worker {
+    fn new(cfg: BridgeConfig, out: Box<dyn Publish>, sources: LogSources, cmd_goal_enabled: bool) -> Worker {
         let mut logs = LogForward::new(sources, cfg.log_forward_per_node_hz);
         let (grid, map_cloud) = (load_grid(&cfg, &mut logs), load_map_cloud(&cfg, &mut logs));
         let r = &cfg.rates_hz;
@@ -252,7 +253,7 @@ impl Worker {
             goal: None,
             plan: None,
             trail: Trail::new(cfg.trail_min_step_m, cfg.trail_max_points),
-            status: StatusBuilder::new(cfg.robot_model.clone()),
+            status: StatusBuilder::new(cfg.robot_model.clone(), cmd_goal_enabled),
             costmap: None,
             costmap_pending: false,
             costmap_sent: None,
@@ -506,7 +507,7 @@ mod tests {
 
     fn worker(cfg: BridgeConfig) -> (Worker, Fake) {
         let fake = Fake::default();
-        (Worker::new(cfg, Box::new(fake.clone()), LogSources::default()), fake)
+        (Worker::new(cfg, Box::new(fake.clone()), LogSources::default(), false), fake)
     }
 
     fn odom(x: f64, y: f64, yaw: f64) -> Vec<u8> {

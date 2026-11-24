@@ -2,7 +2,8 @@
 
 Dora node that republishes DORA_NAV state to Dorobot Studio over Zenoh using the
 `dviz-protocol` wire format (topics `dviz/<robot_id>/<entity>`). It also forwards the
-Dora logs of every node of the dataflow and the dataflow graph.
+Dora logs of every node of the dataflow and the dataflow graph, and takes Studio's
+navigation commands (see "Command channel").
 
 This directory is its own Cargo workspace (own `Cargo.lock`, Dora 1.1 / Zenoh 1.10.2). It is
 not part of the Studio root workspace and is independent of `runtime/` (Dora 1.0.1).
@@ -90,6 +91,9 @@ and publishes. Inputs must be UInt8 arrays (bytes) or strings.
 - Zenoh peer mode, listening on `listen` from the config (default `tcp/0.0.0.0:7450`),
   multicast scouting off, no outgoing connections. Studio connects to
   `tcp/<robot address>:7450` in client mode with prefix `dviz`.
+- The bridge opens this session at start and holds it until it stops; the worker's
+  publishers and the command queryable on `dviz/<robot_id>/cmd` share it, so the command
+  channel keeps working if the worker thread dies.
 - Drop-style congestion control: a slow or stalled Studio never blocks the bridge;
   messages are dropped instead. An entity nobody subscribes to is not encoded.
 
@@ -146,6 +150,7 @@ Every field has a default (the Tracer Mini values below).
 | `radii` | plan 0.025, trail 0.02, goal 0.04, footprint 0.01 | line and arrow radius in metres (`radius` in `linestrips3d` / `arrows3d`, for Rerun) |
 | `robot_model` | `"tracer_mini"` | sent in `nav/status`; the body model Studio draws (`null`: none) |
 | `log_forward_per_node_hz` | 5 | node log lines per node per second (0: none) |
+| `cmd` | goals off, forward to `127.0.0.1:9998` | the command channel; see "Command channel" |
 
 Upgrade order (costmap): a Studio from delivery ① does not know the `costmap/global` layer. It paints any costmap-kind grid as an opaque unknown-grey static quad at z = 0 over the Rerun map; the Displays toggle cannot clear static data and the bridge's 5 s resend brings it back (the 2D view is unaffected). Update Studio together with, or before, the bridge. Stop-gap when Studio cannot be updated: delete the `"costmap": "costmap"` entry from `inputs` in the installed `tracer.json` and restart the bridge (a Dora input id that is not in `inputs` is ignored, so the layer is not published).
 
@@ -181,12 +186,127 @@ nothing.
 
 ### Stopping
 
-On Dora's Stop (or the end of the event stream) the worker leaves its loop at once and
-closes Zenoh. A Studio reader that is connected but stalled holds that close for seconds
-(zenoh-link-tcp lingers up to 10 s on unsent data), so the bridge waits at most 1 s for
-it and then ends the process with `_exit` after flushing stdout and stderr; the process
-is gone within about 1 s of Stop. If the worker thread dies, the bridge prints an ERROR
-line on stderr and keeps consuming Dora events (dropping them) until Stop.
+On Dora's Stop (or the end of the event stream) the worker leaves its loop at once; then,
+on a helper thread, the command queryable is undeclared (no new command comes in), the
+command lanes stop (commands already queued are still answered) and the Zenoh session
+closes. A Studio reader that is connected but stalled holds the undeclare and the close
+for seconds (zenoh-link-tcp lingers up to 10 s on unsent data), so the bridge waits at
+most 1 s for all of it and then ends the process with `_exit` after flushing stdout and
+stderr; the process is gone within about 1 s of Stop. If the worker thread dies, the
+bridge prints an ERROR line on stderr and keeps consuming Dora events (dropping them)
+until Stop; the command channel keeps running.
+
+## Command channel
+
+Studio's tools (2D Pose Estimate, 2D Goal Pose, E-STOP, Disarm) send commands as Zenoh
+queries on `dviz/<robot_id>/cmd`: a JSON request of at most 1024 bytes,
+`{"cmd","id","token"?,"x"?,"y"?,"yaw"?}` (`id`: 1-64 characters of `[A-Za-z0-9_-]`). The
+bridge checks each one, forwards the accepted ones over UDP to DORA_NAV's nav_command,
+waits for its `{"ok":...}` and replies with `{"id","cmd","result","reason"}`
+(`dviz_protocol::CmdAck`).
+
+### Configuration (`cmd`)
+
+```json
+"cmd": { "goal_enabled": false, "token_file": "~/.config/dviz/cmd_token", "forward": "127.0.0.1:9998", "reply_timeout_ms": 1000, "max_goal_per_s": 2 }
+```
+
+| Field | Default | Meaning |
+|---|---|---|
+| `goal_enabled` | `false` | accept `goal` and `initialpose`; `estop` and `disarm` are always accepted |
+| `token_file` | `"~/.config/dviz/cmd_token"` | the robot's token; a leading `~/` is `$HOME` |
+| `forward` | `"127.0.0.1:9998"` | nav_command's UDP address. It must be `127.0.0.1:<port>` (nav_command listens on 127.0.0.1 only); anything else is one `nav-bridge: ERROR: cmd.forward ...` line at start and no command channel at all (no queryable, so every command, estop included, goes unanswered; `cmd_goal_enabled` false), while data is still published |
+| `reply_timeout_ms` | 1000 | how long to wait for nav_command's answer |
+| `max_goal_per_s` | 2 | `goal` + `initialpose` rate (one token bucket, burst 2) |
+
+### Token file
+
+The robot and the Studio machine hold the same token in `~/.config/dviz/cmd_token`:
+
+```bash
+umask 077; mkdir -p ~/.config/dviz; head -c 24 /dev/urandom | base64 > ~/.config/dviz/cmd_token
+# copy it to the same path on the Studio machine, mode 600
+```
+
+The bridge reads it once at start (a new token needs a bridge restart). Surrounding
+whitespace is removed on both sides (a trailing newline or CRLF is fine). It is usable only
+if it exists, is not empty and is not readable or writable by group or others (mode 600
+or 400). The comparison takes constant time. The token never appears in a log line, a
+reply or the datagram to nav_command.
+
+### Turning goals and initial poses on
+
+Put the token file in place, set `"cmd": {"goal_enabled": true}` in the installed
+`tracer.json` and restart dora-nav. The bridge prints one line at start:
+
+- `nav-bridge: goal/initialpose commands enabled`, or
+- `nav-bridge: goal/initialpose commands closed: <reason>` (the switch is off; the token
+  file is missing, empty or too open).
+
+`nav/status` carries `cmd_goal_enabled`: the switch is on and the token is usable. Studio
+greys out its pose and goal tools otherwise; E-STOP and Disarm work either way.
+
+### Rules
+
+| Command | Checks, in order | Forwarded |
+|---|---|---|
+| `estop`, `disarm` | none: no token, switch, rate limit or gate state; also with the worker thread dead | at once, from their own lane: within 50 ms of arrival, never queued behind a goal |
+| `goal` | switch on and token usable, else `disabled`; token matches, else `bad_token`; rate, else `rate_limited`; gate state never received, older than 2 s or unreadable: `gate_unknown`; e-stop latched: `estop_active`; disarmed: `not_armed` | `{"cmd":"goal","x","y","yaw"?,"id"}`; the goal id is the request id |
+| `initialpose` | as `goal`, without the gate state checks | `{"cmd":"initialpose","x","y","yaw"}` |
+| `arm`, `release`, anything else | `not_allowed`: arming and releasing the e-stop stay with the people at the robot | never |
+| a malformed request (bad JSON, bad `id`, over 1024 bytes, a goal without finite `x`, `y`) | `bad_request` | never |
+
+A forwarded command's result is nav_command's answer: `{"ok":true}` is `ok`, `{"ok":false}`
+(or anything else) is `nav_rejected`, nothing within `reply_timeout_ms` is `no_reply`.
+The gate state is the latest Dora input of format `gate_state` (`cmd_gate/state`), stored
+straight from the Dora event loop, so it is current even when the worker is behind or
+dead. Each lane queues at most 16 commands; a query that finds its lane full gets no reply
+(Studio shows `timeout`). Every command is one stdout line (in the bridge's Dora log):
+`nav-bridge: cmd <cmd> <id> [x=.. y=.. yaw=..] -> <result>`.
+
+### `dviz_cmd`
+
+`examples/dviz_cmd.rs` sends one command the way Studio does and prints the reply JSON:
+
+```text
+dviz_cmd --connect tcp/<host>:<port> --robot <id> --cmd <goal|initialpose|estop|disarm|arm|release>
+         [--x X --y Y --yaw RAD] [--id ID] [--token-file PATH] [--wait-goal-state STATE --wait-s N]
+```
+
+```bash
+cargo build --locked --release --target-dir $HOME/nvme/dora-lab/tmp/nav-bridge-target --examples
+CMD=$HOME/nvme/dora-lab/tmp/nav-bridge-target/release/examples/dviz_cmd
+$CMD --connect tcp/127.0.0.1:7450 --robot tracer --cmd estop
+$CMD --connect tcp/127.0.0.1:7450 --robot tracer --cmd goal --x 1.0 --y 0.0 --yaw 0 \
+     --token-file ~/.config/dviz/cmd_token --wait-goal-state SUCCEEDED --wait-s 60
+```
+
+- `--token-file`: read, trimmed and sent; without it no token is sent (`bad_token` for a
+  goal, while `estop` still works).
+- `--id`: the request id, default `cli-<unix seconds>-<pid>`.
+- `--wait-goal-state` (goal only): after an `ok`, follow `dviz/<robot>/nav/status` until
+  `goal_id` is the request id and `goal_state` is STATE, for at most `--wait-s` seconds
+  (default 60); state changes go to stderr.
+- `estop` and `disarm` are sent with `Priority::RealTime` and `CongestionControl::Block`,
+  like Studio; the query times out after 3 s.
+- Exit 0: a reply came (any result), or with `--wait-goal-state` the state was reached.
+  1: no reply; with `--wait-goal-state` also a result other than `ok` or the state not
+  reached in time. 2: bad arguments, an unreadable token file, a Zenoh error.
+
+### Known limitations
+
+- **The token is plain text**, on disk (mode 600) and inside every goal and initial pose
+  query on the wire (Zenoh TCP, no TLS). It prevents mistakes (a second Studio, the wrong
+  robot); it does not stop someone who can capture the traffic.
+- **Disarm-to-goal gap of about 0.1-0.2 s:** between the bridge's armed check and
+  nav_command handing the goal to the navigation (nav_command works every 100 ms). A
+  disarm that lands exactly in that window leaves the goal in place until it is given up
+  after 15 s. Sending goals with `tracer_ctl` on the robot has the same gap; closing it
+  needs a DORA_NAV change (e.g. `goal_resume` refusing goals while disarmed).
+- **Acks of back-to-back estops queue:** the estop and disarm datagrams go out at once,
+  one after another, but their replies are awaited one at a time, each for up to
+  `reply_timeout_ms`; the second ack can come up to that much later. The sends do not
+  wait.
 
 ## Offline replay and probe
 
