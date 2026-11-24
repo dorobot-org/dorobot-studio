@@ -48,6 +48,7 @@ def main():
     p.add_argument("--camera-faults", action="store_true")
     p.add_argument("--moving-target", action="store_true")
     p.add_argument("--observed-author", action="store_true")
+    p.add_argument("--compare-runs", action="store_true")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
@@ -121,6 +122,11 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.compare_runs:
+        from divergence_check import native_journey
+
+        native_journey(a, page, click, done, wait, grab)
+        return
     if a.fleet:
         from fleet_check import native_journey
 

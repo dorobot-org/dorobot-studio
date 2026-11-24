@@ -1,7 +1,8 @@
 use dorobot_studio_core::{
     api::{
         aisle::{
-            Action, Planner, RgbTiming, Robot, TargetMotion, Workbench, WorkerAction, REFERENCE,
+            Action, Planner, RevisionSide, RgbTiming, Robot, TargetMotion, Workbench, WorkerAction,
+            REFERENCE,
         },
         Backend, Intent,
     },
@@ -189,6 +190,10 @@ script_mod! {
         }
         summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
+        change_bar := Bar{
+            previous_change := mod.widgets.ux.ToolButton{text:"Previous revision"}
+            current_change := mod.widgets.ux.ToolButton{text:"Current revision"}
+        }
         trial_bar := Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
             folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
             export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"} train_reach := mod.widgets.ux.ToolButton{text:"Train shoulder correction"} train_grasp := mod.widgets.ux.ToolButton{text:"Train grasp detector"}}
@@ -874,6 +879,13 @@ impl PluginPanel for Panel {
             }
             "aisle_run" => self.run(cx, w),
             _ => {
+                let has_frames = w
+                    .transfer_comparison
+                    .as_ref()
+                    .is_some_and(|c| c.frames.iter().any(Option::is_some));
+                self.root
+                    .widget(cx, ids!(change_bar))
+                    .set_visible(cx, has_frames && !w.show_device && !w.show_evaluation);
                 for id in [ids!(summary), ids!(plot), ids!(trial_bar)] {
                     self.root
                         .widget(cx, id)
@@ -1310,7 +1322,30 @@ impl PluginPanel for Panel {
                         .to_owned()
                 };
                 let status = if let Some(comparison) = &w.transfer_comparison {
-                    comparison.clone()
+                    for (id, side, label) in [
+                        (
+                            ids!(previous_change) as &[LiveId],
+                            RevisionSide::Previous,
+                            "previous",
+                        ),
+                        (ids!(current_change), RevisionSide::Current, "current"),
+                    ] {
+                        let frame = w.change_frame(side);
+                        self.root.widget(cx, id).set_visible(cx, frame.is_some());
+                        if let Some(frame) = frame {
+                            let verb = if w.dataset_for(&frame.trial).is_some() {
+                                "Replay"
+                            } else {
+                                "Export"
+                            };
+                            self.root.button(cx, id).set_text(
+                                cx,
+                                &format!("{verb} {label} · tick {}", frame.sample_tick),
+                            );
+                            self.root.button(cx, id).set_enabled(cx, !w.busy());
+                        }
+                    }
+                    comparison.summary.clone()
                 } else if let Some(diff) = w.comparison {
                     format!(
                         "Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png."
@@ -1431,6 +1466,24 @@ impl PluginPanel for Panel {
             let alias = self.root.text_input(cx, ids!(node)).text();
             b.dispatch(Intent::Aisle(Action::ConnectWorker(alias)));
             return true;
+        }
+        for (id, side) in [
+            (ids!(previous_change) as &[LiveId], RevisionSide::Previous),
+            (ids!(current_change), RevisionSide::Current),
+        ] {
+            if self.root.button(cx, id).clicked(actions) {
+                let target = b.aisle().and_then(|w| {
+                    let frame = w.change_frame(side)?;
+                    Some((w.dataset_for(&frame.trial)?, frame.time_s))
+                });
+                if let Some((dataset, time)) = target {
+                    b.dispatch(Intent::OpenFolder(dataset));
+                    b.dispatch(Intent::Seek(time));
+                } else {
+                    b.dispatch(Intent::Aisle(Action::ExportChange(side)));
+                }
+                return true;
+            }
         }
         if self.root.button(cx, ids!(replay)).clicked(actions) {
             if let Some(path) = b.aisle().and_then(|w| w.dataset.clone()) {

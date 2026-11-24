@@ -120,6 +120,7 @@ pub enum Action {
     Next,
     Open,
     Export,
+    ExportChange(RevisionSide),
     TrainReach,
     TrainGrasp,
 }
@@ -155,42 +156,132 @@ impl WorkerAction {
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
 }
-fn compare_actions(previous: &Path, current: &Path) -> io::Result<String> {
+#[derive(Clone, Copy, Debug)]
+pub enum RevisionSide {
+    Previous,
+    Current,
+}
+impl RevisionSide {
+    pub fn index(self) -> usize {
+        match self {
+            Self::Previous => 0,
+            Self::Current => 1,
+        }
+    }
+}
+
+#[derive(serde::Serialize)]
+pub struct ChangeFrame {
+    pub trial: PathBuf,
+    pub action_tick: u64,
+    pub sample_tick: u64,
+    pub index: usize,
+    pub time_s: f64,
+}
+
+#[derive(serde::Serialize)]
+pub struct TransferComparison {
+    pub summary: String,
+    pub frames: [Option<ChangeFrame>; 2],
+}
+
+fn change_frame(trial: &Path, action_tick: u64, result: &Value) -> Option<ChangeFrame> {
+    let recording = read(trial, "recording.json")?;
+    let fps = recording["fps"]
+        .as_f64()
+        .filter(|v| v.is_finite() && *v > 0.)?;
+    let samples = recording["samples"].as_array()?;
+    let ticks = samples
+        .iter()
+        .map(|row| row["step"].as_u64())
+        .collect::<Option<Vec<_>>>()?;
+    if ticks.is_empty()
+        || ticks.len() as u64 != result["frames"].as_u64()?
+        || !ticks.windows(2).all(|w| w[0] < w[1])
+    {
+        return None;
+    }
+    // LeRobot timestamps are zero-based frame numbers divided by the recorded FPS.
+    // For an action before the first exposure, show the earliest available frame.
+    let index = ticks
+        .partition_point(|tick| *tick <= action_tick)
+        .saturating_sub(1);
+    Some(ChangeFrame {
+        trial: trial.to_owned(),
+        action_tick,
+        sample_tick: ticks[index],
+        index,
+        time_s: index as f64 / fps,
+    })
+}
+
+struct ActionDifference {
+    summary: String,
+    ticks: Option<[u64; 2]>,
+}
+
+fn compare_actions(
+    previous: &Path,
+    current: &Path,
+    end_ticks: [Option<u64>; 2],
+) -> io::Result<ActionDifference> {
     let stream = |p: &Path| {
         Ok::<_, io::Error>(io::BufReader::new(fs::File::open(p.join("actions.jsonl"))?).lines())
     };
     let (mut left, mut right) = (stream(previous)?, stream(current)?);
     for index in 1usize.. {
         let (a, b) = (left.next().transpose()?, right.next().transpose()?);
-        match (a, b) {
-            (None, None) => return Ok(format!("All {} recorded actions match.", index - 1)),
-            (Some(a), Some(b)) => {
-                let a: Value = serde_json::from_str(&a)?;
-                let b: Value = serde_json::from_str(&b)?;
-                if !a.is_object() || !b.is_object() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid action row",
-                    ));
-                }
-                if a != b {
-                    return Ok(format!(
-                        "First change at action {index} · previous {} at step {}, current {} at step {}.",
-                        a["op"].as_str().unwrap_or("unknown"),
-                        a["tick"],
-                        b["op"].as_str().unwrap_or("unknown"),
-                        b["tick"]
-                    ));
-                }
+        let parse = |line: Option<String>| -> io::Result<Option<Value>> {
+            let row: Option<Value> = line.map(|text| serde_json::from_str(&text)).transpose()?;
+            if row.as_ref().is_some_and(|v| !v.is_object()) {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Invalid action row",
+                ));
             }
-            (None, _) => return Ok(format!("Previous trace ends before action {index}.")),
-            (_, None) => return Ok(format!("Current trace ends before action {index}.")),
+            Ok(row)
+        };
+        let (a, b) = (parse(a)?, parse(b)?);
+        if a.is_none() && b.is_none() {
+            return Ok(ActionDifference {
+                summary: format!("All {} recorded actions match.", index - 1),
+                ticks: None,
+            });
         }
+        if a == b {
+            continue;
+        }
+        let describe = |row: &Option<Value>| match row {
+            Some(v) => format!(
+                "{} at tick {}",
+                v["op"].as_str().unwrap_or("unknown"),
+                v["tick"]
+            ),
+            None => "trace ended".into(),
+        };
+        let tick = |row: &Option<Value>, end| match row {
+            Some(v) => v["tick"].as_u64(),
+            None => end,
+        };
+        return Ok(ActionDifference {
+            summary: format!(
+                "First change at action {index} · previous {}, current {}.",
+                describe(&a),
+                describe(&b)
+            ),
+            ticks: tick(&a, end_ticks[0])
+                .zip(tick(&b, end_ticks[1]))
+                .map(|(x, y)| [x, y]),
+        });
     }
     unreachable!()
 }
 
-fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option<String> {
+fn compare_transfer(
+    history: &[PathBuf],
+    path: &Path,
+    current: &Value,
+) -> Option<TransferComparison> {
     if current["kind"] != "table-transfer" || !current["task_success"].is_boolean() {
         return None;
     }
@@ -264,8 +355,27 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
         } else {
             "Local policy or support code changed."
         };
-        let trace =
-            compare_actions(previous, path).unwrap_or_else(|_| "Action trace unavailable.".into());
+        let trace = compare_actions(
+            previous,
+            path,
+            [
+                prior["physics_ticks"].as_u64(),
+                current["physics_ticks"].as_u64(),
+            ],
+        )
+        .unwrap_or_else(|_| ActionDifference {
+            summary: "Action trace unavailable.".into(),
+            ticks: None,
+        });
+        let frames = trace
+            .ticks
+            .map(|[a, b]| {
+                [
+                    change_frame(previous, a, &prior),
+                    change_frame(path, b, current),
+                ]
+            })
+            .unwrap_or_default();
         let outcome = |v: &Value| {
             if v["task_success"] == true {
                 "passed"
@@ -273,14 +383,14 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
                 "failed"
             }
         };
-        return Some(format!(
-            "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {trace}",
+        return Some(TransferComparison {frames, summary:format!(
+            "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {}",
             current["seed"],
             outcome(&prior),
             previous_count,
             outcome(current),
-            settled(current)?
-        ));
+            settled(current)?,trace.summary
+        )});
     }
     None
 }
@@ -353,7 +463,7 @@ pub struct Workbench {
     room_request: Option<(String, String)>,
     pub layout_seed: u8,
     pub comparison: Option<f64>,
-    pub transfer_comparison: Option<String>,
+    pub transfer_comparison: Option<TransferComparison>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     pub background_period_s: u8,
@@ -617,11 +727,19 @@ impl Workbench {
             })
             .unwrap_or_default();
     }
+    pub fn dataset_for(&self, path: &Path) -> Option<PathBuf> {
+        let dataset = self
+            .exports
+            .get(path)
+            .cloned()
+            .unwrap_or_else(|| path.join("dataset"));
+        dataset.join("meta/info.json").is_file().then_some(dataset)
+    }
+    pub fn change_frame(&self, side: RevisionSide) -> Option<&ChangeFrame> {
+        self.transfer_comparison.as_ref()?.frames[side.index()].as_ref()
+    }
     fn select_run(&mut self, path: PathBuf) {
-        self.dataset = self.exports.get(&path).cloned().or_else(|| {
-            let legacy = path.join("dataset");
-            legacy.join("meta/info.json").is_file().then_some(legacy)
-        });
+        self.dataset = self.dataset_for(&path);
         self.evidence = Self::receipt(&path);
         self.transfer_comparison = compare_transfer(&self.history, &path, &self.evidence);
         self.comparison = self
@@ -738,7 +856,7 @@ impl Workbench {
                 "DOROBOT_AISLE_ROOT must point to an AISLE checkout containing src/aisle",
             ));
         }
-        if let Some(run) = feedback {
+        if let Some(run) = feedback.as_ref().filter(|_| op != "export") {
             cmd.arg("--feedback").arg(run);
         }
         if op == "device-preflight" {
@@ -844,8 +962,10 @@ impl Workbench {
         }
         if matches!(op, "export" | "train-reach" | "train-grasp") {
             cmd.arg("--trial").arg(
-                self.selected
+                feedback
                     .as_ref()
+                    .filter(|_| op == "export")
+                    .or(self.selected.as_ref())
                     .ok_or_else(|| io::Error::other("Select a recorded trial"))?,
             );
         }
@@ -1060,6 +1180,13 @@ impl Workbench {
             }
             Action::TrainGrasp => self.launch("train-grasp", Planner::Reference, None),
             Action::TrainReach => self.launch("train-reach", Planner::Reference, None),
+            Action::ExportChange(side) => {
+                if let Some(frame) = self.change_frame(side) {
+                    self.launch("export", Planner::Reference, Some(frame.trial.clone()))
+                } else {
+                    Err(io::Error::other("No recorded frame for this revision"))
+                }
+            }
             Action::Export => self.launch("export", Planner::Reference, None),
             Action::CycleBackgroundPeriod => {
                 self.background_period_s = match self.background_period_s {
@@ -1263,10 +1390,20 @@ impl Workbench {
             }
             if job.op == "export" {
                 let dataset = job.dir.join("dataset");
-                if let Some(path) = &self.selected {
-                    self.exports.insert(path.clone(), dataset.clone());
+                if let Some(name) =
+                    read(&job.dir, artifact).and_then(|v| v["trial"].as_str().map(str::to_owned))
+                {
+                    if let Some(path) = self
+                        .history
+                        .iter()
+                        .find(|p| p.file_name().and_then(|n| n.to_str()) == Some(&name))
+                    {
+                        self.exports.insert(path.clone(), dataset.clone());
+                        if self.selected.as_ref() == Some(path) {
+                            self.dataset = Some(dataset);
+                        }
+                    }
                 }
-                self.dataset = Some(dataset);
             }
             if matches!(job.op, "prepare" | "train-reach" | "train-grasp") {
                 let p = job.dir.join(artifact);
@@ -1372,9 +1509,13 @@ mod tests {
         let comparison = || compare_transfer(&runs, &runs[1], &result);
         assert!(comparison()
             .unwrap()
+            .summary
             .contains("All 1 recorded actions match"));
         fs::write(runs[1].join("actions.jsonl"), r#"{"op":"wheel","tick":20}"#).unwrap();
-        assert!(comparison().unwrap().contains("First change at action 1"));
+        assert!(comparison()
+            .unwrap()
+            .summary
+            .contains("First change at action 1"));
         let mut changed = result.clone();
         changed["seed"] = serde_json::json!(2);
         assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
