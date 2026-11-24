@@ -116,6 +116,10 @@ def native_journey(args, checks, page, click, remote, done, grab):
             "Wrist timeout recovered after restart",
         )
         audit(Path(row["selected"]))
+        page("scene")
+        if row["rgb_timing"] != "normal":
+            click("aisle_scene.on_time")
+        done(lambda w: w["rgb_timing"] == "normal", "Restored on-time wrist delivery")
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
         return
     three = args.wrist_faults == "three"
@@ -137,7 +141,7 @@ def native_journey(args, checks, page, click, remote, done, grab):
     )
     remote("text", "w=0", "t=" + instruction, "wait=1")
     click("aisle_task.codex" if args.provider == "codex" else "aisle_task.octos")
-    done(
+    state = done(
         lambda w: not w["busy"]
         and (w.get("controller") or {}).get("color_order") == order,
         f"Prepared transfer for {order}",
@@ -150,7 +154,8 @@ def native_journey(args, checks, page, click, remote, done, grab):
         ("disconnected", "frozen_rgb"),
     ]:
         page("scene")
-        click("aisle_scene." + button)
+        if state["rgb_timing"] != mode:
+            click("aisle_scene." + button)
         state = done(
             lambda w: w["rgb_timing"] == mode, mode + " wrist delivery selected"
         )
