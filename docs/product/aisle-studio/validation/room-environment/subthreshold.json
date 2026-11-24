@@ -1,0 +1,17 @@
+{
+  "room_sha256": "28774cd0256b79d3b15cd9e77863a99036315b366302e3594fddfd57af74ce6e",
+  "seed": 0,
+  "nano_urdf_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+  "nexus_version": "0.2.1",
+  "backend": "metal",
+  "adapter_sha256": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+  "friction_combine_rule": "max",
+  "rgb_sha256": "60c144c02946db1e7bf8109bd3f0d97d0c11c6f9f45aca2bdf31cecb1a43c6ff",
+  "ambient_rgb": [
+    0.4,
+    0.42,
+    0.44
+  ],
+  "floor_friction": 0.6,
+  "slide_x_mm": 47.77610397338867
+}

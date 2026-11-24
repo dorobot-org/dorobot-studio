@@ -2,6 +2,7 @@
 
 import argparse
 import hashlib
+from importlib.metadata import version
 import json
 from pathlib import Path
 import subprocess
@@ -16,12 +17,30 @@ def read_room(path):
     return json.loads(raw), hashlib.sha256(raw).hexdigest()
 
 
+def selected_rooms(state):
+    selected = json.loads((state / "selected-room.json").read_bytes())
+    rooms = {read_room(p)[1]: p for p in state.glob("*-Nano-room/room.json")}
+    current = state / selected["revision"] / "room.json"
+    if current not in state.glob("*-Nano-room/room.json"):
+        raise ValueError("Missing selected Nano room in the Studio state directory")
+    if read_room(current)[1] != selected["sha256"]:
+        raise ValueError("Selected Nano room hash differs")
+    paths = [current]
+    for _ in range(2):
+        parent = read_room(paths[-1])[0]["parent_sha256"]
+        if parent not in rooms:
+            raise ValueError("Missing a parent revision for this room comparison")
+        paths.append(rooms[parent])
+    return list(reversed(paths))
+
+
 def measure(path, seed, out):
     repo = Path(__file__).resolve().parents[5]
     sys.path.insert(0, str(repo / "tools/aisle-validation"))
     sys.path.insert(0, str(repo / "tools/aisle_workbench"))
     from run_rgb_transfer import LivingSimulation, MODEL, POSTURE, scene_recipe
     from room_revision import load_revision
+    from aisle.sim import nexus_backend
 
     _, room_hash = read_room(path)
     recipe = scene_recipe(seed)
@@ -49,9 +68,16 @@ def measure(path, seed, out):
     measurements = dict(
         room_sha256=room_hash,
         seed=seed,
+        nano_urdf_sha256=hashlib.sha256(MODEL.read_bytes()).hexdigest(),
+        nexus_version=version("dimforge-nexus3d"),
+        backend=sim.engine.backend_name,
+        adapter_sha256=hashlib.sha256(
+            Path(nexus_backend.__file__).read_bytes()
+        ).hexdigest(),
+        friction_combine_rule=sim.scene.friction_combine_rule,
         rgb_sha256=hashlib.sha256(frame.tobytes()).hexdigest(),
         ambient_rgb=sim.scene.ambient,
-        floor_friction=revision["settings"]["floor_friction"],
+        floor_friction=revision["settings"].get("floor_friction"),
         slide_x_mm=float((end[0] - start[0]) * 1000),
     )
     (out / "measurement.json").write_text(json.dumps(measurements, indent=2) + "\n")
@@ -64,10 +90,10 @@ def compare(paths, seed, out):
     ):
         if later["parent_sha256"] != sha:
             raise ValueError("Rooms do not share the selected lineage")
+        before, after = earlier["settings"].copy(), later["settings"].copy()
         if (
-            later["settings"][setting] == earlier["settings"][setting]
-            or later["settings"]
-            != {**earlier["settings"], setting: later["settings"][setting]}
+            before.pop(setting, None) == after.pop(setting, None)
+            or before != after
             or later["obstacles"] != earlier["obstacles"]
             or later["reference_sha256"] != earlier["reference_sha256"]
         ):
@@ -115,11 +141,18 @@ if __name__ == "__main__":
     inputs.add_argument(
         "--rooms", nargs=3, type=Path, metavar=("BASE", "LIGHT", "FLOOR")
     )
-    inputs.add_argument("--one", type=Path, help=argparse.SUPPRESS)
+    inputs.add_argument("--one", type=Path, help="Measure one saved room")
+    inputs.add_argument(
+        "--state", type=Path, help="Compare the selected room with its two parents"
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     if args.one:
         measure(args.one, args.seed, args.out)
     else:
-        compare(args.rooms, args.seed, args.out)
+        compare(
+            selected_rooms(args.state) if args.state else args.rooms,
+            args.seed,
+            args.out,
+        )
