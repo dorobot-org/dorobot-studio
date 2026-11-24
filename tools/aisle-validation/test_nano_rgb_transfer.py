@@ -10,7 +10,7 @@ import numpy as np
 
 from nano_rgb_transfer_policy import Controller, release_candidates, visible_in_jaws
 from nano_wrist_timing import WristTiming
-from run_rgb_transfer import Judge, finger_gap
+from run_rgb_transfer import Judge, finger_gap, lateral_path_after
 
 
 class TransferTests(unittest.TestCase):
@@ -28,6 +28,48 @@ class TransferTests(unittest.TestCase):
             self.assertEqual((entry["tick"], entry["capture_tick"]), (35, 25))
             self.assertEqual(entry["fault"], "unsynchronized wrist packet")
             self.assertEqual(guard.last_accepted_ns, 150_000_000)
+
+    def test_lateral_budget_survives_braking_and_direction_reversal(self):
+        def charge(speed, previous):
+            return lateral_path_after(
+                {"lateral_m_s": speed, "speed": 0.0, "turn": -0.2},
+                experimental=True,
+                phase="place",
+                spent_m=previous,
+                duration_s=0.2,
+            )
+
+        distance = 0.0
+        for _ in range(35):
+            distance = charge(0.01, distance)
+            distance = charge(0.0, distance)
+            distance = charge(-0.01, distance)
+        self.assertAlmostEqual(distance, 0.14)
+        with self.assertRaisesRegex(ValueError, "exceeds 0.14 m"):
+            charge(0.001, distance)
+
+    def test_lateral_motion_requires_bounded_experimental_place(self):
+        valid = {"lateral_m_s": 0.018, "speed": 0.0, "turn": 0.2}
+        for experimental, phase, changes in (
+            (False, "place", {}),
+            (True, "carry", {}),
+            (True, "place", {"speed": -0.01}),
+            (True, "place", {"turn": -0.201}),
+            (True, "place", {"lateral_m_s": 0.01801}),
+            (True, "place", {"lateral_m_s": float("nan")}),
+            (True, "place", {"lateral_m_s": True}),
+        ):
+            with (
+                self.subTest(phase=phase, changes=changes),
+                self.assertRaises(ValueError),
+            ):
+                lateral_path_after(
+                    valid | changes,
+                    experimental=experimental,
+                    phase=phase,
+                    spent_m=0.0,
+                    duration_s=0.2,
+                )
 
     def test_forward_limit_preserves_braking_reverse_and_steering(self):
         controller = Controller.__new__(Controller)
@@ -84,24 +126,110 @@ class TransferTests(unittest.TestCase):
         )
         controller.table = Mock(return_value=edge | {"along": -edge["along"]})
         original = {"encoders": np.zeros(3)}
+        initial = {("right_wrist", "red"): np.array([0.43, 0.15])}
+        after = {("left_wrist", "red"): np.array([0.43, 0.23])}
+        controller.release_landmarks = Mock(return_value=after)
         shifted = {"encoders": np.array([-1.6, 0.8, 0.8])}
         controller.sense = Mock(side_effect=[shifted, shifted])
         with patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]):
             _, occupied = controller.shift_for_release(
-                edge, [np.array([0.43, 0.15])], original, "green", ["red"]
+                edge, [np.array([0.43, 0.15])], original, "green", ["red"], initial
             )
         np.testing.assert_allclose(occupied, [[0.43, 0.23]])
         controller.release_observation.assert_called_once()
         controller.drive.assert_called_once_with()
         controller.held_in_wrist_view.assert_called_once_with("green", shifted)
 
+        for inconsistent in (
+            {},
+            {("left_wrist", "blue"): np.array([0.43, 0.23])},
+            after | initial,
+        ):
+            controller.sense.side_effect = [shifted, shifted]
+            controller.release_landmarks.return_value = inconsistent
+            with patch(
+                "nano_rgb_transfer_policy.occupied_table_points", return_value=[]
+            ):
+                with self.assertRaisesRegex(ValueError, "cannot confirm"):
+                    controller.shift_for_release(
+                        edge, [], original, "green", ["red"], initial
+                    )
         controller.table.return_value = None
         controller.sense.side_effect = [shifted]
         controller.drive.reset_mock()
         controller.release_observation.reset_mock()
         with self.assertRaisesRegex(ValueError, "table rim"):
-            controller.shift_for_release(edge, [], original, "green", ["red"])
+            controller.shift_for_release(edge, [], original, "green", ["red"], initial)
         controller.drive.assert_called_once_with()
+        controller.release_observation.assert_not_called()
+
+    def test_placement_turn_tracks_cube_across_wrist_views(self):
+        controller = Controller.__new__(Controller)
+        controller.release_slot = Mock(return_value=True)
+        controller.drive = Mock()
+        controller.act = Mock()
+        controller.table_views = Mock(return_value=[])
+        controller.release_observation = Mock()
+        controller.held_in_wrist_view = Mock(return_value=True)
+        controller.table = lambda sample: sample["rim"]
+        controller.release_landmarks = lambda sample, *_: sample["cubes"]
+
+        def packet(angle, keys, along_shift):
+            normal = np.array([np.cos(angle), np.sin(angle)])
+            tangent = np.array([-normal[1], normal[0]])
+            rim = dict(
+                normal=normal,
+                along=tangent,
+                distance=0.3,
+                height=0.54,
+                span=[-0.2, 0.25],
+            )
+            return {
+                "rim": rim,
+                "cubes": {
+                    key: 0.43 * normal + (0.15 + along_shift) * tangent for key in keys
+                },
+            }
+
+        # The right wrist sees the cube initially. A shared exposure lets the
+        # controller keep tracking when only the left wrist sees it after the turn.
+        start = packet(0.0, ["right"], 0)
+        mid = packet(0.1, ["left", "right"], 0.002)
+        end = packet(0.20, ["left"], 0.004)
+        controller.sense = Mock(side_effect=[mid, end, end])
+        with patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]):
+            rim, obstacles = controller.turn_for_release(
+                start["rim"],
+                [np.array([0.43, 0.15])],
+                start,
+                "green",
+                ["red"],
+                start["cubes"],
+            )
+        expected = 0.43 * rim["normal"] + 0.154 * rim["along"]
+        np.testing.assert_allclose(obstacles, [expected])
+        self.assertTrue(
+            any(
+                call.kwargs.get("initial_view_match") is False
+                for call in controller.act.call_args_list
+            )
+        )
+        commands = [
+            call.kwargs.get("turn", 0) for call in controller.drive.call_args_list
+        ]
+        np.testing.assert_allclose(commands, [-0.16, -0.15, 0])
+        controller.release_observation.assert_called_once()
+        controller.held_in_wrist_view.assert_called_once_with("green", end)
+
+        # With no common landmark between consecutive views the base must brake.
+        controller.sense = Mock(return_value=packet(0.1, ["left"], 0))
+        controller.release_observation.reset_mock()
+        controller.drive.reset_mock()
+        with self.assertRaisesRegex(ValueError, "consecutive"):
+            controller.turn_for_release(
+                start["rim"], [], start, "green", ["red"], start["cubes"]
+            )
+        self.assertEqual(controller.drive.call_args.kwargs, {})
         controller.release_observation.assert_not_called()
 
     def test_choose_pose_change_using_distinct_visible_cube_colors(self):
@@ -115,7 +243,7 @@ class TransferTests(unittest.TestCase):
         }
         controller.release_landmarks = Mock(return_value=single_color)
         controller.reposition_for_release(*args)
-        controller.shift_for_release.assert_called_once_with(*args)
+        controller.shift_for_release.assert_called_once_with(*args, single_color)
         multiple = single_color | {("left_wrist", "green"): [0.41, 0.25]}
         controller.release_landmarks.return_value = multiple
         controller.reposition_for_release(*args)

@@ -37,6 +37,30 @@ POSTURE = NAVIGATION_POSTURE | dict(
 )
 
 
+WHEEL_COMMAND_TICKS = 20
+MAX_PLACEMENT_LATERAL_PATH_M = 0.14
+
+
+def lateral_path_after(command, *, experimental, phase, spent_m, duration_s):
+    """Charge absolute lateral commands against a single cube's placement budget."""
+    lateral = command.get("lateral_m_s", 0.0)
+    if type(lateral) not in (int, float) or not -0.018 <= lateral <= 0.018:
+        raise ValueError("lateral speed outside the Nano envelope")
+    if lateral and (
+        not experimental
+        or phase != "place"
+        or command["speed"]
+        or abs(command["turn"]) > 0.2
+    ):
+        raise ValueError(
+            "lateral motion requires a speed-limited wrist-clearance placement"
+        )
+    total = spent_m + abs(lateral) * duration_s
+    if total > MAX_PLACEMENT_LATERAL_PATH_M + 1e-12:
+        raise ValueError("lateral placement path exceeds 0.14 m for this cube")
+    return total
+
+
 def finger_gap(point, position, rotation, bounds, cube_radius):
     """Lower bound on surface clearance from an oriented finger box to a cube."""
     local = rotation.T @ (point - position)
@@ -375,6 +399,7 @@ def execute(
     if record:
         for name in CAMERAS:
             (out / "camera" / name).mkdir(parents=True)
+    lateral_path_m = dict.fromkeys(colors, 0.0)
     active_color = colors[0]
 
     preview_times = []
@@ -499,20 +524,17 @@ def execute(
                 or not -0.5 <= turn <= 0.5
             ):
                 raise ValueError("wheel command outside the Nano envelope")
+            charged = lateral_path_after(
+                command,
+                experimental=config.get("wrist_clearance", False),
+                phase=judge.phase,
+                spent_m=lateral_path_m[active_color],
+                duration_s=WHEEL_COMMAND_TICKS * sim.scene.dt,
+            )
             lateral = command.get("lateral_m_s", 0.0)
-            if type(lateral) not in (int, float) or not -0.018 <= lateral <= 0.018:
-                raise ValueError("lateral speed outside the Nano envelope")
-            if lateral and (
-                not config.get("wrist_clearance")
-                or judge.phase != "place"
-                or speed
-                or abs(turn) > 0.2
-            ):
-                raise ValueError(
-                    "lateral motion requires a speed-limited wrist-clearance placement"
-                )
             rates = guard.accept(wheel_rates(speed, lateral, turn), guard.next_seq)
-            for _ in range(20):
+            lateral_path_m[active_color] = charged
+            for _ in range(WHEEL_COMMAND_TICKS):
                 check_wrist()
                 sim.targets[sim.wheel_indices] += rates * 0.01
                 step()
