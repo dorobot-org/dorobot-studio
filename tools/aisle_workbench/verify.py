@@ -30,6 +30,11 @@ def main():
     )
     scenario = parser.add_mutually_exclusive_group()
     scenario.add_argument(
+        "--fleet",
+        action="store_true",
+        help="Submit concurrent jobs from native Run and fetch one into Evidence",
+    )
+    scenario.add_argument(
         "--standing", action="store_true", help="Run a floating-base G1 tracking trial"
     )
     scenario.add_argument(
@@ -221,6 +226,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.fleet:
+                    check.append("--fleet")
                 if args.observed_author:
                     check.append("--observed-author")
                 if args.moving_target:
@@ -258,7 +265,11 @@ def main():
                         check.append("--" + args.provider)
                     if args.backend == "offscreen":
                         check.append("--screenshots")
-                timeout = 1800 if args.train_grasp else 900 if args.transfer else 330
+                timeout = (
+                    1800
+                    if args.train_grasp
+                    else 900 if args.transfer or args.fleet else 330
+                )
                 subprocess.run(check, check=True, timeout=timeout)
                 status = subprocess.check_output(
                     [args.remote, "app", str(process.pid), "status"], text=True

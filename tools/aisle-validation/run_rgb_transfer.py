@@ -228,7 +228,15 @@ class Judge:
         )
 
 
-def execute(out, seed, colors, record=False, room_objects=(), room_settings=None):
+def execute(
+    out,
+    seed,
+    colors,
+    record=False,
+    room_objects=(),
+    room_settings=None,
+    observation_progress=False,
+):
     from nano_grasp_estimator import parameters
 
     controller = out / "controller.json"
@@ -368,6 +376,17 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         judge.tick(sim)
         if record and sim.tick % 20 == 0:
             publish(sample=True)
+        elif observation_progress and sim.tick % 100 == 0:
+            worker.save(
+                out / "progress.json",
+                dict(
+                    kind="table-transfer",
+                    step=sim.tick,
+                    state=judge.phase,
+                    color=active_color,
+                    requested=colors,
+                ),
+            )
 
     def move(command):
         if command["op"] == "wheel":
