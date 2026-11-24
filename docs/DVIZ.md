@@ -133,7 +133,7 @@ Navigation 工具栏最左边是两个按钮 "E-STOP"、"Disarm"，右边是两�
 状态行下面两行：
 
 - **回执行**：最近一条命令，如 `Last command: goal s3-k9xq → ok: sent to nav_command  (2 s ago)`（不带原因的回复只写结果代码，如旧桥节点的 `→ ok  (2 s ago)`）。等回复时是 `sending…`；没连上或还没见过车时是 `not sent: not connected` / `not sent: no robot seen yet`；3 秒内没有回复是 `no reply (robot not reachable)`。发给多台车时每台一段，如 `tracer: ok: …; tracer_sim: …`。只要有一台的结果既不是 `ok` 也不是 `sending…`，整行就用红色。结果代码（`ok`、`not_armed`、`bad_token`、`disabled`、`rate_limited`……）的含义见桥节点 README。`ok` 只说明命令已送进导航数据流；目标的进展照旧看状态行里的目标状态。
-- **原因行**：工具为什么不能用。两个都不能用时是 `Pose / goal tools off: <原因>`，只有 2D Goal Pose 不能用时是 `2D Goal Pose off: <原因>`，都能用时为空。不能用的工具按钮是灰的，点了没反应。
+- **原因行**：工具为什么不能用。两个都不能用时是 `Pose / goal tools off: <原因>`，只有 2D Goal Pose 不能用时是 `2D Goal Pose off: <原因>`，都能用时为空；两个都能点、但车会拒收目标时是红字 `Goals will be refused: <原因>`（见下表最后三行）。不能用的工具按钮是灰的，点了没反应。
 
 按下表顺序，第一条符合的就是原因：
 
@@ -145,11 +145,13 @@ Navigation 工具栏最左边是两个按钮 "E-STOP"、"Disarm"，右边是两�
 | 本机没有令牌（文件不存在、为空或读不了） | 灰 | 灰 | `no token (~/.config/dviz/cmd_token)` |
 | 导航状态超过 2 秒没更新 | 灰 | 灰 | `nav status stale` |
 | 车上没打开（`cmd_goal_enabled` 为假） | 灰 | 灰 | `goal / pose commands not enabled on the robot` |
-| 安全门状态停了（状态行写 "Gate (no data)"） | — | 灰 | `gate state unknown` |
-| 急停锁着 | — | 灰 | `e-stop latched (release it on the robot)` |
-| 没武装 | — | 灰 | `robot not armed (arm it on the robot)` |
+| 安全门状态停了（状态行写 "Gate (no data)"） | — | 可点，原因行红字提示 | `Goals will be refused: gate state unknown` |
+| 急停锁着 | — | 可点，原因行红字提示 | `Goals will be refused: e-stop latched (release it on the robot)` |
+| 没武装 | — | 可点，原因行红字提示 | `Goals will be refused: robot not armed (arm it on the robot)` |
 
-变灰只是提示，不是保护：桥节点对每条命令再检查一遍，撤防或急停时拒收目标（回执 `not_armed` / `estop_active`）。设初始位姿不要求武装（它通常在武装前做）。
+车没武装 / 急停 / 安全门状态未知时 2D Goal Pose 仍可点（和 RViz 一样），目标会被桥节点拒收（回执 `not_armed` / `estop_active` / `gate_unknown`，红字），设计上的安全保护不变。
+
+提示（变灰或红字）只是提示，不是保护：桥节点对每条命令再检查一遍，撤防或急停时拒收目标（回执 `not_armed` / `estop_active`）。设初始位姿不要求武装（它通常在武装前做）。
 
 **升级顺序（命令）**：交付 ③ 的旧桥节点没有命令通道。新版 Studio 连它时两个工具是灰的（原因 `goal / pose commands not enabled on the robot`），E-STOP 和 Disarm 的回执是 `no reply (robot not reachable)`：车不会停。所以先在车上装新的桥节点（`install.sh` 后重启 dora-nav），再升级 Studio。
 

@@ -1058,6 +1058,13 @@ fn command_red(cx: &mut Cx, panel: &DvizNavPanel) -> f32 {
     instance::<1>(cx, &label.draw_text, live_id!(error))[0]
 }
 
+/// The tool-reason line's `error` (1 red, 0 ink).
+fn reason_red(cx: &mut Cx, panel: &DvizNavPanel) -> f32 {
+    let line = panel.root().widget(cx, ids!(tool_reason));
+    let label = line.borrow::<Label>().expect("tool_reason label");
+    instance::<1>(cx, &label.draw_text, live_id!(error))[0]
+}
+
 /// A map action as the map sends it after a tool's release.
 fn map_action(cx: &mut Cx, panel: &mut DvizNavPanel, action: DvizMapAction) -> bool {
     let uid = panel.root().widget(cx, ids!(map)).widget_uid();
@@ -1287,8 +1294,8 @@ fn nav_panel_tools_follow_the_robot_and_send_with_the_token() {
     );
     let status = matched_publisher(&peer, format!("{prefix}/tracer/nav/status"));
     // Publishes the robot's state and syncs once the session has it.
-    let robot_is = |cx: &mut Cx, panel: &mut DvizNavPanel, armed: bool| {
-        let state = json!({"loc_ok": true, "loc_reason": "", "armed": armed, "estop": false,
+    let robot_is = |cx: &mut Cx, panel: &mut DvizNavPanel, armed: bool, estop: bool| {
+        let state = json!({"loc_ok": true, "loc_reason": "", "armed": armed, "estop": estop,
                            "gate_reason": "", "cmd_goal_enabled": true});
         status
             .put(nav_message("status", state, None))
@@ -1299,12 +1306,12 @@ fn nav_panel_tools_follow_the_robot_and_send_with_the_token() {
                 .snapshot()
                 .nav
                 .status
-                .is_some_and(|s| s.armed == armed)),
+                .is_some_and(|s| s.armed == armed && s.estop == estop)),
             "the status never arrived"
         );
         sync(cx, panel);
     };
-    robot_is(&mut cx, &mut panel, true);
+    robot_is(&mut cx, &mut panel, true, false);
     assert_eq!(session.snapshot().robots, ["tracer"]);
     assert_eq!(text(&mut cx, &panel, ids!(tool_reason)), "");
     let map = panel.root().dviz_map2_d(&cx, ids!(map));
@@ -1330,26 +1337,35 @@ fn nav_panel_tools_follow_the_robot_and_send_with_the_token() {
     assert_eq!(map.tool(), None);
     assert_eq!(button_on(&mut cx, &panel, ids!(pose_tool)), 0.0);
 
-    // Disarmed on the robot: the armed Goal tool is put away and greyed;
-    // Pose Estimate still works.
+    // Disarmed or e-stopped on the robot (RViz behaviour): the Goal tool stays
+    // clickable and armed; the reason line says in red the goal will be refused.
     assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
     assert_eq!(map.tool(), Some(ToolKind::Goal));
-    robot_is(&mut cx, &mut panel, false);
-    assert_eq!(map.tool(), None);
-    assert_eq!(
-        text(&mut cx, &panel, ids!(tool_reason)),
-        "2D Goal Pose off: robot not armed (arm it on the robot)"
-    );
-    assert_eq!(
-        tool_button_state(&mut cx, &panel, ids!(goal_tool)),
-        (false, true)
-    );
-    assert_eq!(
-        tool_button_state(&mut cx, &panel, ids!(pose_tool)),
-        (true, false)
-    );
+    for (armed, estop, line) in [
+        (false, false, "Goals will be refused: robot not armed (arm it on the robot)"),
+        (false, true, "Goals will be refused: e-stop latched (release it on the robot)"),
+    ] {
+        robot_is(&mut cx, &mut panel, armed, estop);
+        assert_eq!(map.tool(), Some(ToolKind::Goal), "the armed Goal tool was put away");
+        assert_eq!(text(&mut cx, &panel, ids!(tool_reason)), line);
+        assert_eq!(reason_red(&mut cx, &panel), 1.0);
+        for path in [ids!(pose_tool), ids!(goal_tool)] {
+            assert_eq!(tool_button_state(&mut cx, &panel, path), (true, false), "{path:?}");
+        }
+    }
+    // Put away and arm it again while disarmed.
     assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
-    assert_eq!(map.tool(), None, "a greyed tool was armed");
+    assert_eq!(map.tool(), None);
+    assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
+    assert_eq!(map.tool(), Some(ToolKind::Goal));
+    assert_eq!(button_on(&mut cx, &panel, ids!(goal_tool)), 1.0);
+    // Armed again: the line empties and goes back to the ink.
+    robot_is(&mut cx, &mut panel, true, false);
+    assert_eq!(text(&mut cx, &panel, ids!(tool_reason)), "");
+    assert_eq!(reason_red(&mut cx, &panel), 0.0);
+    assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
+    assert_eq!(map.tool(), None);
+    robot_is(&mut cx, &mut panel, false, false);
     assert!(click(&mut cx, &mut panel, ids!(pose_tool)));
     assert_eq!(map.tool(), Some(ToolKind::PoseEstimate));
 

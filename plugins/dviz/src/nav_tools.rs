@@ -137,6 +137,9 @@ pub struct ToolInputs<'a> {
 pub struct Availability {
     pub pose: Result<(), &'static str>,
     pub goal: Result<(), &'static str>,
+    /// The Goal tool works, but the robot will refuse its goals (RViz does
+    /// not grey the tool either): why, for the reason line in red.
+    pub goal_warning: Option<&'static str>,
 }
 
 impl Availability {
@@ -155,20 +158,26 @@ pub fn tool_availability(inputs: &ToolInputs) -> Availability {
     let Some(status) = inputs.status else {
         // `common_reason` already rejected a missing status.
         let r = common.map_or(Ok(()), Err);
-        return Availability { pose: r, goal: r };
+        return Availability { pose: r, goal: r, goal_warning: None };
     };
     let goal = match common {
         Some(r) => Err(r),
-        None if status.stale.iter().any(|p| p == nav_status_parts::GATE) => {
-            Err("gate state unknown")
-        }
-        None if status.estop => Err("e-stop latched (release it on the robot)"),
-        None if !status.armed => Err("robot not armed (arm it on the robot)"),
         None => Ok(()),
+    };
+    // The bridge still refuses goals in these states; the tool stays usable.
+    let goal_warning = match common {
+        Some(_) => None,
+        None if status.stale.iter().any(|p| p == nav_status_parts::GATE) => {
+            Some("gate state unknown")
+        }
+        None if status.estop => Some("e-stop latched (release it on the robot)"),
+        None if !status.armed => Some("robot not armed (arm it on the robot)"),
+        None => None,
     };
     Availability {
         pose: common.map_or(Ok(()), Err),
         goal,
+        goal_warning,
     }
 }
 
@@ -204,8 +213,15 @@ pub fn availability_text(a: &Availability) -> String {
         (Err(r), Err(_)) => format!("Pose / goal tools off: {r}"),
         (Err(r), Ok(())) => format!("2D Pose Estimate off: {r}"),
         (Ok(()), Err(r)) => format!("2D Goal Pose off: {r}"),
-        (Ok(()), Ok(())) => String::new(),
+        (Ok(()), Ok(())) => a
+            .goal_warning
+            .map_or_else(String::new, |r| format!("Goals will be refused: {r}")),
     }
+}
+
+/// Whether [`availability_text`] is the goal warning (drawn in red).
+pub fn availability_is_warning(a: &Availability) -> bool {
+    a.pose.is_ok() && a.goal.is_ok() && a.goal_warning.is_some()
 }
 
 fn outcome_text(o: &CommandOutcome) -> String {
@@ -401,7 +417,7 @@ mod tests {
         let ok: &'static NavStatus = Box::leak(Box::new(ok));
         let leak = |s: NavStatus| -> &'static NavStatus { Box::leak(Box::new(s)) };
 
-        let both = |r| Availability { pose: Err(r), goal: Err(r) };
+        let both = |r| Availability { pose: Err(r), goal: Err(r), goal_warning: None };
         let cases: Vec<(ToolInputs, Availability)> = vec![
             (
                 ToolInputs { connected: false, robots: 0, ..base(Some(ok)) },
@@ -433,23 +449,25 @@ mod tests {
             ),
             (
                 base(Some(leak(status(|s| s.stale = vec!["gate".into()])))),
-                Availability { pose: GOOD, goal: Err("gate state unknown") },
+                Availability { pose: GOOD, goal: GOOD, goal_warning: Some("gate state unknown") },
             ),
             (
                 base(Some(leak(status(|s| s.estop = true)))),
                 Availability {
                     pose: GOOD,
-                    goal: Err("e-stop latched (release it on the robot)"),
+                    goal: GOOD,
+                    goal_warning: Some("e-stop latched (release it on the robot)"),
                 },
             ),
             (
                 base(Some(leak(status(|s| s.armed = false)))),
                 Availability {
                     pose: GOOD,
-                    goal: Err("robot not armed (arm it on the robot)"),
+                    goal: GOOD,
+                    goal_warning: Some("robot not armed (arm it on the robot)"),
                 },
             ),
-            (base(Some(ok)), Availability { pose: GOOD, goal: GOOD }),
+            (base(Some(ok)), Availability { pose: GOOD, goal: GOOD, goal_warning: None }),
         ];
         for (i, (inputs, want)) in cases.iter().enumerate() {
             assert_eq!(&tool_availability(inputs), want, "row {i}");
@@ -461,12 +479,14 @@ mod tests {
         let goal_off = Availability {
             pose: Ok(()),
             goal: Err("gate state unknown"),
+            goal_warning: None,
         };
         assert!(goal_off.allows(ToolKind::PoseEstimate));
         assert!(!goal_off.allows(ToolKind::Goal));
         let both_off = Availability {
             pose: Err("not connected"),
             goal: Err("not connected"),
+            goal_warning: None,
         };
         assert!(!both_off.allows(ToolKind::PoseEstimate));
         assert!(!both_off.allows(ToolKind::Goal));
@@ -477,6 +497,7 @@ mod tests {
         let both = Availability {
             pose: Err("robot not armed (arm it on the robot)"),
             goal: Err("robot not armed (arm it on the robot)"),
+            goal_warning: None,
         };
         assert_eq!(
             availability_text(&both),
@@ -485,15 +506,26 @@ mod tests {
         let goal = Availability {
             pose: Ok(()),
             goal: Err("robot not armed (arm it on the robot)"),
+            goal_warning: None,
         };
         assert_eq!(
             availability_text(&goal),
             "2D Goal Pose off: robot not armed (arm it on the robot)"
         );
+        let none = Availability { pose: Ok(()), goal: Ok(()), goal_warning: None };
+        assert_eq!(availability_text(&none), "");
+        let warn = Availability {
+            goal_warning: Some("robot not armed (arm it on the robot)"),
+            ..none
+        };
         assert_eq!(
-            availability_text(&Availability { pose: Ok(()), goal: Ok(()) }),
-            ""
+            availability_text(&warn),
+            "Goals will be refused: robot not armed (arm it on the robot)"
         );
+        assert!(availability_is_warning(&warn));
+        for a in [&both, &goal, &none] {
+            assert!(!availability_is_warning(a));
+        }
     }
 
     fn ack(result: CmdResult, reason: &str) -> CommandOutcome {

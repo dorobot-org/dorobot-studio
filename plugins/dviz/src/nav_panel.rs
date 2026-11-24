@@ -15,8 +15,8 @@
 use crate::{
     map_view::layer_color,
     nav_tools::{
-        availability_text, command_is_error, command_text, tool_availability, Availability,
-        ToolInputs, ToolKind,
+        availability_is_warning, availability_text, command_is_error, command_text,
+        tool_availability, Availability, ToolInputs, ToolKind,
     },
     view_panel::theme_due,
     DvizMap2DWidgetRefExt, DvizSession, NavCommand, NavLayers, NavScene, SessionSnapshot,
@@ -310,6 +310,8 @@ pub struct DvizNavPanel {
     stale: Option<bool>,
     /// Whether the command line was last coloured as failed.
     command_error: Option<bool>,
+    /// Whether the tool-reason line was last coloured as a goal warning.
+    reason_error: Option<bool>,
     /// How the tool buttons were last styled.
     tool_buttons: Option<ToolButtonStyle>,
     /// What the tools could do at the last refresh; `None` before it.
@@ -343,7 +345,7 @@ impl DvizNavPanel {
                 }
                 status := mod.widgets.DvizNavStatus{width: Fill max_lines: 3 text: "Waiting for nav status"}
                 command := mod.widgets.DvizNavCommand{width: Fill text: ""}
-                tool_reason := mod.widgets.DvizLabel{width: Fill text: ""}
+                tool_reason := mod.widgets.DvizNavCommand{width: Fill text: ""}
                 View{width: Fill height: Fill flow: Right spacing: 12.0
                     map := mod.widgets.DvizMap2D{}
                     legend := mod.widgets.ux.Card{width: 230 height: Fit flow: Down padding: 12.0 spacing: 8.0
@@ -390,6 +392,7 @@ impl DvizNavPanel {
             follow_button: None,
             stale: None,
             command_error: None,
+            reason_error: None,
             tool_buttons: None,
             availability: None,
             hint: None,
@@ -412,6 +415,7 @@ impl DvizNavPanel {
         self.tool_buttons = None;
         self.stale = None;
         self.command_error = None;
+        self.reason_error = None;
         self.swatches = None;
         for (path, switch) in LAYER_CHECKS {
             let check = self.root.check_box(cx, path);
@@ -471,6 +475,14 @@ impl DvizNavPanel {
         }
         let reason = tool_reason_text(self.hint, &availability, now);
         self.root.label(cx, ids!(tool_reason)).set_text(cx, &reason);
+        // Red for the goal warning; the 2 s hint keeps the ink.
+        let warning = self.hint.is_none() && availability_is_warning(&availability);
+        if self.reason_error != Some(warning) {
+            let mut line = self.root.widget(cx, ids!(tool_reason));
+            let red = if warning { 1.0 } else { 0.0 };
+            script_apply_eval!(cx, line, { draw_text +: { error: #(red) } });
+            self.reason_error = Some(warning);
+        }
         self.sync_swatches(cx, &nav);
     }
 
@@ -807,6 +819,7 @@ mod tests {
         let off = Availability {
             pose: Ok(()),
             goal: Err("robot not armed (arm it on the robot)"),
+            goal_warning: None,
         };
         let hint = Some(("drag to set the heading", t0));
         let at = |ms| t0 + Duration::from_millis(ms);
@@ -829,6 +842,7 @@ mod tests {
         let on = Availability {
             pose: Ok(()),
             goal: Ok(()),
+            goal_warning: None,
         };
         assert_eq!(tool_reason_text(hint, &on, at(2500)), "");
     }
@@ -854,8 +868,9 @@ mod tests {
         snapshot.nav.status_at = Some(Instant::now());
         assert_eq!(
             availability_text(&snapshot_availability(&snapshot)),
-            "2D Goal Pose off: robot not armed (arm it on the robot)"
+            "Goals will be refused: robot not armed (arm it on the robot)"
         );
+        assert!(snapshot_availability(&snapshot).allows(ToolKind::Goal));
         snapshot.robots.push("tracer_sim".into());
         assert_eq!(
             availability_text(&snapshot_availability(&snapshot)),
