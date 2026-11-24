@@ -14,9 +14,9 @@ Both services received the same red-only schema in separate requests. Each resul
 
 ## Stationary and moving pickups
 
-For a stationary red cube, enter **Move the red floor cube onto the coffee table.** For a moving target, explicitly ask the author to track the cube from onboard RGB as the arm descends. A revision based on a stopped tracked pickup can also use the recorded camera evidence to revise the tracking rule. Previously saved controllers retain their recorded pickup strategy.
+For a stationary red cube, enter **Move the red floor cube onto the coffee table.** For a moving target, enter **Move the sliding red floor cube onto the coffee table.** Studio binds that request to red and enables pickup tracking. A revision of a tracked parent can continue tracking. A stopped pickup can also supply recorded camera evidence for changing the tracking rule. Previously saved controllers retain their recorded pickup strategy.
 
-Two headless Makepad fleet journeys used the same Nano model, layout 0, stationary target, operator instruction and DeepSeek V4 Flash through Octos. In the first, the author enabled moving-target tracking. After two failed wrist-camera confirmations, the controller stopped. Red was still on the floor. The revised authoring schema restricts a plain named transfer to stationary pickup. A new request selected that mode, and Studio ran the generated controller through the same local worker.
+Two headless Makepad fleet journeys used the same Nano model, layout 0, stationary target, operator instruction and DeepSeek V4 Flash through Octos. In the first, the author enabled moving-target tracking. After two failed wrist-camera confirmations, the controller stopped. Red was still on the floor. The revised authoring schema restricts a plain named transfer to stationary pickup. DeepSeek returned the required mode, and Studio ran the generated controller through the same local worker.
 
 | Measured outcome | Original draft | Revised draft |
 | --- | ---: | ---: |
@@ -25,7 +25,7 @@ Two headless Makepad fleet journeys used the same Nano model, layout 0, stationa
 | Final consecutive table-contact ticks | 0 | 100 |
 | Recorded frames per onboard camera | 218 | 342 |
 
-The revised trial streamed to Run, continued while a second observation-only lease was cancelled, exported a dataset, and reopened in Studio after restart. Its motor journal matched the previously measured stationary red transfer byte for byte. Codex independently chose stationary pickup for the same instruction. In an additional authoring request, DeepSeek enabled tracking for an explicitly moving red cube. The matched fleet comparison covers one layout. [Original model requests, both leases and motor journals](stationary-fleet.zip) · [Replay the checks with Python](check_stationary.py)
+The revised trial streamed to Run, continued while a second observation-only lease was cancelled, exported a dataset, and reopened in Studio after restart. Its motor journal matched the previously measured stationary red transfer byte for byte. Codex returned the required stationary mode for the same instruction. DeepSeek enabled tracking in a free-form moving-cube request and returned the required red-only tracking mode for the sliding-cube instruction above. Both moving examples here measured authoring. [Measured moving grasps](../moving-grasp/README.md) The matched fleet comparison covers one layout. [Original model requests, both leases and motor journals](stationary-fleet.zip) · [Replay the checks with Python](check_stationary.py). Add `--datasets` in the Studio environment to decode all three videos and verify frame timestamps against all 342 Parquet rows. The original fleet failure used [the earlier authoring code](https://github.com/dorobot-org/dorobot-studio/tree/7872a9845fb66807827a5b8ea5b4aa32f177f570). The archived successful native fleet rerun used [the revised authoring code](https://github.com/dorobot-org/dorobot-studio/tree/cda37d2c5976b4810ff6847072f26d879e272957).
 
 ## Reproduction
 

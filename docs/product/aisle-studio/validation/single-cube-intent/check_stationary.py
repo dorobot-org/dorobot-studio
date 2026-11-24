@@ -1,8 +1,10 @@
 """Check the authored modes, admitted bytes, measured outcomes and retained motor targets."""
 
+import argparse
 import base64
 import hashlib
 import json
+import runpy
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -10,6 +12,13 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main():
+    cli = argparse.ArgumentParser(description=__doc__)
+    cli.add_argument(
+        "--datasets",
+        action="store_true",
+        help="Decode all camera frames and synchronized Parquet rows",
+    )
+    args = cli.parse_args()
     with (
         ZipFile(ROOT / "stationary-fleet.zip") as z,
         ZipFile(ROOT / "paired-traces.zip") as old,
@@ -19,21 +28,38 @@ def main():
             return json.loads(z.read(name))
 
         outcomes = []
-        for tag in ("before", "after", "codex-stationary", "deepseek-moving"):
+        for tag in (
+            "before",
+            "after",
+            "codex-stationary",
+            "deepseek-moving",
+            "deepseek-sliding",
+        ):
             reply = read(f"{tag}/author/reply.json")
             schema = read(f"{tag}/author/controller-request.json")["output_schema"]
             controller = read(f"{tag}/author/controller.json")
-            tracks = tag in ("before", "deepseek-moving")
+            tracks = tag in ("before", "deepseek-moving", "deepseek-sliding")
             assert reply["track_grasp"] is tracks
             assert controller.get("track_grasp", False) is tracks
             assert schema["properties"]["track_grasp"].get("enum") == (
-                None if tracks else [False]
+                ([True] if tag == "deepseek-sliding" else None) if tracks else [False]
             )
             assert (
                 controller["kind"] == "table-transfer"
                 and controller["color_order"] == "red"
             )
-            if tag != "deepseek-moving":
+            if tag == "deepseek-moving":
+                assert (
+                    controller["task"]
+                    == "Track the moving red cube from onboard RGB while the arm descends, pick it up and put it on the coffee table."
+                )
+            elif tag == "deepseek-sliding":
+                assert (
+                    controller["task"]
+                    == "Move the sliding red floor cube onto the coffee table."
+                )
+                assert schema["properties"]["color_order"]["enum"] == ["red"]
+            else:
                 assert (
                     controller["task"]
                     == "Move the red floor cube onto the coffee table."
@@ -80,8 +106,17 @@ def main():
             else:
                 assert outcome["cubes"]["red"]["table_contact_tail_ticks"] == 100
                 assert motor == old.read("octos-deepseek/trial/motor-targets.f64")
+            assert not outcome["unsupported_wheel_ranges"]
             outcomes.append(outcome)
         assert [row["physics_ticks"] for row in outcomes] == [4364, 6848]
+        assert [r["frames"] for r in outcomes] == [218, 342]
+        assert [
+            r["cubes"]["red"]["opposing_finger_airborne_ticks"] for r in outcomes
+        ] == [0, 3182]
+        assert [r["cubes"]["red"]["table_contact_tail_ticks"] for r in outcomes] == [
+            0,
+            100,
+        ]
         assert outcomes[0]["model_hash"] == outcomes[1]["model_hash"]
         native = read("after/native/journey.json")[-1]
         assert (
@@ -92,6 +127,46 @@ def main():
             read("after/native/recovery.json")[-1]["check"]
             == "Imported worker trial and export recovered"
         )
+        live = read("after/native/reopened.json")
+        reopened_dataset = Path(live["dataset"])
+        export = read(f"after/{reopened_dataset.parent.name}/export.json")
+        assert reopened_dataset.name == export["dataset"]
+        assert (
+            Path(live["selected"]).name
+            == export["trial"]
+            == read("after/dataset/meta/aisle.json")["trial"]
+        )
+        assert live["result"] == outcomes[1]
+        assert live["fleet"]["selected"]["id"] == native["foreground_id"]
+        assert any(
+            row["id"] == native["background_id"] and row["state"] == "cancelled"
+            for row in read("after/native/leases.json")
+        )
+        exposure = dict(read("after/trial/preview-timing.json")["tick_time"])
+        draws = [
+            json.loads(row)
+            for row in z.read("after/native/journey-draws.jsonl").splitlines()
+        ]
+        assert len({r["tick"] for r in draws if r["tick"] in exposure}) >= 2
+        manifest = read("after/native/mode-manifest.json")
+        assert manifest["sessions"][0]["pid"] != manifest["sessions"][1]["pid"]
+        assert (
+            manifest["studio_source_commit"]
+            == "cda37d2c5976b4810ff6847072f26d879e272957"
+        )
+        data = read("after/dataset/meta/info.json")
+        assert data["total_frames"] == 342 and data["total_episodes"] == 1
+        if args.datasets:
+            verify = runpy.run_path(str(ROOT.parent / "eight-h100/audit.py"))[
+                "check_dataset"
+            ]
+            verify(
+                z.read,
+                "after/dataset/",
+                data["features"],
+                data["fps"],
+                data["total_frames"],
+            )
         print(
             "Original 4,364-tick failed pickup retained. Revised 6,848-tick transfer and native restart verified."
         )
