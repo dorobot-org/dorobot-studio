@@ -81,6 +81,22 @@ def measure(archive, side, *, report_reopened_position=False):
             field="cubes.red.final_position_m[0]", worker=raw, displayed=position[0]
         )
         position[0] = raw
+        corrected = read("corrected-reopen.json")
+        assert corrected["result"] == result
+        assert corrected["worker_result_sha256"] == digest(
+            archive.read(f"{side}/result.json")
+        )
+        assert (
+            corrected["run"] == restored["trial"] and corrected["backend"] == "headless"
+        )
+        normalized = json.dumps(
+            result, sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
+        assert (
+            digest(normalized.encode()) == corrected["canonical_native_result_sha256"]
+        )
+        reopen["corrected_revision"] = corrected["studio_revision"]
+        reopen["corrected_exact"] = True
     assert display == result
     manifest = read("mode-manifest.json")
     original, reopened = manifest["sessions"]

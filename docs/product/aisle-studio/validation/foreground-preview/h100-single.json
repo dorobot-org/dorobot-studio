@@ -9,7 +9,9 @@
     "exact": false,
     "field": "cubes.red.final_position_m[0]",
     "worker": 0.17041552066802979,
-    "displayed": 0.1704155206680298
+    "displayed": 0.1704155206680298,
+    "corrected_revision": "4122ee64d8855c2c339744b041220dadbeb92a46",
+    "corrected_exact": true
   },
   "camera_reads": {
     "head": 7088,
