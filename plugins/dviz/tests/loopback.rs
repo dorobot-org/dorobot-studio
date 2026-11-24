@@ -2,7 +2,7 @@
 //! `tcp/127.0.0.1:<port>` endpoint and its own topic prefix, with multicast
 //! scouting off, so tests running in parallel never see each other or the LAN.
 
-use dorobot_plugin_dviz::{DvizSession, SessionOptions, Sink, ViewerState, RING_CAP};
+use dorobot_plugin_dviz::{DvizSession, NavCommand, SessionOptions, Sink, ViewerState, RING_CAP};
 use dviz_protocol::{binary_formats, serialize_message, MvizMessage};
 use serde_json::{json, Value};
 use std::{
@@ -668,6 +668,11 @@ impl ThreadRecordingSink {
         });
     }
 
+    /// Every call so far, oldest first.
+    fn all(&self) -> Vec<SinkCall> {
+        self.0.lock().unwrap().clone()
+    }
+
     fn calls(&self, kind: &str, entity: &str) -> Vec<SinkCall> {
         self.0
             .lock()
@@ -773,6 +778,84 @@ fn disable_clears_while_zenoh_is_down() {
     assert_eq!(clears.len(), 1, "{clears:?}");
     assert_eq!(clears[0].thread.as_deref(), Some("dviz-zenoh"));
     session.disconnect();
+}
+
+/// Switching to another robot (other options) takes the old robot out of the
+/// sink, before anything of the new connection reaches it, and forgets the
+/// last command; connecting again with the same options does neither.
+#[test]
+fn connecting_elsewhere_clears_the_old_robot() {
+    let (peer, endpoint) = listening_peer();
+    let at = |prefix: &str| SessionOptions {
+        prefix: prefix.into(),
+        ..connect_options("peer", &endpoint)
+    };
+    let (first, second) = ("dviz_test_switch_a", "dviz_test_switch_b");
+    let session = DvizSession::new();
+    let sink = ThreadRecordingSink::default();
+    session.set_sink(Box::new(sink.clone()));
+    session.connect(at(first)).unwrap();
+    assert!(wait_until(SETTLE, || session.snapshot().connected));
+    let status = matched_publisher(&peer, format!("{first}/tracer_sim/nav/status"));
+    let plan = matched_publisher(&peer, format!("{first}/tracer_sim/nav/plan"));
+    let state = json!({"loc_ok": true, "loc_reason": "", "armed": false, "estop": false,
+                       "gate_reason": ""});
+    let strips = json!({"strips": [[[0.0, 0.0, 0.0], [1.0, 2.0, 0.0]]]});
+    status.put(message("status", state, None)).wait().unwrap();
+    plan.put(message("linestrips3d", strips.clone(), None))
+        .wait()
+        .unwrap();
+    assert!(
+        wait_until(SETTLE, || session.snapshot().robots == ["tracer_sim"]
+            && sink.calls("log", "tracer_sim/nav/plan").len() == 1),
+        "{:?}",
+        session.snapshot()
+    );
+    session.send_command(NavCommand::Estop);
+    assert!(session.snapshot().command.is_some());
+
+    // The same options again: nothing cleared, the last command kept (and
+    // the robots forgotten, as on every connect).
+    session.connect(at(first)).unwrap();
+    assert!(wait_until(SETTLE, || session.snapshot().connected));
+    thread::sleep(Duration::from_millis(300));
+    let calls = sink.all();
+    assert!(calls.iter().all(|call| call.kind != "clear"), "{calls:?}");
+    assert!(session.snapshot().command.is_some());
+    assert!(session.snapshot().robots.is_empty());
+
+    // Another prefix: the old robot (known now only from its entities) is
+    // cleared first, on the worker, then the new robot's data comes in.
+    let before = sink.all().len();
+    session.connect(at(second)).unwrap();
+    assert_eq!(session.snapshot().command, None);
+    assert!(wait_until(SETTLE, || session.snapshot().connected));
+    let next = matched_publisher(&peer, format!("{second}/tracer/nav/plan"));
+    next.put(message("linestrips3d", strips, None))
+        .wait()
+        .unwrap();
+    assert!(
+        wait_until(SETTLE, || sink.calls("log", "tracer/nav/plan").len() == 1),
+        "{:?}",
+        session.snapshot()
+    );
+    let calls = sink.all().split_off(before);
+    assert_eq!(
+        calls.first(),
+        Some(&SinkCall {
+            kind: "clear",
+            entity: "tracer_sim".into(),
+            thread: Some("dviz-zenoh".into()),
+        }),
+        "{calls:?}"
+    );
+    let clears: Vec<&str> = calls
+        .iter()
+        .filter(|call| call.kind == "clear")
+        .map(|call| call.entity.as_str())
+        .collect();
+    assert_eq!(clears, ["tracer_sim"]);
+    assert_eq!(session.snapshot().sink_errors, 0);
 }
 
 /// A status from a bridge configured with the Tracer Mini body model.

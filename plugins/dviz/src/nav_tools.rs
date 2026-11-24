@@ -216,14 +216,19 @@ fn outcome_text(o: &CommandOutcome) -> String {
                 .ok()
                 .and_then(|v| v.as_str().map(str::to_owned))
                 .unwrap_or_default();
-            format!("{code}: {}", ack.reason)
+            // An older bridge sends `ok` with an empty reason: no dangling colon.
+            match ack.reason.trim() {
+                "" => code,
+                reason => format!("{code}: {reason}"),
+            }
         }
         CommandOutcome::NotConnected(r) => format!("not sent: {r}"),
         CommandOutcome::Timeout => "no reply (robot not reachable)".to_string(),
     }
 }
 
-/// The receipt line, e.g. `Last command: goal s3-k9xq → ok: accepted  (2 s ago)`.
+/// The receipt line, e.g. `Last command: goal s3-k9xq → ok: sent to nav_command  (2 s ago)`;
+/// a reply without a reason is its code alone (`→ ok  (2 s ago)`).
 pub fn command_text(record: &CommandRecord, now: Instant) -> String {
     let result = match record.replies.as_slice() {
         [(_, only)] => outcome_text(only),
@@ -522,6 +527,19 @@ mod tests {
             one(ack(CmdResult::Ok, "accepted")),
             "Last command: goal s3-k9xq → ok: accepted  (2 s ago)"
         );
+        // The bridge's `ok` says "sent to nav_command"; an empty reason adds no colon.
+        assert_eq!(
+            one(ack(CmdResult::Ok, "sent to nav_command")),
+            "Last command: goal s3-k9xq → ok: sent to nav_command  (2 s ago)"
+        );
+        assert_eq!(
+            one(ack(CmdResult::Ok, "")),
+            "Last command: goal s3-k9xq → ok  (2 s ago)"
+        );
+        assert_eq!(
+            one(ack(CmdResult::NoReply, " \n")),
+            "Last command: goal s3-k9xq → no_reply  (2 s ago)"
+        );
         assert_eq!(
             one(ack(CmdResult::NotArmed, "gate disarmed")),
             "Last command: goal s3-k9xq → not_armed: gate disarmed  (2 s ago)"
@@ -544,6 +562,14 @@ mod tests {
         assert_eq!(
             command_text(&two, now),
             "Last command: goal s3-k9xq → a: ok: done; b: no reply (robot not reachable)  (2 s ago)"
+        );
+        let bare = record(
+            vec![("a", ack(CmdResult::Ok, "")), ("b", ack(CmdResult::Ok, ""))],
+            t0,
+        );
+        assert_eq!(
+            command_text(&bare, now),
+            "Last command: goal s3-k9xq → a: ok; b: ok  (2 s ago)"
         );
         // `now` before `sent` must not panic.
         assert!(command_text(&two, t0 - Duration::from_secs(1)).ends_with("(0 s ago)"));

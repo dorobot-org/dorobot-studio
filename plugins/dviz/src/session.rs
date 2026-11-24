@@ -21,7 +21,7 @@ use dviz_protocol::{
 };
 use std::{
     any::Any,
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     fmt::Display,
     io::Read,
     mem,
@@ -367,8 +367,11 @@ impl DvizSession {
     /// Returns at once: Zenoh opens on the receiver thread, and its failures
     /// land in `last_error`. Only invalid options fail here. Options other
     /// than the last connect's (mode, endpoints or prefix) start from a clear
-    /// state: no entities, logs, nodes or edges, and every counter at 0.
-    /// Robots are forgotten either way, and the command token is read again.
+    /// state: no entities, logs, nodes or edges, every counter at 0 and no
+    /// last command; and what the sink shows of the old connection goes too
+    /// (one clear per root, e.g. `tracer_sim`, which the new receiver hands
+    /// to the sink before its first message). Robots are forgotten either
+    /// way, and the command token is read again.
     pub fn connect(&self, options: SessionOptions) -> Result<(), String> {
         if let Err(error) = validate(&options) {
             lock(&self.shared.link).last_error = Some(error.clone());
@@ -376,17 +379,28 @@ impl DvizSession {
         }
         self.load_token();
         let mut control = lock(&self.control);
-        self.stop_current(&mut control);
+        let old_robots = self.stop_current(&mut control);
         // After the stop: a receiver checks its flag under the state lock
         // before it writes, so the stopped one cannot refill this.
         let elsewhere = matches!(&control.options, Some(last) if *last != options);
         {
             let mut state = lock(&self.shared.state);
             if elsewhere {
+                // The robots are already out of the state; a robot whose
+                // status was not read is known from them alone.
+                state.robots = old_robots;
+                let roots = state.roots();
                 *state = SessionState::default();
+                for root in &roots {
+                    state.queue_clear(root);
+                }
             } else {
                 state.start_connection();
             }
+        }
+        if elsewhere {
+            // Its receipt belongs to the old connection.
+            lock(&self.shared.cmd).last = None;
         }
         control.options = Some(options.clone());
         // The new thread waits for the previous one, so at most one runs.
@@ -620,7 +634,8 @@ impl DvizSession {
         lock(&self.shared.cmd).token = token;
     }
 
-    fn stop_current(&self, control: &mut Control) {
+    /// Stops the current receiver; returns the robots it had seen.
+    fn stop_current(&self, control: &mut Control) -> BTreeSet<String> {
         if let Some(stop) = control.stop.take() {
             stop.store(true, Ordering::Relaxed);
         }
@@ -639,7 +654,7 @@ impl DvizSession {
         drop(link);
         // A receiver checks the flag under the state lock before it routes,
         // so a stopped one cannot add robots again.
-        lock(&self.shared.state).robots.clear();
+        mem::take(&mut lock(&self.shared.state).robots)
     }
 }
 

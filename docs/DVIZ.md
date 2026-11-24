@@ -24,6 +24,8 @@
 
 点“Connect”建立会话，“Disconnect”断开，“Open 3D window”打开 Rerun。切到别的页面再回来，连接和已收到的数据保留（会话是进程内全局的）。这些按钮都立即返回，界面不会等 Zenoh 或 Rerun。
 
+Mode、Endpoint 或 Prefix 和上次 Connect 不同（比如从仿真车换到真车）时，Connect 从头开始：实体、日志、节点、计数和最近一条命令的回执都清空，Rerun 里上一个连接画的东西也清掉（每个根实体，如 `tracer_sim`，记一条 `Clear`，在新连接的第一条数据之前）。设置不变再点 Connect 只是重连，什么都不清。
+
 状态栏第一行是连接状态和计数：
 
 - **Connected**：至少和一个 Zenoh peer 或 router 建立了连接。只是会话打开、没有对端，不算已连接。
@@ -82,7 +84,7 @@ Rerun 里的网格、代价地图和车体模型：
   - 不认识的名字什么都不画，只记一条警告日志；`robot_model` 为空（`null`）不画模型。从网上收到的 `model_ref` 消息不会送进 Rerun，模型只由 Studio 自己记。
   - 重新生成：`PYTHONNOUSERSITE=1 python3 plugins/dviz/tools/make_tracer_model.py <base_link.STL> plugins/dviz/assets/tracer_mini.stl`。只用 numpy；默认不超过 1 000 000 字节、中心 (−0.11, 0)、底面 z = 0（`--max-bytes`、`--center-x`、`--center-y`、`--floor-z` 可改）；同样的输入得到逐字节相同的输出；源网格的 x 或 y 方向尺寸不在 0.3–0.6 m 之间（单位不是米）就报错退出，不猜缩放。
 
-Navigation 面板的操作：滚轮缩放（以光标为中心），拖动平移（会关掉跟随）；"Fit map" 适应地图，"Follow robot" 让车保持在中间；右侧图例每层一个开关（Map、Costmap、Robot、Plan、Trail、Goal、Scan，默认都开；Robot 管足迹和位姿箭头），色块是该层的颜色，Costmap 的色块是致命区的品红。足迹的填充最多取 8 个角点，角点更多的足迹只画框。工具栏上的 "2D Pose Estimate"、"2D Goal Pose"、"E-STOP"、"Disarm" 见下面“命令”一节。Wi-Fi 上的急停不是安全装置，遥控器切 RC 才是。
+Navigation 面板的操作：滚轮缩放（以光标为中心），拖动平移（会关掉跟随）；"Fit map" 适应地图，"Follow robot" 让车保持在中间；右侧图例每层一个开关（Map、Costmap、Robot、Plan、Trail、Goal、Scan，默认都开；Robot 管足迹和位姿箭头），色块是该层的颜色，Costmap 的色块是致命区的品红。足迹的填充最多取 8 个角点，角点更多的足迹只画框。工具栏从左到右是 "E-STOP"、"Disarm"、"Fit map"、"Follow robot"、"2D Pose Estimate"、"2D Goal Pose"：窗口窄时右边的按钮先被挤掉，E-STOP 和 Disarm 总在；这四个命令按钮见下面“命令”一节。Wi-Fi 上的急停不是安全装置，遥控器切 RC 才是。
 
 日志、节点和数据流图来自车上各节点真实的 Dora 日志，在 "Visualization" 标签的 Logs / Nodes 里看。
 
@@ -90,14 +92,14 @@ Navigation 面板的操作：滚轮缩放（以光标为中心），拖动平移
 
 ## 命令（Navigation 面板）
 
-Navigation 工具栏上有两个工具 "2D Pose Estimate"、"2D Goal Pose" 和两个按钮 "E-STOP"、"Disarm"。命令用 Zenoh 查询发给车上的桥节点（键 `<prefix>/<robot_id>/cmd`），桥节点检查后转给 DORA_NAV 的 nav_command，再把结果回给发命令的这台 Studio。车上的细节（检查顺序、结果代码、`dviz_cmd` 命令行工具）见 `runtime/nav-bridge/README.md` 的 "Command channel"。武装和解除急停只能在车上做（`tracer_ctl.py arm` / `release`），Studio 不能。
+Navigation 工具栏最左边是两个按钮 "E-STOP"、"Disarm"，右边是两个工具 "2D Pose Estimate"、"2D Goal Pose"。命令用 Zenoh 查询发给车上的桥节点（键 `<prefix>/<robot_id>/cmd`），桥节点检查后转给 DORA_NAV 的 nav_command，再把结果回给发命令的这台 Studio。车上的细节（检查顺序、结果代码、`dviz_cmd` 命令行工具）见 `runtime/nav-bridge/README.md` 的 "Command channel"。武装和解除急停只能在车上做（`tracer_ctl.py arm` / `release`），Studio 不能。
 
 ### 令牌
 
-设初始位姿和发目标要带共享令牌；急停和撤防不要。车上和操作员的机器各放一份同样的令牌，路径都是 `~/.config/dviz/cmd_token`，权限 600。在车上生成（括号里是子 shell，不会改掉当前 shell 的 umask）：
+设初始位姿和发目标要带共享令牌；急停和撤防不要。车上和操作员的机器各放一份同样的令牌，路径都是 `~/.config/dviz/cmd_token`，权限 600。在车上生成（括号里是子 shell，不会改掉当前 shell 的 umask；umask 只管新建的文件，所以文件原来就有时由后面的 `chmod` 收紧权限）：
 
 ```sh
-( umask 077; mkdir -p ~/.config/dviz; head -c 24 /dev/urandom | base64 > ~/.config/dviz/cmd_token )
+( umask 077; mkdir -p ~/.config/dviz; head -c 24 /dev/urandom | base64 > ~/.config/dviz/cmd_token ); chmod 600 ~/.config/dviz/cmd_token
 ```
 
 再把这个文件复制到操作员机器的同一路径，权限同样是 600。两边比较前都去掉首尾空白（文件末尾的换行、Windows 的 CRLF 都没关系）。桥节点只在启动时读一次，换令牌要重启 dora-nav；Studio 每次点 "Connect" 时读，只放在内存里，不显示、不写日志。
@@ -106,8 +108,8 @@ Navigation 工具栏上有两个工具 "2D Pose Estimate"、"2D Goal Pose" 和�
 
 车上默认只收急停和撤防。要收设初始位姿和发目标：
 
-1. 放好车上的令牌文件（权限 600 或 400；组或其他人可读写时桥节点当作没有令牌）。
-2. 在已安装的配置（`install.sh` 装到的目录里的 `tracer.json`，如 `/home/nvidia/nvme/dora-lab/opt/nav-bridge/tracer.json`）里加 `"cmd": {"goal_enabled": true}`。重新运行 `install.sh` 会用仓库里的 `tracer.json`（`goal_enabled` 为 `false`）覆盖它，装完要再改一次。
+1. 放好车上的令牌文件。组和其他人不能有任何权限位（`mode & 0o077 == 0`，如 600、400）；有一位（哪怕只是组可读或可执行），桥节点就当作没有令牌。
+2. 在已安装的配置（`install.sh` 装到的目录里的 `tracer.json`，如 `/home/nvidia/nvme/dora-lab/opt/nav-bridge/tracer.json`）里，把已有的 `"cmd"` 一项中的 `"goal_enabled": false` 改成 `true`。不要再加一个 `"cmd"`：文件里已经有这一项，重复的键会让配置读不进来，桥节点整个停用（什么都不发，命令也没有回复）。`install.sh` 每次都用仓库里的 `tracer.json`（`goal_enabled` 为 `false`）覆盖它，每装一次都要再改一次。
 3. 重启 dora-nav（先问）。桥节点启动时写一行 `nav-bridge: goal/initialpose commands enabled`，或 `... closed: <原因>`。
 
 打开以后 `nav/status` 里的 `cmd_goal_enabled` 为真，Studio 的两个工具才可用。
@@ -124,13 +126,13 @@ Navigation 工具栏上有两个工具 "2D Pose Estimate"、"2D Goal Pose" 和�
   - 激活或拖到一半时工具变得不能用（比如 2D Goal Pose 拖到一半车被撤防），工具直接退出，这次不发。
 - **E-STOP**：让车急停（安全门锁住急停并撤防）。
 - **Disarm**：让车撤防。
-- E-STOP 和 Disarm 永远可点，没有确认框，也没有键盘快捷键（点它们不会拿键盘焦点）；不要令牌，不受车上开关、限流和安全门状态影响，用 Zenoh 最高优先级发出，拥塞时不丢。它们发给这次连接里见过的每一个机器人编号（从 `<prefix>/<robot_id>/nav/status` 话题记下，断开或重连时清空），从没见过的车不会被停。
+- E-STOP 和 Disarm 按下就发（不等松开，按下后把鼠标移开也已经发出；松开不再发，按一次发一次），永远可点，没有确认框，也没有键盘快捷键（按它们不会拿键盘焦点）；不要令牌，不受车上开关、限流和安全门状态影响，用 Zenoh 最高优先级发出，拥塞时不丢。它们发给这次连接里见过的每一个机器人编号（从 `<prefix>/<robot_id>/nav/status` 话题记下，断开或重连时清空），从没见过的车不会被停。
 
 ### 回执和原因行
 
 状态行下面两行：
 
-- **回执行**：最近一条命令，如 `Last command: goal s3-k9xq → ok: accepted  (2 s ago)`。等回复时是 `sending…`；没连上或还没见过车时是 `not sent: not connected` / `not sent: no robot seen yet`；3 秒内没有回复是 `no reply (robot not reachable)`。发给多台车时每台一段，如 `tracer: ok: …; tracer_sim: …`。只要有一台的结果既不是 `ok` 也不是 `sending…`，整行就用红色。结果代码（`ok`、`not_armed`、`bad_token`、`disabled`、`rate_limited`……）的含义见桥节点 README。`ok` 只说明命令已送进导航数据流；目标的进展照旧看状态行里的目标状态。
+- **回执行**：最近一条命令，如 `Last command: goal s3-k9xq → ok: sent to nav_command  (2 s ago)`（不带原因的回复只写结果代码，如旧桥节点的 `→ ok  (2 s ago)`）。等回复时是 `sending…`；没连上或还没见过车时是 `not sent: not connected` / `not sent: no robot seen yet`；3 秒内没有回复是 `no reply (robot not reachable)`。发给多台车时每台一段，如 `tracer: ok: …; tracer_sim: …`。只要有一台的结果既不是 `ok` 也不是 `sending…`，整行就用红色。结果代码（`ok`、`not_armed`、`bad_token`、`disabled`、`rate_limited`……）的含义见桥节点 README。`ok` 只说明命令已送进导航数据流；目标的进展照旧看状态行里的目标状态。
 - **原因行**：工具为什么不能用。两个都不能用时是 `Pose / goal tools off: <原因>`，只有 2D Goal Pose 不能用时是 `2D Goal Pose off: <原因>`，都能用时为空。不能用的工具按钮是灰的，点了没反应。
 
 按下表顺序，第一条符合的就是原因：
@@ -148,6 +150,8 @@ Navigation 工具栏上有两个工具 "2D Pose Estimate"、"2D Goal Pose" 和�
 | 没武装 | — | 灰 | `robot not armed (arm it on the robot)` |
 
 变灰只是提示，不是保护：桥节点对每条命令再检查一遍，撤防或急停时拒收目标（回执 `not_armed` / `estop_active`）。设初始位姿不要求武装（它通常在武装前做）。
+
+**升级顺序（命令）**：交付 ③ 的旧桥节点没有命令通道。新版 Studio 连它时两个工具是灰的（原因 `goal / pose commands not enabled on the robot`），E-STOP 和 Disarm 的回执是 `no reply (robot not reachable)`：车不会停。所以先在车上装新的桥节点（`install.sh` 后重启 dora-nav），再升级 Studio。
 
 ### 已知局限
 

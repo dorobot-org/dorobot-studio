@@ -169,11 +169,28 @@ impl SessionState {
                 self.sink_actions
                     .retain(|action| !matches!(action, SinkAction::Model { .. }));
             }
-            let clear = SinkAction::Clear(entity.to_string());
-            if !self.sink_actions.contains(&clear) {
-                self.sink_actions.push_back(clear);
-            }
+            self.queue_clear(entity);
         }
+    }
+
+    /// Queues a clear of `entity` and everything below it, once.
+    pub(crate) fn queue_clear(&mut self, entity: &str) {
+        let clear = SinkAction::Clear(entity.to_string());
+        if !self.sink_actions.contains(&clear) {
+            self.sink_actions.push_back(clear);
+        }
+    }
+
+    /// The first path segment of every entity seen, plus the robots: the
+    /// roots under which the sink may show something of this state.
+    pub(crate) fn roots(&self) -> BTreeSet<String> {
+        self.entities
+            .keys()
+            .filter_map(|entity| entity.split('/').next())
+            .chain(self.robots.iter().map(String::as_str))
+            .filter(|root| !root.is_empty())
+            .map(str::to_string)
+            .collect()
     }
 
     /// Starts a new connection: the next status that names a body model
@@ -794,6 +811,37 @@ mod tests {
         assert_eq!(robots(&state), ["tracer"]);
         state.start_connection();
         assert!(state.robots.is_empty(), "{:?}", state.robots);
+    }
+
+    /// The roots a switch to other options clears: each entity's first
+    /// segment, and robots known only from a status this Studio could not
+    /// read; queued once each.
+    #[test]
+    fn roots_of_entities_and_robots() {
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        let mut send = |state: &mut SessionState, topic: &str, payload: &[u8]| {
+            route(state, &mut sink, "dviz", topic, payload);
+        };
+        send(&mut state, "dviz/tracer/nav/status", &status(None));
+        send(&mut state, "dviz/world/lidar", &points());
+        send(&mut state, "dviz/ghost/nav/status", b"{not json");
+        send(&mut state, "dviz/logs", &log_line(1));
+        assert_eq!(robots(&state), ["ghost", "tracer"]);
+        assert!(!state.entities.keys().any(|e| e.starts_with("ghost")));
+        let roots: Vec<String> = state.roots().into_iter().collect();
+        assert_eq!(roots, ["ghost", "tracer", "world"]);
+        for root in roots.iter().chain(&roots) {
+            state.queue_clear(root);
+        }
+        let queued: Vec<SinkAction> = state.take_sink_actions().into();
+        assert_eq!(
+            queued,
+            roots
+                .iter()
+                .map(|root| SinkAction::Clear(root.clone()))
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]

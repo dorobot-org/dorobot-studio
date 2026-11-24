@@ -74,6 +74,20 @@ fn click(cx: &mut Cx, panel: &mut dyn PluginPanel, path: &[LiveId]) -> bool {
     panel.handle_actions(cx, &actions, &mut MockBackend::new())
 }
 
+/// A finger-down on the button at `path`: Makepad's `Pressed`, before any
+/// release. E-STOP and Disarm act on this.
+fn press(cx: &mut Cx, panel: &mut dyn PluginPanel, path: &[LiveId]) -> bool {
+    let button = panel.root().button(cx, path);
+    assert!(!button.is_empty(), "no button at {path:?}");
+    let actions = cx.capture_actions(|cx| {
+        cx.widget_action(
+            button.widget_uid(),
+            ButtonAction::Pressed(KeyModifiers::default()),
+        )
+    });
+    panel.handle_actions(cx, &actions, &mut MockBackend::new())
+}
+
 fn fill(cx: &mut Cx, panel: &DvizViewPanel, path: &[LiveId], text: &str) {
     let input = panel.root().text_input(cx, path);
     assert!(!input.is_empty(), "no text input at {path:?}");
@@ -1089,8 +1103,21 @@ fn nav_panel_estop_and_disarm_send_while_the_tools_are_off() {
     assert_eq!(map.tool(), None, "an unavailable tool stays armed");
 
     for (path, cmd) in [(ids!(estop), "estop"), (ids!(disarm), "disarm")] {
-        assert!(click(&mut cx, &mut panel, path));
+        // On the press, not the release: one press is one command, and the
+        // release (`Clicked`) that follows sends nothing more.
+        let before = session.snapshot().command.map(|record| record.id);
+        assert!(press(&mut cx, &mut panel, path));
         let record = session.snapshot().command.expect("a command record");
+        assert_ne!(Some(&record.id), before.as_ref(), "{cmd}: nothing sent");
+        assert!(
+            !click(&mut cx, &mut panel, path),
+            "{cmd}: the release was handled"
+        );
+        assert_eq!(
+            session.snapshot().command.map(|record| record.id),
+            Some(record.id.clone()),
+            "{cmd}: the release sent again"
+        );
         assert_eq!(record.cmd, cmd);
         assert_eq!(
             record.replies,
@@ -1111,6 +1138,35 @@ fn nav_panel_estop_and_disarm_send_while_the_tools_are_off() {
         .draw_plan()
         .iter()
         .any(|step| matches!(step, MapDraw::ToolDot { .. } | MapDraw::ToolArrow { .. })));
+    assert_no_script_errors(&mut cx);
+}
+
+/// E-STOP and Disarm lead the toolbar row, so a narrow window clips the view
+/// and tool buttons at its right end first, never them.
+#[test]
+fn nav_panel_stop_buttons_lead_the_toolbar() {
+    let (mut cx, session) = setup();
+    let mut panel = new_nav_panel(&mut cx, session);
+    sync(&mut cx, &mut panel);
+    let toolbar = panel.root().widget(&cx, ids!(toolbar));
+    assert!(!toolbar.is_empty(), "no toolbar");
+    let mut children = Vec::new();
+    toolbar.children(&mut |id, _| children.push(id));
+    assert_eq!(
+        children[..2],
+        [live_id!(estop), live_id!(disarm)],
+        "{children:?}"
+    );
+    let buttons = [
+        live_id!(estop),
+        live_id!(disarm),
+        live_id!(fit),
+        live_id!(follow),
+        live_id!(pose_tool),
+        live_id!(goal_tool),
+    ];
+    children.retain(|id| buttons.contains(id));
+    assert_eq!(children, buttons);
     assert_no_script_errors(&mut cx);
 }
 
@@ -1317,10 +1373,13 @@ fn nav_panel_tools_follow_the_robot_and_send_with_the_token() {
         format!("Last command: initialpose {id} → ok: accepted  (0 s ago)")
     );
     assert_eq!(command_red(&mut cx, &panel), 0.0);
-    // E-STOP goes without the token.
-    assert!(click(&mut cx, &mut panel, ids!(estop)));
+    // E-STOP goes without the token, on the press; its release sends nothing.
+    assert!(press(&mut cx, &mut panel, ids!(estop)));
     assert!(wait_until(SETTLE, || requests.lock().unwrap().len() == 2));
+    assert!(!click(&mut cx, &mut panel, ids!(estop)));
+    thread::sleep(Duration::from_millis(300));
     let sent = requests.lock().unwrap().clone();
+    assert_eq!(sent.len(), 2, "one press sent more than one command");
     assert_eq!(sent[0].cmd, "initialpose");
     assert_eq!(sent[0].token.as_deref(), Some(TOKEN));
     assert_eq!(

@@ -1,9 +1,10 @@
 //! The `dviz_nav` panel: the navigation scene on an RViz-style 2D map, with
 //! the nav status line above it and a legend whose check boxes switch each
-//! layer. Its toolbar has the 2D Pose Estimate and 2D Goal Pose tools (used
-//! on the map, greyed while the robot cannot take them) and the E-STOP and
-//! Disarm buttons; under the status line, the last command's receipt and why
-//! the tools are off.
+//! layer. Its toolbar has, from the left, the E-STOP and Disarm buttons (they
+//! send on the press), Fit map, Follow robot and the 2D Pose Estimate and 2D
+//! Goal Pose tools (used on the map, greyed while the robot cannot take
+//! them); under the status line, the last command's receipt and why the
+//! tools are off.
 //!
 //! Like `dviz_view`, the panel only holds a handle to the process-wide
 //! [`DvizSession`] and reads a fresh snapshot on every `sync` (the host syncs
@@ -327,16 +328,18 @@ impl DvizNavPanel {
             View{width: Fill height: Fill flow: Down padding: 16.0 spacing: 12.0
                 heading := mod.widgets.DvizLabel{text: "Navigation"
                     draw_text +: {text_style: mod.widgets.ux.TEXT_TITLE{}}}
-                View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
+                toolbar := View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
+                    // First, so a narrow window clips the other buttons, not
+                    // these. No keyboard shortcut: a press on them does not
+                    // take the key focus, so no key press sends them later.
+                    estop := mod.widgets.nx.HotBtn{text: "E-STOP" grab_key_focus: false}
+                    disarm := mod.widgets.nx.MiniHot{text: "Disarm" grab_key_focus: false}
+                    // A gap between the stop buttons and the view buttons.
+                    View{width: 16 height: Fit}
                     fit := mod.widgets.ux.ToolButton{text: "Fit map"}
                     follow := mod.widgets.ux.SegmentButton{text: "Follow robot"}
                     pose_tool := mod.widgets.ux.SegmentButton{text: "2D Pose Estimate"}
                     goal_tool := mod.widgets.ux.SegmentButton{text: "2D Goal Pose"}
-                    View{width: Fill height: Fit}
-                    // No keyboard shortcut: a click on them does not take
-                    // the key focus, so no key press sends them afterwards.
-                    estop := mod.widgets.nx.HotBtn{text: "E-STOP" grab_key_focus: false}
-                    disarm := mod.widgets.nx.MiniHot{text: "Disarm" grab_key_focus: false}
                 }
                 status := mod.widgets.DvizNavStatus{width: Fill max_lines: 3 text: "Waiting for nav status"}
                 command := mod.widgets.DvizNavCommand{width: Fill text: ""}
@@ -540,15 +543,18 @@ impl PluginPanel for DvizNavPanel {
         self.refresh(cx);
     }
 
-    /// E-STOP and Disarm send at once, whatever else the batch holds and
-    /// whether or not the tools work; a greyed tool's button is ignored.
+    /// E-STOP and Disarm send at once, on the press (finger down), whatever
+    /// else the batch holds and whether or not the tools work: Makepad's
+    /// `Clicked` comes only on a release over the button, so a press that
+    /// slides off would send nothing. The release sends nothing more. A
+    /// greyed tool's button is ignored.
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _: &mut dyn Backend) -> bool {
         let mut handled = false;
         for (path, command) in [
             (ids!(estop), NavCommand::Estop),
             (ids!(disarm), NavCommand::Disarm),
         ] {
-            if self.root.button(cx, path).clicked(actions) {
+            if self.root.button(cx, path).pressed(actions) {
                 self.session.send_command(command);
                 handled = true;
             }
