@@ -120,7 +120,7 @@ def main():
     if a.fleet:
         from fleet_check import native_journey
 
-        native_journey(a, checks, page, click, remote, done, grab)
+        native_journey(a, checks, page, click, remote, done, grab, wait)
         return
     if a.observed_author:
         from observed_author_check import journey

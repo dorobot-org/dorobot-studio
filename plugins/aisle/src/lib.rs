@@ -317,7 +317,10 @@ impl Panel {
             (ids!(older_job), pos.is_some_and(|i| i > 0)),
             (ids!(newer_job), pos.is_some_and(|i| i + 1 < jobs.len())),
             (ids!(cancel_job), active),
-            (ids!(fetch_job), matches!(state, "completed" | "failed")),
+            (
+                ids!(fetch_job),
+                matches!(state, "completed" | "failed" | "cancelled"),
+            ),
         ] {
             self.root
                 .button(cx, button)
@@ -325,6 +328,12 @@ impl Panel {
         }
     }
     fn run(&mut self, cx: &mut Cx, w: &Workbench) {
+        self.root
+            .button(cx, ids!(workers))
+            .set_enabled(cx, !w.busy() && !w.workers_open);
+        self.root
+            .button(cx, ids!(local_run))
+            .set_enabled(cx, !w.busy() && w.workers_open);
         self.root
             .widget(cx, ids!(fleet_controls))
             .set_visible(cx, w.workers_open);

@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 
-def native_journey(args, checks, page, click, remote, done, grab):
+def native_journey(args, checks, page, click, remote, done, grab, wait):
     source = args.out / "journey.json"
 
     def run_button(key):
@@ -38,6 +38,11 @@ def native_journey(args, checks, page, click, remote, done, grab):
             "Imported worker trial and export recovered",
         )
         click("aisle_evidence.replay")
+        wait(
+            lambda j: j["state"]["screen"] == "Replay"
+            and j["state"]["frames"] == proof["result"]["frames"],
+            "Reopened worker episode in Replay",
+        )
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
         return
 
@@ -122,6 +127,11 @@ def native_journey(args, checks, page, click, remote, done, grab):
         "Cancelled only the background job",
         90,
     )
+    run_button("fetch_job")
+    done(
+        lambda w: not w["busy"] and (w["result"] or {}).get("outcome") == "Stopped",
+        "Imported the cancelled job receipt",
+    )
     run_button("older_job")
     row = done(
         lambda w: not w["busy"]
@@ -159,6 +169,12 @@ def native_journey(args, checks, page, click, remote, done, grab):
     dataset = Path(row["dataset"])
     assert (dataset / "meta/info.json").is_file()
     click("aisle_evidence.replay")
+    wait(
+        lambda j: j["state"]["screen"] == "Replay"
+        and j["state"]["frames"] == result["frames"],
+        "Opened the complete imported episode in Replay",
+    )
+    grab("imported-replay")
     checks.append(
         dict(
             check="Two leased simulations through native Studio",

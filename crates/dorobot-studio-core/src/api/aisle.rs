@@ -428,7 +428,18 @@ impl Workbench {
                 w.evaluation = read(&path, "evaluation.json").unwrap_or_default();
             }
             w.history.sort();
-            if let Some(path) = w.history.last().cloned() {
+            let remembered = read(&w.root, "selected-trial.json");
+            let selected = remembered
+                .as_ref()
+                .and_then(Value::as_str)
+                .and_then(|name| {
+                    w.history
+                        .iter()
+                        .find(|path| path.file_name().and_then(|v| v.to_str()) == Some(name))
+                })
+                .or_else(|| w.history.last())
+                .cloned();
+            if let Some(path) = selected {
                 w.select_run(path);
                 if w.evidence["robot"] == "G1" {
                     w.robot = Robot::G1;
@@ -583,6 +594,14 @@ impl Workbench {
                     .map(|x| x as f32)
             })
             .collect();
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            let temporary = self
+                .root
+                .join(format!("selected-trial.{}.tmp", std::process::id()));
+            if fs::write(&temporary, serde_json::json!(name).to_string()).is_ok() {
+                let _ = fs::rename(temporary, self.root.join("selected-trial.json"));
+            }
+        }
         self.selected = Some(path);
     }
     fn launch(

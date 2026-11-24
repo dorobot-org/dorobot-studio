@@ -121,7 +121,7 @@ def submit(root, registry, alias, request):
     return info
 
 
-def import_trial(root, node, row):
+def import_trial(root, node, row, status):
     dest = root / row["trial"]
     if dest.is_dir():
         receipt = json.loads((dest / "worker-origin.json").read_bytes())
@@ -155,7 +155,15 @@ def import_trial(root, node, row):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with bundle.open(member) as source, target.open("xb") as out:
                     shutil.copyfileobj(source, out)
-        plan = json.loads((folder / "controller.json").read_bytes())
+        # Early cancellation can precede the worker writing its plan to the trial.
+        controller = folder / "controller.json"
+        if not controller.is_file() and status["state"] in ("cancelled", "failed"):
+            controller.write_bytes(
+                base64.b64decode(
+                    json.loads(row["request"])["controller"], validate=True
+                )
+            )
+        plan = json.loads(controller.read_bytes())
 
         if (
             plan.get("robot") != row["robot"]
@@ -163,9 +171,24 @@ def import_trial(root, node, row):
             != json.loads(row["request"])["controller_sha256"]
         ):
             raise ValueError("Evidence belongs to a different controller or robot")
+        if status["state"] == "cancelled":
+            save(folder / "stopped.json", dict(stopped=True))
+        elif status["state"] == "failed" and not (folder / "error.json").exists():
+            save(
+                folder / "error.json",
+                dict(
+                    message=status.get("message")
+                    or "Worker failed before producing a verdict"
+                ),
+            )
         save(
             folder / "worker-origin.json",
-            dict(job=row["id"], node=row["node"], sha256=meta["sha256"]),
+            dict(
+                job=row["id"],
+                node=row["node"],
+                state=status["state"],
+                sha256=meta["sha256"],
+            ),
         )
         # A second Studio may have fetched the same immutable trial concurrently.
         with journal(root):
@@ -244,7 +267,7 @@ def operate(args):
             info = send(node, dict(op="cancel", id=ident))
             update(root, ident, info["state"])
         if op == "fetch":
-            trial = import_trial(root, node, row).name
+            trial = import_trial(root, node, row, info).name
         info.update(robot=row["robot"], mode=row["mode"])
     capabilities = send(node, dict(op="hello"))
     return dict(
