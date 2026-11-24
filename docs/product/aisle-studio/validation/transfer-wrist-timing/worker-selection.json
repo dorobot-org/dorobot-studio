@@ -1,0 +1,20 @@
+{
+  "old_worker_rejection": "Update the selected worker to use experimental wrist clearance",
+  "lease": "b5794323-5cc3-4d6e-88cc-cb8a5c4c7b3f",
+  "state": "completed",
+  "source": true,
+  "wrist_timing": {
+    "camera": "left_wrist",
+    "phase": "pick",
+    "fixture": "disconnected",
+    "received": 14,
+    "rejected": {
+      "repeated or out-of-order packet": 10
+    },
+    "recoveries": 0,
+    "timed_out": true
+  },
+  "task_success": false,
+  "physics_ticks": 1180,
+  "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e"
+}
