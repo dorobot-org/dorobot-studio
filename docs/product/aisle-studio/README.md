@@ -79,3 +79,5 @@ To track a sliding floor cube during descent, request a moving pickup on Task, s
 Use **Evidence → Device preflight** to replay G1 encoders and IMU over DDS, observe an external telemetry source, or check the installed Nano adapter. [Setup, measurements and raw telemetry](validation/device-preflight/README.md)
 
 [Check the original overbroad Nano draft and both red-only runs](validation/single-cube-intent/README.md)
+
+[Watch a live Nano head camera and check concurrent simulation frame rates](validation/foreground-preview/README.md)

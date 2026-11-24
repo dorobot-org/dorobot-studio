@@ -1,0 +1,114 @@
+{
+  "deepseek-offscreen": {
+    "common_physics_window_s": 60.668277,
+    "draw_window_s": 60.623304833,
+    "viewport_draws": 1748,
+    "viewport_fps": 28.81730062081718,
+    "median_draw_gap_ms": 32.965459,
+    "p95_draw_gap_ms": 54.202292,
+    "maximum_draw_gap_ms": 218.060083,
+    "foreground_target_fps": 30,
+    "foreground_total_source_exposures": 2371,
+    "foreground_total_recorded_frames": 342,
+    "first_common_tick": 802,
+    "last_common_tick": 5775,
+    "background_observations": [
+      68,
+      68,
+      68
+    ],
+    "sessions": 4,
+    "meets_cadence": true,
+    "background_wall_fps": [
+      1.1011119387687216,
+      1.1036240453794288,
+      1.0930699366019436
+    ],
+    "complete_one_second_windows": 60,
+    "windows_below_25": 1,
+    "minimum_draws_in_one_second": 24,
+    "maximum_draws_in_one_second": 31,
+    "median_draws_in_one_second": 29.0,
+    "successes": 4,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "exported_videos": {
+      "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.head/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      }
+    }
+  },
+  "codex-headless": {
+    "common_physics_window_s": 59.524556667,
+    "draw_window_s": 59.497577125,
+    "viewport_draws": 1726,
+    "viewport_fps": 28.992777241599317,
+    "median_draw_gap_ms": 32.857166,
+    "p95_draw_gap_ms": 54.308707999999996,
+    "maximum_draw_gap_ms": 217.946625,
+    "foreground_target_fps": 30,
+    "foreground_total_source_exposures": 2380,
+    "foreground_total_recorded_frames": 342,
+    "first_common_tick": 1104,
+    "last_common_tick": 6013,
+    "background_observations": [
+      68,
+      68,
+      68
+    ],
+    "sessions": 4,
+    "meets_cadence": true,
+    "background_wall_fps": [
+      1.0966217232248896,
+      1.100036258675904,
+      1.1150863582382833
+    ],
+    "complete_one_second_windows": 59,
+    "windows_below_25": 0,
+    "minimum_draws_in_one_second": 26,
+    "maximum_draws_in_one_second": 31,
+    "median_draws_in_one_second": 29,
+    "successes": 4,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "exported_videos": {
+      "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.head/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      }
+    }
+  },
+  "openssh": {
+    "transport": "One OpenSSH connection on loopback",
+    "fresh_received_frames": 2318,
+    "source_frames": 2318,
+    "rgb_hashes": 2317,
+    "rate": 29.038782052073426,
+    "job": "58e5b277-d90f-4571-b3c4-2a116a8496bb"
+  },
+  "direct_run": {
+    "draws": 2204,
+    "rate": 28.471357976355094
+  }
+}
