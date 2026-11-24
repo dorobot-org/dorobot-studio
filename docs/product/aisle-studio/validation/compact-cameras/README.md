@@ -14,7 +14,7 @@ One H100 NVL replayed the same 320 steps per setting. The times below cover step
 | Compact geometry, original shadows | 33.79 ms | 19.65 ms | 1.57% | 0.67 |
 | Compact geometry and shadows | 24.26 ms | 10.45 ms | 3.44% | 0.77 |
 
-## Single H100 with a Mac Studio client
+## Single H100 with Studio on an M3 Max
 
 A headless Makepad client selected the new option and ran a previously authored DeepSeek/Octos red-cube transfer. On layout 0, Nano maintained wheel support through 6,948 physics ticks. The red cube detached and settled on the table for the final 100 ticks. There were zero rejected motor writes, root-pose writes or joint-limit excursions. The original controller hash was preserved through worker import, dataset export and restart. This run covers one cube and one layout.
 
@@ -24,6 +24,19 @@ A headless Makepad client selected the new option and ran a previously authored 
 | Native viewport over raw SSH RGB | 3,768 | 152.67 s | 24.67 FPS | 105/152 | 4 |
 
 The first experimental run with the same visual settings averaged 25.08 FPS in Studio. Neither run sustained 25 FPS throughout. The rendered controller inputs differ from the original profile, so the original three-cube held-out acceptance results apply to that original configuration.
+
+## Eight H100s with one Studio viewport
+
+Each H100 ran one simulation. Only the foreground used compact cameras. The other seven ran with original cameras and a 0.5-second wall-clock observation period. The existing author receipts bind each trial to its own Codex or DeepSeek/Octos controller. These runs measure execution of those saved controllers. The full fleet audit also verified the exported videos against their Parquet frame times.
+
+| Author | Studio build | Eight-way overlap | Worker FPS | Viewport FPS | Seven background feeds | Full seconds meeting both targets | Tasks passed |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| DeepSeek/Octos | Development | 100.95 s | 28.26 | 24.30 | 1.98–2.00 Hz | 52/100 | 8/8 |
+| Codex | Development | 102.02 s | 28.21 | 24.06 | 1.98–2.01 Hz | 46/102 | 8/8 |
+
+Both targets in a full second means at least 25 distinct native draws and at least one verified image received from each of the seven background workers in that second. The fleet acceptance test separately checks the mean rates across at least 30 seconds of eight-way overlap. The development builds fell below the 25 FPS mean. In the Codex run the live receiver observed 4,130 losslessly compressed frames, carrying 99.7 MB of image payload for 2.14 GB of decoded RGB and tick data.
+
+Run `python docs/product/aisle-studio/validation/compact-cameras/cohorts.py` to recompute the native and background rates from timestamped draws, exposures and received image digests. [DeepSeek cohort](deepseek-cohort.json.gz) · [Codex cohort](codex-cohort.json.gz)
 
 ## Reproduction
 
