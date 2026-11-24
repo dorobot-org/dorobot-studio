@@ -29,6 +29,7 @@ def main():
         action="store_true",
         help="Verify a previously stopped run after restarting Studio",
     )
+    p.add_argument("--fleet-node")
     p.add_argument("--fleet", action="store_true")
     p.add_argument("--foreground-cadence", type=int, choices=range(2, 65))
     p.add_argument("--standing", action="store_true")

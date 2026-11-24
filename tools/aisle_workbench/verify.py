@@ -139,7 +139,13 @@ def main():
         type=Path,
         help="Reopen the original native authoring receipt without a second model call",
     )
+    parser.add_argument(
+        "--fleet-node",
+        help="Run the two-job native fleet check against this registered worker",
+    )
     args = parser.parse_args()
+    if args.fleet_node and (not args.fleet or args.foreground_cadence):
+        parser.error("--fleet-node requires the two-job --fleet journey")
     if args.photo_input and (args.survey or not args.transfer):
         parser.error("--photo-input requires a transfer without --survey")
     if args.survey and not args.transfer:
@@ -323,6 +329,8 @@ def main():
                     check.append("--compare-runs")
                 if args.fleet:
                     check.append("--fleet")
+                    if args.fleet_node:
+                        check.extend(["--fleet-node", args.fleet_node])
                     if args.foreground_cadence:
                         check.extend(
                             ["--foreground-cadence", str(args.foreground_cadence)]

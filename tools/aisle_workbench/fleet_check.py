@@ -106,6 +106,9 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     if args.foreground_cadence:
         from fleet_cadence import ALIAS, while_streaming, verify_viewport
 
+    else:
+        ALIAS = args.fleet_node or "local"
+    if ALIAS != "local":
         run_button("node")
         remote(
             "key",
@@ -115,8 +118,6 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             "wait=1",
         )
         remote("text", "w=0", "t=" + ALIAS, "wait=1")
-    else:
-        ALIAS = "local"
     run_button("connect")
     row = done(
         lambda w: not w["busy"] and (w["fleet"] or {}).get("node") == ALIAS,
