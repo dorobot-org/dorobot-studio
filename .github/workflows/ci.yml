@@ -45,6 +45,8 @@ jobs:
           "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: numpy==2.5.5 pyarrow==26.0.1
           "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit.py" "$guide/measurements.zip" --datasets --output "$RUNNER_TEMP/wrist-timing.json"
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
+          /usr/bin/python3 "$guide/capacity.py" "$guide/capacity.zip" > "$RUNNER_TEMP/wrist-capacity.json"
+          cmp "$guide/capacity.json" "$RUNNER_TEMP/wrist-capacity.json"
       - name: Install Rust
         run: |
           rustup toolchain install 1.95.0 --profile minimal

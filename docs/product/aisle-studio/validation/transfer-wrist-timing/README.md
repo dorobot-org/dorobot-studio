@@ -1,10 +1,10 @@
 # Nano wrist-camera loss during a pick
 
-Open **AISLE Studio → Task**, select **Nano**, and enter “Move all three floor cubes onto the coffee table in red, green, blue order.” Choose **Ask Codex** or **DeepSeek via Octos**. On **Scene**, select **On time**, **Delay** or **Freeze** under **Left wrist RGB during pick**. On **Run**, start the simulation. **Evidence** shows whether the wrist resumed or timed out and whether each cube settled on the tabletop. Restarting Studio reopens the recorded outcome. [Timeout in Studio](timeout.png)
+Open **AISLE Studio → Task**, select **Nano**, and enter “Move all three floor cubes onto the coffee table in red, green, blue order.” For the experimental three-view placement used in the recovery demonstration, add the separate sentence **Use experimental wrist clearance.** Ordinary requests and existing controller artifacts use the established head and right-wrist release check. Choose **Ask Codex** or **DeepSeek via Octos**. On **Scene**, select **On time**, **Delay** or **Freeze** under **Left wrist RGB during pick**. On **Run**, start the simulation. **Evidence** shows whether the wrist resumed or timed out and whether each cube settled on the tabletop. Restarting Studio reopens the recorded outcome. [Timeout in Studio](timeout.png)
 
 The local controller checks the left-wrist RGB stream at least every 20 simulated pick ticks and at each request for a synchronized policy observation. The guard uses the pick phase declared by the controller over the action pipe. Its clock and packet-delivery timestamps are in simulation time. The tested interruption starts during the first pick, while Nano is reaching for red. Green and blue receive normal wrist delivery. All 17 wheel, arm, gripper and head position targets are held while an exposure is stale. Nexus continues advancing at 10 ms per tick. No simulator object coordinates enter the policy. The independent judge measures physical contacts, support, joint limits and settled placement. The agent authors the task before the run. The local controller operates the motors. For the recorded three-cube native journeys, Codex (GPT-6.2 Astra) took 7.51 seconds to prepare its instruction and DeepSeek V4 Flash through Octos took 2.55 seconds. Each figure covers one authoring request. Physics and motor decisions then ran locally.
 
-The previously qualified controller scored 45/50 on its own frozen runtime. The layout-0 measurements below exercise fault handling. The release policy in this experiment has its own [50-layout commitment](qualification-manifest.json). [Previous Nano qualification](../nano-holdout-d/README.md)
+The previously qualified controller scored 45/50 on its own frozen runtime. The layout-0 measurements below exercise fault handling. The experimental release policy in this experiment completed 40/50 on its own fresh cohort. It remains opt-in. [50-layout commitment](qualification-manifest.json) [Previous Nano qualification](../nano-holdout-d/README.md)
 
 ## Layout 0
 
@@ -25,6 +25,30 @@ Two early three-cube instrument runs reached the blue pick before their 330-seco
 Codex and DeepSeek each reproduced all three revised three-cube outcomes through native Studio. Across the two providers and the direct worker, all three matched motor journals for each fixture. Both instruments restored the timeout after restart. A subsequent compact run switched Scene back to the enabled **On time** choice. [Rendered three-cube evidence](three-cube-recovery.png) · [Reset after restart](restore-on-time.json)
 
 Both providers independently authored the single-red instruction. Their three command journals matched byte-for-byte across the two native backends, including the journal for the sustained freeze. The unchanged normal red run also reproduced the earlier 6,848-tick journal. The worker compatibility check rejected a transfer timing request on an older worker before lease allocation. A current worker returned a completed lease containing the failed task and timeout evidence. [Protocol](protocol.md)
+
+## Fresh layout qualification and release decision
+
+**40/50** complete three-cube transfers passed with the experimental planner (80%, 95% Wilson interval 67.0–88.8%). The preregistered gate requires 45. All 50 motor journals verified across 1,347,106 physics ticks with zero guard bypasses and zero measured joint-limit excursions. The 13,928 normal wrist observations all had matching capture and receive ticks and matching source and delivered pixel hashes. The runtime retains the established release behavior for ordinary instructions and saved controllers. The operator can explicitly select the three-view policy to reproduce the recovery experiment. This gate applies to manipulation performance. The command-hold and timeout have separate measurements. [Committed inputs](qualification-manifest.json) · [Every scored layout](qualification-report.json) · [Verified totals](qualification.json) · [Full cohort archive](qualification.zip)
+
+| Failed cases | Measured outcome |
+| --- | --- |
+| 9, 15, 16, 19, 36 | No clear release position satisfied the arm reach and observed occupancy checks. Case 16 also lost one wheel-support tick. |
+| 4, 31 | All three cubes settled. Wheel support was lost for three ticks and one tick respectively. |
+| 10 | Blue docking timed out with robot–table contact. |
+| 20, 33 | The controller lost blue and red respectively during transport. |
+
+The previous 45/50 qualification and the new 40/50 result use different layouts. A matched comparison uses the same seeds and independent per-layout verdicts. [Previous qualification](../nano-holdout-d/README.md)
+
+## Mac capacity with the wrist monitor running
+
+On the 128 GiB M3 Max, one native 480 × 360 viewport and nine background Nano transfers ran concurrently. Each observer requested a fresh image every 0.5 seconds of wall time. Each provider authored ten controllers. All 20 single-red transfers completed, and both foreground episodes exported 342 frames per camera. The camera monitor was active during every pick. The trials used the registered pre-selection build and the same single-red motor journal across all sessions.
+
+| Author | Full overlap | Foreground mean | Nine observer receipt rates | Complete seconds below 25 FPS |
+| --- | ---: | ---: | ---: | ---: |
+| DeepSeek through Octos | 94.0 s | 27.65 FPS | 1.998–2.003 Hz | 3/93 |
+| Codex | 88.3 s | 27.82 FPS | 1.990–2.004 Hz | 1/88 |
+
+Both repeats met the preregistered mean throughput gate. [Measurements](capacity.json) · [Original draws, worker samples and motor journals](capacity.zip)
 
 ## Dataset export and worker compatibility
 
@@ -51,6 +75,8 @@ The measurement archive contains the original failure, paired three-cube repeats
 guide=docs/product/aisle-studio/validation/transfer-wrist-timing
 "$DOROBOT_AISLE_PYTHON" "$guide/audit.py" "$guide/measurements.zip" --datasets
 "$DOROBOT_AISLE_PYTHON" "$guide/release_check.py" "$guide/measurements.zip"
+"$DOROBOT_AISLE_PYTHON" "$guide/qualification_check.py" "$guide/qualification.zip"
+"$DOROBOT_AISLE_PYTHON" "$guide/capacity.py" "$guide/capacity.zip" --git-sources
 ~~~
 
 The archive SHA-256 is `d2a7ff81e76c3b13819385b30069b1e435a696a186fcb049f1e2eaeba2e829aa`. Add `--git-sources` to check the source manifests against the measured commits. [Measured outcomes](measurements.json) · [Original trials and datasets](measurements.zip) · [RGB release distances](release-distances.json)
