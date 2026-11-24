@@ -1120,6 +1120,7 @@ def main():
             "evaluate",
             "device-preflight",
             "compare-observations",
+            "compare-controller",
             "train-reach",
             "train-grasp",
             "fleet",
@@ -1244,6 +1245,14 @@ def main():
             from device_preflight import run as device_preflight
 
             save(args.out / "preflight.json", device_preflight(args))
+            return
+        if args.operation == "compare-controller":
+            from controller_diff import compare, display
+
+            if args.controller is None or not args.controller_sha256:
+                raise ValueError("Select a controller in Task first")
+            report = compare(args.out.parent, args.robot, args.controller, args.controller_sha256, args.baseline)
+            save(args.out / "comparison.json", report | {"display": display(report)})
             return
         if args.operation == "compare-observations":
             from decision_observations import compare

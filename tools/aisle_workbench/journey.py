@@ -163,7 +163,7 @@ def main():
     if a.revise_pickup:
         from revision_check import native_journey
 
-        native_journey(a, page, click, remote, done, grab)
+        native_journey(a, page, click, remote, done, grab, wait)
         return
     if a.compare_runs:
         from divergence_check import native_journey
@@ -197,7 +197,7 @@ def main():
     if a.revision_selection:
         from selection_check import native_journey
 
-        return native_journey(a, checks, page, click, remote, done, grab)
+        return native_journey(a, checks, page, click, remote, done, grab, wait)
     if a.handoff:
 
         def enter_task(instruction):
@@ -255,6 +255,11 @@ def main():
                 row["result"]["controller_hash"]
                 == saved["revised_result"]["controller_hash"]
             )
+            from controller_review_check import inspect
+
+            page("task")
+            inspect(a,click,wait,grab,"g1-restored-changes","parent",saved["original_result"]["controller_hash"],
+                    saved["revised_result"]["controller_hash"],"Joint displacement · -0.08 rad → -0.06 rad")
             (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
             return
         original, measured = inspect_with(
@@ -273,6 +278,11 @@ def main():
             revised["previous_trial"]["controller_hash"] == measured["controller_hash"]
         )
         assert abs(result["measured_delta"] + 0.06) < 0.003
+        from controller_review_check import inspect
+
+        page("task")
+        inspect(a,click,wait,grab,"g1-handoff-changes","parent",measured["controller_hash"],
+                result["controller_hash"],"Joint displacement · -0.08 rad → -0.06 rad")
         page("evidence")
         grab("provider-handoff")
         checks.append(

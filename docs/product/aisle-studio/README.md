@@ -14,6 +14,8 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 ## Operator guides
 
+[Review the settings a controller revision changed and identify its measured parent](validation/controller-review/README.md)
+
 [Find a joint and read its limits on the Nano or G1 model](validation/joint-inspector/README.md)
 
 [Fit the Nano camera mounts from surveyed RGB landmarks and verify them in Scene](validation/room-survey/camera-mounts.md)

@@ -107,7 +107,9 @@ script_mod! {
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
                 revision_actions := Bar{revise := mod.widgets.ux.ToolButton{text:"Revise with DeepSeek"} revise_codex := mod.widgets.ux.ToolButton{text:"Revise with Codex"}}
             }
-            model_card := Card{width:Fill height:Fill preview_title := Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false} onboard_photo := VideoPlayer{width:Fill height:Fill}}
+            model_card := Card{width:Fill height:Fill Bar{preview_title := Section{text:"Robot preview"} review_controller := mod.widgets.ux.ToolButton{text:"Review changes"}}
+                diff_scroll := ScrollYView{width:Fill height:Fill flow:Down controller_changes := Body{max_lines:0}}
+                robot := RobotView{width:Fill height:Fill keyboard_controls:false} onboard_photo := VideoPlayer{width:Fill height:Fill}}
         }
         status := Body{}
     }
@@ -603,14 +605,24 @@ impl PluginPanel for Panel {
         match self.page.as_str() {
             "aisle_task" => {
                 let capture = w.plan["scene_observation"]["files"]["onboard-head.rgb"].is_string();
-                self.root.widget(cx, ids!(robot)).set_visible(cx, !capture);
+                let reviewing = w.controller_diff.is_some();
+                let review = self.root.button(cx, ids!(review_controller));
+                review.set_enabled(cx, w.prepared.is_some() && !w.busy());
+                review.set_text(cx, if reviewing { "Close review" } else { "Review changes" });
+                self.root.widget(cx, ids!(diff_scroll)).set_visible(cx, reviewing);
+                if let Some(report) = &w.controller_diff {
+                    self.label(cx, ids!(controller_changes), report["display"].as_str().unwrap_or(""));
+                }
+                self.root.widget(cx, ids!(robot)).set_visible(cx, !capture && !reviewing);
                 self.root
                     .widget(cx, ids!(onboard_photo))
-                    .set_visible(cx, capture);
+                    .set_visible(cx, capture && !reviewing);
                 self.label(
                     cx,
                     ids!(preview_title),
-                    if capture {
+                    if reviewing {
+                        "Controller changes"
+                    } else if capture {
                         "Head camera at task authoring"
                     } else {
                         "Robot preview"
@@ -1830,6 +1842,7 @@ impl PluginPanel for Panel {
             (ids!(room_mode), Action::EditRoom(true)),
             (ids!(robot_mode), Action::EditRoom(false)),
             (ids!(default_room), Action::DefaultRoom),
+            (ids!(review_controller), Action::ReviewController),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
             (ids!(clock), Action::ToggleObservationClock),
