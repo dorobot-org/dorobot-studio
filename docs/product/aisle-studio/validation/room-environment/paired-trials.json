@@ -2,8 +2,8 @@
   {
     "backend": "headless",
     "size": "1440x900",
-    "studio_commit": "99b4848f4685e562deabd9977c14ff1dac320742",
-    "binary_sha256": "2b25f704395c8d848035298a00d31cd57302c2eaf8e8b801b6a96db19dbfecc2",
+    "studio_commit": "a5dae5a0045660e6e56516edde08767cda5fc58e",
+    "binary_sha256": "b6641432c4ec233b89fae96d54e91d3866dabbe389da43e7512315bc57c7b45d",
     "mode": "pinned room comparison",
     "action_number": 7,
     "first_different_actions": [
@@ -53,6 +53,10 @@
     },
     "pinned_baseline": {
       "result_sha256": "97643dd4e074ade00cb6b66f5856f49b636d396a8cbc50b70aa2e812903b6175",
+      "source_calibration_sha256": [
+        "ac52bd0f52de7a315201f9122cd3df23b845af94d669b1a044d47299b51acae0",
+        "b65e4cbf7023d65337f207f5b85c6e176ef40ef1d41958050a8c1dfa3ca45149"
+      ],
       "trial": "0001-Nano-run"
     },
     "controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
@@ -61,15 +65,15 @@
       "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
     ],
     "verification_sha256": {
-      "journey.json": "f00fa1d1bd9feff5873bc62ddc13847638555dabf41df742e03e83d5acf5f462",
-      "recovery.json": "f1dde83e1d2996e66017a20d8dff5c95454b5340605d3621ad56b36690fca0b7"
+      "journey.json": "b2b948445ffb8ee355a98488f6cdedce6b3de845772a0fef04122a45ad777e92",
+      "recovery.json": "181490d9f6204dfe461b824087193a820992b0b8fd69334b2720ea272d563c00"
     }
   },
   {
     "backend": "offscreen",
     "size": "1024x768",
-    "studio_commit": "99b4848f4685e562deabd9977c14ff1dac320742",
-    "binary_sha256": "2b25f704395c8d848035298a00d31cd57302c2eaf8e8b801b6a96db19dbfecc2",
+    "studio_commit": "a5dae5a0045660e6e56516edde08767cda5fc58e",
+    "binary_sha256": "b6641432c4ec233b89fae96d54e91d3866dabbe389da43e7512315bc57c7b45d",
     "mode": "pinned room comparison",
     "action_number": 7,
     "first_different_actions": [
@@ -119,6 +123,10 @@
     },
     "pinned_baseline": {
       "result_sha256": "97643dd4e074ade00cb6b66f5856f49b636d396a8cbc50b70aa2e812903b6175",
+      "source_calibration_sha256": [
+        "ac52bd0f52de7a315201f9122cd3df23b845af94d669b1a044d47299b51acae0",
+        "b65e4cbf7023d65337f207f5b85c6e176ef40ef1d41958050a8c1dfa3ca45149"
+      ],
       "trial": "0001-Nano-run"
     },
     "controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
@@ -127,15 +135,15 @@
       "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
     ],
     "verification_sha256": {
-      "journey.json": "c81f0eb0baae91b7a1f7e3b79ac9e9c8b1a86312c99b281c01af28d18dd6f614",
-      "recovery.json": "b76fc1cb8b14946afe72355a8a7e09d25c11113d0a2516607b08564dd684f2db"
+      "journey.json": "ee7b62a9faca276de9ae9719c8469058415581a73af7e899d44d922b837d7ca8",
+      "recovery.json": "341c1552dc8bf2cf28223bc9a82208d7ea3fc8d461df1e0201ddc1a9e2672ec8"
     }
   },
   {
     "backend": "headless",
     "size": "1024x768",
-    "studio_commit": "99b4848f4685e562deabd9977c14ff1dac320742",
-    "binary_sha256": "2b25f704395c8d848035298a00d31cd57302c2eaf8e8b801b6a96db19dbfecc2",
+    "studio_commit": "a5dae5a0045660e6e56516edde08767cda5fc58e",
+    "binary_sha256": "b6641432c4ec233b89fae96d54e91d3866dabbe389da43e7512315bc57c7b45d",
     "mode": "legacy same-room comparison",
     "action_number": 1148,
     "first_different_actions": [
@@ -192,8 +200,8 @@
     },
     "comparison": "Matched layout 0 \u00b7 previous 0001-Nano-run\nPrevious failed (2 settled) \u00b7 current passed (3 settled). Local policy or support code changed. First change at action 1148 \u00b7 previous trace ended, current grasp observation at tick 17814.",
     "verification_sha256": {
-      "journey.json": "90629eab330afbcb4889dc56f2be783f4b68ed55da8269bb81c44d5d35f926ae",
-      "recovery.json": "26cbc2636b8999215033a7d0cbead34ff0ecec8aa864f397d78bdc53342141a5"
+      "journey.json": "4a6b7309ec3a34d245bee37e7698d348d8ef40b0d1af0acfff8ee4c04ad3dd7d",
+      "recovery.json": "917479d658daca2093b1a1d1f13fb78865f32a62d75db7101f07916d32848b48"
     }
   }
 ]
