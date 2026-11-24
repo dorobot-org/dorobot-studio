@@ -525,6 +525,7 @@ def prepare(args, meta):
         measured_feedback(args.feedback, meta, args.out) if args.feedback else None
     )
     model_name = None
+    stationary_pickup = False
     if args.provider == "reference":
         if args.task.strip() != REFERENCE:
             raise ValueError(
@@ -554,6 +555,9 @@ def prepare(args, meta):
         )
         if args.robot == "Nano":
             named = named_cube_transfer(args.task)
+            stationary_pickup = bool(
+                named and not (feedback and "stopped_pickup" in feedback)
+            )
             schema["properties"].update(
                 kind=dict(
                     type="string",
@@ -565,7 +569,11 @@ def prepare(args, meta):
                 ),
                 color=dict(type="string", enum=["red", "green", "blue"]),
                 color_order=dict(type="string", enum=[named] if named else CUBE_ORDERS),
-                track_grasp=dict(type="boolean"),
+                track_grasp=(
+                    dict(type="boolean", enum=[False])
+                    if stationary_pickup
+                    else dict(type="boolean")
+                ),
                 standoff_m=dict(type="number"),
             )
             schema["required"] += [
@@ -677,6 +685,10 @@ def prepare(args, meta):
         plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
+        if stationary_pickup and plan.get("track_grasp") is True:
+            raise ValueError(
+                "The named floor-cube transfer requires a stationary pickup"
+            )
         if (plan.get("wrist_clearance") is True) != bool(
             args.robot == "Nano" and WRIST_CLEARANCE_OPT_IN.search(args.task)
         ):
@@ -827,7 +839,9 @@ def simulate(args, meta):
                 else (
                     "standing-development"
                     if standing
-                    else "living-room" if mobile else args.fixture
+                    else "living-room"
+                    if mobile
+                    else args.fixture
                 )
             ),
             adapter_hash=digest(Path(nx.__file__)),
@@ -1082,7 +1096,9 @@ def main():
     p.add_argument("--task", default=REFERENCE)
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
-    p.add_argument("--controller-sha256", help="Digest of the revision selected in Studio")
+    p.add_argument(
+        "--controller-sha256", help="Digest of the revision selected in Studio"
+    )
     p.add_argument("--previous-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--current-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--trial", type=Path)

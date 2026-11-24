@@ -201,6 +201,33 @@ class InspectionTests(unittest.TestCase):
             dict(kind="table-transfer", color_order="red,green,blue"),
         )
 
+    def test_stationary_pickup_is_bound_during_authoring_only(self):
+        task = "Move the red floor cube onto the coffee table."
+        args = SimpleNamespace(
+            robot="Nano",
+            task=task,
+            feedback=None,
+            provider="octos-deepseek",
+            out=Path("."),
+        )
+        reply = dict(
+            supported=True, kind="table-transfer", color_order="red", track_grasp=True
+        )
+        with patch.object(
+            worker, "request_controller", return_value=(reply, "test-model")
+        ) as ask:
+            with self.assertRaisesRegex(ValueError, "stationary pickup"):
+                worker.prepare(args, self.profile)
+            self.assertEqual(
+                ask.call_args.args[2]["properties"]["track_grasp"]["enum"], [False]
+            )
+            args.task = "Move the sliding red floor cube onto the coffee table."
+            self.assertTrue(worker.prepare(args, self.profile)["track_grasp"])
+            self.assertNotIn("enum", ask.call_args.args[2]["properties"]["track_grasp"])
+        self.assertTrue(
+            worker.validate(reply | {"task": task}, self.profile)["track_grasp"]
+        )
+
     def test_experimental_wrist_clearance_requires_an_explicit_positive_selection(self):
         base = "Move the red floor cube onto the coffee table."
         args = SimpleNamespace(
