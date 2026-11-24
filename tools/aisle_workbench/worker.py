@@ -103,9 +103,21 @@ def validate(plan, meta):
         )
     if not meta["limits"][joint][0] <= delta <= meta["limits"][joint][1]:
         raise ValueError("Target outside the robot joint limits")
-    return dict(joint=joint, delta_rad=delta) | (
-        {"kind": "standing-inspection"} if standing else {}
-    )
+    posture = plan.get("trunk_pitch_rad", 0.0)
+    if (
+        type(posture) not in (float, int)
+        or posture not in (0.0, -0.10)
+        or (posture and not standing)
+    ):
+        raise ValueError(
+            "Choose neutral or upright trunk posture for a G1 standing reach"
+        )
+    validated = dict(joint=joint, delta_rad=delta)
+    if standing:
+        validated["kind"] = "standing-inspection"
+        if posture:
+            validated["trunk_pitch_rad"] = posture
+    return validated
 
 
 def onboard_transfer_feedback(log, requested):
@@ -417,8 +429,13 @@ def prepare(args, meta):
             schema["properties"]["kind"] = dict(
                 type="string", enum=["joint-inspection", "standing-inspection"]
             )
-            schema["required"].append("kind")
+            schema["properties"]["trunk_pitch_rad"] = dict(
+                type="number", enum=[0.0, -0.10]
+            )
+            schema["required"].extend(["kind", "trunk_pitch_rad"])
             prompt = (
+                "Select trunk_pitch_rad=-0.10 only when the operator explicitly requests an upright trunk "
+                "during a standing reach. Otherwise select 0.0. "
                 "Select a G1 simulation capability. Use joint-inspection for shoulder inspections by default. "
                 "If the operator explicitly asks to stand while holding or tracking a signed shoulder "
                 "displacement, select standing-inspection. It uses a free pelvis and a 10 second foot-supported "

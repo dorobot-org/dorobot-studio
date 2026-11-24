@@ -64,6 +64,22 @@ class InspectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             worker.validate(plan | {"delta_rad": -0.5}, g1)
 
+    def test_upright_trunk_requires_standing_and_the_bounded_target(self):
+        meta = self.profile | {"robot": "G1"}
+        task = dict(kind="standing-inspection", joint="shoulder", delta_rad=-0.08)
+        self.assertNotIn("trunk_pitch_rad", worker.validate(task, meta))
+        self.assertEqual(
+            worker.validate(task | {"trunk_pitch_rad": -0.1}, meta)["trunk_pitch_rad"],
+            -0.1,
+        )
+        for override in (
+            {"trunk_pitch_rad": 0.2},
+            {"trunk_pitch_rad": False},
+            {"kind": "joint-inspection", "trunk_pitch_rad": -0.1},
+        ):
+            with self.assertRaises(ValueError):
+                worker.validate(task | override, meta)
+
     def test_transfer_requires_nano_and_a_distinct_color_order(self):
         for order in ["blue", "green,blue,red"]:
             p = dict(kind="table-transfer", color_order=order)
