@@ -14,6 +14,8 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 ## Operator guides
 
+[Find a joint and read its limits on the Nano or G1 model](validation/joint-inspector/README.md)
+
 [Fit the Nano camera mounts from surveyed RGB landmarks and verify them in Scene](validation/room-survey/camera-mounts.md)
 
 [Choose an earlier controller revision and run it after restarting Studio](validation/controller-selection/README.md)
@@ -63,7 +65,7 @@ Select **DeepSeek via Octos** for a new task and **Revise with DeepSeek** for a 
 ### Work through the four pages
 
 1. **Task** — select a robot. Use the reference task or enter “Inspect the right shoulder with a displacement of minus 0.08 rad” and choose **DeepSeek via Octos** or **Ask Codex**. Read the joint, signed displacement, provider and revision. Select an earlier controller to repeat it. After a scored run, select it on Evidence, update the task text and choose **Revise with DeepSeek** or **Revise with Codex**. Either author can revise the selected trial, including a trial prepared by the other provider or the local reference controller. The agent receives the measured outcome and signed displacement. The new controller records the previous controller hash and measurements.
-2. **Scene** — inspect the mesh inventory, movable joint count and limits. Standard and Compliant select reproducible position gains of 28 and 18 respectively. These two inspection fixtures anchor the root and disable gravity. The Nano living-room and G1 standing tasks select their own floating-base scenes with gravity.
+2. **Scene** — inspect the mesh inventory. Open **Joint limits** to search all 17 Nano or 29 G1 movable joints and locate the selected child link on the model. Standard and Compliant select reproducible position gains of 28 and 18 respectively. These two inspection fixtures anchor the root and disable gravity. The Nano living-room and G1 standing tasks select their own floating-base scenes with gravity.
 3. **Run** — start the prepared controller. The operator camera and position feedback come from the active simulation. Stop cancels the job and retains a receipt. Each run has its own directory.
 4. **Evidence** — read the requested and measured displacement, guard verdict and trace. Navigate older runs or open the run folder. A prior run with the same robot, URDF hash, fixture, joint and displacement supplies a comparison. Choose **Export episode** to encode the 25 synchronized RGB frames and all measured joints and commands as a LeRobot episode. **Open in Replay** opens it in the existing Studio player. After restarting Studio, saved controllers and completed or stopped trials appear again.
 
