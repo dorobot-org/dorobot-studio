@@ -14,6 +14,8 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 ## Operator guides
 
+For a prepared Nano floor-to-table transfer, open **Scene → Onboard camera rendering** and choose **Compact** to use reduced robot visual meshes and a smaller shadow atlas. **Original** is the default. The setting applies to all three simulated onboard RGB cameras, including images seen by the controller and exported to the dataset. Controllers bound to an original-camera scene observation require the original profile. [Inspect the measured camera differences and viewport cadence](validation/compact-cameras/README.md)
+
 [Pin a room baseline and replay the first different action in either recording](validation/room-environment/compare-recordings.md)
 
 [Change Nano room lighting and floor friction, then measure the effect in Nexus](validation/room-environment/README.md)
