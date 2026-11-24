@@ -1,0 +1,26 @@
+{
+  "robot": "Nano",
+  "target": "red",
+  "development": [
+    0,
+    1,
+    2
+  ],
+  "fresh": [
+    227252136,
+    364111693,
+    502277367,
+    643393491
+  ],
+  "directions": [
+    "slide-positive",
+    "slide-negative"
+  ],
+  "controllers": {
+    "octos-deepseek": "45843f673f6556902cfee4876a1f38f16b3c402f736eed6daf856cd661dbf9c5",
+    "codex": "4a0791aa6816a32c473dd7c568ad7ecc4867bd75a04147e423d8d4d521796313"
+  },
+  "policy_sha256": "b3688b7805d3b6de0d2d8af2bebc9580d5cde62268bbfedbdd19921bd95fde15",
+  "fixture_sha256": "8ad258b9b13133b20acba181b8a0a404c4df7f6bb10288a76547b0a1886e9c72",
+  "criteria": "At first finger contact, preceding full-step signed speed above 0.003 m/s and travel above 0.012 m. At least 20 elevated opposed-finger load steps in first attempt and all original motor, support and placement gates. Include all failures."
+}
