@@ -94,6 +94,12 @@ pub enum Action {
         source: String,
         edit: String,
     },
+    DraftRoom {
+        source: String,
+        planner: Planner,
+    },
+    ApplyRoomDraft,
+    DiscardRoomDraft,
     DefaultRoom,
     ShowEvaluation(bool),
     Evaluate(String),
@@ -248,7 +254,7 @@ impl Job {
     fn artifact(&self) -> &'static str {
         match self.op {
             "export" => "export.json",
-            "room" => "room-ref.json",
+            "room" | "room-draft" | "room-apply" => "room-ref.json",
             "evaluate" => "evaluation.json",
             "run" => "result.json",
             "prepare" | "train-reach" | "train-grasp" => "controller.json",
@@ -293,6 +299,9 @@ pub struct Workbench {
     evaluation_archive: String,
     pub room_info: Value,
     pub room_path: Option<PathBuf>,
+    pub room_draft_path: Option<PathBuf>,
+    pub room_draft_info: Value,
+    room_draft_receipt: Value,
     room_selection: Value,
     room_request: Option<(String, String)>,
     pub layout_seed: u8,
@@ -337,6 +346,9 @@ impl Workbench {
             evaluation_archive: String::new(),
             room_info: Value::Null,
             room_path: None,
+            room_draft_path: None,
+            room_draft_info: Value::Null,
+            room_draft_receipt: Value::Null,
             room_selection: Value::Null,
             room_request: None,
             layout_seed: 0,
@@ -396,7 +408,8 @@ impl Workbench {
         self.room_path = selection["revision"]
             .as_str()
             .filter(|name| {
-                name.ends_with("-Nano-room") && Path::new(name).components().count() == 1
+                (name.ends_with("-Nano-room") || name.ends_with("-Nano-room-draft"))
+                    && Path::new(name).components().count() == 1
             })
             .map(|name| self.root.join(name).join("room.json"));
         self.room_info = self
@@ -583,7 +596,26 @@ impl Workbench {
         if op == "evaluate" {
             cmd.arg("--archive").arg(&self.evaluation_archive);
         }
-        if op == "room" {
+        if op == "room-apply" {
+            cmd.arg("--room-revision")
+                .arg(
+                    self.room_draft_path
+                        .as_deref()
+                        .ok_or_else(|| io::Error::other("Review a draft first"))?,
+                )
+                .arg("--room-hash")
+                .arg(
+                    self.room_draft_receipt["sha256"]
+                        .as_str()
+                        .ok_or_else(|| io::Error::other("Missing draft hash"))?,
+                )
+                .arg("--seed")
+                .arg(self.layout_seed.to_string());
+        }
+        if op == "room-draft" {
+            cmd.arg("--provider").arg(planner.name());
+        }
+        if matches!(op, "room" | "room-draft") {
             let (source, edit) = self
                 .room_request
                 .as_ref()
@@ -752,6 +784,17 @@ impl Workbench {
                 Ok(())
             }
             Action::DefaultRoom => self.save_room(Value::Null),
+            Action::DraftRoom { source, planner } => {
+                self.room_request = Some((source, String::new()));
+                self.launch("room-draft", planner, None)
+            }
+            Action::ApplyRoomDraft => self.launch("room-apply", Planner::Reference, None),
+            Action::DiscardRoomDraft => {
+                self.room_draft_path = None;
+                self.room_draft_info = Value::Null;
+                self.room_draft_receipt = Value::Null;
+                Ok(())
+            }
             Action::ImportRoom { source, edit } => {
                 self.room_request = Some((source, edit));
                 self.launch("room", Planner::Reference, None)
@@ -865,7 +908,12 @@ impl Workbench {
                 self.evaluation = read(&job.dir, artifact).unwrap_or_default();
                 self.failure_index = 0;
             }
-            if job.op == "room" {
+            if job.op == "room-draft" {
+                self.room_draft_path = Some(job.dir.join("room.json"));
+                self.room_draft_info = read(&job.dir, "room.json").unwrap_or_default();
+                self.room_draft_receipt = read(&job.dir, artifact).unwrap_or_default();
+            }
+            if matches!(job.op, "room" | "room-apply") {
                 if let Err(error) = read(&job.dir, artifact)
                     .ok_or_else(|| io::Error::other("Missing room receipt"))
                     .and_then(|s| self.save_room(s))
@@ -874,6 +922,9 @@ impl Workbench {
                     self.status = error.to_string();
                     return;
                 }
+                self.room_draft_path = None;
+                self.room_draft_info = Value::Null;
+                self.room_draft_receipt = Value::Null;
             }
             if job.op == "export" {
                 let dataset = job.dir.join("dataset");

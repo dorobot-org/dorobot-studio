@@ -233,6 +233,7 @@ def import_room(source, out, scene, edit=None, parent=None, model_sha=None):
     revision = dict(
         version=1,
         description=sheet["description"],
+        **({"photo_draft": sheet["photo_draft"]} if "photo_draft" in sheet else {}),
         model_sha256=model_sha,
         survey_sha256=hashlib.sha256(raw).hexdigest(),
         archived_survey_sha256=digest(out / "survey.json"),
