@@ -1,4 +1,4 @@
-"""Check the native Nano viewport with three concurrent, independently authored observers."""
+"""Check the native Nano viewport with concurrent, independently authored observers."""
 
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
@@ -135,7 +135,12 @@ def verify_viewport(out, trial, backgrounds):
         json.loads(l) for l in (out / "journey-draws.jsonl").read_text().splitlines()
     ]
     draws = [r for r in rows if Path(r["source"]).name.endswith("-fleet-watch")]
-    assert draws and all(r["tick"] in captured for r in draws)
+    # Returning to Run during evidence import can attach a new observer and
+    # display its cached terminal frame. Measure the original live subscription.
+    assert draws
+    live_source = draws[0]["source"]
+    draws = [row for row in draws if row["source"] == live_source]
+    assert all(r["tick"] in captured for r in draws)
     assert all(a["tick"] < b["tick"] for a, b in zip(draws, draws[1:]))
     # All simulation workers and the sampling client use the same host monotonic clock.
     begin = max(job["progress"][0][1] for job in backgrounds)
@@ -158,6 +163,7 @@ def verify_viewport(out, trial, backgrounds):
         )
     report = dict(
         sessions=1 + len(backgrounds),
+        draw_source=Path(live_source).name,
         background_wall_fps=background_rates,
         meets_cadence=phase_seconds >= 30 and fps >= 25 and min(background_rates) >= 1,
         common_physics_window_s=(end - begin) / 1e9,

@@ -122,9 +122,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         lambda w: not w["busy"] and (w["fleet"] or {}).get("node") == ALIAS,
         "Connected to Nexus worker",
     )
-    assert row["fleet"]["capabilities"]["slots"] == (
-        args.foreground_cadence or 2
-    )
+    assert row["fleet"]["capabilities"]["slots"] == (args.foreground_cadence or 2)
     run_button("queue_stream")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "stream",
