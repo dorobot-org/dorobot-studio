@@ -1,0 +1,87 @@
+# Offline 2D-simulation test of the dviz command channel (delivery 2): nav_sim2d.yml with nav_command (UDP 19998)
+# feeding goal / arm / estop, an idle sim_mission (only trust + refine_state) and the Studio bridge on tcp 7451.
+# Rendered by run_sim.sh; absolute paths, so it can live in $WORK.
+nodes:
+  - id: sim2d
+    path: @DORA_NAV@/build/modules/simulation/sim2d_dora/sim2d_dora_node
+    args: @DORA_NAV@/modules/simulation/sim2d_dora/config/sim2d_garage.json
+    inputs:
+      cmd_vel: cmd_gate/cmd_vel
+      tick: dora/timer/millis/50
+    outputs: [map_base, scan, sim_state]
+  - id: sim_mission
+    path: @DORA_NAV@/modules/simulation/sim2d_dora/scripts/sim_mission.py
+    env:
+      SCENARIO: @HERE@/mission_idle.json
+    inputs:
+      tick: dora/timer/millis/50
+      goal_status: pure_pursuit/goal_status
+      sim_state: sim2d/sim_state
+      gate_cmd: cmd_gate/cmd_vel
+      gate_state: cmd_gate/state
+      cancel: cmd_gate/cancel
+      fwd_goal: goal_resume/goal
+    outputs: [goal, trust, refine_state, arm, estop]
+  - id: nav_command
+    path: @DORA_NAV@/modules/interface/nav_command/nav_command.py
+    env:
+      NAV_COMMAND_PORT: "19998"
+    inputs:
+      tick: dora/timer/millis/100
+    outputs: [arm, estop, goal, initialpose]
+  - id: goal_resume
+    path: @DORA_NAV@/build/modules/interface/goal_resume_dora/goal_resume_dora_node
+    args: @DORA_NAV@/modules/interface/goal_resume_dora/config/goal_resume_tracer.json
+    inputs:
+      goal: nav_command/goal
+      goal_status: pure_pursuit/goal_status
+      trust: sim_mission/trust
+      refine_state: sim_mission/refine_state
+      gate_cancel: cmd_gate/cancel
+      tick: dora/timer/millis/100
+    outputs: [goal]
+  - id: astar_planner
+    path: @DORA_NAV@/build/modules/planner/global_planner/astar_planner_dora/astar_planner_dora_node
+    args: @DORA_NAV@/modules/planner/global_planner/astar_planner_dora/config/astar_planner_tracer.json
+    inputs:
+      pose: sim2d/map_base
+      goal: goal_resume/goal
+      cancel: cmd_gate/cancel
+      goal_status: pure_pursuit/goal_status
+      scan: sim2d/scan
+      tick: dora/timer/millis/100
+    outputs: [path, costmap]
+  - id: pure_pursuit
+    path: @DORA_NAV@/build/modules/planner/local_planner/pure_pursuit_dora/pure_pursuit_dora_node
+    args: @DORA_NAV@/modules/planner/local_planner/pure_pursuit_dora/config/pure_pursuit_tracer.json
+    inputs:
+      goal: goal_resume/goal
+      path: astar_planner/path
+      pose: sim2d/map_base
+      cancel: cmd_gate/cancel
+      scan: sim2d/scan
+      tick: dora/timer/millis/50
+    outputs: [cmd_vel, goal_status]
+  - id: cmd_gate
+    path: @DORA_NAV@/build/modules/safety/cmd_gate_dora/cmd_gate_dora_node
+    args: @DORA_NAV@/modules/safety/cmd_gate_dora/config/cmd_gate_tracer.json
+    inputs:
+      cmd_vel: pure_pursuit/cmd_vel
+      status: sim_mission/trust
+      estop: nav_command/estop
+      arm: nav_command/arm
+      tick: dora/timer/millis/50
+    outputs: [cmd_vel, state, cancel]
+  - id: viz_bridge
+    path: @BRIDGE@
+    args: @WORK@/bridge_sim.json
+    inputs:
+      pose: {source: sim2d/map_base, queue_size: 2}
+      path: {source: astar_planner/path, queue_size: 2}
+      goal: {source: goal_resume/goal, queue_size: 2}
+      goal_status: {source: pure_pursuit/goal_status, queue_size: 2}
+      scan: {source: sim2d/scan, queue_size: 2}
+      trust: {source: sim_mission/trust, queue_size: 2}
+      refine_state: {source: sim_mission/refine_state, queue_size: 2}
+      gate_state: {source: cmd_gate/state, queue_size: 2}
+      costmap: {source: astar_planner/costmap, queue_size: 2}

@@ -1,0 +1,36 @@
+{
+  "robot_id": "tracer_sim",
+  "listen": ["tcp/0.0.0.0:7451"],
+  "map_yaml": "/home/nvidia/nvme/tracer_slam/maps/garage_20261121/map.yaml",
+  "map_pcd": "/home/nvidia/nvme/tracer_slam/maps/garage_20261121/map.pcd",
+  "footprint": [[0.09, 0.20], [0.09, -0.20], [-0.31, -0.20], [-0.31, 0.20]],
+  "inputs": {
+    "pose": "odometry",
+    "path": "path",
+    "goal": "goal",
+    "goal_status": "goal_status",
+    "scan": "laser_scan",
+    "trust": "trust",
+    "refine_state": "refine_state",
+    "gate_state": "gate_state",
+    "costmap": "costmap"
+  },
+  "rates_hz": { "pose": 20, "cloud": 5, "scan": 10, "trail": 2, "status": 5, "costmap": 1 },
+  "cloud_max_points": 5000,
+  "map_cloud_max_points": 50000,
+  "map_cloud_voxel_m": 0.10,
+  "trail_min_step_m": 0.05,
+  "trail_max_points": 3000,
+  "colors": {
+    "map_cloud": [180, 180, 180, 255],
+    "footprint": [220, 220, 220, 255],
+    "plan": [0, 180, 255, 255],
+    "trail": [0, 220, 0, 255],
+    "goal": [255, 170, 0, 255],
+    "scan": [255, 0, 0, 255]
+  },
+  "radii": { "plan": 0.025, "trail": 0.02, "goal": 0.04, "footprint": 0.01 },
+  "robot_model": "tracer_mini",
+  "log_forward_per_node_hz": 5,
+  "cmd": { "goal_enabled": true, "token_file": "@WORK@/cmd_token", "forward": "127.0.0.1:19998", "reply_timeout_ms": 1000, "max_goal_per_s": 2 }
+}
