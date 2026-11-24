@@ -2,13 +2,13 @@
 
 The Nano first tries the existing stationary release. If no slot is clear and reachable, it counts the distinct previously placed colors with complete, unambiguous RGB silhouettes. With two prior colors visible it can turn and register the measured tabletop between wrist views. With one prior color visible it shifts the base slowly while keeping the observed rim heading. With no reliable landmark it holds the cube.
 
-The shift is at most 14 cm. Lateral speed is limited to 18 mm/s and steering correction to 0.2 rad/s. The sideways command is accepted only in experimental placement with zero forward speed. The controller checks the measured table standoff and heading after every wheel command. Both maneuvers brake, acquire a fresh observation, confirm the cube in the gripper, retain earlier obstacles and check the full arm path before release. A slipping wheel can affect the sidestep odometry. The independent judge still requires physical finger contact, continuous wheel support and three separately settled cubes.
+The controller requests a sideways offset of 8 or 14 cm. Lateral speed is limited to 18 mm/s and steering correction to 0.2 rad/s. The sideways command is accepted only in experimental placement with zero forward speed. The controller checks the measured table standoff and heading after every wheel command. Both maneuvers brake, acquire a fresh observation, confirm the cube in the gripper, retain earlier obstacles and check the full arm path before release. A slipping wheel can affect the sidestep odometry. The independent judge still requires physical finger contact, continuous wheel support and three separately settled cubes.
 
 | Previously failed E layout | Observed maneuver | Three-cube result |
 | --- | --- | --- |
 | 9 | Turn | Passed |
 | 15 | Steered sidestep | Passed |
-| 16 | Steered sidestep | Stopped with green held. No measured slot passed the final check. Earlier in the trial the base had lost loaded wheel support for one tick. |
+| 16 | Steered sidestep | Stopped with green held. No measured slot passed the final check. Both the stationary baseline and this run lost wheel support at tick 303 while locating red. The first sidestep began at tick 12806 while holding green. |
 | 19 | Steered sidestep | Passed |
 | 36 | Turn | Passed |
 
@@ -16,4 +16,10 @@ Four of five disclosed failures were recovered. All five motor journals verified
 
 Native Evidence verified the two output receipts, showed four gains and one layout failing both controllers, and restored the same comparison after restart. [Native Studio comparison](native-comparison.png) · [Instrumented actions and scores](native-comparison.json)
 
-All four control layouts passed and reproduced the earlier control motor journals byte for byte. The four control seeds were 1724068725, 1064838320, 289513494 and 0. Cohort G then started on its separately committed 50 layouts. [Control evidence](../landmark-controls/evidence.zip) · [Control manifest](../landmark-controls/suite.json)
+All four control layouts passed and reproduced the earlier control motor journals byte for byte. The four control seeds were 1724068725, 1064838320, 289513494 and 0. The 50 cohort G commitments were published in [d38d9b3](https://github.com/dorobot-org/dorobot-studio/commit/d38d9b3) before the five-case result in [9e7c37a](https://github.com/dorobot-org/dorobot-studio/commit/9e7c37a) and the regression verdict in [3bec904](https://github.com/dorobot-org/dorobot-studio/commit/3bec904). G started after both development suites finished. [Control evidence](../landmark-controls/evidence.zip) · [Control manifest](../landmark-controls/suite.json)
+
+## What the cameras established during the sideways move
+
+All three disclosed sidesteps requested an 80 mm shift. The absolute wheel commands integrated to 78.1–78.2 mm and the encoders indicated 77.7–77.8 mm. On layout 15 the red landmark moved about 75 mm along the measured rim, from the right wrist view to the left. On layout 19 neither camera had a complete red silhouette at the final exposure. On layout 16 the two wrist estimates disagreed. The G controller applies encoder travel to previously seen obstacles when placing after a sidestep. These measurements establish the limit of that estimate. The two-camera default uses a stationary release.
+
+During a turn the G controller checks table standoff and heading after each command. It matches earlier cubes at the endpoint. A lost endpoint match stops the task after braking. The F controller also checks its landmark chain during the turn. The published output digest identifies the exact archived bytes. The verifier separately recomputes command, contact and transfer verdicts from those records.
