@@ -9,3 +9,9 @@ Check the original source pixels and their capture and receive times. Verify tha
 ## Paired follow-up after the three-cube placement failure
 
 Keep the original delayed failure. Its blue cube rested on green. Inspect the recorded onboard wrist image and encoder calibration at the release decision. Repeat the same controller artifact and layout with all three calibrated RGB views available for identifying previously placed cubes, including partly visible objects. Re-run normal and intermittent delivery and the permanent freeze. Keep the per-cube judge and the motor hold checks unchanged. These disclosed-layout repeats are a development regression.
+
+## Simulation qualification and capacity
+
+Run the corrected runtime and frozen DeepSeek controller once on each of 50 new concealed layouts with normal sensor delivery. Apply the existing beta gate of at least 45 full placements, all 50 receipts verified and zero guard bypasses. Preserve every layout and failure. The public commitment is in [qualification-manifest.json](qualification-manifest.json).
+
+Repeat the Mac ten-session workload separately from other local qualification runs, with one live 480 × 360 viewport, nine wall-clock observers at 0.5 seconds and a dataset export. Run one cohort with each provider. Apply the previous requirements of at least 25 foreground FPS on average, at least 1 Hz for every observer and at least 30 seconds of complete overlap. Record misses.
