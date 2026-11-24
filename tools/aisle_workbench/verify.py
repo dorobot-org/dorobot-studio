@@ -20,6 +20,11 @@ def main():
     )
     parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
     parser.add_argument("--dark", action="store_true")
+    parser.add_argument(
+        "--device-preflight",
+        action="store_true",
+        help="Exercise the selected trial’s device preflight and retained report",
+    )
     models = parser.add_mutually_exclusive_group()
     models.add_argument("--codex", dest="provider", action="store_const", const="codex")
     models.add_argument(
@@ -116,6 +121,8 @@ def main():
         parser.error("--train-grasp requires --transfer")
     if args.pickup_motion and not args.transfer:
         parser.error("--pickup-motion requires --transfer")
+    if args.device_preflight and not (args.transfer or args.standing):
+        parser.error("--device-preflight requires --standing or --transfer")
     if args.train_reach and not args.standing:
         parser.error("--train-reach requires --standing")
     if args.heading and (not args.standing or args.upright):
@@ -261,6 +268,8 @@ def main():
                     check.extend(["--photo-input", str(args.photo_input.resolve())])
                 if args.survey:
                     check.extend(["--survey", str(args.survey.resolve())])
+                if args.device_preflight:
+                    check.append("--device-preflight")
                 if args.pickup_motion:
                     check.extend(["--pickup-motion", args.pickup_motion])
                 if args.transfer:
@@ -277,7 +286,9 @@ def main():
                 timeout = (
                     1800
                     if args.train_grasp
-                    else 900 if args.transfer or args.fleet else 330
+                    else 900
+                    if args.transfer or args.fleet
+                    else 330
                 )
                 subprocess.run(check, check=True, timeout=timeout)
                 status = subprocess.check_output(

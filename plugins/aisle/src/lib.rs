@@ -172,7 +172,15 @@ script_mod! {
     }
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
-        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"}}
+        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"} device_mode := mod.widgets.ux.ToolButton{text:"Device preflight"}}
+        device := Card{width:Fill height:Fill
+            device_title := Title{}
+            device_info := Body{}
+            device_endpoint := TextInput{width:Fill height:34 empty_text:"Network interface and DDS domain, e.g. en0@0"}
+            Bar{device_replay := mod.widgets.ux.PrimaryButton{text:"Replay through DDS"} device_listen := mod.widgets.ux.ToolButton{text:"Observe device"} device_stop := mod.widgets.ux.StopButton{text:"Stop"}}
+            device_result := Body{}
+            device_folder := mod.widgets.ux.ToolButton{text:"Open preflight folder"}
+        }
         cohort := Card{width:Fill height:Fill
             Section{text:"Evaluation archive"} archive_path := TextInput{width:Fill height:38 empty_text:"Path to the ZIP beside its preregistered suite.json"}
             verify_archive := mod.widgets.ux.PrimaryButton{text:"Verify evaluation"}
@@ -492,6 +500,7 @@ impl PluginPanel for Panel {
                     (ids!(fleet_controls), Themed::Bg),
                     (ids!(photo_card), Themed::Bg),
                     (ids!(cohort), Themed::Bg),
+                    (ids!(device), Themed::Bg),
                     (ids!(survey_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
@@ -868,17 +877,115 @@ impl PluginPanel for Panel {
             "aisle_run" => self.run(cx, w),
             _ => {
                 for id in [ids!(summary), ids!(plot), ids!(trial_bar)] {
-                    self.root.widget(cx, id).set_visible(cx, !w.show_evaluation);
+                    self.root
+                        .widget(cx, id)
+                        .set_visible(cx, !w.show_evaluation && !w.show_device);
                 }
                 self.root
                     .widget(cx, ids!(cohort))
                     .set_visible(cx, w.show_evaluation);
                 self.root
                     .button(cx, ids!(trial_mode))
-                    .set_enabled(cx, !w.busy() && w.show_evaluation);
+                    .set_enabled(cx, !w.busy() && (w.show_evaluation || w.show_device));
                 self.root
                     .button(cx, ids!(evaluation_mode))
                     .set_enabled(cx, !w.busy() && !w.show_evaluation);
+                self.root
+                    .widget(cx, ids!(device))
+                    .set_visible(cx, w.show_device);
+                self.root
+                    .button(cx, ids!(device_mode))
+                    .set_enabled(cx, !w.busy() && !w.show_device);
+                if w.show_device {
+                    let g1 = w.evidence["robot"] == "G1";
+                    let standing = g1 && w.evidence["kind"] == "standing-inspection";
+                    let selected = w.evidence["task_success"] == true;
+                    self.label(
+                        cx,
+                        ids!(context_label),
+                        "Selected simulation trial   /   Device preflight",
+                    );
+                    self.label(
+                        cx,
+                        ids!(device_title),
+                        if g1 {
+                            "Unitree G1 · 29-joint LowState"
+                        } else if selected {
+                            "Adora Nano · Feetech base"
+                        } else {
+                            "Select a successful simulation trial"
+                        },
+                    );
+                    self.label(cx,ids!(device_info), if standing {
+                        "Replay encoders and IMU from the selected simulation or observe an external DDS publisher. The standing controller computes targets locally with motor output disabled."
+                    } else if g1 { "Select a standing-reach trial to run the G1 telemetry preflight." }
+                    else if selected { "Check which measurements the installed Feetech adapter provides for this controller." } else {""});
+                    self.root
+                        .widget(cx, ids!(device_endpoint))
+                        .set_visible(cx, standing);
+                    self.root
+                        .widget(cx, ids!(device_listen))
+                        .set_visible(cx, standing);
+                    self.root
+                        .widget(cx, ids!(device_stop))
+                        .set_visible(cx, w.preflighting());
+                    self.root.button(cx, ids!(device_replay)).set_text(
+                        cx,
+                        if g1 {
+                            "Replay through DDS"
+                        } else {
+                            "Check adapter"
+                        },
+                    );
+                    self.root
+                        .button(cx, ids!(device_replay))
+                        .set_enabled(cx, !w.busy() && selected && (standing || !g1));
+                    self.root
+                        .button(cx, ids!(device_listen))
+                        .set_enabled(cx, !w.busy() && selected && standing);
+                    let v = &w.preflight;
+                    let summary = match v["state"].as_str() {
+                        Some("Dry run measured") => {
+                            let mut lines = vec![
+                                format!(
+                                    "{} · {} measurements",
+                                    v["source_kind"].as_str().unwrap_or("DDS"),
+                                    v["samples"]
+                                ),
+                                format!(
+                                    "{} joints · {} dry-run steps · 0 motor commands sent",
+                                    v["joints"], v["dry_run_steps"]
+                                ),
+                                format!(
+                                    "Longest gaps · source {:.1} ms · receiver {:.1} ms",
+                                    v["max_source_gap_ms"].as_f64().unwrap_or_default(),
+                                    v["max_receive_gap_ms"].as_f64().unwrap_or_default()
+                                ),
+                                format!(
+                                    "Peak target to measured joint difference {:.3} rad",
+                                    v["peak_target_feedback_difference_rad"]
+                                        .as_f64()
+                                        .unwrap_or_default()
+                                ),
+                            ];
+                            if let Some(difference) = v["max_nexus_target_difference_rad"].as_f64()
+                            {
+                                lines.push(format!(
+                                    "Maximum paired target difference {difference:.6} rad"
+                                ));
+                            }
+                            lines.push("Physical device qualification pending".into());
+                            lines.join("\n")
+                        }
+                        Some(state) => format!("{state}\n{}", v["reason"].as_str().unwrap_or("")),
+                        None => String::new(),
+                    };
+                    self.label(cx, ids!(device_result), &summary);
+                    self.root
+                        .button(cx, ids!(device_folder))
+                        .set_enabled(cx, !w.busy() && v.is_object());
+                    return;
+                }
                 if w.show_evaluation {
                     let result = &w.evaluation;
                     let g1 = result["profile"] == "g1-standing-reach-v1";
@@ -1357,6 +1464,10 @@ impl PluginPanel for Panel {
             (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
             (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
             (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),
+            (ids!(device_mode), Action::ShowDevice),
+            (ids!(device_replay), Action::DevicePreflight(None)),
+            (ids!(device_stop), Action::Stop),
+            (ids!(device_folder), Action::OpenPreflight),
             (ids!(trial_mode), Action::ShowEvaluation(false)),
             (ids!(evaluation_mode), Action::ShowEvaluation(true)),
             (ids!(earlier_failure), Action::SelectFailure(false)),
@@ -1395,6 +1506,11 @@ impl PluginPanel for Panel {
                 b.dispatch(Intent::Aisle(act));
                 return true;
             }
+        }
+        if self.root.button(cx, ids!(device_listen)).clicked(actions) {
+            let endpoint = self.root.text_input(cx, ids!(device_endpoint)).text();
+            b.dispatch(Intent::Aisle(Action::DevicePreflight(Some(endpoint))));
+            return true;
         }
         if self.root.button(cx, ids!(verify_archive)).clicked(actions) {
             let path = self.root.text_input(cx, ids!(archive_path)).text();

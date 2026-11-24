@@ -44,6 +44,60 @@ def launch_position(recipe, aim):
     return [0.29, recipe["lateral_m"], 0.195 + 0.5 * 9.81 * flight_s**2]
 
 
+class StandingController:
+    """Generate bounded targets from encoder and IMU samples, before each physics step."""
+
+    def __init__(self, plan, names, lo, hi, speed, dt, warmup, reach_weights=None):
+        self.plan = plan
+        self.bounds = (lo, hi)
+        self.max_step = speed * dt
+        self.dt = dt
+        self.warmup = warmup
+        self.weights = reach_weights
+        self.ankles = [
+            names.index(f"{side}_ankle_pitch_joint") for side in ("left", "right")
+        ]
+        self.waist_pitch = names.index("waist_pitch_joint")
+        self.waist_yaw = names.index("waist_yaw_joint")
+        self.shoulder = names.index(plan["joint"])
+        self.targets = np.zeros(len(names))
+        self.initial_angle = None
+        self.previous_pitch = 0.0
+        self.correction = 0.0
+        self.step = 0
+
+    def advance(self, q, quaternion):
+        w, x, y, z = quaternion
+        pitch = np.arcsin(np.clip(2 * (w * y - z * x), -1, 1))
+        desired = self.targets.copy()
+        desired[self.waist_pitch] = self.plan.get("trunk_pitch_rad", 0.0)
+        desired[self.waist_yaw] = self.plan.get("trunk_yaw_rad", 0.0)
+        desired[self.ankles] = np.clip(
+            2.5 * pitch + 0.23 * (pitch - self.previous_pitch) / self.dt, -0.4, 0.4
+        )
+        self.previous_pitch = pitch
+        if self.step >= self.warmup:
+            angle = float(q[self.shoulder])
+            if self.initial_angle is None:
+                self.initial_angle = angle
+            phase = min(1.0, (self.step - self.warmup + 1) * self.dt)
+            reference = self.initial_angle + self.plan["delta_rad"] * phase
+            error = reference - angle
+            if self.weights is None:
+                self.correction += 1.5 * self.dt * error
+            else:
+                from g1_reach_checkpoint import features
+
+                self.correction = self.weights @ features(phase, error)
+            self.correction = float(np.clip(self.correction, -0.04, 0.04))
+            desired[self.shoulder] = reference + self.correction
+        self.targets += np.clip(
+            np.clip(desired, *self.bounds) - self.targets, -self.max_step, self.max_step
+        )
+        self.step += 1
+        return self.targets
+
+
 def simulate(
     out,
     model,
@@ -55,7 +109,6 @@ def simulate(
     observations_only=False,
     observation_period_s=1,
 ):
-    from g1_reach_checkpoint import features
     from aisle.kinematics import load_urdf_chain
     from aisle.sim import nexus_backend as nx
 
@@ -139,13 +192,11 @@ def simulate(
     robot.set_dofs_kv(kd.tolist(), dofs)
     scene.build()
     floor_id = scene.gpu_index(0, floor.handles[0])
-    ankles = [names.index(f"{s}_ankle_pitch_joint") for s in ("left", "right")]
     waist_yaw = names.index("waist_yaw_joint")
     heading = plan.get("trunk_yaw_rad", 0.0)
     waist_pitch = names.index("waist_pitch_joint")
     trunk_target = plan.get("trunk_pitch_rad", 0.0)
     shoulder = names.index(plan["joint"])
-    targets = np.zeros(len(names))
     initial_xy = robot.get_pos()[:2].copy()
     block_id = scene.gpu_index(0, block.handles[0]) if block is not None else None
     launch_at = 600  # Three seconds into the scored trial.
@@ -157,7 +208,6 @@ def simulate(
     chain_dofs = [dofs[names.index(j)] for j in chain.joint_names]
     wrist_rows, balance_rows = [], []
     wrist_start = wrist_goal = None
-    previous_pitch = 0.0
     warmup, scored = 200, 2000
     both = 0
     peak_tilt = drift = excursion = 0.0
@@ -192,50 +242,33 @@ def simulate(
             ),
         ),
     )
-    correction = 0.0
-    initial_angle = None
+    controller = StandingController(
+        plan, names, lo, hi, speed, dt, warmup, reach_weights
+    )
+    controller_inputs = []
     for i in range(warmup + scored):
-        # The control law consumes only body attitude (simulated IMU) and joint state.
-        w, x, y, z = robot.get_quat()
-        pitch = np.arcsin(np.clip(2 * (w * y - z * x), -1, 1))
-        desired = targets.copy()
-        desired[waist_pitch] = trunk_target
-        desired[waist_yaw] = heading
-        desired[ankles] = np.clip(
-            2.5 * pitch + 0.23 * (pitch - previous_pitch) / dt, -0.4, 0.4
-        )
-        previous_pitch = pitch
-        if i >= warmup:
-            angle = float(robot.get_qpos()[dofs[shoulder]])
-            if initial_angle is None:
-                initial_angle = angle
-                # The evaluator freezes a world-frame goal against the warmed-up pose.
-                chain_q = robot.get_qpos()[chain_dofs].copy()
-                relative_start = chain.forward(chain_q)[0]
-                chain_q[chain.joint_names.index(plan["joint"])] += plan["delta_rad"]
-                relative_delta = chain.forward(chain_q)[0] - relative_start
-                wrist_start = wrist.get_pos().astype(float).copy()
-                initial_root_quat = robot.get_quat().copy()
-                wrist_goal = (
-                    wrist_start
-                    + nx.quat_wxyz_to_matrix(initial_root_quat) @ relative_delta
-                )
-            phase = min(1.0, (i - warmup + 1) * dt)
-            reference = initial_angle + plan["delta_rad"] * phase
-            error = reference - angle
-            if reach_weights is None:
-                correction += 1.5 * dt * error
-            else:
-                correction = reach_weights @ features(phase, error)
-            correction = float(np.clip(correction, -0.04, 0.04))
-            desired[shoulder] = reference + correction
-        targets += np.clip(np.clip(desired, lo, hi) - targets, -speed * dt, speed * dt)
+        before = robot.get_qpos()[dofs].astype(float)
+        orientation = robot.get_quat().copy()
+        targets = controller.advance(before, orientation)
+        if i == warmup:
+            initial_angle = controller.initial_angle
+            # The evaluator freezes a world-frame goal against the warmed-up pose.
+            chain_q = robot.get_qpos()[chain_dofs].copy()
+            relative_start = chain.forward(chain_q)[0]
+            chain_q[chain.joint_names.index(plan["joint"])] += plan["delta_rad"]
+            relative_delta = chain.forward(chain_q)[0] - relative_start
+            wrist_start = wrist.get_pos().astype(float).copy()
+            initial_root_quat = robot.get_quat().copy()
+            wrist_goal = (
+                wrist_start + nx.quat_wxyz_to_matrix(initial_root_quat) @ relative_delta
+            )
         if block is not None and i == warmup + launch_at:
             # Only the independent fixture body receives an initial pose and velocity.
             scene.set_body_pose(0, block.handles[0], launch_pos, [1, 0, 0, 0])
             scene.set_body_velocity(0, block.handles[0], launch_velocity)
-        before = robot.get_qpos()[dofs].astype(float)
         velocity = robot.get_dofs_velocity()[dofs].astype(float)
+        if record_episode:
+            controller_inputs.append((before, orientation, velocity, targets.copy()))
         robot.control_dofs_position(targets.tolist(), dofs)
         scene.step()
         q = robot.get_qpos()[dofs]
@@ -390,6 +423,19 @@ def simulate(
         effort_limit=effort,
         dt=dt,
     )
+    if record_episode:
+        q_input, quat_input, dq_input, target_input = map(
+            np.asarray, zip(*controller_inputs)
+        )
+        np.savez_compressed(
+            out / "standing-inputs.npz",
+            joints=names,
+            q=q_input,
+            quat=quat_input,
+            dq=dq_input,
+            target=target_input,
+            dt=dt,
+        )
     if impact:
         save(out / "impact-contacts.json", impact_rows)
     recovery_s = (
@@ -440,6 +486,11 @@ def simulate(
         estimated_positive_joint_work_j=positive_work,
         estimated_negative_joint_work_j=negative_work,
         motor_work_sha256=digest(out / "motor-work.npz"),
+        **(
+            {"standing_inputs_sha256": digest(out / "standing-inputs.npz")}
+            if record_episode
+            else {}
+        ),
         joint=plan["joint"],
         requested_delta=plan["delta_rad"],
         measured_delta=measured,

@@ -612,7 +612,9 @@ def simulate(args, meta):
                 else (
                     "standing-development"
                     if standing
-                    else "living-room" if mobile else args.fixture
+                    else "living-room"
+                    if mobile
+                    else args.fixture
                 )
             ),
             adapter_hash=digest(Path(nx.__file__)),
@@ -835,6 +837,7 @@ def main():
             "room-draft",
             "room-apply",
             "evaluate",
+            "device-preflight",
             "train-reach",
             "train-grasp",
             "fleet",
@@ -852,6 +855,11 @@ def main():
     p.add_argument("--controller", type=Path)
     p.add_argument("--trial", type=Path)
     p.add_argument("--archive", type=Path)
+    p.add_argument(
+        "--device-mode", choices=["loopback", "subscribe"], default="loopback"
+    )
+    p.add_argument("--device-interface")
+    p.add_argument("--dds-domain", type=int, default=0)
     p.add_argument("--dataset", type=Path)
     p.add_argument(
         "--impact-aim",
@@ -926,6 +934,13 @@ def main():
     else:
         args.out.mkdir(parents=True, exist_ok=False)
     try:
+        if args.operation == "device-preflight":
+            if args.trial is None:
+                raise ValueError("Select the originating simulation trial")
+            from device_preflight import run as device_preflight
+
+            save(args.out / "preflight.json", device_preflight(args))
+            return
         if args.operation == "fleet":
             from fleet_bridge import operate
 

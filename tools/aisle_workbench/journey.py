@@ -31,6 +31,7 @@ def main():
     )
     p.add_argument("--fleet", action="store_true")
     p.add_argument("--standing", action="store_true")
+    p.add_argument("--device-preflight", action="store_true")
     p.add_argument("--pickup-motion", choices=["slide-positive", "slide-negative"])
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
@@ -312,6 +313,15 @@ def main():
                 fixture=row["result"]["fixture"],
                 outcome=row["result"]["task_success"],
             )
+            if a.device_preflight:
+                click("aisle_evidence.device_mode")
+                pre = done(
+                    lambda w: w["show_device"]
+                    and (w["preflight"] or {}).get("controller_sha256")
+                    == row["result"]["controller_hash"],
+                    "Device report restored with the matching trial",
+                )
+                checks[-1]["preflight"] = pre["preflight"]
             if a.train_grasp:
                 ck = row["controller"]["grasp_checkpoint"]
                 assert ck and row["result"]["grasp_checkpoint"] == ck
@@ -477,6 +487,112 @@ def main():
         checks.append(dict(check=label + " physical verdict", **result))
         (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
         assert result["task_success"], result
+        if a.device_preflight:
+            click("aisle_evidence.device_mode")
+            done(lambda w: w["show_device"], "Device preflight opened")
+            if a.standing:
+                click("aisle_evidence.device_endpoint")
+                remote(
+                    "text",
+                    "w=0",
+                    "t=" + ("lo0" if sys.platform == "darwin" else "lo") + "@227",
+                    "wait=1",
+                )
+                click("aisle_evidence.device_listen")
+                absence = done(
+                    lambda w: not w["busy"]
+                    and (w["preflight"] or {}).get("state") == "Dry run stopped",
+                    "Missing external publisher reported",
+                    35,
+                )
+                assert (
+                    absence["preflight"]["source_kind"] == "External DDS telemetry"
+                    and absence["preflight"]["motor_commands_sent"] == 0
+                )
+                checks[-1]["receipt"] = absence["preflight"]
+                click("aisle_evidence.device_replay")
+                active = done(
+                    lambda w: w["busy"] and w["worker_pid"], "Device preflight running"
+                )
+                group = active["worker_pid"]
+
+                def capture_has_started(_):
+                    preflights = sorted(
+                        Path(row["selected"]).parent.glob("*-G1-device-preflight")
+                    )
+                    return preflights and (preflights[-1] / "lowstate.jsonl").is_file()
+
+                wait(capture_has_started, "DDS subscriber joined")
+                click("aisle_evidence.device_stop")
+                cancelled = done(
+                    lambda w: not w["busy"]
+                    and (w["preflight"] or {}).get("reason") == "Stopped by operator",
+                    "Operator stopped DDS capture",
+                )
+                assert cancelled["preflight"]["motor_commands_sent"] == 0
+
+                def capture_has_exited(_):
+                    output = subprocess.check_output(
+                        ["ps", "-axo", "pgid=,stat="], text=True
+                    )
+                    return not any(
+                        int(fields[0]) == group and not fields[1].startswith("Z")
+                        for fields in (line.split() for line in output.splitlines())
+                        if len(fields) == 2
+                    )
+
+                wait(capture_has_exited, "All DDS processes exited")
+                checks[-1]["process_group_exited"] = True
+            click("aisle_evidence.device_replay")
+            expected = "Dry run measured" if a.standing else "Adapter incomplete"
+            observed = done(
+                lambda w: not w["busy"]
+                and (w["preflight"] or {}).get("state") == expected,
+                "Selected controller device preflight",
+                55,
+            )
+            pre = observed["preflight"]
+            assert (
+                pre["controller_sha256"] == result["controller_hash"]
+                and pre["motor_commands_sent"] == 0
+                and pre["physical_qualification"] is False
+            )
+            if a.standing:
+                assert (
+                    pre["dry_run_steps"] == 2200
+                    and pre["joints"] == 29
+                    and pre["max_nexus_target_difference_rad"] <= 1e-5
+                )
+                assert pre["source_kind"] == "Nexus loopback replay"
+            else:
+                assert pre["capabilities"]["arms"] is False and len(pre["wheels"]) == 3
+            checks[-1]["receipt"] = pre
+            grab("device-preflight")
+            if a.screenshots:
+                from PIL import Image
+
+                controls = report()["controls"]
+                x, y, _, h = controls["aisle_evidence.device_replay"]["rect"]
+                bottom = controls["aisle_evidence.device_folder"]["rect"][1]
+                with Image.open(a.out / "device-preflight.png") as shot:
+                    region = shot.convert("L").crop(
+                        (int(x), int(y + h + 4), shot.width - 50, int(bottom - 4))
+                    )
+                    histogram = region.histogram()
+                background = max(range(256), key=histogram.__getitem__)
+                legible_pixels = sum(
+                    n for i, n in enumerate(histogram) if abs(i - background) > 100
+                )
+                assert legible_pixels >= 150, (
+                    "Preflight measurements lack visible text contrast"
+                )
+                checks[-1]["contrasting_result_pixels"] = legible_pixels
+            click("aisle_evidence.trial_mode")
+            done(
+                lambda w: not w["show_device"] and not w["show_evaluation"],
+                "Simulation evidence reopened",
+            )
+
         if a.standing:
             if a.heading:
                 import numpy as np
