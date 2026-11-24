@@ -2,6 +2,8 @@
 
 Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and Codex can each author simulation tasks on the repository’s Adora Nano and Unitree G1 models. The Nano can approach colored cubes using onboard RGB or transfer them from the floor to a coffee table. The G1 can track a shoulder target in a fixed fixture or while standing on both feet. AISLE drives the Nexus simulation, and Studio displays independent measurements for each trial.
 
+[Revise a failed Nano pickup with Codex or DeepSeek using its recorded RGB observations](validation/observed-revision/README.md)
+
 [Watch DeepSeek place three cubes in observed left-to-right order](validation/onboard-authoring/three-cubes.mp4)
 
 [Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)

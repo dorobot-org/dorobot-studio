@@ -97,7 +97,10 @@ script_mod! {
                 instruction := TextInput{width:Fill height:64 is_multiline:true empty_text:"Inspect a shoulder or approach a colored cube with Nano"}
                 Bar{reference := mod.widgets.ux.ToolButton{text:"Use reference task"} onboard := mod.widgets.ux.ToolButton{text:"Onboard RGB off"}}
                 Bar{octos := mod.widgets.ux.PrimaryButton{text:"DeepSeek via Octos"} codex := mod.widgets.ux.ToolButton{text:"Ask Codex"}}
-                Section{text:"Prepared controller"} detail := Body{}
+                Section{text:"Prepared controller"}
+                controller_scroll := ScrollYView{width:Fill height:Fill flow:Down
+                    detail := Body{max_lines:0}
+                }
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
                 revision_actions := Bar{revise := mod.widgets.ux.ToolButton{text:"Revise with DeepSeek"} revise_codex := mod.widgets.ux.ToolButton{text:"Revise with Codex"}}
             }
