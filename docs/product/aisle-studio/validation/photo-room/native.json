@@ -1,0 +1,656 @@
+{
+  "octos": {
+    "program_commit": "39fe259d80f04b616e90039456d998e6970b93cd",
+    "backend": "offscreen",
+    "size": "1440x900",
+    "executable": "1fe8d01538bfc2acd48b73f8e19a3c8f5958848e1d39d5fdcc471f7c21d44fe4",
+    "journey": [
+      {
+        "check": "transfer controller authored",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Room editor opened",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Photographic geometry drafted for review",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-draft",
+        "object": {
+          "color": [
+            0.4745098039215686,
+            0.5529411764705883,
+            0.5490196078431373,
+            1.0
+          ],
+          "fixed": true,
+          "name": "room_teal_ottoman",
+          "position": [
+            1.2733325949584726,
+            -0.4461878406011218,
+            0.1301027519590115
+          ],
+          "size": [
+            0.39451489039555665,
+            0.3038602120575739,
+            0.328805503918023
+          ]
+        },
+        "provenance": {
+          "input_sha256": "49442b2adace75ac44019828254f521c42fdb24ec17869cfd7859956289d9cf5",
+          "measurements_sha256": "3e7a74e8e336e8d7cf3364a349f4f97c100c81cef085202a10377798cbe695a8",
+          "model": "deepseek-v4-flash",
+          "provider": "octos-deepseek",
+          "reference_sha256": "b2747c90d3e1cadc29e761ec3280202cff47c6f562ef946256f171e3fc8e3c4d",
+          "reply_sha256": "b86467f84c3aced29ce3228f1098eb9bd32fb4c040327f67d3124ca0bd6efa7e",
+          "selected": [
+            {
+              "id": 1,
+              "name": "teal_ottoman"
+            }
+          ]
+        }
+      },
+      {
+        "check": "Reviewed room selected for simulation",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-apply"
+      },
+      {
+        "check": "Living-room layout 1 selected",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-apply"
+      },
+      {
+        "check": "Living-room layout 0 selected",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-apply"
+      },
+      {
+        "check": "nano scene checked",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 scene"
+      },
+      {
+        "check": "transfer stream active",
+        "robot": "Nano",
+        "status": "Running \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer fresh frame",
+        "robot": "Nano",
+        "status": "Running \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer adjudicated",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer physical verdict",
+        "actuator_audit": {
+          "applied_rows": 6848,
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "initial_targets_valid": true,
+          "invalid_rows": 0,
+          "passed": true,
+          "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+          "unmatched_ticks": 0
+        },
+        "carry_annotations": true,
+        "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "cubes": {
+          "red": {
+            "cube_center_over_table": true,
+            "detached": true,
+            "final_position_m": [
+              0.1555689126253128,
+              0.7180509567260742,
+              0.5599989891052246
+            ],
+            "min_finger_clearance_tail_m": 0.29385481821736925,
+            "nearest_table_edge_m": 0.11805095672607424,
+            "opposing_finger_airborne_ticks": 3182,
+            "passed": true,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0,
+            "table_contact_tail_ticks": 100
+          }
+        },
+        "error": null,
+        "fixture": "living-room",
+        "frames": 342,
+        "grasp_checkpoint": null,
+        "kind": "table-transfer",
+        "max_joint_excursion_rad": 0,
+        "measured_room_bodies": {
+          "room_teal_ottoman": {
+            "center_m": [
+              1.273332595825195,
+              -0.4461878538131714,
+              0.1301027536392212
+            ],
+            "physics_body": 17
+          }
+        },
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "onboard_observations": 128,
+        "passed": true,
+        "phase": "back away",
+        "physics_ticks": 6848,
+        "recording": true,
+        "rejected_motor_writes": 0,
+        "requested": [
+          "red"
+        ],
+        "robot": "Nano",
+        "robot_furniture_contacts": {},
+        "room_obstacles": [
+          "room_teal_ottoman"
+        ],
+        "room_revision_sha256": "6d8ef7c6d2e969ce6a1102f0e1749063a6f0ddd697fe36aae0f5ea61e81da07b",
+        "root_pose_writes": 0,
+        "seed": 0,
+        "table_top_m": 0.54,
+        "task_success": true,
+        "training_dataset": null,
+        "unsupported_wheel_ranges": [],
+        "wheel_supported_ticks": 6848
+      },
+      {
+        "check": "Nexus measured the approved photographic geometry",
+        "body": {
+          "center_m": [
+            1.273332595825195,
+            -0.4461878538131714,
+            0.1301027536392212
+          ],
+          "physics_body": 17
+        },
+        "room_sha256": "6d8ef7c6d2e969ce6a1102f0e1749063a6f0ddd697fe36aae0f5ea61e81da07b"
+      },
+      {
+        "check": "Onboard episode exported",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 export"
+      },
+      {
+        "check": "Native Replay and synchronized encoder/action columns",
+        "cameras": [
+          "head",
+          "left_wrist",
+          "right_wrist"
+        ],
+        "frames_per_camera": 342
+      }
+    ],
+    "recovery": [
+      {
+        "check": "transfer evidence restored",
+        "robot": "Nano",
+        "status": "Ready",
+        "restored_robot": "Nano",
+        "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "fixture": "living-room",
+        "outcome": true,
+        "photo_room": {
+          "archived_survey_sha256": "3392d2d916907b8f4aa656817d9f729cfa4c0b3f64f3df60a7b95c5d2a6923ce",
+          "description": "Add the teal ottoman in the foreground. Keep the existing sofa and coffee table.",
+          "edit": null,
+          "image_to_floor": [
+            [
+              -0.0533978926930096,
+              -0.0728701734936092,
+              40.46419440333731
+            ],
+            [
+              -0.030407933019885,
+              0.10334442318988736,
+              -20.448480731546752
+            ],
+            [
+              -9.283904959970754e-07,
+              -0.026220418429656132,
+              1.0
+            ]
+          ],
+          "max_calibration_error_m": 3.363426667980092e-05,
+          "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "obstacles": [
+            {
+              "color": [
+                0.4745098039215686,
+                0.5529411764705883,
+                0.5490196078431373,
+                1.0
+              ],
+              "fixed": true,
+              "name": "room_teal_ottoman",
+              "position": [
+                1.2733325949584726,
+                -0.4461878406011218,
+                0.1301027519590115
+              ],
+              "size": [
+                0.39451489039555665,
+                0.3038602120575739,
+                0.328805503918023
+              ]
+            }
+          ],
+          "parent_sha256": null,
+          "photo_draft": {
+            "input_sha256": "49442b2adace75ac44019828254f521c42fdb24ec17869cfd7859956289d9cf5",
+            "measurements_sha256": "3e7a74e8e336e8d7cf3364a349f4f97c100c81cef085202a10377798cbe695a8",
+            "model": "deepseek-v4-flash",
+            "provider": "octos-deepseek",
+            "reference_sha256": "b2747c90d3e1cadc29e761ec3280202cff47c6f562ef946256f171e3fc8e3c4d",
+            "reply_sha256": "b86467f84c3aced29ce3228f1098eb9bd32fb4c040327f67d3124ca0bd6efa7e",
+            "selected": [
+              {
+                "id": 1,
+                "name": "teal_ottoman"
+              }
+            ]
+          },
+          "reference_sha256": "b2747c90d3e1cadc29e761ec3280202cff47c6f562ef946256f171e3fc8e3c4d",
+          "settings": {},
+          "survey_sha256": "3392d2d916907b8f4aa656817d9f729cfa4c0b3f64f3df60a7b95c5d2a6923ce",
+          "version": 1
+        }
+      }
+    ],
+    "measurement": {
+      "focal_px": 488.91767517419237,
+      "objects": [
+        {
+          "center_xy_m": [
+            1.2733375665622535,
+            -0.4461901879235153
+          ],
+          "size_m": [
+            0.39450927454990076,
+            0.3038569553897293,
+            0.328805503918023
+          ],
+          "rgb": [
+            121,
+            141,
+            140
+          ],
+          "footprint_pixels": [
+            [
+              424.98960436492035,
+              373.8659113553806
+            ],
+            [
+              478.17676344356374,
+              392.3157027863754
+            ],
+            [
+              493.92168916462856,
+              367.81254882935633
+            ],
+            [
+              443.4686057127854,
+              351.7695457444332
+            ]
+          ],
+          "max_vertex_error_px": 0.4462841947197606,
+          "image_bounds_xywh": [
+            425,
+            314,
+            74,
+            79
+          ],
+          "id": 1
+        }
+      ]
+    },
+    "provider": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 2.6009585419669747,
+      "input_tokens": 6126,
+      "output_tokens": 132
+    },
+    "selected": {
+      "supported": true,
+      "objects": [
+        {
+          "id": 1,
+          "name": "teal_ottoman"
+        }
+      ]
+    }
+  },
+  "codex": {
+    "program_commit": "39fe259d80f04b616e90039456d998e6970b93cd",
+    "backend": "headless",
+    "size": "1024x768",
+    "executable": "1fe8d01538bfc2acd48b73f8e19a3c8f5958848e1d39d5fdcc471f7c21d44fe4",
+    "journey": [
+      {
+        "check": "transfer controller authored",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Room editor opened",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Photographic geometry drafted for review",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-draft",
+        "object": {
+          "color": [
+            0.4745098039215686,
+            0.5529411764705883,
+            0.5490196078431373,
+            1.0
+          ],
+          "fixed": true,
+          "name": "room_teal_ottoman",
+          "position": [
+            1.2733325949584726,
+            -0.4461878406011218,
+            0.1301027519590115
+          ],
+          "size": [
+            0.39451489039555665,
+            0.3038602120575739,
+            0.328805503918023
+          ]
+        },
+        "provenance": {
+          "input_sha256": "49442b2adace75ac44019828254f521c42fdb24ec17869cfd7859956289d9cf5",
+          "measurements_sha256": "3e7a74e8e336e8d7cf3364a349f4f97c100c81cef085202a10377798cbe695a8",
+          "model": "gpt-6.2-astra",
+          "provider": "codex",
+          "reference_sha256": "b2747c90d3e1cadc29e761ec3280202cff47c6f562ef946256f171e3fc8e3c4d",
+          "reply_sha256": "acae46d52360680b02e70f59ad4c9eaed2d838c5ab53e872ecd1ca9fa899ebb5",
+          "selected": [
+            {
+              "id": 1,
+              "name": "teal_ottoman"
+            }
+          ]
+        }
+      },
+      {
+        "check": "Reviewed room selected for simulation",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-apply"
+      },
+      {
+        "check": "Living-room layout 1 selected",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-apply"
+      },
+      {
+        "check": "Living-room layout 0 selected",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 room-apply"
+      },
+      {
+        "check": "nano scene checked",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 scene"
+      },
+      {
+        "check": "transfer stream active",
+        "robot": "Nano",
+        "status": "Running \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer fresh frame",
+        "robot": "Nano",
+        "status": "Running \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer adjudicated",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 run"
+      },
+      {
+        "check": "transfer physical verdict",
+        "actuator_audit": {
+          "applied_rows": 6848,
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "initial_targets_valid": true,
+          "invalid_rows": 0,
+          "passed": true,
+          "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+          "unmatched_ticks": 0
+        },
+        "carry_annotations": true,
+        "controller_hash": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+        "cubes": {
+          "red": {
+            "cube_center_over_table": true,
+            "detached": true,
+            "final_position_m": [
+              0.1555689126253128,
+              0.7180509567260742,
+              0.5599989891052246
+            ],
+            "min_finger_clearance_tail_m": 0.29385481821736925,
+            "nearest_table_edge_m": 0.11805095672607424,
+            "opposing_finger_airborne_ticks": 3182,
+            "passed": true,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0,
+            "table_contact_tail_ticks": 100
+          }
+        },
+        "error": null,
+        "fixture": "living-room",
+        "frames": 342,
+        "grasp_checkpoint": null,
+        "kind": "table-transfer",
+        "max_joint_excursion_rad": 0,
+        "measured_room_bodies": {
+          "room_teal_ottoman": {
+            "center_m": [
+              1.273332595825195,
+              -0.4461878538131714,
+              0.1301027536392212
+            ],
+            "physics_body": 17
+          }
+        },
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "onboard_observations": 128,
+        "passed": true,
+        "phase": "back away",
+        "physics_ticks": 6848,
+        "recording": true,
+        "rejected_motor_writes": 0,
+        "requested": [
+          "red"
+        ],
+        "robot": "Nano",
+        "robot_furniture_contacts": {},
+        "room_obstacles": [
+          "room_teal_ottoman"
+        ],
+        "room_revision_sha256": "ffe4df77a3bec269bed5a4c03ee3b0c9a12536c1a2547c39fa334deadff59b71",
+        "root_pose_writes": 0,
+        "seed": 0,
+        "table_top_m": 0.54,
+        "task_success": true,
+        "training_dataset": null,
+        "unsupported_wheel_ranges": [],
+        "wheel_supported_ticks": 6848
+      },
+      {
+        "check": "Nexus measured the approved photographic geometry",
+        "body": {
+          "center_m": [
+            1.273332595825195,
+            -0.4461878538131714,
+            0.1301027536392212
+          ],
+          "physics_body": 17
+        },
+        "room_sha256": "ffe4df77a3bec269bed5a4c03ee3b0c9a12536c1a2547c39fa334deadff59b71"
+      },
+      {
+        "check": "Onboard episode exported",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 export"
+      },
+      {
+        "check": "Native Replay and synchronized encoder/action columns",
+        "cameras": [
+          "head",
+          "left_wrist",
+          "right_wrist"
+        ],
+        "frames_per_camera": 342
+      }
+    ],
+    "recovery": [
+      {
+        "check": "transfer evidence restored",
+        "robot": "Nano",
+        "status": "Ready",
+        "restored_robot": "Nano",
+        "controller_hash": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+        "fixture": "living-room",
+        "outcome": true,
+        "photo_room": {
+          "archived_survey_sha256": "451b7b91ea5e306141899d39259fa80b08b7570a746954b5dd1882ed381721b5",
+          "description": "Add the teal ottoman in the foreground. Keep the existing sofa and coffee table.",
+          "edit": null,
+          "image_to_floor": [
+            [
+              -0.0533978926930096,
+              -0.0728701734936092,
+              40.46419440333731
+            ],
+            [
+              -0.030407933019885,
+              0.10334442318988736,
+              -20.448480731546752
+            ],
+            [
+              -9.283904959970754e-07,
+              -0.026220418429656132,
+              1.0
+            ]
+          ],
+          "max_calibration_error_m": 3.363426667980092e-05,
+          "model_sha256": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "obstacles": [
+            {
+              "color": [
+                0.4745098039215686,
+                0.5529411764705883,
+                0.5490196078431373,
+                1.0
+              ],
+              "fixed": true,
+              "name": "room_teal_ottoman",
+              "position": [
+                1.2733325949584726,
+                -0.4461878406011218,
+                0.1301027519590115
+              ],
+              "size": [
+                0.39451489039555665,
+                0.3038602120575739,
+                0.328805503918023
+              ]
+            }
+          ],
+          "parent_sha256": null,
+          "photo_draft": {
+            "input_sha256": "49442b2adace75ac44019828254f521c42fdb24ec17869cfd7859956289d9cf5",
+            "measurements_sha256": "3e7a74e8e336e8d7cf3364a349f4f97c100c81cef085202a10377798cbe695a8",
+            "model": "gpt-6.2-astra",
+            "provider": "codex",
+            "reference_sha256": "b2747c90d3e1cadc29e761ec3280202cff47c6f562ef946256f171e3fc8e3c4d",
+            "reply_sha256": "acae46d52360680b02e70f59ad4c9eaed2d838c5ab53e872ecd1ca9fa899ebb5",
+            "selected": [
+              {
+                "id": 1,
+                "name": "teal_ottoman"
+              }
+            ]
+          },
+          "reference_sha256": "b2747c90d3e1cadc29e761ec3280202cff47c6f562ef946256f171e3fc8e3c4d",
+          "settings": {},
+          "survey_sha256": "451b7b91ea5e306141899d39259fa80b08b7570a746954b5dd1882ed381721b5",
+          "version": 1
+        }
+      }
+    ],
+    "measurement": {
+      "focal_px": 488.91767517419237,
+      "objects": [
+        {
+          "center_xy_m": [
+            1.2733375665622535,
+            -0.4461901879235153
+          ],
+          "size_m": [
+            0.39450927454990076,
+            0.3038569553897293,
+            0.328805503918023
+          ],
+          "rgb": [
+            121,
+            141,
+            140
+          ],
+          "footprint_pixels": [
+            [
+              424.98960436492035,
+              373.8659113553806
+            ],
+            [
+              478.17676344356374,
+              392.3157027863754
+            ],
+            [
+              493.92168916462856,
+              367.81254882935633
+            ],
+            [
+              443.4686057127854,
+              351.7695457444332
+            ]
+          ],
+          "max_vertex_error_px": 0.4462841947197606,
+          "image_bounds_xywh": [
+            425,
+            314,
+            74,
+            79
+          ],
+          "id": 1
+        }
+      ]
+    },
+    "provider": {
+      "provider": "codex",
+      "model": "gpt-6.2-astra",
+      "wall_seconds": 5.7606319999322295
+    },
+    "selected": {
+      "supported": true,
+      "objects": [
+        {
+          "id": 1,
+          "name": "teal_ottoman"
+        }
+      ]
+    }
+  }
+}
