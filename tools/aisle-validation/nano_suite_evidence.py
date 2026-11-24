@@ -189,9 +189,11 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
         return summary
 
 
-def compare_archives(baseline, candidate, baseline_manifest, candidate_manifest):
-    before = verify(baseline, baseline_manifest, comparison=True)
-    after = verify(candidate, candidate_manifest, comparison=True)
+def compare_archives(
+    baseline, candidate, baseline_manifest, candidate_manifest, *, include_trials=False
+):
+    before = verify(baseline, baseline_manifest, include_trials, comparison=True)
+    after = verify(candidate, candidate_manifest, include_trials, comparison=True)
     if before["color_order"] != after["color_order"] or any(
         before["inputs"][k] != after["inputs"][k]
         for k in ("urdf", "mesh_inventory_sha256", "recipe")

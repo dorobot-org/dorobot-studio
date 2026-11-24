@@ -105,7 +105,10 @@ pub enum Action {
     ShowDevice,
     DevicePreflight(Option<String>),
     OpenPreflight,
-    Evaluate(String),
+    Evaluate {
+        archive: String,
+        baseline: Option<String>,
+    },
     SelectFailure(bool),
     Layout(u8),
     OlderPlan,
@@ -525,6 +528,7 @@ pub struct Workbench {
     preflights: std::collections::BTreeMap<String, PathBuf>,
     pub failure_index: usize,
     evaluation_archive: String,
+    evaluation_baseline: Option<String>,
     pub room_info: Value,
     pub room_path: Option<PathBuf>,
     pub room_draft_path: Option<PathBuf>,
@@ -587,6 +591,7 @@ impl Workbench {
             preflights: Default::default(),
             failure_index: 0,
             evaluation_archive: String::new(),
+            evaluation_baseline: None,
             room_info: Value::Null,
             room_path: None,
             room_draft_path: None,
@@ -966,7 +971,16 @@ impl Workbench {
             }
         }
         if op == "evaluate" {
+            if self.evaluation_archive.is_empty() || self.evaluation_baseline.as_deref() == Some("")
+            {
+                return Err(io::Error::other(
+                    "Enter the archive path for each selected cohort",
+                ));
+            }
             cmd.arg("--archive").arg(&self.evaluation_archive);
+            if let Some(path) = &self.evaluation_baseline {
+                cmd.arg("--baseline").arg(path);
+            }
         }
         if op == "room-apply" {
             cmd.arg("--room-revision")
@@ -1203,7 +1217,11 @@ impl Workbench {
                 Ok(())
             }
             Action::SelectFailure(next) => {
-                let count = self.evaluation["failures"].as_array().map_or(0, Vec::len);
+                let rows = self
+                    .evaluation
+                    .get("changes")
+                    .unwrap_or(&self.evaluation["failures"]);
+                let count = rows.as_array().map_or(0, Vec::len);
                 self.failure_index = if next {
                     (self.failure_index + 1).min(count.saturating_sub(1))
                 } else {
@@ -1211,8 +1229,9 @@ impl Workbench {
                 };
                 Ok(())
             }
-            Action::Evaluate(path) => {
-                self.evaluation_archive = path;
+            Action::Evaluate { archive, baseline } => {
+                self.evaluation_archive = archive;
+                self.evaluation_baseline = baseline;
                 self.launch("evaluate", Planner::Reference, None)
             }
             Action::EditRoom(value) => {
@@ -1527,7 +1546,9 @@ impl Workbench {
                 self.select_run(job.dir);
             }
             self.status = if job.op == "evaluate" {
-                let profile = if self.evaluation["profile"] == "g1-standing-reach-v1" {
+                let profile = if self.evaluation["profile"] == "g1-standing-reach-v1"
+                    || self.evaluation["robot"] == "G1"
+                {
                     "G1"
                 } else {
                     "Nano"
