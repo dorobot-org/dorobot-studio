@@ -66,6 +66,48 @@ def compare(directory):
     return rows
 
 
+def verify_native(directory):
+    runs = json.loads((directory / "native-draws.json").read_bytes())
+    assert set(runs) == {"mac-native", "h100-native"}
+    for run in runs.values():
+        draws = run["draw_tick_and_nanoseconds"]
+        ticks, times = zip(*draws)
+        assert all(a < b for a, b in zip(ticks, ticks[1:]))
+        assert all(a < b for a, b in zip(times, times[1:]))
+        rate = (len(draws) - 1) * 1e9 / (times[-1] - times[0])
+        assert run["label"] == f"Foreground worker camera · {rate:.1f} FPS"
+        assert (
+            run["completed"]
+            and run["supported_ticks"] > 0
+            and run["frames_per_camera"] > 0
+        )
+        assert any("recover" in step.lower() for step in run["recovery"])
+    samples = json.loads((directory / "worker-stall.json").read_bytes())
+    assert {r["job"] for r in samples} == {runs["h100-native"]["job"]}
+    assert all(r["state"] == "running" for r in samples)
+    stalled = next(
+        i for i, r in enumerate(samples) if r["label"].endswith("Stream stalled")
+    )
+    assert samples[stalled]["seconds"] >= 2
+    assert any(
+        r["label"].endswith("Waiting for frames") for r in samples[stalled + 1 :]
+    )
+    assert (
+        samples[-1]["label"].endswith(" FPS")
+        and samples[-1]["step"] > samples[0]["step"]
+    )
+
+    local = json.loads((directory / "g1-local.json").read_bytes())
+    assert local["native_binary_sha256"] == runs["mac-native"]["binary_sha256"]
+    assert not local["trace_file_exists"] and local["task_success"]
+    assert (
+        local["disturbance"]["passed"]
+        and local["both_feet_loaded_steps"] == local["steps"] == 2000
+    )
+    assert any(r["busy"] and r["label"].endswith(" FPS") for r in local["labels"])
+    assert local["labels"][-1]["label"] == "External operator camera"
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -75,5 +117,6 @@ if __name__ == "__main__":
     directory = Path(__file__).resolve().parent
     rows = compare(directory)
     if args.check:
+        verify_native(directory)
         assert rows == json.loads((directory / "render-comparison.json").read_bytes())
     print(json.dumps(rows, indent=2))

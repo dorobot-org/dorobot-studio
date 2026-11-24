@@ -1,0 +1,256 @@
+{
+  "mac-native": {
+    "backend": "offscreen",
+    "size": "1440x900",
+    "provider": "codex",
+    "binary_sha256": "ff3a565af3353a5b07807eb5f672bae94e9e3272634f4552e536ca1b2e7685b4",
+    "label": "Foreground worker camera \u00b7 30.6 FPS",
+    "draw_tick_and_nanoseconds": [
+      [
+        2,
+        4636176666
+      ],
+      [
+        5,
+        4666728583
+      ],
+      [
+        9,
+        4704422916
+      ],
+      [
+        13,
+        4733180000
+      ],
+      [
+        17,
+        4766630375
+      ],
+      [
+        20,
+        4805281333
+      ],
+      [
+        21,
+        4845175083
+      ],
+      [
+        26,
+        4877324375
+      ],
+      [
+        30,
+        4897673625
+      ],
+      [
+        34,
+        4939731166
+      ],
+      [
+        38,
+        4957739000
+      ],
+      [
+        40,
+        5005962666
+      ],
+      [
+        42,
+        5026551375
+      ],
+      [
+        46,
+        5071796916
+      ],
+      [
+        51,
+        5102182458
+      ],
+      [
+        55,
+        5124429416
+      ],
+      [
+        59,
+        5158689000
+      ]
+    ],
+    "job": "6a8ea6a3-ded5-4140-90e2-82941a788340",
+    "completed": true,
+    "supported_ticks": 6848,
+    "frames_per_camera": 342,
+    "controller_sha256": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+    "recovery": [
+      "Workers page opened",
+      "Worker selection recovered",
+      "Recovered wall-clock setting for the submitted observer",
+      "Restored foreground selection",
+      "Imported worker trial and export recovered"
+    ]
+  },
+  "h100-native": {
+    "backend": "headless",
+    "size": "1024x768",
+    "provider": "octos-deepseek",
+    "binary_sha256": "ff3a565af3353a5b07807eb5f672bae94e9e3272634f4552e536ca1b2e7685b4",
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "draw_tick_and_nanoseconds": [
+      [
+        2899,
+        167878791542
+      ],
+      [
+        2900,
+        167909717167
+      ],
+      [
+        2901,
+        168058857209
+      ],
+      [
+        2902,
+        168175183250
+      ],
+      [
+        2903,
+        168193618792
+      ],
+      [
+        2904,
+        168224800542
+      ],
+      [
+        2905,
+        168260997709
+      ],
+      [
+        2906,
+        168312348709
+      ],
+      [
+        2907,
+        168343596625
+      ],
+      [
+        2908,
+        168413382584
+      ],
+      [
+        2909,
+        168445275667
+      ],
+      [
+        2910,
+        168515540084
+      ],
+      [
+        2911,
+        168547459500
+      ],
+      [
+        2912,
+        168701074625
+      ],
+      [
+        2913,
+        168725322917
+      ],
+      [
+        2914,
+        168733470250
+      ],
+      [
+        2915,
+        168778470084
+      ],
+      [
+        2916,
+        168801822959
+      ],
+      [
+        2917,
+        168852952459
+      ],
+      [
+        2918,
+        168895708459
+      ],
+      [
+        2919,
+        169035555292
+      ],
+      [
+        2920,
+        169069452042
+      ],
+      [
+        2921,
+        169235997417
+      ],
+      [
+        2922,
+        169268944709
+      ],
+      [
+        2923,
+        169317619459
+      ],
+      [
+        2924,
+        169362043417
+      ],
+      [
+        2925,
+        169405456417
+      ],
+      [
+        2926,
+        169467068875
+      ],
+      [
+        2927,
+        169522498667
+      ],
+      [
+        2928,
+        169569278875
+      ],
+      [
+        2929,
+        169620894709
+      ],
+      [
+        2930,
+        169751872792
+      ],
+      [
+        2931,
+        169767459834
+      ],
+      [
+        2932,
+        169808663875
+      ],
+      [
+        2933,
+        169833832875
+      ],
+      [
+        2934,
+        169861050667
+      ]
+    ],
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "completed": true,
+    "supported_ticks": 6948,
+    "frames_per_camera": 347,
+    "controller_sha256": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+    "recovery": [
+      "Workers page opened",
+      "Worker selection recovered",
+      "Imported worker trial and export recovered"
+    ],
+    "startup_label": "Foreground worker camera \u00b7 4.0 FPS",
+    "next_draw_gap_seconds": 2.159471458
+  }
+}

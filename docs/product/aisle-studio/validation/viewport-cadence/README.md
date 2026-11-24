@@ -6,6 +6,17 @@ The display uses draw intervals from the preceding two seconds, measured at the 
 
 ![The Nano head camera and its live frame rate in the native Run page](run-page.png)
 
+## Native checks
+
+| Foreground | Sample from visible camera heading | Task and recovery |
+| --- | ---: | --- |
+| M3 Max, 1440 × 900 offscreen, Codex-authored Nano | 30.6 FPS | The red cube reached the table. Studio switched to the background job’s snapshot, then recovered the original 342-frame foreground episode after restart. |
+| One H100 NVL, 1024 × 768 headless Studio, DeepSeek controller authored through Octos | 17.7 FPS | The red cube reached the table. Both the evidence and the 347-frame export reopened after restart. |
+
+These readings are short samples of the on-screen counter. Immediately before interrupting the H100 camera receiver, Studio drew 35 intervals over 1.982 seconds. The operator saw **Stream stalled** after 2.094 seconds of the interruption, then **Waiting for frames**, then a new FPS value. The original simulation kept running on the same worker lease throughout. [Native draw timestamps](native-draws.json) · [Label sequence during interruption](worker-stall.json)
+
+The direct local path also ran the floating-base G1 standing reach with its development impact fixture and draw tracing disabled. Its external operator camera showed about 6 FPS during the trial and returned to its static heading on completion. Both feet stayed loaded for 2,000 steps. The episode contains 101 frames and reopened after restart. [G1 camera labels, impact and recovery](g1-local.json)
+
 ## Renderer measurements
 
 On one H100 NVL we replayed the same 320 motor commands with no policy decisions, using layout 0 of the Nano living room. After 64 warm-up steps we timed 256 sequential steps with one head exposure per step. At eight equally spaced ticks we retained all three RGB images and the robot configuration. Each configuration below ran once in a fresh engine. The original settings also ran a second time. The complete production transfer additionally captures wrist exposures for decisions and recordings, publishes previews, and sends them to Studio. The timings below measure the worker portion of the short replay.
