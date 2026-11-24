@@ -1,0 +1,5 @@
+# G1 standing reach with a 30-degree left waist turn
+
+DeepSeek through Octos prepared a −0.08 rad right shoulder reach with neutral pitch and a 30° left waist turn. The controller first establishes the standing posture. The existing evaluation computes the world wrist target from the measured starting pose and scores 2,000 steps. The neutral stance remains available.
+
+Before this qualification, the candidate reached its target and recovered in 40 previously disclosed development recipes. The paired suite reuses the latest 20 disclosed impacts, including the two sustained ankle contacts from the 20° trial. The independent qualification uses eight envelope corners and twelve sealed interior recipes, twice in separate Nexus processes. Both fresh repeats must score 20/20 on the previous criteria. All torso strikes, secondary contacts, recovery measurements, wrist and actuator traces count. [Paired manifest](matched-suite.json) · [Fresh manifest](suite.json) · [Exact controller](controller.json)
