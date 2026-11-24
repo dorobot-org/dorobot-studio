@@ -1,0 +1,5 @@
+# G1 standing reach with a 20-degree left waist turn
+
+DeepSeek through Octos prepared the right shoulder command of −0.08 rad and a 20° left waist turn. The local controller establishes the posture on both feet before the scored reach. The wrist target uses the measured starting pose and the same forward-kinematics rule as the neutral trial. This evaluates a reach relative to the standing posture. The frontal block trajectory, mass, speed and lateral-offset envelope are identical across the paired recipes.
+
+A development study of previously disclosed frontal impacts passed all 20 with this posture. The frozen product controller must repeat those recipes and pass all 20 fresh cases twice. Each fresh run includes the same eight envelope corners and twelve sealed interior recipes. Each case must contact the torso, keep both feet loaded for 2,000 steps, respect joint limits, reach the wrist target and recover within the established interval. The independent verifier checks every waist motor target and the settled encoder measurement. [Paired manifest](matched-suite.json) · [Fresh manifest](suite.json) · [Authored controller](controller.json)
