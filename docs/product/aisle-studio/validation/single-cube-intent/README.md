@@ -12,6 +12,21 @@ For direct English commands to move, carry, transfer, put or place a single name
 Both services received the same red-only schema in separate requests. Each resulting program ran the same built-in transfer controller on simulated Nano RGB and encoders on layout 0. The explicit request fixes the color before inference. Their target journals matched byte for byte. Both trials recorded 3,182 opposing-finger airborne steps and final table contact for the last 100 steps. This is one paired task. [Original draft, rejected execution and both new outcomes](results.json) · [Provider requests, decisions and raw motor traces](paired-traces.zip)
 
 
+## Stationary and moving pickups
+
+For a stationary red cube, enter **Move the red floor cube onto the coffee table.** For a moving target, explicitly ask the author to track the cube from onboard RGB as the arm descends. A revision based on a stopped tracked pickup can also use the recorded camera evidence to revise the tracking rule. Previously saved controllers retain their recorded pickup strategy.
+
+Two headless Makepad fleet journeys used the same Nano model, layout 0, stationary target, operator instruction and DeepSeek V4 Flash through Octos. In the first, the author enabled moving-target tracking. After two failed wrist-camera confirmations, the controller stopped. Red was still on the floor. The revised authoring schema restricts a plain named transfer to stationary pickup. A new request selected that mode, and Studio ran the generated controller through the same local worker.
+
+| Measured outcome | Original draft | Revised draft |
+| --- | ---: | ---: |
+| Supported physics ticks | 4,364 / 4,364 | 6,848 / 6,848 |
+| Opposing-finger airborne ticks | 0 | 3,182 |
+| Final consecutive table-contact ticks | 0 | 100 |
+| Recorded frames per onboard camera | 218 | 342 |
+
+The revised trial streamed to Run, continued while a second observation-only lease was cancelled, exported a dataset, and reopened in Studio after restart. Its motor journal matched the previously measured stationary red transfer byte for byte. Codex independently chose stationary pickup for the same instruction. In an additional authoring request, DeepSeek enabled tracking for an explicitly moving red cube. The matched fleet comparison covers one layout. [Original model requests, both leases and motor journals](stationary-fleet.zip) · [Replay the checks with Python](check_stationary.py)
+
 ## Reproduction
 
 Use the [Studio AISLE runtime setup](../../README.md#run-from-a-studio-source-checkout) and the [worker revision used for the two recorded runs](https://github.com/dorobot-org/dorobot-studio/tree/6687f5b). Configure each provider, then run from the Studio checkout.

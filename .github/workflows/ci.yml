@@ -89,6 +89,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/aisle_workbench -p test_worker.py
           python3 docs/product/aisle-studio/validation/controller-selection/check.py
+          python3 docs/product/aisle-studio/validation/single-cube-intent/check_stationary.py
           python3 -m unittest discover -s tools/aisle_workbench -p test_wrist_export.py
       - name: Verify foreground stream handling and archived native measurements
         run: |
