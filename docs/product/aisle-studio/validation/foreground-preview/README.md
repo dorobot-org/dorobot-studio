@@ -1,6 +1,6 @@
 # Nano live RGB in AISLE Studio
 
-Prepare a Nano floor-to-table transfer on **Task** and start it on **Run** to see the simulated head camera. To watch one session in a fleet, open **Run → Workers**, connect to a worker and select **Stream run**. For the other sessions, choose a background RGB period and select **Background run**. A one-second period requests one frame per second of simulated time. The measured delivery rate depends on how quickly the simulation advances.
+Prepare a Nano floor-to-table transfer on **Task** and start it on **Run** to see the simulated head camera. To watch one session in a fleet, open **Run → Workers**, connect to a worker and select **Stream run**. For the other sessions, choose a background RGB period and select **Background run**. The default one-second period requests one frame per second of simulated time. Select **Wall time** to schedule observations using elapsed time on the worker. The measured delivery rate depends on how quickly the simulation advances.
 
 The selected foreground produces fresh 480×360 head-camera images on a 30 Hz wall-clock schedule when new physics ticks are available. A slow viewer can skip old images. The recorded episode still contains aligned head, left-wrist and right-wrist RGB at five frames per simulated second, joint states and commands. In Evidence, choose **Export episode** and **Open in Replay**. [Worker configuration](../worker-leases/README.md) · [Native foreground viewport](foreground.png)
 
@@ -17,7 +17,7 @@ Each session ran its own red-cube floor-to-table transfer on a 128 GiB Apple M3 
 | 7 | DeepSeek via Octos, offscreen | 69.0 | 28.76 | 0.94–0.96 | 58 / 204 | 1/69 | Miss |
 | 8 | DeepSeek via Octos, offscreen | 76.1 | 28.39 | 0.84–0.88 | 58 / 215 | 2/76 | Miss |
 
-Six sessions met the full gate with each author on this machine. Seven and eight missed the background target. The margins at six were small enough that other workloads can change the outcome.
+Six sessions met the full gate with each author on this machine. Seven and eight missed the background target. The margins at six were small enough that other workloads can change the outcome. For measurements with wall-time scheduling and the same delivery target, see the [background RGB clock comparison](../wall-clock-rgb/README.md).
 
 Frame rates count distinct Nexus exposure ticks drawn by the native Makepad video widget. They measure application draws. Capture-to-draw latency and display presentation require separate clocks or instrumentation. Offscreen mode also captures pixels. Physical display scanout, internet transport, remote-host capacity, and other task or camera profiles require separate measurements. Codex and DeepSeek authored controllers before each session executed its local sensor-driven policy. These timings measure the running simulations and Studio. [Timing records and outcomes](results.json)
 
