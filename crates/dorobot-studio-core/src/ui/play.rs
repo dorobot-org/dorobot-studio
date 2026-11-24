@@ -1544,9 +1544,6 @@ impl PlayScreenRef {
                         }
                     }
                     if hardware_camera {
-                        rv.set_camera_target(cx, [0., 0., 0.]);
-                        rv.set_view_angles(cx, 0., -1.55);
-                        rv.set_view_distance(cx, 16.0);
                         super::replay_scene::show_trace(cx, &mut rv, scene, frame_idx as usize);
                     } else {
                         super::replay_scene::show(cx, &mut rv, scene, frame_idx as usize);
@@ -1772,25 +1769,27 @@ impl PlayScreenRef {
             }
         }
 
+        let hardware_camera = root.flex_panels(cx, ids!(upper.grid)).is_hardware_camera();
         let viewer = root.widget(cx, ids!(stage_3d));
         if st.robot_urdf.is_some() {
             if let Some(mut rv) = viewer.borrow_mut::<makepad_urdf_player::robot_view::RobotView>()
             {
                 rv.clear_external(cx);
                 rv.set_base_pose(cx, [0., 0., 0.], [0., 0., 0., 1.]);
-                if st.scene.is_some() {
+                if let Some(scene) = &st.scene {
                     super::replay_scene::load(cx, &mut rv);
-                    let room = st.scene.as_ref().is_some_and(|s| s.version == 2);
-                    rv.set_camera_target(
-                        cx,
-                        if room {
-                            [0.0, 1.0, 0.3]
-                        } else {
-                            [0.32, 0.0, 0.24]
-                        },
-                    );
-                    rv.set_view_angles(cx, -0.95, if room { if follow_robot { -0.65 } else { -0.85 } } else { -0.42 });
-                    rv.set_view_distance(cx, if room { if follow_robot { 2.6 } else { 9.0 } } else { 1.15 });
+                    // Frame a new scene once, leaving orbit and zoom to the viewer.
+                    let (target, yaw, pitch, distance) = if hardware_camera {
+                        ([0.0, 0.0, 0.0], 0.0, -1.55, 16.0)
+                    } else if scene.version == 2 {
+                        let (pitch, distance) = if follow_robot { (-0.65, 2.6) } else { (-0.85, 9.0) };
+                        ([0.0, 1.0, 0.3], -0.95, pitch, distance)
+                    } else {
+                        ([0.32, 0.0, 0.24], -0.95, -0.42, 1.15)
+                    };
+                    rv.set_camera_target(cx, target);
+                    rv.set_view_angles(cx, yaw, pitch);
+                    rv.set_view_distance(cx, distance);
                 }
             }
         }

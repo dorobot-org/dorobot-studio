@@ -155,6 +155,8 @@ pub struct FlexPanels {
     #[rust]
     drag: Option<(usize, DVec2)>,
     #[rust]
+    trace_map_press: Option<DVec2>,
+    #[rust]
     resize: Option<bool>,
     #[rust]
     drop_target: Option<usize>,
@@ -176,6 +178,8 @@ const PANELS: [&[LiveId]; 5] = [
     ids!(error_panel),
     ids!(camera_c_panel),
 ];
+const TRACE_MAP_PANEL: usize = 0;
+const DRAG_THRESHOLD: f64 = 8.0;
 
 impl FlexPanels {
     fn changed(&mut self, cx: &mut Cx) {
@@ -317,10 +321,11 @@ fn camera_rects(rect: Rect, visible: &[usize]) -> [Rect; 5] {
 impl Widget for FlexPanels {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         if !self.view.visible { return; }
-        // Select an inset before its child handles the press (especially the
-        // map's orbit control). Its title bar still supports drag/close/zoom.
-        if self.camera_layout() && self.state.maximized.is_none() {
-            if let Event::MouseDown(e) = event {
+        if let Event::MouseDown(e) = event {
+            if e.button.is_primary() {
+                self.trace_map_press = None;
+            }
+            if self.camera_layout() && self.state.maximized.is_none() {
                 let visible: Vec<_> = self.state.order.iter().copied()
                     .filter(|i| self.state.visible[*i] && !self.unavailable.contains(i))
                     .collect();
@@ -328,9 +333,17 @@ impl Widget for FlexPanels {
                     let r = self.panel_rects[*id];
                     *id != 3 && r.contains(e.abs) && e.abs.y >= r.pos.y + 28.0
                 }) {
-                    self.state.promote(id);
-                    self.changed(cx);
-                    return;
+                    if id == TRACE_MAP_PANEL {
+                        // Let the map see the press for orbiting. Only a click
+                        // that completes without a drag promotes this inset.
+                        if e.button.is_primary() && !e.modifiers.shift && !e.modifiers.alt {
+                            self.trace_map_press = Some(e.abs);
+                        }
+                    } else {
+                        self.state.promote(id);
+                        self.changed(cx);
+                        return;
+                    }
                 }
             }
         }
@@ -371,6 +384,9 @@ impl Widget for FlexPanels {
                 }
             }
             Event::MouseMove(e) => {
+                if self.trace_map_press.is_some_and(|start| (e.abs - start).length() > DRAG_THRESHOLD) {
+                    self.trace_map_press = None;
+                }
                 if let Some(horizontal) = self.resize {
                     if horizontal {
                         self.state.split_x =
@@ -381,7 +397,7 @@ impl Widget for FlexPanels {
                     }
                     self.view.redraw(cx);
                 } else if let Some((source, start)) = self.drag {
-                    if (e.abs - start).length() > 8.0 {
+                    if (e.abs - start).length() > DRAG_THRESHOLD {
                         self.drop_target = self.state.order.iter().copied().rev()
                             .find(|i| *i != source && self.panel_rects[*i].contains(e.abs));
                         self.view.redraw(cx);
@@ -392,7 +408,17 @@ impl Widget for FlexPanels {
                     cx.set_cursor(MouseCursor::RowResize);
                 }
             }
-            Event::MouseUp(_) => {
+            Event::MouseUp(e) => {
+                if e.button.is_primary()
+                    && self.trace_map_press.take().is_some_and(|start| {
+                        (e.abs - start).length() <= DRAG_THRESHOLD
+                            && self.panel_rects[TRACE_MAP_PANEL].contains(e.abs)
+                    })
+                    && self.camera_layout() && self.state.maximized.is_none()
+                {
+                    self.state.promote(TRACE_MAP_PANEL);
+                    self.changed(cx);
+                }
                 if let Some((source, _)) = self.drag.take() {
                     if let Some(target) = self.drop_target.take() {
                         self.state.move_before(source, target);
@@ -405,6 +431,7 @@ impl Widget for FlexPanels {
             }
             Event::KeyDown(e) if e.key_code == KeyCode::Escape => {
                 self.drag = None;
+                self.trace_map_press = None;
                 self.drop_target = None;
                 self.resize = None;
                 self.state.maximized = None;
