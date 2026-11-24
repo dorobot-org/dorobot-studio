@@ -36,6 +36,7 @@ def inputs():
             "nano_transfer_suite.py",
             "run_rgb_transfer.py",
             "nano_rgb_transfer_policy.py",
+            "nano_grasp_estimator.py",
             "nano_rgb_policy.py",
             "nano_rgb_table.py",
             "nano_actuator_audit.py",
@@ -162,6 +163,15 @@ def receipt(case, member, plan):
         raise ValueError("Episode controller differs from the frozen artifact")
     retained = src["support_code_hashes"]
     expected_files = {Path(path).name: value for path, value in files.items()}
+    if "nano_grasp_estimator.py" in expected_files:
+        from nano_grasp_estimator import parameters
+
+        controller = read(case / "controller.json")
+        parameters(controller)
+        if retained.get("nano_grasp_estimator.py") != expected_files[
+            "nano_grasp_estimator.py"
+        ] or controller.get("grasp_checkpoint") != r.get("grasp_checkpoint"):
+            raise ValueError("Nano grasp estimator differs from the frozen controller")
     for name in (
         "nano_rgb_table.py",
         "nano_actuator_audit.py",
