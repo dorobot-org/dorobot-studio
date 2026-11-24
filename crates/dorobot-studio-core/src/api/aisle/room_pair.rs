@@ -1,5 +1,7 @@
 //! Compare recorded Nano rooms while keeping the controller and scene inputs matched.
-use super::{read, Value};
+#[cfg(test)]
+use super::read;
+use super::Value;
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
 
@@ -85,7 +87,14 @@ pub(super) fn eligible(result: &Value) -> bool {
         && result["room_revision_sha256"].is_string()
 }
 
+fn archived_json(path: &Path, file: &str) -> Result<(Value, String), String> {
+    let bytes = fs::read(path.join(file)).map_err(|_| format!("Missing {file}"))?;
+    let value = serde_json::from_slice(&bytes).map_err(|_| format!("Invalid {file}"))?;
+    Ok((value, format!("{:x}", Sha256::digest(bytes))))
+}
+
 struct TrialInputs {
+    file_hashes: [String; 2],
     room: Room,
     source: Value,
     calibration: Value,
@@ -96,7 +105,7 @@ impl TrialInputs {
         if !eligible(result) {
             return Err("Select a scored Nano transfer in a surveyed room".into());
         }
-        let mut source = read(path, "source.json").ok_or("Missing run source")?;
+        let (mut source, source_hash) = archived_json(path, "source.json")?;
         if result["controller_hash"] != source["controller_sha256"]
             || result["model_hash"] != source["model_sha256"]
             || result["seed"] != source["seed"]
@@ -131,7 +140,7 @@ impl TrialInputs {
             .as_object_mut()
             .ok_or("Invalid run source")?
             .remove("room_revision_sha256");
-        let mut calibration = read(path, "calibration.json").ok_or("Missing run calibration")?;
+        let (mut calibration, calibration_hash) = archived_json(path, "calibration.json")?;
         if calibration["cameras"]
             .as_object()
             .is_none_or(|rig| rig.is_empty())
@@ -147,12 +156,13 @@ impl TrialInputs {
             room,
             source,
             calibration,
+            file_hashes: [source_hash, calibration_hash],
         })
     }
 }
 
-pub(super) fn check_baseline(path: &Path, result: &Value) -> Result<(), String> {
-    TrialInputs::load(path, result).map(|_| ())
+pub(super) fn check_baseline(path: &Path, result: &Value) -> Result<[String; 2], String> {
+    TrialInputs::load(path, result).map(|inputs| inputs.file_hashes)
 }
 
 pub(super) fn summary(
@@ -160,6 +170,7 @@ pub(super) fn summary(
     before: &Value,
     current: &Path,
     after: &Value,
+    pinned_hashes: &[String; 2],
 ) -> Result<String, String> {
     if before["seed"].as_u64().is_none() || before["seed"] != after["seed"] {
         return Err("Layout seeds differ or are missing".into());
@@ -174,6 +185,9 @@ pub(super) fn summary(
         return Err("Controllers differ".into());
     }
     let first = TrialInputs::load(previous, before)?;
+    if &first.file_hashes != pinned_hashes {
+        return Err("Pinned baseline source or calibration changed".into());
+    }
     let second = TrialInputs::load(current, after)?;
     if first.source != second.source {
         return Err("Execution settings, policy or simulator build differs".into());
@@ -382,7 +396,8 @@ mod tests {
         let (a, b) = (temp.path().join("a"), temp.path().join("b"));
         let baseline = trial(&a, json!([0.6, 0.6, 0.6]), 0.65);
         let result = trial(&b, json!([0.4, 0.4, 0.4]), 0.8);
-        let label = summary(&a, &baseline, &b, &result).unwrap();
+        let hashes = check_baseline(&a, &baseline).unwrap();
+        let label = summary(&a, &baseline, &b, &result, &hashes).unwrap();
         assert!(label.contains("Floor friction 0.65 → 0.8") && label.contains("Ambient RGB"));
         for (file, key, value) in [
             ("source.json", "observation_period_s", json!(1)),
@@ -395,12 +410,23 @@ mod tests {
             let mut changed = original.clone();
             changed[key] = value;
             put(&b, file, changed);
-            assert!(summary(&a, &baseline, &b, &result).is_err(), "{file}");
+            assert!(
+                summary(&a, &baseline, &b, &result, &hashes).is_err(),
+                "{file}"
+            );
             put(&b, file, original);
         }
+        let calibration = fs::read(a.join("calibration.json")).unwrap();
+        let mut altered = calibration.clone();
+        altered.push(b' ');
+        fs::write(a.join("calibration.json"), altered).unwrap();
+        assert!(summary(&a, &baseline, &b, &result, &hashes)
+            .unwrap_err()
+            .contains("Pinned baseline"));
+        fs::write(a.join("calibration.json"), calibration).unwrap();
         let mut bad = result.clone();
         bad["seed"] = json!(1);
-        assert!(summary(&a, &baseline, &b, &bad)
+        assert!(summary(&a, &baseline, &b, &bad, &hashes)
             .unwrap_err()
             .contains("seed"));
         // A fully rehashed geometry edit is still an uncontrolled change.
@@ -412,7 +438,7 @@ mod tests {
         put(&b, "source.json", source);
         let mut new_result = result;
         new_result["room_revision_sha256"] = hash;
-        assert!(summary(&a, &baseline, &b, &new_result)
+        assert!(summary(&a, &baseline, &b, &new_result, &hashes)
             .unwrap_err()
             .contains("Geometry"));
     }

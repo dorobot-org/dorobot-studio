@@ -68,6 +68,7 @@ impl StudioPlugin for AislePlugin {
             draft: None,
             room_preview: None,
             decision_preview: None,
+            detailed_trial: None,
             joint_robot: None,
             joint_index: 0,
         }))
@@ -198,7 +199,7 @@ script_mod! {
     }
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
-        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"} device_mode := mod.widgets.ux.ToolButton{text:"Device preflight"} room_baseline := mod.widgets.ux.ToolButton{text:"Use as room baseline"}}
+        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"} device_mode := mod.widgets.ux.ToolButton{text:"Device preflight"} room_baseline := mod.widgets.ux.ToolButton{text:"Use as room baseline"} room_details := mod.widgets.ux.ToolButton{text:"Trial details"}}
         device := Card{width:Fill height:Fill
             device_title := Title{}
             device_info := Body{}
@@ -243,6 +244,7 @@ struct Panel {
     draft: Option<(Robot, Option<PathBuf>)>,
     room_preview: Option<PathBuf>,
     decision_preview: Option<PathBuf>,
+    detailed_trial: Option<PathBuf>,
     joint_robot: Option<Robot>,
     joint_index: usize,
 }
@@ -1036,6 +1038,12 @@ impl PluginPanel for Panel {
                 let button = self.root.button(cx, ids!(room_baseline));
                 button.set_enabled(cx, !w.busy() && (can_pin || pinned));
                 button.set_text(cx, if pinned { "Clear room baseline" } else { "Use as room baseline" });
+                let paired_room = w.transfer_comparison.as_ref().and_then(|pair| pair.room.as_ref());
+                if paired_room.is_none() || self.detailed_trial.as_ref() != w.selected.as_ref() {
+                    self.detailed_trial = None;
+                }
+                self.root.widget(cx, ids!(room_details)).set_visible(cx, show_baseline && paired_room.is_some());
+                self.root.button(cx, ids!(room_details)).set_text(cx, if self.detailed_trial.is_some() { "Room comparison" } else { "Trial details" });
                 let has_packets = w
                     .transfer_comparison
                     .as_ref()
@@ -1400,7 +1408,7 @@ impl PluginPanel for Panel {
                         }
                     }
                 };
-                let room = w.transfer_comparison.as_ref().and_then(|pair| pair.room.as_ref());
+                let room = paired_room.filter(|_| self.detailed_trial.is_none());
                 let title = room.map(|_| format!("Room comparison · layout {}", w.evidence["seed"]));
                 self.label(cx, ids!(summary_title), title.as_deref().unwrap_or("Task outcome"));
                 self.label(cx, ids!(verdict), room.map_or(verdict, |r| r.outcome.as_str()));
@@ -1664,7 +1672,7 @@ impl PluginPanel for Panel {
                         (
                             ids!(previous_change) as &[LiveId],
                             RevisionSide::Previous,
-                            if pinned { "baseline" } else { "previous" },
+                            if comparison.room.is_some() { "baseline" } else { "previous" },
                         ),
                         (ids!(current_change), RevisionSide::Current, "current"),
                     ] {
@@ -1805,6 +1813,14 @@ impl PluginPanel for Panel {
         let Some(_) = b.aisle() else {
             return false;
         };
+        if self.root.button(cx, ids!(room_details)).clicked(actions) {
+            self.detailed_trial = if self.detailed_trial.is_some() {
+                None
+            } else {
+                b.aisle().and_then(|w| w.selected.clone())
+            };
+            return true;
+        }
         if self.root.button(cx, ids!(connect)).clicked(actions) {
             let alias = self.root.text_input(cx, ids!(node)).text();
             b.dispatch(Intent::Aisle(Action::ConnectWorker(alias)));

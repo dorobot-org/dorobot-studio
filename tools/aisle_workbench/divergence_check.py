@@ -91,6 +91,21 @@ def pin_rooms(args, runs, click, done, wait):
         "Matched room measurements are visible in Evidence",
     )
 
+    if not args.recover:
+        click("aisle_evidence.room_details")
+        wait(
+            lambda j: j["controls"]["aisle_evidence.summary_title"]["text"]
+            == "Task outcome"
+            and "wheel support"
+            in j["controls"]["aisle_evidence.detail"]["text"].lower(),
+            "Inspected current transfer diagnostics with the baseline retained",
+        )
+        click("aisle_evidence.room_details")
+        wait(
+            lambda j: j["controls"]["aisle_evidence.detail"]["text"] == summary,
+            "Returned to the room comparison",
+        )
+
 
 def native_journey(args, page, click, done, wait, grab):
     runs = sorted((args.out.parent / "state/aisle").glob("*-Nano-run"))

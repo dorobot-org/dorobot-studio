@@ -220,6 +220,8 @@ pub struct ChangeFrame {
 pub struct RoomBaseline {
     pub trial: String,
     result_sha256: String,
+    #[serde(default)]
+    source_calibration_sha256: [String; 2],
 }
 
 #[derive(serde::Serialize)]
@@ -978,11 +980,12 @@ impl Workbench {
             if result != self.evidence {
                 return Err(io::Error::other("Selected verdict changed before pinning"));
             }
-            room_pair::check_baseline(path, &result).map_err(io::Error::other)?;
+            let source_calibration_sha256 = room_pair::check_baseline(path, &result).map_err(io::Error::other)?;
             let name = path.file_name().and_then(|n| n.to_str())
                 .ok_or_else(|| io::Error::other("Missing trial name"))?;
             Some(RoomBaseline {
                 trial: name.to_owned(),
+                source_calibration_sha256,
                 result_sha256: format!("{:x}", Sha256::digest(&bytes)),
             })
         };
@@ -1003,7 +1006,7 @@ impl Workbench {
         }
         if prior == path { return Err("Select another Nano transfer to compare".into()); }
         let checked = serde_json::from_slice(&raw).map_err(|_| "Invalid baseline verdict")?;
-        let delta = room_pair::summary(prior, &checked, path, &self.evidence)?;
+        let delta = room_pair::summary(prior, &checked, path, &self.evidence, &baseline.source_calibration_sha256)?;
         compare_transfer(std::slice::from_ref(prior), path, &self.evidence, Some((&delta, &checked)))
             .ok_or_else(|| "Run records lack matching physics, calibration or scoring evidence".into())
     }
