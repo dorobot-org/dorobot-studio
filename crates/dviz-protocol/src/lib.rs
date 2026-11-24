@@ -26,6 +26,9 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod cmd;
+pub use cmd::*;
+
 /// Universal message header
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MvizMessage {
@@ -560,7 +563,7 @@ pub struct NavStatus {
     pub v: Option<f32>,
     /// `map_base` twist angular.z
     pub w: Option<f32>,
-    /// Goal command channel enabled (always false until delivery 2)
+    /// Goal / initialpose enabled on the robot: the config switch is on and the on-robot token is usable
     #[serde(default)]
     pub cmd_goal_enabled: bool,
     /// Parts whose input has not arrived for 2 s (or never), by
