@@ -1,5 +1,6 @@
 //! Parsers for the DORA_NAV wire formats. Bad data is an `Err`, never a panic.
 
+use dviz_protocol::{parse_grid2d, Grid2DHeader, GridKind};
 use serde_json::Value;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -155,9 +156,65 @@ pub fn parse_cloud_xyzi(b: &[u8]) -> Result<(f64, Vec<[f32; 4]>), String> {
     Ok((le_f64(b), pts))
 }
 
+/// Size of the costmap header: f64 stamp, u32 width, u32 height, f32 resolution,
+/// f32 origin x, y, yaw (little-endian), then `width * height` Nav2 cost bytes.
+const COSTMAP_HEADER: usize = 32;
+
+/// The planner's costmap: 32-byte header, then `width * height` u8 Nav2 costs
+/// (0 free, 1..=252 inflated, 253 inscribed, 254 lethal, 255 unknown), row 0 = min y.
+/// A wrong length, empty grid, over-large grid or bad resolution is an error.
+pub fn parse_costmap(b: &[u8]) -> Result<(Grid2DHeader, Vec<u8>), String> {
+    if b.len() < COSTMAP_HEADER {
+        return Err(format!("costmap too short: {} bytes", b.len()));
+    }
+    let (width, height) = (le_u32(b, 8), le_u32(b, 12));
+    let header = Grid2DHeader {
+        width,
+        height,
+        resolution: le_f32(b, 16),
+        origin: [le_f32(b, 20), le_f32(b, 24), le_f32(b, 28)],
+        kind: GridKind::Costmap,
+    };
+    let cells = &b[COSTMAP_HEADER..];
+    match parse_grid2d(&header, cells) {
+        Some(cells) => Ok((header, cells.to_vec())),
+        None => Err(format!("costmap {width}x{height} res {} does not match its {} cells", header.resolution, cells.len())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn costmap_bytes(w: u32, h: u32, res: f32, cells: &[u8]) -> Vec<u8> {
+        let mut b = 12.5f64.to_le_bytes().to_vec();
+        b.extend_from_slice(&w.to_le_bytes());
+        b.extend_from_slice(&h.to_le_bytes());
+        for v in [res, -1.0, 2.0, 0.5] {
+            b.extend_from_slice(&v.to_le_bytes());
+        }
+        b.extend_from_slice(cells);
+        b
+    }
+
+    #[test]
+    fn parse_costmap_layout() {
+        let cells = [0u8, 1, 253, 254, 255, 7];
+        let (h, c) = parse_costmap(&costmap_bytes(3, 2, 0.05, &cells)).unwrap();
+        assert_eq!((h.width, h.height, h.resolution), (3, 2, 0.05));
+        assert_eq!(h.origin, [-1.0, 2.0, 0.5]);
+        assert_eq!(h.kind, GridKind::Costmap);
+        assert_eq!(c, cells);
+        // wrong length, short header, empty, bad resolution, absurd size: Err, no panic
+        assert!(parse_costmap(&costmap_bytes(3, 2, 0.05, &cells[..5])).is_err());
+        assert!(parse_costmap(&costmap_bytes(3, 2, 0.05, &[cells.as_slice(), &[0]].concat())).is_err());
+        assert!(parse_costmap(&[0u8; 31]).is_err());
+        assert!(parse_costmap(&[]).is_err());
+        assert!(parse_costmap(&costmap_bytes(0, 2, 0.05, &[])).is_err());
+        assert!(parse_costmap(&costmap_bytes(3, 2, 0.0, &cells)).is_err());
+        assert!(parse_costmap(&costmap_bytes(3, 2, f32::NAN, &cells)).is_err());
+        assert!(parse_costmap(&costmap_bytes(u32::MAX, u32::MAX, 0.05, &cells)).is_err());
+    }
 
     const ODOM: &str = include_str!("../tests/fixtures/map_base.json");
 

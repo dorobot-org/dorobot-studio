@@ -78,7 +78,7 @@ nodes:
       goal_status: pure_pursuit/goal_status
       scan: cloud_to_scan/scan
       tick: dora/timer/millis/100
-    outputs: [path]
+    outputs: [path, costmap]
   - id: pure_pursuit
     path: @DORA_NAV@/build/modules/planner/local_planner/pure_pursuit_dora/pure_pursuit_dora_node
     args: @DORA_NAV@/modules/planner/local_planner/pure_pursuit_dora/config/pure_pursuit_tracer.json
@@ -103,3 +103,4 @@ nodes:
       cloud: {source: super_lio/cloud_body, queue_size: 2}
       trust: {source: loc_trust/status, queue_size: 2}
       refine_state: {source: loc_refine/state, queue_size: 2}
+      costmap: {source: astar_planner/costmap, queue_size: 2}

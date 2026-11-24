@@ -4,8 +4,8 @@
 # Copies <binary> (default: ${CARGO_TARGET_DIR:-<this dir>/target}/release/dorobot-nav-bridge) to
 # <dest-dir>/dorobot-nav-bridge and config/tracer.json to <dest-dir>/tracer.json, each as a temporary file renamed
 # over the old one: a bridge running from <dest-dir> keeps its file, the next start gets the new one. Then prints the
-# lines for ~/.config/dora-nav/env. Refuses (exit 1, nothing changed) a <dest-dir> with whitespace, quotes or
-# backslashes (Dora splits a node's args shell-style) and a binary whose `--help` does not run.
+# lines for ~/.config/dora-nav/env. Refuses (exit 1, nothing changed) a <dest-dir> with a character outside
+# [A-Za-z0-9_./+,:=%~-] (the same set as viz_overlay.py's PATH_OK: Dora splits a node's args shell-style) and a binary whose `--help` does not run.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
@@ -21,8 +21,13 @@ case $dest in
   /*) ;;
   *) dest=$PWD/$dest ;;
 esac
-if [[ $dest =~ [[:space:]\"\'\\] ]]; then
-  fail "unsupported character in <dest-dir> (no whitespace, quotes or backslashes): '$dest'"
+# Exactly what viz_overlay.py (DORA_NAV apps/tracer) accepts: PATH_OK = [A-Za-z0-9_./+,:=%~-]+ . Dora splits a
+# node's args shell-style and the path goes into a systemd-read env file and a YAML, so anything else is refused
+# (tr in the C locale: a non-ASCII letter must not pass as a range member; a newline is not in the set either).
+# The trailing x keeps $(...) from swallowing a trailing newline.
+rest=$(printf '%s' "$dest" | LC_ALL=C tr -d 'A-Za-z0-9_./+,:=%~-'; printf x)
+if [ "$rest" != x ]; then
+  fail "unsupported character in <dest-dir> (only A-Z a-z 0-9 _ . / + , : = % ~ -): '$dest'"
 fi
 [ -f "$bin" ] && [ -x "$bin" ] || fail "no executable bridge at $bin (build it: cargo build --release --locked)"
 [ -f "$config" ] || fail "no config at $config"

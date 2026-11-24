@@ -6,7 +6,7 @@
 //! dviz_probe --connect tcp/127.0.0.1:7450 --seconds 60 [--expect expect.json]
 //! ```
 //!
-//! The ten nav entities are checked against the expectations. `logs`, `nodes` and `graph`
+//! The eleven nav entities are checked against the expectations. `logs`, `nodes` and `graph`
 //! are counted separately (`extra_topics`); they only add to the byte total.
 
 use dviz_protocol::{nav_entities, parse_message};
@@ -261,6 +261,7 @@ mod tests {
             ("sensors/scan", 10.0, None),
             ("sensors/cloud", 5.0, Some(5000)),
             ("nav/status", 5.0, None),
+            ("costmap/global", 1.0, None),
         ] {
             v.extend(arr(e, r, seconds, 100, p));
         }

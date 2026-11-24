@@ -116,6 +116,10 @@ pub struct Arrows3DData {
     /// Single color for all arrows
     #[serde(default)]
     pub color: Option<[u8; 4]>,
+
+    /// Line / arrow radius in metres (Rerun); the 2D canvas uses its own pixel widths
+    #[serde(default)]
+    pub radius: Option<f32>,
 }
 
 /// LineStrips3D data
@@ -131,6 +135,10 @@ pub struct LineStrips3DData {
     /// Single color for all strips
     #[serde(default)]
     pub color: Option<[u8; 4]>,
+
+    /// Line / arrow radius in metres (Rerun); the 2D canvas uses its own pixel widths
+    #[serde(default)]
+    pub radius: Option<f32>,
 }
 
 /// Transform3D data
@@ -559,6 +567,9 @@ pub struct NavStatus {
     /// [`nav_status_parts`] name: their fields hold the last value received
     #[serde(default)]
     pub stale: Vec<String>,
+    /// Which robot body model Studio draws (`"tracer_mini"`); `None` draws none
+    #[serde(default)]
+    pub robot_model: Option<String>,
 }
 
 /// Names of the [`NavStatus`] parts that can be stale
@@ -589,9 +600,11 @@ pub mod nav_entities {
     pub const SENSORS_SCAN: &str = "sensors/scan";
     pub const SENSORS_CLOUD: &str = "sensors/cloud";
     pub const NAV_STATUS: &str = "nav/status";
+    /// Global costmap (`grid2d`, kind costmap, Nav2 cell values)
+    pub const COSTMAP_GLOBAL: &str = "costmap/global";
 
     /// Every entity name above
-    pub const ALL: [&str; 10] = [
+    pub const ALL: [&str; 11] = [
         MAP_GRID,
         MAP_CLOUD,
         ROBOT_POSE,
@@ -602,6 +615,7 @@ pub mod nav_entities {
         SENSORS_SCAN,
         SENSORS_CLOUD,
         NAV_STATUS,
+        COSTMAP_GLOBAL,
     ];
 }
 
@@ -855,8 +869,42 @@ mod tests {
         for e in nav_entities::ALL {
             assert!(seen.insert(e), "duplicate entity {e}");
         }
-        assert_eq!(seen.len(), 10);
+        assert_eq!(seen.len(), 11);
+        assert!(nav_entities::ALL.contains(&nav_entities::COSTMAP_GLOBAL));
+        assert_eq!(nav_entities::COSTMAP_GLOBAL, "costmap/global");
         assert!(nav_entities::ALL.contains(&nav_entities::NAV_STATUS));
         assert!(nav_entities::ALL.contains(&nav_entities::MAP_GRID));
+    }
+
+    #[test]
+    fn nav_status_robot_model_defaults_none() {
+        // An older bridge does not send the field.
+        let status: NavStatus = serde_json::from_value(serde_json::json!({
+            "loc_ok": true, "loc_reason": "", "armed": false, "estop": false, "gate_reason": "",
+            "refine_state": null, "chassis_mode": null, "chassis_armed": null, "chassis_reason": null,
+            "goal_id": null, "goal_state": null, "goal_reason": null, "v": null, "w": null,
+        }))
+        .unwrap();
+        assert_eq!(status.robot_model, None);
+        let with = NavStatus { robot_model: Some("tracer_mini".into()), ..NavStatus::default() };
+        let back: NavStatus = serde_json::from_value(serde_json::to_value(&with).unwrap()).unwrap();
+        assert_eq!(back.robot_model.as_deref(), Some("tracer_mini"));
+    }
+
+    #[test]
+    fn strip_radius_round_trip() {
+        let strips: LineStrips3DData =
+            serde_json::from_value(serde_json::json!({"strips": [[[0.0, 0.0, 0.0]]], "radius": 0.025})).unwrap();
+        assert_eq!(strips.radius, Some(0.025));
+        let arrows: Arrows3DData =
+            serde_json::from_value(serde_json::json!({"origins": [], "vectors": [], "radius": 0.015})).unwrap();
+        assert_eq!(arrows.radius, Some(0.015));
+        // Optional on the wire (an older bridge).
+        let old: LineStrips3DData = serde_json::from_value(serde_json::json!({"strips": []})).unwrap();
+        assert_eq!(old.radius, None);
+        let old: Arrows3DData = serde_json::from_value(serde_json::json!({"origins": [], "vectors": []})).unwrap();
+        assert_eq!(old.radius, None);
+        let back: LineStrips3DData = serde_json::from_value(serde_json::to_value(&strips).unwrap()).unwrap();
+        assert_eq!(back.radius, Some(0.025));
     }
 }

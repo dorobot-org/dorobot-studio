@@ -80,12 +80,17 @@ fn reinstall_replaces_by_rename_and_leaves_an_open_copy_alone() {
 #[test]
 fn refuses_a_path_dora_would_split_and_a_binary_that_fails_help() {
     let dir = tmpdir("refuse");
-    for dest in [dir.join("my opt"), dir.join("quo'te"), dir.join("back\\slash")] {
+    // Whitespace, quotes, backslash, and what viz_overlay.py's PATH_OK also refuses: # $ ; ` & ( ) * ? < > | !
+    // and non-ASCII.
+    let bad = ["my opt", "quo'te", "dq\"uote", "back\\slash", "hash#tag", "dollar$x", "semi;colon", "tick`s", "amp&r", "par(en)", "star*", "q?", "pipe|", "bang!", "\u{4e2d}\u{6587}", "caf\u{e9}", "tab\there", "nl\nx"];
+    for name in bad {
+        let dest = dir.join(name);
         let out = install(&dest, &fake_bridge(&dir, "v1", 0));
         assert!(!out.status.success(), "{dest:?}: {out:?}");
         assert!(String::from_utf8_lossy(&out.stderr).contains("install.sh: "), "{out:?}");
         assert!(!dest.exists(), "{dest:?} not created");
     }
+    assert_eq!(std::fs::read_dir(&dir).unwrap().filter(|e| e.as_ref().unwrap().file_name() != "bridge-v1").count(), 0);
     let dest = dir.join("opt");
     for binary in [fake_bridge(&dir, "broken", 3), dir.join("missing")] {
         let out = install(&dest, &binary);
@@ -93,4 +98,27 @@ fn refuses_a_path_dora_would_split_and_a_binary_that_fails_help() {
         assert!(!dest.join("dorobot-nav-bridge").exists());
     }
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// What `viz_overlay.py` accepts (`PATH_OK`) installs, odd but legal characters included.
+#[test]
+fn accepts_every_character_of_the_overlay_whitelist() {
+    let dir = tmpdir("accept");
+    let dest = dir.join("A-z_0.9+,:=%~/nav-bridge");
+    let out = install(&dest, &fake_bridge(&dir, "v1", 0));
+    assert!(out.status.success(), "{out:?}");
+    assert!(dest.join("dorobot-nav-bridge").is_file());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// The dataflow example in the README runs the installed copy, not this checkout's `target/release`.
+#[test]
+fn readme_dataflow_example_uses_the_installed_bridge() {
+    let readme = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
+    let node_paths: Vec<&str> = readme.lines().map(str::trim).filter(|l| l.starts_with("path:") && l.contains("dorobot-nav-bridge")).collect();
+    assert!(!node_paths.is_empty(), "the README shows a dataflow node");
+    for line in node_paths {
+        assert!(!line.contains("target/release"), "{line}");
+        assert!(line.contains("opt/nav-bridge/dorobot-nav-bridge"), "{line}");
+    }
 }

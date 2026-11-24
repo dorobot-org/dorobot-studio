@@ -12,7 +12,7 @@ use crate::publish::Publish;
 use crate::rate::RateLimiter;
 use crate::status::StatusBuilder;
 use crate::trail::Trail;
-use dviz_protocol::nav_entities as ent;
+use dviz_protocol::{nav_entities as ent, Grid2DHeader};
 use serde_json::Value;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -84,6 +84,8 @@ const GRID_HZ: f32 = 0.2;
 const MAP_CLOUD_HZ: f32 = 0.1;
 const GOAL_HZ: f32 = 0.5;
 const PLAN_HZ: f32 = 0.5;
+/// The costmap is resent this often when nothing new arrived (the planner does the same).
+const COSTMAP_RESEND: Duration = Duration::from_secs(5);
 
 static ENCODED: AtomicU64 = AtomicU64::new(0);
 static BAD_INPUTS: AtomicU64 = AtomicU64::new(0);
@@ -219,6 +221,11 @@ struct Worker {
     plan: Option<Vec<[f32; 2]>>,
     trail: Trail,
     status: StatusBuilder,
+    /// The latest costmap (~39 KB), latched like the plan; `costmap_pending` while a
+    /// newer one than the last sent is waiting for the rate cap.
+    costmap: Option<(Grid2DHeader, Vec<u8>)>,
+    costmap_pending: bool,
+    costmap_sent: Option<Instant>,
     grid: StaticMsg,
     map_cloud: StaticMsg,
     pose_rate: RateLimiter,
@@ -228,6 +235,7 @@ struct Worker {
     status_rate: RateLimiter,
     goal_rate: RateLimiter,
     plan_rate: RateLimiter,
+    costmap_rate: RateLimiter,
     grid_rate: RateLimiter,
     map_cloud_rate: RateLimiter,
     logs: LogForward,
@@ -244,7 +252,10 @@ impl Worker {
             goal: None,
             plan: None,
             trail: Trail::new(cfg.trail_min_step_m, cfg.trail_max_points),
-            status: StatusBuilder::default(),
+            status: StatusBuilder::new(cfg.robot_model.clone()),
+            costmap: None,
+            costmap_pending: false,
+            costmap_sent: None,
             grid,
             map_cloud,
             pose_rate: RateLimiter::new(r.pose),
@@ -254,6 +265,7 @@ impl Worker {
             status_rate: RateLimiter::new(r.status),
             goal_rate: RateLimiter::new(GOAL_HZ),
             plan_rate: RateLimiter::new(PLAN_HZ),
+            costmap_rate: RateLimiter::new(r.costmap),
             grid_rate: RateLimiter::new(GRID_HZ),
             map_cloud_rate: RateLimiter::new(MAP_CLOUD_HZ),
             logs,
@@ -275,6 +287,7 @@ impl Worker {
             InputFormat::RefineState => self.on_state(b, StatusBuilder::on_refine, now),
             InputFormat::GateState => self.on_state(b, StatusBuilder::on_gate, now),
             InputFormat::ChassisState => self.on_state(b, StatusBuilder::on_chassis, now),
+            InputFormat::CostmapU8 => self.on_costmap(b, now),
         };
         if result.is_err() {
             BAD_INPUTS.fetch_add(1, Ordering::Relaxed);
@@ -295,23 +308,24 @@ impl Worker {
             self.map_cloud.send(out);
         }
         if out.wants(ent::NAV_TRAIL) && self.trail_rate.ready(now) {
-            let (trail, color) = (self.trail.points(), self.cfg.colors.trail);
-            send(out, ent::NAV_TRAIL, || enc_strip(ent::NAV_TRAIL, trail, color));
+            let (trail, color, radius) = (self.trail.points(), self.cfg.colors.trail, self.cfg.radii.trail);
+            send(out, ent::NAV_TRAIL, || enc_strip(ent::NAV_TRAIL, trail, color, radius));
         }
         if let Some(plan) = &self.plan {
             if out.wants(ent::NAV_PLAN) && self.plan_rate.ready(now) {
-                let color = self.cfg.colors.plan;
-                send(out, ent::NAV_PLAN, || enc_strip(ent::NAV_PLAN, plan, color));
+                let (color, radius) = (self.cfg.colors.plan, self.cfg.radii.plan);
+                send(out, ent::NAV_PLAN, || enc_strip(ent::NAV_PLAN, plan, color, radius));
             }
         }
         if out.wants(ent::NAV_GOAL) && self.goal_rate.ready(now) {
-            let (goal, color) = (self.goal.as_ref(), self.cfg.colors.goal);
-            send(out, ent::NAV_GOAL, || enc_goal(goal, color));
+            let (goal, color, radius) = (self.goal.as_ref(), self.cfg.colors.goal, self.cfg.radii.goal);
+            send(out, ent::NAV_GOAL, || enc_goal(goal, color, radius));
         }
         if out.wants(ent::NAV_STATUS) && self.status_rate.ready(now) {
             let (status, _) = self.status.build(now);
             send(out, ent::NAV_STATUS, || enc_status(&status));
         }
+        self.send_costmap(now);
     }
 
     fn on_odom(&mut self, b: &[u8], now: Instant) -> Result<(), String> {
@@ -321,10 +335,10 @@ impl Worker {
         let out = &mut *self.out;
         if (out.wants(ent::ROBOT_POSE) || out.wants(ent::ROBOT_FOOTPRINT)) && self.pose_rate.ready(now) {
             send(out, ent::ROBOT_POSE, || enc_pose(&o));
-            let (poly, color) = (&self.cfg.footprint, self.cfg.colors.footprint);
+            let (poly, color, radius) = (&self.cfg.footprint, self.cfg.colors.footprint, self.cfg.radii.footprint);
             send(out, ent::ROBOT_FOOTPRINT, || {
                 let pts: Vec<[f32; 2]> = footprint_in_map(&o, poly).iter().map(|p| [p[0], p[1]]).collect();
-                enc_strip(ent::ROBOT_FOOTPRINT, &pts, color)
+                enc_strip(ent::ROBOT_FOOTPRINT, &pts, color, radius)
             });
         }
         self.pose = Some(o);
@@ -340,9 +354,9 @@ impl Worker {
         } else {
             path.points.iter().map(|p| [p[0] as f32, p[1] as f32]).collect()
         };
-        let color = self.cfg.colors.plan;
+        let (color, radius) = (self.cfg.colors.plan, self.cfg.radii.plan);
         let plan = self.plan.insert(pts);
-        send(&mut *self.out, ent::NAV_PLAN, || enc_strip(ent::NAV_PLAN, plan, color));
+        send(&mut *self.out, ent::NAV_PLAN, || enc_strip(ent::NAV_PLAN, plan, color, radius));
         Ok(())
     }
 
@@ -420,8 +434,31 @@ impl Worker {
     }
 
     fn send_goal(&mut self) {
-        let (goal, color) = (self.goal.as_ref(), self.cfg.colors.goal);
-        send(&mut *self.out, ent::NAV_GOAL, || enc_goal(goal, color));
+        let (goal, color, radius) = (self.goal.as_ref(), self.cfg.colors.goal, self.cfg.radii.goal);
+        send(&mut *self.out, ent::NAV_GOAL, || enc_goal(goal, color, radius));
+    }
+
+    /// The costmap is parsed (and so checked) on arrival and kept; it goes out at once
+    /// when the rate cap allows, else at the next tick (see `send_costmap`).
+    fn on_costmap(&mut self, b: &[u8], now: Instant) -> Result<(), String> {
+        self.costmap = Some(formats::parse_costmap(b)?);
+        self.costmap_pending = true;
+        self.send_costmap(now);
+        Ok(())
+    }
+
+    /// Sends the latest costmap while someone subscribes, at most `rates_hz.costmap`:
+    /// a new one as soon as allowed (so the last of a burst is not lost), the same one
+    /// again every 5 s for a Studio that connected later.
+    fn send_costmap(&mut self, now: Instant) {
+        let Some((header, cells)) = &self.costmap else { return };
+        let resend = self.costmap_sent.is_none_or(|t| now.saturating_duration_since(t) >= COSTMAP_RESEND);
+        if !(self.costmap_pending || resend) || !self.out.wants(ent::COSTMAP_GLOBAL) || !self.costmap_rate.ready(now) {
+            return;
+        }
+        send(&mut *self.out, ent::COSTMAP_GLOBAL, || enc_grid(header, cells));
+        self.costmap_pending = false;
+        self.costmap_sent = Some(now);
     }
 
     /// Status goes out at once when it changed, besides the periodic send.
@@ -629,6 +666,62 @@ mod tests {
         assert_eq!(plans(&out), [Vec::<[f32; 3]>::new()]);
         w.tick(at(8.5));
         assert_eq!(plans(&out), [Vec::<[f32; 3]>::new()], "a late subscriber sees no stale plan");
+    }
+
+    fn costmap_bytes(cells: &[u8]) -> Vec<u8> {
+        let mut b = 1.0f64.to_le_bytes().to_vec();
+        b.extend_from_slice(&(cells.len() as u32).to_le_bytes());
+        b.extend_from_slice(&1u32.to_le_bytes());
+        for v in [0.05f32, -1.0, -2.0, 0.0] {
+            b.extend_from_slice(&v.to_le_bytes());
+        }
+        b.extend_from_slice(cells);
+        b
+    }
+
+    /// At most 1 Hz out of a burst, the newest not lost, resent every 5 s.
+    #[test]
+    fn costmap_forward_is_rate_limited() {
+        let (mut w, out) = worker(BridgeConfig::default());
+        let t0 = Instant::now();
+        let at = |s: f32| t0 + Duration::from_secs_f32(s);
+        for i in 0..10u8 {
+            w.handle("costmap", &costmap_bytes(&[i, 254]), at(0.1 * f32::from(i)));
+            w.tick(at(0.1 * f32::from(i)));
+        }
+        let sent = out.take(ent::COSTMAP_GLOBAL);
+        assert!((1..=2).contains(&sent.len()), "{} costmaps in 1 s", sent.len());
+        let (m, bin) = parse_message(&sent[0]).unwrap();
+        assert_eq!(m.msg_type, "grid2d");
+        assert_eq!(bin.unwrap(), [0u8, 254]);
+        // The newest of the burst follows once the cap allows, then nothing until the 5 s resend.
+        w.tick(at(1.2));
+        let later = out.take(ent::COSTMAP_GLOBAL);
+        assert_eq!(later.len(), 1);
+        assert_eq!(parse_message(&later[0]).unwrap().1.unwrap(), [9u8, 254]);
+        w.tick(at(3.0));
+        assert!(out.take(ent::COSTMAP_GLOBAL).is_empty());
+        w.tick(at(6.3));
+        assert_eq!(out.take(ent::COSTMAP_GLOBAL).len(), 1, "resent after 5 s");
+    }
+
+    #[test]
+    fn costmap_waits_for_a_subscriber_and_bad_ones_are_counted() {
+        let (mut w, out) = worker(BridgeConfig::default());
+        let t0 = Instant::now();
+        out.1.lock().unwrap().push(ent::COSTMAP_GLOBAL);
+        w.handle("costmap", &costmap_bytes(&[0, 1, 2]), t0);
+        w.tick(t0 + Duration::from_secs(1));
+        assert!(out.take(ent::COSTMAP_GLOBAL).is_empty());
+        out.1.lock().unwrap().clear();
+        w.tick(t0 + Duration::from_secs(2));
+        assert_eq!(out.take(ent::COSTMAP_GLOBAL).len(), 1, "a late subscriber gets it at the next tick");
+        let before = bad_input_count();
+        w.handle("costmap", &costmap_bytes(&[0, 1, 2])[..33], t0);
+        assert!(bad_input_count() > before);
+        w.tick(t0 + Duration::from_secs(9));
+        let sent = out.take(ent::COSTMAP_GLOBAL);
+        assert_eq!(parse_message(&sent[0]).unwrap().1.unwrap(), [0u8, 1, 2], "the bad one did not replace it");
     }
 
     #[test]

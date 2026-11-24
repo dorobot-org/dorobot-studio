@@ -40,8 +40,10 @@ NAV_VIZ_BRIDGE_CONFIG=<dest-dir>/tracer.json
 ```
 
 The new copy runs from the next start of `dora-nav`. `install.sh` refuses a `<dest-dir>`
-with whitespace, quotes or backslashes (Dora splits a node's `args` shell-style) and a
-binary whose `--help` fails.
+with a character outside `[A-Za-z0-9_./+,:=%~-]` (the whitelist of DORA_NAV's
+`viz_overlay.py`; Dora splits a node's `args` shell-style, so whitespace, quotes,
+backslashes, `#`, `$`, `;` and non-ASCII characters are all out) and a binary whose
+`--help` fails.
 
 The tests need no Dora daemon and no network beyond loopback: `tests/dora_node.rs` runs
 the real binary through dora-node-api's integration-testing mode (`DORA_TEST_WITH_INPUTS`,
@@ -61,13 +63,14 @@ and the usage. Under Dora the bridge connects to Dora before it looks at its arg
 
 ```yaml
   - id: viz_bridge
-    path: /path/to/target/release/dorobot-nav-bridge
-    args: /path/to/runtime/nav-bridge/config/tracer.json
+    path: /home/nvidia/nvme/dora-lab/opt/nav-bridge/dorobot-nav-bridge   # the installed copy (install.sh)
+    args: /home/nvidia/nvme/dora-lab/opt/nav-bridge/tracer.json
     env:
       NAV_VIZ_DATAFLOW: /path/to/the/dataflow.yml
     inputs:
       pose: {source: pose_fuser/map_base, queue_size: 2}
       path: {source: astar_planner/path, queue_size: 2}
+      costmap: {source: astar_planner/costmap, queue_size: 2}
       # ... one input per entry of the config's `inputs` table
 ```
 
@@ -96,6 +99,7 @@ and publishes. Inputs must be UInt8 arrays (bytes) or strings.
 |---|---|---|
 | `map/grid`, `map/cloud`, `robot/pose`, `robot/footprint`, `sensors/scan`, `sensors/cloud` | see `dviz_protocol::nav_entities` | rate caps from the config; the maps every 5 s / 10 s |
 | `nav/plan` | `linestrips3d` | each new path at once; the last one again every 2 s (latched: the planner stops publishing when a goal is done, and a Studio that connects later still sees it); an error path clears it (an empty strip, also resent) |
+| `costmap/global` | `grid2d`, kind `costmap` | the planner's `costmap` input (32-byte header, then `width * height` Nav2 cost bytes, row 0 = min y; ~39 KB): at most `rates_hz.costmap` (1 Hz), the newest one kept if the cap held it back, and the last one again every 5 s for a Studio that connects later. A malformed one is counted and skipped |
 | `nav/goal` | `arrows3d` | on change and every 2 s; a goal without a yaw is a 0.5 m vertical vector |
 | `nav/trail` | `linestrips3d` | `rates_hz.trail`; cleared by a new goal id, kept when goal_resume resends the same goal as `<id>-r<n>` |
 | `nav/status` | `status` (`NavStatus`) | on change and `rates_hz.status`; `stale` lists the parts (`localization`, `gate`, `chassis`, `speed`) whose input has not arrived for 2 s (their fields keep the last value); the chassis part carries `chassis_control_mode` (1 CAN, 3 RC, -1 no feedback), `chassis_error_code` and `battery_v` from `tracer/state` |
@@ -133,12 +137,14 @@ Every field has a default (the Tracer Mini values below).
 | `map_yaml` | none | occupancy map (`map_server` YAML + PGM, trinary) for `map/grid` |
 | `map_pcd` | none | PCD map for `map/cloud` |
 | `footprint` | Tracer Mini rectangle | polygon in `base_footprint` |
-| `inputs` | `pose`, `path`, `goal`, `goal_status`, `scan`, `cloud`, `trust`, `refine_state`, `gate_state`, `chassis` | Dora input id to wire format |
-| `rates_hz` | pose 20, cloud 5, scan 10, trail 2, status 5 | publish caps |
+| `inputs` | `pose`, `path`, `goal`, `goal_status`, `scan`, `cloud`, `trust`, `refine_state`, `gate_state`, `chassis`, `costmap` (wire format `costmap`) | Dora input id to wire format |
+| `rates_hz` | pose 20, cloud 5, scan 10, trail 2, status 5, costmap 1 | publish caps |
 | `cloud_max_points` | 5000 | `sensors/cloud` points |
 | `map_cloud_max_points`, `map_cloud_voxel_m` | 50000, 0.10 | `map/cloud` downsampling |
 | `trail_min_step_m`, `trail_max_points` | 0.05, 3000 | `nav/trail` |
-| `colors` | RViz-like | layer colours (RGBA) |
+| `colors` | RViz-like: plan `[0,180,255,255]`, trail `[0,220,0,255]`, goal `[255,170,0,255]`, footprint `[220,220,220,255]`, scan `[255,0,0,255]`, map cloud `[180,180,180,255]` | layer colours (RGBA) |
+| `radii` | plan 0.025, trail 0.02, goal 0.015, footprint 0.01 | line and arrow radius in metres (`radius` in `linestrips3d` / `arrows3d`, for Rerun) |
+| `robot_model` | `"tracer_mini"` | sent in `nav/status`; the body model Studio draws (`null`: none) |
 | `log_forward_per_node_hz` | 5 | node log lines per node per second (0: none) |
 
 A missing or invalid map does not stop the bridge: the layer is not published, the

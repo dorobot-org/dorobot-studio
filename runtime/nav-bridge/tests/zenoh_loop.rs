@@ -11,7 +11,7 @@ use dorobot_nav_bridge::publish::{zenoh_publisher, Publish};
 use dorobot_nav_bridge::worker::{encoded_count, spawn_worker, Inbox};
 use dviz_protocol::{
     nav_entities, parse_grid2d, parse_message, parse_points_xyz_f32, Grid2DHeader,
-    LineStrips3DData, Transform3DData,
+    GridKind, LineStrips3DData, Transform3DData,
 };
 use serde_json::json;
 use std::{
@@ -303,6 +303,33 @@ fn late_subscriber_gets_static_map_within_six_seconds() {
     assert_eq!(parse_grid2d(&h, bin.unwrap()), Some(&[0u8, 0, 100, 0, 100, 255][..]));
     bridge.stop();
     let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn late_subscriber_gets_costmap_within_six_seconds() {
+    let _serial = serial();
+    let port = free_port();
+    let mut bridge = Bridge::start(bridge_cfg(port));
+    // 3 x 2 cells, header: f64 stamp, u32 w, u32 h, f32 resolution, origin x, y, yaw.
+    let mut cm = 1.0f64.to_le_bytes().to_vec();
+    cm.extend_from_slice(&[3, 0, 0, 0, 2, 0, 0, 0]);
+    for v in [0.05f32, -1.0, -2.0, 0.0] {
+        cm.extend_from_slice(&v.to_le_bytes());
+    }
+    cm.extend_from_slice(&[0, 1, 253, 254, 255, 7]);
+    bridge.push("costmap", cm);
+
+    thread::sleep(Duration::from_secs(2)); // the bridge runs alone for 2 s
+    let sub = Subscriber::connect(port, Duration::ZERO);
+    assert!(wait_until(Duration::from_secs(6), || sub.has(nav_entities::COSTMAP_GLOBAL)), "no costmap/global in 6 s");
+
+    let bytes = sub.last(nav_entities::COSTMAP_GLOBAL).unwrap();
+    let (m, bin) = parse_message(&bytes).unwrap();
+    assert_eq!(m.msg_type, "grid2d");
+    let h: Grid2DHeader = serde_json::from_value(m.data).unwrap();
+    assert_eq!((h.width, h.height, h.origin, h.kind), (3, 2, [-1.0, -2.0, 0.0], GridKind::Costmap));
+    assert_eq!(parse_grid2d(&h, bin.unwrap()), Some(&[0u8, 1, 253, 254, 255, 7][..]));
+    bridge.stop();
 }
 
 #[test]

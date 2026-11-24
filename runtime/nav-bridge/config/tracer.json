@@ -14,9 +14,10 @@
     "trust": "trust",
     "refine_state": "refine_state",
     "gate_state": "gate_state",
-    "chassis": "chassis_state"
+    "chassis": "chassis_state",
+    "costmap": "costmap"
   },
-  "rates_hz": { "pose": 20, "cloud": 5, "scan": 10, "trail": 2, "status": 5 },
+  "rates_hz": { "pose": 20, "cloud": 5, "scan": 10, "trail": 2, "status": 5, "costmap": 1 },
   "cloud_max_points": 5000,
   "map_cloud_max_points": 50000,
   "map_cloud_voxel_m": 0.10,
@@ -24,11 +25,13 @@
   "trail_max_points": 3000,
   "colors": {
     "map_cloud": [180, 180, 180, 255],
-    "footprint": [0, 200, 0, 255],
-    "plan": [0, 255, 0, 255],
-    "trail": [255, 140, 0, 255],
-    "goal": [255, 0, 255, 255],
+    "footprint": [220, 220, 220, 255],
+    "plan": [0, 180, 255, 255],
+    "trail": [0, 220, 0, 255],
+    "goal": [255, 170, 0, 255],
     "scan": [255, 0, 0, 255]
   },
+  "radii": { "plan": 0.025, "trail": 0.02, "goal": 0.015, "footprint": 0.01 },
+  "robot_model": "tracer_mini",
   "log_forward_per_node_hz": 5
 }

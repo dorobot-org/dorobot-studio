@@ -45,6 +45,11 @@ fn fresh(at: Option<Instant>, now: Instant) -> bool {
 }
 
 impl StatusBuilder {
+    /// `robot_model` is sent in every status, as the body model Studio draws.
+    pub fn new(robot_model: Option<String>) -> StatusBuilder {
+        StatusBuilder { cur: NavStatus { robot_model, ..NavStatus::default() }, ..StatusBuilder::default() }
+    }
+
     /// `status == 0` means NORMAL (trusted).
     pub fn on_trust(&mut self, v: &Value, now: Instant) {
         self.cur.loc_ok = v.get("status").and_then(Value::as_i64) == Some(0);
@@ -139,6 +144,16 @@ mod tests {
         b.on_gate(&j(include_str!("../tests/fixtures/gate_state.json")), now);
         b.on_chassis(&j(include_str!("../tests/fixtures/chassis_state.json")), now);
         b.on_odom(&odom(0.0, 0.0), now);
+    }
+
+    #[test]
+    fn status_carries_robot_model() {
+        let now = Instant::now();
+        let mut b = StatusBuilder::new(Some("tracer_mini".into()));
+        assert_eq!(b.build(now).0.robot_model.as_deref(), Some("tracer_mini"));
+        feed(&mut b, now);
+        assert_eq!(b.build(now).0.robot_model.as_deref(), Some("tracer_mini"));
+        assert_eq!(StatusBuilder::default().build(now).0.robot_model, None);
     }
 
     #[test]

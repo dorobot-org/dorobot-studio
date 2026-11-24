@@ -18,6 +18,9 @@ pub enum InputFormat {
     RefineState,
     GateState,
     ChassisState,
+    /// Nav2 u8 costs with a 32-byte header (the planner's `costmap`)
+    #[serde(rename = "costmap")]
+    CostmapU8,
 }
 
 /// Publish rate caps in Hz.
@@ -29,11 +32,12 @@ pub struct Rates {
     pub scan: f32,
     pub trail: f32,
     pub status: f32,
+    pub costmap: f32,
 }
 
 impl Default for Rates {
     fn default() -> Self {
-        Rates { pose: 20.0, cloud: 5.0, scan: 10.0, trail: 2.0, status: 5.0 }
+        Rates { pose: 20.0, cloud: 5.0, scan: 10.0, trail: 2.0, status: 5.0, costmap: 1.0 }
     }
 }
 
@@ -53,12 +57,28 @@ impl Default for Colors {
     fn default() -> Self {
         Colors {
             map_cloud: [180, 180, 180, 255],
-            footprint: [0, 200, 0, 255],
-            plan: [0, 255, 0, 255],
-            trail: [255, 140, 0, 255],
-            goal: [255, 0, 255, 255],
+            footprint: [220, 220, 220, 255],
+            plan: [0, 180, 255, 255],
+            trail: [0, 220, 0, 255],
+            goal: [255, 170, 0, 255],
             scan: [255, 0, 0, 255],
         }
+    }
+}
+
+/// Line and arrow radii in metres, for Rerun (the 2D canvas has its own pixel widths).
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct Radii {
+    pub plan: f32,
+    pub trail: f32,
+    pub goal: f32,
+    pub footprint: f32,
+}
+
+impl Default for Radii {
+    fn default() -> Self {
+        Radii { plan: 0.025, trail: 0.02, goal: 0.015, footprint: 0.01 }
     }
 }
 
@@ -80,6 +100,9 @@ pub struct BridgeConfig {
     pub trail_min_step_m: f32,
     pub trail_max_points: usize,
     pub colors: Colors,
+    pub radii: Radii,
+    /// Body model Studio draws, sent in `nav/status`
+    pub robot_model: Option<String>,
     pub log_forward_per_node_hz: f32,
 }
 
@@ -96,6 +119,7 @@ impl Default for BridgeConfig {
             ("refine_state", InputFormat::RefineState),
             ("gate_state", InputFormat::GateState),
             ("chassis", InputFormat::ChassisState),
+            ("costmap", InputFormat::CostmapU8),
         ];
         BridgeConfig {
             robot_id: "tracer".into(),
@@ -111,6 +135,8 @@ impl Default for BridgeConfig {
             trail_min_step_m: 0.05,
             trail_max_points: 3000,
             colors: Colors::default(),
+            radii: Radii::default(),
+            robot_model: Some("tracer_mini".into()),
             log_forward_per_node_hz: 5.0,
         }
     }
@@ -135,13 +161,36 @@ mod tests {
         assert_eq!(c.rates_hz.pose, 20.0);
         assert_eq!(c.cloud_max_points, 5000);
         assert_eq!(c.trail_max_points, 3000);
-        assert_eq!(c.colors.trail, [255, 140, 0, 255]);
+        assert_eq!(c.colors.trail, [0, 220, 0, 255]);
+        assert_eq!(c.robot_model.as_deref(), Some("tracer_mini"));
+        assert_eq!(c.rates_hz.costmap, 1.0);
+        assert_eq!(c.inputs.get("costmap"), Some(&InputFormat::CostmapU8));
         assert_eq!(c.inputs.get("pose"), Some(&InputFormat::Odometry));
         let shipped = load_config(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config/tracer.json"))).unwrap();
         assert_eq!(shipped.footprint, c.footprint);
         assert_eq!(shipped.inputs, c.inputs);
         assert_eq!(shipped.rates_hz, c.rates_hz);
+        assert_eq!(shipped.radii, c.radii);
+        assert_eq!(shipped.robot_model, c.robot_model);
         assert!(shipped.map_yaml.is_some());
+    }
+
+    /// RViz-style defaults (the plan blue, the trail green, the goal orange, a light footprint).
+    #[test]
+    fn default_colors_are_rviz() {
+        let want = Colors {
+            map_cloud: [180, 180, 180, 255],
+            footprint: [220, 220, 220, 255],
+            plan: [0, 180, 255, 255],
+            trail: [0, 220, 0, 255],
+            goal: [255, 170, 0, 255],
+            scan: [255, 0, 0, 255],
+        };
+        assert_eq!(BridgeConfig::default().colors, want);
+        let shipped = load_config(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config/tracer.json"))).unwrap();
+        assert_eq!(shipped.colors, want);
+        let r = BridgeConfig::default().radii;
+        assert_eq!((r.plan, r.trail, r.goal, r.footprint), (0.025, 0.02, 0.015, 0.01));
     }
 
     #[test]

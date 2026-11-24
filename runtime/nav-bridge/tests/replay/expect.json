@@ -11,6 +11,7 @@
     "nav/goal":        { "required": true, "max_hz": 0.55 },
     "sensors/scan":    { "required": true, "max_hz": 11.0 },
     "sensors/cloud":   { "required": true, "max_hz": 5.5, "max_points": 5000 },
-    "nav/status":      { "required": true, "max_hz": 10.0 }
+    "nav/status":      { "required": true, "max_hz": 10.0 },
+    "costmap/global":  { "required": true, "max_hz": 1.1 }
   }
 }
