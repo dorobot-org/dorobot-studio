@@ -149,12 +149,23 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         )
         page("evidence")
         grab("imported-evidence")
-        click("aisle_evidence.export")
-        row = done(
-            lambda w: not w["busy"] and w["dataset"], "Exported downloaded episode", 180
-        )
+        if not row["dataset"]:
+            click("aisle_evidence.export")
+            row = done(
+                lambda w: not w["busy"] and w["dataset"],
+                "Exported downloaded episode",
+                180,
+            )
         dataset = Path(row["dataset"])
-        assert (dataset / "meta/info.json").is_file()
+        metadata = json.loads((dataset / "meta/aisle.json").read_bytes())
+        assert (
+            metadata["trial"] == trial.name
+            and metadata["controller_hash"] == result["controller_hash"]
+        )
+        assert (
+            json.loads((dataset / "meta/info.json").read_bytes())["total_frames"]
+            == result["frames"]
+        )
         click("aisle_evidence.replay")
         wait(
             lambda j: j["state"]["screen"] == "Replay"
