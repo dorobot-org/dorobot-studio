@@ -13,3 +13,5 @@ The shift is at most 14 cm. Lateral speed is limited to 18 mm/s and steering cor
 | 36 | Turn | Passed |
 
 Four of five disclosed failures were recovered. All five motor journals verified and none recorded a guard bypass. The two turning runs and the three sideways runs reproduced the motor journals of their individually tested maneuvers. These development seeds were used to design the selection rule. [Verified trial archive](evidence.zip) · [Development inputs](suite.json) · [Independent cohort G protocol](../cohort-g/protocol.md)
+
+Native Evidence verified the two output receipts, showed four gains and one layout failing both controllers, and restored the same comparison after restart. [Native Studio comparison](native-comparison.png) · [Instrumented actions and scores](native-comparison.json)
