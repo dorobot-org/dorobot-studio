@@ -1,0 +1,266 @@
+{
+  "deepseek": {
+    "workers_before": [
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "b24eb8335c695f1bb7e6fc3c8b829530710b619616d54ee514578ca4aa4a57e1",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      }
+    ],
+    "workers_after": [
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "b24eb8335c695f1bb7e6fc3c8b829530710b619616d54ee514578ca4aa4a57e1",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      }
+    ],
+    "motor_and_controller_match": true,
+    "camera_before": {
+      "head": {
+        "frames": 347,
+        "sha256": "725752954400847d1784ae7587e5335c251feb538c1099322b63477045db0d48"
+      },
+      "left_wrist": {
+        "frames": 347,
+        "sha256": "7c94db08805962b5c5f48ff95bdbc5cc9f72239540b0d7b25a0c59216904b169"
+      },
+      "right_wrist": {
+        "frames": 347,
+        "sha256": "9b5cad6a2cc46cd9cc90f2de5aa77d65a68361c05039ab65e3aa63e423084c9b"
+      }
+    },
+    "camera_after": {
+      "head": {
+        "frames": 347,
+        "sha256": "725752954400847d1784ae7587e5335c251feb538c1099322b63477045db0d48"
+      },
+      "left_wrist": {
+        "frames": 347,
+        "sha256": "7c94db08805962b5c5f48ff95bdbc5cc9f72239540b0d7b25a0c59216904b169"
+      },
+      "right_wrist": {
+        "frames": 347,
+        "sha256": "9b5cad6a2cc46cd9cc90f2de5aa77d65a68361c05039ab65e3aa63e423084c9b"
+      }
+    },
+    "recorded_rgb_match": true
+  },
+  "codex": {
+    "workers_before": [
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "b24eb8335c695f1bb7e6fc3c8b829530710b619616d54ee514578ca4aa4a57e1",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      }
+    ],
+    "workers_after": [
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "b24eb8335c695f1bb7e6fc3c8b829530710b619616d54ee514578ca4aa4a57e1",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      },
+      {
+        "controller": "bf537a9b4d87028201f144b7c808aac48a38e682f3d4a320c5ea6f02133f556c",
+        "motor": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+        "ticks": 6948,
+        "success": true
+      }
+    ],
+    "motor_and_controller_match": true,
+    "camera_before": {
+      "head": {
+        "frames": 347,
+        "sha256": "725752954400847d1784ae7587e5335c251feb538c1099322b63477045db0d48"
+      },
+      "left_wrist": {
+        "frames": 347,
+        "sha256": "7c94db08805962b5c5f48ff95bdbc5cc9f72239540b0d7b25a0c59216904b169"
+      },
+      "right_wrist": {
+        "frames": 347,
+        "sha256": "9b5cad6a2cc46cd9cc90f2de5aa77d65a68361c05039ab65e3aa63e423084c9b"
+      }
+    },
+    "camera_after": {
+      "head": {
+        "frames": 347,
+        "sha256": "725752954400847d1784ae7587e5335c251feb538c1099322b63477045db0d48"
+      },
+      "left_wrist": {
+        "frames": 347,
+        "sha256": "7c94db08805962b5c5f48ff95bdbc5cc9f72239540b0d7b25a0c59216904b169"
+      },
+      "right_wrist": {
+        "frames": 347,
+        "sha256": "9b5cad6a2cc46cd9cc90f2de5aa77d65a68361c05039ab65e3aa63e423084c9b"
+      }
+    },
+    "recorded_rgb_match": true
+  }
+}

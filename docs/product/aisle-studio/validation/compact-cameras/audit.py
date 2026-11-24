@@ -112,5 +112,35 @@ def audit(path):
         )
 
 
+def three_cube(folder):
+    receipt = json.loads((folder / "three-cube.json").read_bytes())
+    result, dataset = receipt["result"], receipt["dataset"]
+    assert receipt["source"]["visual_profile"] == "compact-v1"
+    assert result["requested"] == ["red", "green", "blue"] and result["task_success"]
+    assert all(result["cubes"][c]["passed"] for c in result["requested"])
+    assert result["wheel_supported_ticks"] == result["physics_ticks"]
+    assert result["actuator_audit"]["passed"] and result["root_pose_writes"] == 0
+    assert result["max_joint_excursion_rad"] == result["rejected_motor_writes"] == 0
+    videos = dataset["videos"]
+    assert set(videos) == {"head", "left_wrist", "right_wrist"}
+    assert all(int(v["nb_read_frames"]) == dataset["frames"] for v in videos.values())
+    assert (
+        hashlib.sha256((folder / "three-cube-head.mp4").read_bytes()).hexdigest()
+        == videos["head"]["sha256"]
+    )
+    return dict(
+        physics_ticks=result["physics_ticks"],
+        passed=result["requested"],
+        frames_per_camera=dataset["frames"],
+        recording_fps=dataset["fps"],
+    )
+
+
 if __name__ == "__main__":
-    print(json.dumps(audit(Path(__file__).with_name("measurements.zip")), indent=2))
+    folder = Path(__file__).parent
+    print(
+        json.dumps(
+            audit(folder / "measurements.zip") | {"three_cube": three_cube(folder)},
+            indent=2,
+        )
+    )

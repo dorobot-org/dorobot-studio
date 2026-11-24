@@ -391,6 +391,10 @@ impl VideoPlayer {
     }
 
     /// Set frame from RGB24 data
+    pub fn measured_frame_pending(&self) -> bool {
+        self.measured_draw.is_some()
+    }
+
     pub fn set_measured_frame(
         &mut self,
         cx: &mut Cx,
