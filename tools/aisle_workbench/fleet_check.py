@@ -18,6 +18,22 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     def observed(w):
         return (w.get("worker_observation") or {}).get("job") or {}
 
+    def received_frame(w, after_tick):
+        row = w.get("worker_observation") or {}
+        job = row.get("job") or {}
+        if (row.get("frame") or {}).get("tick", 0) > after_tick:
+            return True
+        if job.get("state") in ("failed", "cancelled", "completed"):
+            reason = (
+                (job.get("result") or {}).get("error")
+                or job.get("message")
+                or job["state"]
+            )
+            raise RuntimeError(
+                f"Foreground job ended before the requested RGB frame: {reason}"
+            )
+        return False
+
     def enter_workers():
         page("run")
         run_button("workers")
@@ -67,7 +83,10 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         assert len(row["fleet"]["jobs"]) == (1 if args.foreground_cadence else 2)
         page("evidence")
         row = done(
-            lambda w: (w["result"] or {}).get("task_success") and w["dataset"],
+            lambda w: (w["result"] or {}).get("controller_hash")
+            == proof["result"]["controller_hash"]
+            and w["result"]["task_success"] == proof["result"]["task_success"]
+            and w["dataset"],
             "Imported worker trial and export recovered",
         )
         click("aisle_evidence.replay")
@@ -77,6 +96,62 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             "Reopened worker episode in Replay",
         )
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
+        return
+
+    if args.resume_fleet:
+        # The disconnected Studio already retained its background observation and cancellation.
+        root = args.out.parent / "state/aisle"
+        fleet = json.loads((root / "worker-selection.json").read_bytes())
+        assert (
+            fleet["node"] == args.fleet_node and fleet["selected"]["mode"] == "stream"
+        )
+        foreground = fleet["selected"]["id"]
+        (background,) = (j for j in fleet["jobs"] if j != foreground)
+        candidates = [
+            json.loads(p.read_bytes()) for p in root.glob("*-Nano-fleet/fleet.json")
+        ]
+        snapshot = next(
+            r["sample"]
+            for r in candidates
+            if r.get("sample") and r["selected"]["id"] == background
+        )
+        stopped = next(
+            p.parent
+            for p in root.glob("*-Nano-run/worker-origin.json")
+            if json.loads(p.read_bytes())["job"] == background
+        )
+        assert (stopped / "stopped.json").is_file()
+        observations = [
+            json.loads(l)
+            for l in (stopped / "background-observations.jsonl")
+            .read_bytes()
+            .splitlines()
+        ]
+        assert any(
+            o["sha256"] == snapshot["sha256"] and o["tick"] == snapshot["tick"]
+            for o in observations
+        )
+        enter_workers()
+        row = done(
+            lambda w: selected(w).get("id") == foreground
+            and observed(w).get("state") == "completed",
+            "Reconnected to the completed SSH foreground",
+            100,
+        )
+        result = observed(row)["result"]
+        origin, _ = import_and_replay(foreground, result)
+        checks.append(
+            dict(
+                check="Reconnected and fetched the remote trial",
+                foreground_id=foreground,
+                background_id=background,
+                observation_ticks=[o["tick"] for o in observations],
+                snapshot=snapshot,
+                origin=origin,
+                result=result,
+            )
+        )
+        source.write_text(json.dumps(checks, indent=2))
         return
 
     page("task")
@@ -106,6 +181,9 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     if args.foreground_cadence:
         from fleet_cadence import ALIAS, while_streaming, verify_viewport
 
+    else:
+        ALIAS = args.fleet_node or "local"
+    if ALIAS != "local":
         run_button("node")
         remote(
             "key",
@@ -115,14 +193,13 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             "wait=1",
         )
         remote("text", "w=0", "t=" + ALIAS, "wait=1")
-    else:
-        ALIAS = "local"
     run_button("connect")
     row = done(
         lambda w: not w["busy"] and (w["fleet"] or {}).get("node") == ALIAS,
         "Connected to Nexus worker",
     )
-    assert row["fleet"]["capabilities"]["slots"] == (args.foreground_cadence or 2)
+    slots = row["fleet"]["capabilities"]["slots"]
+    assert slots >= 2 if args.fleet_node else slots == (args.foreground_cadence or 2)
     run_button("queue_stream")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "stream",
@@ -153,19 +230,13 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         source.write_text(json.dumps(checks, indent=2))
         return
     frame = done(
-        lambda w: ((w.get("worker_observation") or {}).get("frame") or {}).get(
-            "tick", 0
-        )
-        > 0,
+        lambda w: received_frame(w, 0),
         "Received measured RGB frame",
         180,
     )
     tick = frame["worker_observation"]["frame"]["tick"]
     done(
-        lambda w: ((w.get("worker_observation") or {}).get("frame") or {}).get(
-            "tick", 0
-        )
-        > tick,
+        lambda w: received_frame(w, tick),
         "Received a later frame",
         180,
     )
@@ -242,10 +313,13 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         600,
     )
     result = observed(row)["result"]
-    assert (
-        result["task_success"]
-        and result["wheel_supported_ticks"] == result["physics_ticks"]
-    )
+    if not args.fleet_node:
+        assert (
+            result["task_success"]
+            and result["wheel_supported_ticks"] == result["physics_ticks"]
+        )
+    else:
+        assert isinstance(result["task_success"], bool) and result["physics_ticks"] > 0
     origin, _ = import_and_replay(foreground, result)
     checks.append(
         dict(

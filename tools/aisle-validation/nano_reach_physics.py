@@ -25,7 +25,7 @@ class PhysicsProbe:
         self.count = len(self.cases)
         self.names, self.limits = model_joints(model)
         self.initial = np.array([NAVIGATION_POSTURE.get(n, 0.0) for n in self.names])
-        self.engine = _ensure_nexus("metal")
+        self.engine = _ensure_nexus()
         self.scene = _new_scene(
             self.engine,
             {"sim": {"dt": 0.01, "gravity": [0, 0, -9.81]}},

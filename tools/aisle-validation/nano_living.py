@@ -304,7 +304,7 @@ class LivingSimulation:
         from aisle.sim.nexus_backend import _ensure_nexus, _new_scene, NexusRobot
 
         room_settings = room_settings or {}
-        self.engine = _ensure_nexus("metal")
+        self.engine = _ensure_nexus()
         self.scene = _new_scene(
             self.engine,
             {"sim": {"dt": 0.01, "gravity": [0, 0, -9.81]}},
