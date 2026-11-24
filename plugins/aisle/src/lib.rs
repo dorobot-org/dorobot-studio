@@ -151,16 +151,15 @@ script_mod! {
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             viewport := Card{width:Fill height:Fill camera_label := Section{} camera := VideoPlayer{width:Fill height:Fill}}
             fleet_controls := Card{width:310 height:Fill padding:0
-                fleet_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:14 spacing:8
+                fleet_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:12 spacing:6
                     Section{text:"Worker connection"}
                     node := TextInput{width:Fill height:34 empty_text:"local or configured SSH worker"}
                     Bar{connect := mod.widgets.ux.ToolButton{text:"Connect"} refresh := mod.widgets.ux.ToolButton{text:"Refresh"}}
                     capacity := Body{}
-                    period := mod.widgets.ux.ToolButton{text:"Background RGB every 1 sim s"}
+                    Bar{period := mod.widgets.ux.ToolButton{text:"RGB / 1 sim s"} sample_job := mod.widgets.ux.ToolButton{text:"Get snapshot"}}
                     Bar{queue_stream := mod.widgets.ux.PrimaryButton{text:"Stream run"} queue_background := mod.widgets.ux.ToolButton{text:"Background run"}}
                     Section{text:"Selected job"} job_detail := Body{}
                     Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous job"} newer_job := mod.widgets.ux.ToolButton{text:"Next job"}}
-                    sample_job := mod.widgets.ux.ToolButton{text:"Get RGB snapshot"}
                     Bar{cancel_job := mod.widgets.ux.StopButton{text:"Cancel job"} fetch_job := mod.widgets.ux.ToolButton{text:"Fetch evidence"}}
                 }
             }
@@ -275,10 +274,9 @@ impl Panel {
             "No jobs submitted to this worker.".into()
         };
         self.label(cx, ids!(job_detail), &info);
-        self.root.button(cx, ids!(period)).set_text(
-            cx,
-            &format!("Background RGB every {} sim s", w.background_period_s),
-        );
+        self.root
+            .button(cx, ids!(period))
+            .set_text(cx, &format!("RGB / {} sim s", w.background_period_s));
         let frame = if stream {
             &w.worker_observation["frame"]
         } else {
@@ -292,7 +290,7 @@ impl Panel {
             } else if frame.is_object() {
                 "Background RGB snapshot"
             } else {
-                "Select Get RGB snapshot to view a background observation"
+                "Choose Get snapshot to view the latest background RGB image"
             },
         );
         let directory = if stream {
