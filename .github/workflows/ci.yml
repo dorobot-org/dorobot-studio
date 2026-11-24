@@ -44,6 +44,7 @@ jobs:
           guide=docs/product/aisle-studio/validation/transfer-wrist-timing
           /usr/bin/python3 -m venv --system-site-packages "$RUNNER_TEMP/wrist-python"
           "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: numpy==2.5.5 pyarrow==26.0.1
+          "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/single-cube-intent/check_stationary.py --datasets
           "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit.py" "$guide/measurements.zip" --datasets --output "$RUNNER_TEMP/wrist-timing.json"
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
           /usr/bin/python3 "$guide/capacity.py" "$guide/capacity.zip" > "$RUNNER_TEMP/wrist-capacity.json"
@@ -60,6 +61,9 @@ jobs:
           /usr/bin/python3 tools/fetch_robot_meshes.py g1
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_cohort_comparison.py
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_nano_rgb_transfer.py
+
+          unzip -q docs/product/aisle-studio/validation/single-cube-intent/sliding-trial.zip -d "$RUNNER_TEMP/aisle-explicit-slide"
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" tools/aisle_workbench/moving_grasp_check.py "$RUNNER_TEMP/aisle-explicit-slide"
 
           guide=docs/product/aisle-studio/validation/nano-release-workspace
           git fetch --no-tags --depth=1 --filter=blob:none origin e1e804658e375bc7579c13895a7d9f83f2df08ce 476f293006d0ac0f07c71d80501d86b7e925a26a d38d9b3c9fb56e7f9e63de5f622aff774e866cdf 3bec9043281f5a331491d20cf3c918aa6639b413
