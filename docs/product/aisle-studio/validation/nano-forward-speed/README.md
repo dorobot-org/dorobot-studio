@@ -1,6 +1,6 @@
 # Revise Nano forward speed after a measured loss of wheel support
 
-A Nano can place a cube successfully and still fail the task. On the original Linux run the red cube settled on the coffee table. At ticks 305 and 4,067, Nexus measured no wheel carrying floor load above the existing threshold. At those ticks the controller was requesting 120 mm/s during localization and 55 mm/s during carry. [Original Linux trial](../remote-nano/README.md) · [The two intervals in Studio](support-intervals.png)
+A Nano can place a cube successfully and still fail the task. On the original Linux run the red cube settled on the coffee table. At ticks 305 and 4,067, Nexus measured no wheel carrying floor load above the existing threshold. At those ticks the controller was requesting 120 mm/s during localization and 55 mm/s during carry. [Original Linux trial](../remote-nano/README.md) · [The two intervals in Studio](support-intervals.png) · [Per-wheel contact impulses around the original gaps](wheel-contacts.png)
 
 ## Revise the controller in Studio
 
