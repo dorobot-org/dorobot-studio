@@ -202,6 +202,7 @@ def trial(
     rgb_timing="normal",
     target_motion="stationary",
     observation_period_s=None,
+    observation_clock="simulation",
 ):
     if rgb_timing not in ("normal", "intermittent", "disconnected"):
         raise ValueError("Unknown RGB timing fixture")
@@ -241,6 +242,11 @@ def trial(
     missed = 0
     rejected = Counter()
     recoveries = 0
+    cadence = (
+        worker.BackgroundCadence(observation_clock, observation_period_s, 100)
+        if observation_period_s is not None
+        else None
+    )
     trajectory = []
     grounded = set()
     hits = set()
@@ -321,11 +327,11 @@ def trial(
                         moving_exposures=sliding.moving_exposures,
                     )
                 trajectory.append(progress)
-                if observation_period_s is None:
+                if cadence is None:
                     preview = out / "preview.tmp"
                     preview.write_bytes(struct.pack(">I", sim.tick) + head.tobytes())
                     preview.replace(out / "preview.rgb")
-                elif sim.tick % (100 * observation_period_s) == 0:
+                elif cadence.due(sim.tick):
                     worker.publish_background_rgb(out, sim.tick, head)
                 worker.save(out / "progress.json", progress)
                 if command["xy"] is not None:

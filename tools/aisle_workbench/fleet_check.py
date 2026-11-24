@@ -12,6 +12,27 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     def run_button(key):
         click("aisle_run." + key)
 
+    period = args.background_period_s or (
+        1 if args.foreground_cadence or args.background_clock == "wall" else 2
+    )
+
+    def select_cadence():
+        if args.background_clock == "wall":
+            run_button("clock")
+            done(
+                lambda w: w["observation_clock"] == "wall",
+                "Selected wall time for observer RGB",
+            )
+        for value in (1, 2, 5, 0.5):
+            if value != 1:
+                run_button("period")
+            done(
+                lambda w: w["background_period_s"] == value,
+                f"Selected {value:g} s background RGB period",
+            )
+            if value == period:
+                return
+
     def selected(w):
         return (w.get("fleet") or {}).get("selected") or {}
 
@@ -83,6 +104,19 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         assert len(row["fleet"]["jobs"]) == (
             1 if args.foreground_cadence or args.fleet_controller else 2
         )
+        if args.background_clock == "wall" and not args.foreground_cadence:
+            run_button("newer_job")
+            done(
+                lambda w: selected(w).get("id") == proof["background_id"]
+                and selected(w).get("observation_clock") == "wall"
+                and selected(w).get("observation_period_s") == period,
+                "Recovered wall-clock setting for the submitted observer",
+            )
+            run_button("older_job")
+            done(
+                lambda w: selected(w).get("id") == proof["foreground_id"],
+                "Restored foreground selection",
+            )
         page("evidence")
         row = done(
             lambda w: (w["result"] or {}).get("controller_hash")
@@ -206,6 +240,8 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         assert slots >= (1 if args.fleet_controller else 2)
     else:
         assert slots == (args.foreground_cadence or 2)
+    if args.foreground_cadence:
+        select_cadence()
     run_button("queue_stream")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "stream",
@@ -223,7 +259,9 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         )
         result, backgrounds = while_streaming(args, foreground, done, grab)
         origin, trial = import_and_replay(foreground, result)
-        cadence = verify_viewport(args.out, trial, backgrounds)
+        cadence = verify_viewport(
+            args.out, trial, backgrounds, args.background_clock, period
+        )
         checks.append(
             dict(
                 check=f"{args.foreground_cadence} simultaneous simulations with measured viewport cadence",
@@ -279,11 +317,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         lambda w: not w["busy"] and "foreground stream" in w["status"],
         "Studio rejected a second foreground",
     )
-    run_button("period")
-    done(
-        lambda w: w["background_period_s"] == 2,
-        "Selected one RGB observation every two simulated seconds",
-    )
+    select_cadence()
     run_button("queue_background")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "observations",
@@ -301,11 +335,17 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     run_button("sample_job")
     sample = done(
         lambda w: not w["busy"]
-        and (w["fleet"].get("sample") or {}).get("tick", 0) >= 600,
+        and (w["fleet"].get("sample") or {}).get("tick", 0)
+        >= (600 if args.background_clock == "simulation" and period == 2 else 1),
         "Retrieved one background head-camera snapshot",
     )
     snapshot = sample["fleet"]["sample"]
-    assert selected(sample)["observation_period_s"] == 2 and snapshot["tick"] % 200 == 0
+    assert (
+        selected(sample).get("observation_clock", "simulation") == args.background_clock
+    )
+    assert selected(sample)["observation_period_s"] == period
+    if args.background_clock == "simulation":
+        assert snapshot["tick"] % (100 * period) == 0
     grab("background-snapshot")
     grab("overlap")
     run_button("cancel_job")
@@ -329,9 +369,22 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         json.loads(line)
         for line in (path / "background-observations.jsonl").read_text().splitlines()
     ]
-    assert [r["tick"] for r in observations] == list(
-        range(200, observations[-1]["tick"] + 1, 200)
-    )
+    if args.background_clock == "wall":
+        history = json.loads((path / "source.json").read_bytes())
+        assert (
+            history["observation_clock"] == "wall"
+            and history["observation_period_s"] == period
+        )
+        assert observations and any(r["tick"] % 100 for r in observations)
+        assert all(
+            a["tick"] < b["tick"]
+            and a["published_monotonic_ns"] < b["published_monotonic_ns"]
+            for a, b in zip(observations, observations[1:])
+        )
+    else:
+        assert [r["tick"] for r in observations] == list(
+            range(100 * period, observations[-1]["tick"] + 1, 100 * period)
+        )
     assert any(
         r["tick"] == snapshot["tick"] and r["sha256"] == snapshot["sha256"]
         for r in observations
@@ -360,6 +413,8 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             foreground_id=foreground,
             background_id=background,
             background_step=step,
+            observation_clock=args.background_clock,
+            observation_period_s=period,
             observation_ticks=[o["tick"] for o in observations],
             snapshot=snapshot,
             origin=origin,

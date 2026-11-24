@@ -9,6 +9,8 @@ import shlex
 import subprocess
 from uuid import uuid4
 
+from worker import observation_seconds
+
 
 def worker_command(node, *operation):
     args = [
@@ -58,8 +60,16 @@ def send(node, request):
     return result["reply"]
 
 
-def check_background_period(node, period):
-    if period not in send(node, dict(op="hello")).get("background_rgb_periods_s", []):
+def check_background_period(node, period, clock="simulation"):
+    capabilities = send(node, dict(op="hello"))
+    if clock not in capabilities.get("background_rgb_clocks", ["simulation"]):
+        raise ValueError(
+            "This worker does not advertise wall-clock RGB observations. Select simulation time or update the worker."
+        )
+    periods = capabilities.get("background_rgb_periods_s", [])
+    if clock == "wall":
+        periods = capabilities.get("background_wall_rgb_periods_s", periods)
+    if period not in periods:
         raise ValueError(
             "This worker does not advertise the selected background RGB period. Update its Studio checkout."
         )
@@ -81,9 +91,8 @@ def submission(
         room_hash = hashlib.sha256(room.read_bytes()).hexdigest()
         files.update(
             {
-                "room/" + name: base64.b64encode(
-                    room.with_name(name).read_bytes()
-                ).decode()
+                "room/"
+                + name: base64.b64encode(room.with_name(name).read_bytes()).decode()
                 for name in ROOM_FILES
             }
         )
@@ -115,7 +124,13 @@ def main():
         "--mode", choices=["stream", "observations"], default="observations"
     )
     submit.add_argument(
-        "--observation-period-s", type=int, choices=(1, 2, 5), default=1
+        "--observation-period-s",
+        type=observation_seconds,
+        choices=(0.5, 1, 2, 5),
+        default=1,
+    )
+    submit.add_argument(
+        "--observation-clock", choices=("simulation", "wall"), default="simulation"
     )
     submit.add_argument("--seed", type=int, default=0)
     submit.add_argument(
@@ -133,11 +148,15 @@ def main():
             args.controller, args.mode, args.seed, args.fixture, args.id, args.room
         )
         request["observation_period_s"] = args.observation_period_s
+        if args.observation_clock == "wall":
+            if args.mode != "observations":
+                cli.error("--observation-clock wall requires background observations")
+            request["observation_clock"] = "wall"
     elif args.op != "hello":
         request["id"] = args.id
     node = json.loads(args.nodes.read_bytes())[args.node]
     if args.op == "submit" and args.mode == "observations":
-        check_background_period(node, args.observation_period_s)
+        check_background_period(node, args.observation_period_s, args.observation_clock)
     if args.op == "fetch":
         from fleet_artifacts import download
 

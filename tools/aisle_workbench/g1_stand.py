@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 from PIL import Image
 
-from worker import digest, save
+from worker import BackgroundCadence, digest, publish_background_rgb, save
 
 
 def impact_parameters(values):
@@ -108,6 +108,7 @@ def simulate(
     impact_aim=DEFAULT_IMPACT_AIM,
     observations_only=False,
     observation_period_s=1,
+    observation_clock="simulation",
 ):
     from aisle.kinematics import load_urdf_chain
     from aisle.sim import nexus_backend as nx
@@ -135,6 +136,7 @@ def simulate(
     # Batch archives retain the full-rate numerical traces, while operator trials
     # additionally save the camera and joint/action samples for native Replay.
     record_episode = parameters is None and not observations_only
+    cadence = BackgroundCadence(observation_clock, observation_period_s, 200)
     samples = []
     if record_episode:
         (out / "camera").mkdir()
@@ -351,6 +353,10 @@ def simulate(
                         recovery_step = step
                 else:
                     recovery_start = None
+        exposure_due = observations_only and cadence.due(step, first=step == 1)
+        if exposure_due:
+            rgb = np.asarray(camera.render()[0], dtype=np.uint8)
+            publish_background_rgb(out, step - 1, rgb)
         if step % 20 == 0 or step == 1:
             row = dict(
                 kind="standing-inspection",
@@ -360,7 +366,7 @@ def simulate(
                 both_feet=feet.issubset(loaded),
             )
             rows.append(row)
-            if observations_only and step != 1 and step % (200 * observation_period_s):
+            if observations_only:
                 save(out / "progress.json", row)
                 continue
             rgb = np.asarray(camera.render()[0], dtype=np.uint8)
@@ -369,14 +375,9 @@ def simulate(
                 samples.append(
                     dict(step=step, state=q.tolist(), action=targets.tolist())
                 )
-            if observations_only:
-                from worker import publish_background_rgb
-
-                publish_background_rgb(out, step - 1, rgb)
-            else:
-                tmp = out / "preview.tmp"
-                tmp.write_bytes((step - 1).to_bytes(4, "big") + rgb.tobytes())
-                tmp.replace(out / "preview.rgb")
+            tmp = out / "preview.tmp"
+            tmp.write_bytes((step - 1).to_bytes(4, "big") + rgb.tobytes())
+            tmp.replace(out / "preview.rgb")
             save(out / "progress.json", row)
     Image.fromarray(rgb).save(out / "frame.png")
     save(out / "trajectory.json", rows)

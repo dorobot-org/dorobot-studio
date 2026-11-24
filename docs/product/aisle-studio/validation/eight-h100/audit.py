@@ -121,7 +121,28 @@ def cohort(archive, name, datasets=False):
             samples = delivery["samples"]
             exposures = lines(base + "background-observations.jsonl")
             images = {e["tick"]: e["sha256"] for e in exposures}
-            assert list(images) == list(range(100, row["ticks"] + 1, 100))
+            rgb_clock = delivery.get("observation_clock", "simulation")
+            period = delivery.get("observation_period_s", 1)
+            assert source.get("observation_clock", "simulation") == rgb_clock
+            assert source.get("observation_period_s", 1) == period
+            if rgb_clock == "simulation":
+                assert period in (1, 2, 5)
+                step = int(100 * period)
+                assert list(images) == list(range(step, row["ticks"] + 1, step))
+            else:
+                assert rgb_clock == "wall" and period in (0.5, 1, 2, 5)
+                ticks = [e["tick"] for e in exposures]
+                stamps = [e["published_monotonic_ns"] for e in exposures]
+                assert len(ticks) >= 2 and 0 <= ticks[0] <= ticks[-1] <= row["ticks"]
+                assert all(a < b for a, b in zip(ticks, ticks[1:]))
+                assert all(a < b for a, b in zip(stamps, stamps[1:]))
+                row.update(
+                    observation_clock=rgb_clock,
+                    observation_period_s=period,
+                    worker_publication_hz=(len(stamps) - 1)
+                    * 1e9
+                    / (stamps[-1] - stamps[0]),
+                )
             assert all(e["width"] == 480 and e["height"] == 360 for e in exposures)
             assert all(images[tick] == digest for tick, _, digest in samples)
             last = read(base + "preview.rgb")

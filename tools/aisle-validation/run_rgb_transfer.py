@@ -249,6 +249,7 @@ def execute(
     observation_progress=False,
     live_preview=False,
     observation_period_s=1,
+    observation_clock="simulation",
     target_motion="stationary",
 ):
     from nano_grasp_estimator import parameters
@@ -372,6 +373,7 @@ def execute(
     preview_times = []
     preview_period_ns = 1_000_000_000 // 30
     next_preview_ns = time.monotonic_ns()
+    cadence = worker.BackgroundCadence(observation_clock, observation_period_s, 100)
 
     def head_rgb():
         return sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
@@ -447,12 +449,11 @@ def execute(
                 show_preview(rgb)
         if record and sim.tick % 20 == 0:
             publish(sample=True, rgb=rgb)
-        elif observation_progress and sim.tick % 100 == 0:
-            if sim.tick % (100 * observation_period_s) == 0:
-                rgb = sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[
-                    0
-                ]
-                worker.publish_background_rgb(out, sim.tick, rgb)
+        elif observation_progress:
+            if cadence.due(sim.tick):
+                worker.publish_background_rgb(out, sim.tick, head_rgb())
+            if sim.tick % 100:
+                return
             worker.save(
                 out / "progress.json",
                 dict(

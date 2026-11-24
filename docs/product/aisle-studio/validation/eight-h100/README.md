@@ -47,6 +47,8 @@ For each provider, set `cohort` to a fresh output directory, `provider` to `code
   --authors "$cohort/authors" --out "$cohort/measurement"
 ~~~
 
+The recorded H100 cohorts used a one-second simulation period. To run a new cohort using wall time, append `--background-clock wall --background-period-s 0.5` to the runner command above. Update the Linux worker checkout first. The runner checks each worker's advertised clock and periods before submitting. Worker publication uses that worker's monotonic clock. The Mac timestamps received images and viewport draws on its own clock. See the [local wall-time measurements](../wall-clock-rgb/README.md).
+
 Run the public archive audit with Python's standard library.
 
 ~~~sh

@@ -12,6 +12,8 @@ import time
 
 
 def main():
+    from worker import observation_seconds
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--studio", type=Path, required=True)
     parser.add_argument("--remote", default="makepad-remote")
@@ -21,6 +23,18 @@ def main():
     )
     parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
     parser.add_argument("--dark", action="store_true")
+    parser.add_argument(
+        "--background-period-s",
+        type=observation_seconds,
+        choices=(0.5, 1, 2, 5),
+        help="Background RGB period for a fresh fleet journey",
+    )
+    parser.add_argument(
+        "--background-clock",
+        choices=("simulation", "wall"),
+        default="simulation",
+        help="Clock for background observations in a fleet measurement",
+    )
     parser.add_argument(
         "--compare-runs",
         nargs=2,
@@ -163,6 +177,22 @@ def main():
         help="Run one previously authored Nano red-cube transfer on the selected worker",
     )
     args = parser.parse_args()
+    if args.background_period_s is not None and (
+        not args.fleet or args.fleet_controller or args.resume_fleet
+    ):
+        parser.error(
+            "--background-period-s requires a fresh fleet journey with observers"
+        )
+    if args.background_period_s == 0.5 and args.background_clock != "wall":
+        parser.error(
+            "The 0.5 second background period requires --background-clock wall"
+        )
+    if args.background_clock == "wall" and (
+        not args.fleet or args.fleet_controller or args.resume_fleet
+    ):
+        parser.error(
+            "--background-clock wall requires a fresh fleet journey with observers"
+        )
     if args.fleet_controller and (
         not args.fleet_node or args.resume_fleet or args.foreground_cadence
     ):
@@ -379,7 +409,13 @@ def main():
                 if args.compare_runs:
                     check.append("--compare-runs")
                 if args.fleet:
-                    check.append("--fleet")
+                    check.extend(
+                        ["--fleet", "--background-clock", args.background_clock]
+                    )
+                    if args.background_period_s is not None:
+                        check.extend(
+                            ["--background-period-s", str(args.background_period_s)]
+                        )
                     if args.fleet_controller:
                         check.append("--fleet-controller")
                     if args.resume_fleet:
@@ -436,9 +472,7 @@ def main():
                 timeout = (
                     1800
                     if args.train_grasp
-                    else 900
-                    if args.transfer or args.fleet or prior_trial
-                    else 330
+                    else 900 if args.transfer or args.fleet or prior_trial else 330
                 )
                 try:
                     subprocess.run(check, check=True, timeout=timeout)

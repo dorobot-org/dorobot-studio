@@ -10,7 +10,7 @@ import sys
 import time
 from zipfile import ZipFile
 
-from fleet_client import send, submission
+from fleet_client import check_background_period, send, submission
 from fleet_artifacts import download
 from fleet_worker import initialize
 from worker import save
@@ -37,7 +37,7 @@ def cancel_benchmark_jobs(root):
         send(node, dict(op="cancel", id=job["id"]))
 
 
-def background(index, node, folder, provider):
+def background(index, node, folder, provider, clock="simulation", period=1):
     author = folder / f"background-author-{index}"
     subprocess.run(
         [
@@ -57,6 +57,9 @@ def background(index, node, folder, provider):
         timeout=180,
     )
     request = submission(author / "controller.json", mode="observations")
+    request["observation_period_s"] = period
+    if clock == "wall":
+        request["observation_clock"] = clock
     ident = request["id"]
     job = send(node, request)
     deadline = time.monotonic() + 450
@@ -116,9 +119,18 @@ def while_streaming(args, foreground, done, grab):
     folder = args.out.parent
     node = json.loads((folder / "benchmark-nodes.json").read_bytes())[ALIAS]
     observers = args.foreground_cadence - 1
+    check_background_period(node, args.background_period_s or 1, args.background_clock)
     with ThreadPoolExecutor(max_workers=observers) as pool:
         jobs = [
-            pool.submit(background, i, node, folder, args.provider)
+            pool.submit(
+                background,
+                i,
+                node,
+                folder,
+                args.provider,
+                args.background_clock,
+                args.background_period_s or 1,
+            )
             for i in range(observers)
         ]
         grab("foreground")
@@ -133,7 +145,7 @@ def while_streaming(args, foreground, done, grab):
     return row["worker_observation"]["job"]["result"], backgrounds
 
 
-def verify_viewport(out, trial, backgrounds):
+def verify_viewport(out, trial, backgrounds, clock="simulation", period=1):
     from statistics import median
 
     times = json.loads((trial / "preview-timing.json").read_bytes())["tick_time"]
@@ -170,6 +182,8 @@ def verify_viewport(out, trial, backgrounds):
         )
     report = dict(
         sessions=1 + len(backgrounds),
+        background_clock=clock,
+        background_period_s=period,
         draw_source=Path(live_source).name,
         background_wall_fps=background_rates,
         meets_cadence=phase_seconds >= 30 and fps >= 25 and min(background_rates) >= 1,

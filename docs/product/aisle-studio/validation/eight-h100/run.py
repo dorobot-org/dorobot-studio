@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[5]
 TOOLS = ROOT / "tools/aisle_workbench"
 sys.path.insert(0, str(TOOLS))
 from fleet_artifacts import download  # noqa: E402
-from fleet_client import send, submission  # noqa: E402
+from fleet_client import check_background_period, send, submission  # noqa: E402
+from worker import observation_seconds  # noqa: E402
 
 clock = time.monotonic_ns
 
@@ -121,9 +122,11 @@ def read_worker(node, request, errors):
             time.sleep(0.15 * (attempt + 1))
 
 
-def observer(alias, node, author, out, abort):
+def observer(alias, node, author, out, abort, rgb_clock, period):
     req = submission(author / "controller.json", mode="observations", seed=0)
-    req["observation_period_s"] = 1
+    req["observation_period_s"] = period
+    if rgb_clock == "wall":
+        req["observation_clock"] = rgb_clock
     ident = req["id"]
     samples, steps, errors = [], [], []
     record = dict(
@@ -134,6 +137,8 @@ def observer(alias, node, author, out, abort):
         errors=errors,
         controller_sha256=req["controller_sha256"],
         submitted_ns=clock(),
+        observation_clock=rgb_clock,
+        observation_period_s=period,
     )
     last_step = last_frame = None
     try:
@@ -166,16 +171,21 @@ def observer(alias, node, author, out, abort):
         record.update(state=job["state"], terminal_ns=clock())
         archive = out / f"{alias}.zip"
         record["archive_sha256"] = download(send, node, ident, archive)["sha256"]
+        if job["state"] != "completed":
+            raise RuntimeError(f"{alias} finished in state {job['state']}")
         with ZipFile(archive) as z:
             verdict = json.loads(z.read("result.json"))
             src = json.loads(z.read("source.json"))
+            assert src.get("observation_clock", "simulation") == rgb_clock
+            assert src.get("observation_period_s", 1) == period
             captures = [
                 json.loads(line)
                 for line in z.read("background-observations.jsonl").splitlines()
             ]
             hashes = {r["tick"]: r["sha256"] for r in captures}
             assert all(hashes[tick] == digest for tick, _, digest in samples)
-            assert src["nexus"] == "0.2.1" and src["backend"] == "webgpu"
+            capabilities = read_worker(node, dict(op="hello"), errors)
+            assert src["nexus"] == "0.2.1" and src["backend"] == capabilities["backend"]
             assert (
                 hashlib.sha256(z.read("controller.json")).hexdigest()
                 == req["controller_sha256"]
@@ -206,10 +216,22 @@ def main():
     cli = argparse.ArgumentParser(description=__doc__)
     for option in ("nodes", "studio", "remote", "authors", "out"):
         cli.add_argument("--" + option, type=Path, required=True)
+    cli.add_argument(
+        "--background-clock", choices=("simulation", "wall"), default="simulation"
+    )
+    cli.add_argument(
+        "--background-period-s",
+        type=observation_seconds,
+        choices=(0.5, 1, 2, 5),
+        default=1,
+    )
     a = cli.parse_args()
+    if a.background_period_s == 0.5 and a.background_clock != "wall":
+        cli.error("A half-second period requires --background-clock wall")
     nodes = json.loads(a.nodes.read_bytes())
-    aliases = list(nodes)
-    assert len(nodes) == 8 and len({v["spool"] for v in nodes.values()}) == 8
+    standard = [f"gpu{i}" for i in range(8)]
+    aliases = standard if set(nodes) == set(standard) else list(nodes)
+    assert len(aliases) == 8 and len({v["spool"] for v in nodes.values()}) == 8
     assert len({v["ssh"] for v in nodes.values()}) == 1
     authors = sorted(a.authors.glob("*-Nano-prepare"))
     preparations = json.loads((a.authors / "results.json").read_bytes())["authors"]
@@ -225,14 +247,11 @@ def main():
     def preflight(item):
         alias, node = item
         info = send(node, {"op": "hello"})
-        if (
-            info.get("slots") != 1
-            or info.get("active")
-            or 1 not in info.get("background_rgb_periods_s", [])
-        ):
-            raise RuntimeError(
-                f"Worker {alias} needs an available single-slot spool with one-second RGB support"
-            )
+        if info.get("backend") != "webgpu":
+            raise RuntimeError(f"Worker {alias} must expose the Linux WebGPU backend")
+        if info.get("slots") != 1 or info.get("active"):
+            raise RuntimeError(f"Worker {alias} needs an available single-slot spool")
+        check_background_period(node, a.background_period_s, a.background_clock)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(preflight, nodes.items()))
@@ -294,8 +313,19 @@ def main():
                         "Native viewport did not deliver its first frame"
                     )
             pending = {
-                pool.submit(observer, alias, nodes[alias], author, a.out, abort)
-                for alias, author in zip(aliases[1:], authors[1:])
+                pool.submit(
+                    observer,
+                    f"gpu{index}",
+                    nodes[alias],
+                    author,
+                    a.out,
+                    abort,
+                    a.background_clock,
+                    a.background_period_s,
+                )
+                for index, (alias, author) in enumerate(
+                    zip(aliases[1:], authors[1:]), start=1
+                )
             }
             deadline = time.monotonic() + 1050
             while pending or proc.poll() is None:

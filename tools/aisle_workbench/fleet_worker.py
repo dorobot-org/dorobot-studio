@@ -143,13 +143,21 @@ def payload(request):
     ):
         raise ValueError("The selected grasp checkpoint or its training record changed")
     period = request.get("observation_period_s", 1)
+    clock = request.get("observation_clock", "simulation")
+    if clock not in ("simulation", "wall") or (
+        clock == "wall" and request["mode"] != "observations"
+    ):
+        raise ValueError(
+            "The wall clock is available only for background RGB observations"
+        )
+    allowed = (0.5, 1, 2, 5) if clock == "wall" else (1, 2, 5)
     if (
-        type(period) is not int
-        or period not in (1, 2, 5)
+        type(period) not in (int, float)
+        or period not in allowed
         or (period != 1 and request["mode"] != "observations")
     ):
         raise ValueError(
-            "Select a background RGB observation period of 1, 2 or 5 simulated seconds"
+            f"Choose a background observation period from {allowed} seconds for the selected clock"
         )
     control = validate(plan, profile)
     if request.get("rgb_timing", "normal") not in (
@@ -206,8 +214,11 @@ def submit(root, request):
     for key, default in (("rgb_timing", "normal"), ("target_motion", "stationary")):
         if request.get(key, default) != default:
             config[key] = request[key]
+    if request.get("observation_clock", "simulation") == "wall":
+        config["observation_clock"] = "wall"
     if request.get("observation_period_s", 1) != 1:
-        config["observation_period_s"] = request["observation_period_s"]
+        period = request["observation_period_s"]
+        config["observation_period_s"] = 0.5 if period == 0.5 else int(period)
     if hashes:
         config["files_sha256"] = hashes
     if request.get("room_sha256"):
@@ -354,6 +365,8 @@ def supervise(root, ident, token):
             args.extend(
                 (
                     "--observations-only",
+                    "--observation-clock",
+                    config.get("observation_clock", "simulation"),
                     "--observation-period-s",
                     str(config.get("observation_period_s", 1)),
                 )
@@ -429,6 +442,8 @@ def dispatch(root, request):
             protocol=1,
             foreground_rgb_protocol=1,
             background_rgb_periods_s=[1, 2, 5],
+            background_rgb_clocks=["simulation", "wall"],
+            background_wall_rgb_periods_s=[0.5, 1, 2, 5],
             host=platform.node(),
             system=platform.system(),
             slots=slots,

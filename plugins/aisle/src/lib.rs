@@ -162,10 +162,10 @@ script_mod! {
                     node := TextInput{width:Fill height:34 empty_text:"local or configured SSH worker"}
                     Bar{connect := mod.widgets.ux.ToolButton{text:"Connect"} refresh := mod.widgets.ux.ToolButton{text:"Refresh"}}
                     capacity := Body{}
-                    Bar{period := mod.widgets.ux.ToolButton{text:"RGB / 1 sim s"} sample_job := mod.widgets.ux.ToolButton{text:"Get snapshot"}}
+                    Bar{clock := mod.widgets.ux.ToolButton{text:"Sim time"} period := mod.widgets.ux.ToolButton{text:"RGB / 1 s"}}
                     Bar{queue_stream := mod.widgets.ux.PrimaryButton{text:"Stream run"} queue_background := mod.widgets.ux.ToolButton{text:"Background run"}}
                     Section{text:"Selected job"} job_detail := Body{}
-                    Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous job"} newer_job := mod.widgets.ux.ToolButton{text:"Next job"}}
+                    Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous"} newer_job := mod.widgets.ux.ToolButton{text:"Next"} sample_job := mod.widgets.ux.ToolButton{text:"Snapshot"}}
                     Bar{cancel_job := mod.widgets.ux.StopButton{text:"Cancel job"} fetch_job := mod.widgets.ux.ToolButton{text:"Fetch evidence"}}
                 }
             }
@@ -326,12 +326,23 @@ impl Panel {
                 .or_else(|| job["result"]["steps"].as_u64())
                 .or_else(|| job["progress"]["step"].as_u64())
                 .unwrap_or(0);
+            let mode = if stream {
+                "foreground".to_owned()
+            } else {
+                let period = selected["observation_period_s"].as_f64().unwrap_or(1.0);
+                let clock = if selected["observation_clock"] == "wall" {
+                    "wall"
+                } else {
+                    "sim"
+                };
+                format!("background\nRGB every {period} s ({clock} time)")
+            };
             format!(
                 "{} of {} · {} · {}\n{} · {} physics steps{}",
                 i + 1,
                 jobs.len(),
                 selected["robot"].as_str().unwrap_or("Robot"),
-                if stream { "foreground" } else { "background" },
+                mode,
                 state,
                 ticks,
                 outcome
@@ -340,9 +351,17 @@ impl Panel {
             "No jobs submitted to this worker.".into()
         };
         self.label(cx, ids!(job_detail), &info);
+        self.root.button(cx, ids!(clock)).set_text(
+            cx,
+            if w.observation_clock.name() == "wall" {
+                "Wall time"
+            } else {
+                "Sim time"
+            },
+        );
         self.root
             .button(cx, ids!(period))
-            .set_text(cx, &format!("RGB / {} sim s", w.background_period_s));
+            .set_text(cx, &format!("RGB / {} s", w.background_period_s));
         let frame = if stream {
             &w.worker_observation["frame"]
         } else {
@@ -374,6 +393,7 @@ impl Panel {
         for (button, enabled) in [
             (ids!(connect) as &[LiveId], true),
             (ids!(refresh), caps.is_object()),
+            (ids!(clock), true),
             (ids!(period), true),
             (
                 ids!(sample_job),
@@ -1272,7 +1292,11 @@ impl PluginPanel for Panel {
                                 gap["last_step"].as_u64(),
                                 gap["phase"].as_str(),
                             ) {
-                                let ticks = if start == end { start.to_string() } else { format!("{start}–{end}") };
+                                let ticks = if start == end {
+                                    start.to_string()
+                                } else {
+                                    format!("{start}–{end}")
+                                };
                                 lines.push(format!("Wheel support lost · {phase} · tick {ticks}"));
                             }
                         }
@@ -1654,6 +1678,7 @@ impl PluginPanel for Panel {
             (ids!(default_room), Action::DefaultRoom),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
+            (ids!(clock), Action::ToggleObservationClock),
             (ids!(period), Action::CycleBackgroundPeriod),
             (ids!(sample_job), Action::Worker(WorkerAction::Sample)),
             (ids!(local_run), Action::Workers(false)),

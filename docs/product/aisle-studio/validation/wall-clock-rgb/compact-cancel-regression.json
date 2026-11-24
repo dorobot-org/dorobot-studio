@@ -1,0 +1,54 @@
+{
+  "backend": "headless",
+  "size": [
+    1024,
+    768
+  ],
+  "attempt": "2ec13df",
+  "failed_check": "Cancelled only the background job",
+  "controls": {
+    "older_job": [
+      710.0,
+      642.4000244140625,
+      107.75267028808594,
+      32.0
+    ],
+    "newer_job": [
+      825.752685546875,
+      642.4000244140625,
+      79.95333099365234,
+      32.0
+    ],
+    "sample_job": [
+      710.0,
+      680.4000244140625,
+      86.51599884033203,
+      32.0
+    ],
+    "cancel_job": [
+      710.0,
+      718.4000244140625,
+      95.97666931152344,
+      32.0
+    ],
+    "fetch_job": [
+      804.5159912109375,
+      680.4000244140625,
+      127.60933685302734,
+      32.0
+    ]
+  },
+  "foreground_imported": false,
+  "selected_job": {
+    "id": "e938b42a-73cb-4994-9106-b56467ff2dc3",
+    "mode": "observations",
+    "state": "running",
+    "observation_clock": "wall",
+    "observation_period_s": 0.5
+  },
+  "captured_snapshot": {
+    "height": 360,
+    "sha256": "51fad9e65e59218ac2fe00e9cc32191b37d7aaab4dfa63c5e723884e2980747b",
+    "tick": 663
+  }
+}

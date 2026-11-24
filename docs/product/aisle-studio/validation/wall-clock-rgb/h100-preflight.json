@@ -1,0 +1,273 @@
+{
+  "sample": {
+    "at_utc": "2026-11-24T07:30:46.400181+00:00",
+    "fields": [
+      "index",
+      "model",
+      "used_mib",
+      "total_mib",
+      "utilization_pct"
+    ],
+    "gpus": [
+      [
+        "0",
+        "NVIDIA H100 NVL",
+        "88862",
+        "95830",
+        "97"
+      ],
+      [
+        "1",
+        "NVIDIA H100 NVL",
+        "88245",
+        "95830",
+        "99"
+      ],
+      [
+        "2",
+        "NVIDIA H100 NVL",
+        "88395",
+        "95830",
+        "99"
+      ],
+      [
+        "3",
+        "NVIDIA H100 NVL",
+        "67028",
+        "95830",
+        "96"
+      ],
+      [
+        "4",
+        "NVIDIA H100 NVL",
+        "88759",
+        "95830",
+        "99"
+      ],
+      [
+        "5",
+        "NVIDIA H100 NVL",
+        "88880",
+        "95830",
+        "99"
+      ],
+      [
+        "6",
+        "NVIDIA H100 NVL",
+        "88257",
+        "95830",
+        "99"
+      ],
+      [
+        "7",
+        "NVIDIA H100 NVL",
+        "88359",
+        "95830",
+        "99"
+      ]
+    ]
+  },
+  "slurm_node_state": "down",
+  "workers": {
+    "gpu0": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    },
+    "gpu1": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    },
+    "gpu2": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    },
+    "gpu3": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    },
+    "gpu4": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    },
+    "gpu5": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    },
+    "gpu6": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    },
+    "gpu7": {
+      "backend": "webgpu",
+      "slots": 1,
+      "active": [],
+      "background_rgb_clocks": [
+        "simulation",
+        "wall"
+      ],
+      "background_rgb_periods_s": [
+        1,
+        2,
+        5
+      ],
+      "background_wall_rgb_periods_s": [
+        0.5,
+        1,
+        2,
+        5
+      ],
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "3657d552c164e3d20b825b09fdc32801b64f9b310f49b9884128babbdb25a943"
+    }
+  }
+}

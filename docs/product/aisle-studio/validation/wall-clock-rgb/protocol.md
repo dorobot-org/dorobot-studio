@@ -1,0 +1,13 @@
+# Wall-clock background observations
+
+Compare the existing simulation-time RGB setting with the new wall-time setting using the same robot, task, controller and model. One wall second requests the first fresh physics exposure, followed by the first eligible exposure at each successive monotonic deadline. A stall skips missed deadlines. Record the worker's publication time for each image and its original physics tick.
+
+Use the established M3 Max capacity benchmark with one 1440 × 900 offscreen Makepad foreground, seven background Nano simulators and eight real controller preparations per cohort. Select a one-second wall period. Run one cohort with DeepSeek through Octos and another with Codex. Start one foreground at a time. Use the existing acceptance gate of at least 25 unique native draws per second, at least one delivered frame per second for every background, and at least 30 seconds of all eight simulations advancing. Preserve each cohort and each observer. Report the achieved source and received rates separately. The earlier eight-session simulation-time benchmark provides a historical reference.
+
+Exercise the clock control in the native two-job journey. Verify the selected observer job, an actual RGB snapshot with matching digest on import, independent cancellation, foreground replay and the observer setting after restarting Studio. For Unitree G1 use the existing 30-degree torso turn and standing reach under bounded impact. Compare foot loading, wrist reach, motor sample count, and the variation in targets between clocks and between repeated runs with the same clock. The H100 throughput gate requires a new measurement on that host.
+
+The first one-second wall cohort produced two received rates just below 1 Hz. A follow-up tests an explicit 0.5 s wall period using the same eight-session configuration, each provider separately, and the same delivery gate. The requested source rate for this follow-up is 2 Hz. Keep the one-second measurements and all strict failures.
+
+After the eight-session 0.5 s DeepSeek cohort passed, schedule 12 sessions with that setting. Test 16 if 12 meets the same native and delivered-rate gate. Repeat the largest passing tested load with Codex. Keep individual missed or failed runs and report the largest tested load and the host. This bounded follow-up makes no claim about the untested maximum.
+
+The matched 12-session runs produced 25.02 FPS and 24.80 FPS, and 16 sessions missed the viewport cutoff. Test the intermediate 10-session load once per provider at a 0.5-second wall period, using the final native layout and the same gates. Retain both outcomes. Report the largest load tested successfully by both providers.

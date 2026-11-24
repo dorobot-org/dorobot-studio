@@ -9,6 +9,8 @@ import time
 
 
 def main():
+    from worker import observation_seconds
+
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--remote", required=True)
     p.add_argument("--pid", required=True)
@@ -33,6 +35,12 @@ def main():
     p.add_argument("--fleet-controller", action="store_true")
     p.add_argument("--fleet-node")
     p.add_argument("--fleet", action="store_true")
+    p.add_argument(
+        "--background-period-s", type=observation_seconds, choices=(0.5, 1, 2, 5)
+    )
+    p.add_argument(
+        "--background-clock", choices=("simulation", "wall"), default="simulation"
+    )
     p.add_argument("--foreground-cadence", type=int, choices=range(2, 65))
     p.add_argument("--standing", action="store_true")
     p.add_argument("--device-preflight", action="store_true")
@@ -606,9 +614,9 @@ def main():
                 legible_pixels = sum(
                     n for i, n in enumerate(histogram) if abs(i - background) > 100
                 )
-                assert legible_pixels >= 150, (
-                    "Preflight measurements lack visible text contrast"
-                )
+                assert (
+                    legible_pixels >= 150
+                ), "Preflight measurements lack visible text contrast"
                 checks[-1]["contrasting_result_pixels"] = legible_pixels
             click("aisle_evidence.trial_mode")
             done(
