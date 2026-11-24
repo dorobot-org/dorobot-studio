@@ -14,6 +14,7 @@ use dorobot_studio_plugin::*;
 use dorobot_ux::kit::SparkWidgetRefExt;
 use makepad_urdf_player::robot_view::RobotViewWidgetRefExt;
 use std::path::PathBuf;
+mod joint_inspector;
 
 pub struct AislePlugin;
 const PAGES: &[PanelDescriptor] = &[
@@ -67,6 +68,8 @@ impl StudioPlugin for AislePlugin {
             draft: None,
             room_preview: None,
             decision_preview: None,
+            joint_robot: None,
+            joint_index: 0,
         }))
     }
     fn can_disable(&self, b: &dyn Backend) -> Result<(), String> {
@@ -110,10 +113,20 @@ script_mod! {
     }
     mod.widgets.AisleScene=Page{
         Title{text:"Simulation scene"} context_label := Section{}
-        scene_modes := Bar{robot_mode := mod.widgets.ux.ToolButton{text:"Robot model"} room_mode := mod.widgets.ux.ToolButton{text:"Room survey"}}
+        scene_modes := Bar{robot_mode := mod.widgets.ux.ToolButton{text:"Robot model"} joint_mode := mod.widgets.ux.ToolButton{text:"Joint limits"} room_mode := mod.widgets.ux.ToolButton{text:"Room survey"}}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
             photo_card := Card{width:Fill height:Fill photo_label := Section{text:"Floor footprint"} photo := VideoPlayer{width:Fill height:Fill}}
+            joint_card := Card{width:300 height:Fill
+                Section{text:"Find a joint"}
+                joint_query := TextInput{width:Fill height:38 empty_text:"Filter by joint name"}
+                joint_count := Body{}
+                Bar{joint_previous := mod.widgets.ux.ToolButton{text:"Previous"} joint_next := mod.widgets.ux.ToolButton{text:"Next"}}
+                ScrollYView{width:Fill height:Fill flow:Down spacing:10
+                    joint_name := Section{}
+                    joint_detail := Body{max_lines:0}
+                }
+            }
             survey_card := ScrollYView{width:295 height:Fill flow:Down spacing:8 padding:10
                 Section{text:"Room input file"} survey_path := TextInput{width:Fill height:38 empty_text:"Path to a survey or photo input"}
                 import_survey := mod.widgets.ux.PrimaryButton{text:"Import survey"}
@@ -223,6 +236,8 @@ struct Panel {
     draft: Option<(Robot, Option<PathBuf>)>,
     room_preview: Option<PathBuf>,
     decision_preview: Option<PathBuf>,
+    joint_robot: Option<Robot>,
+    joint_index: usize,
 }
 impl Panel {
     fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
@@ -541,6 +556,7 @@ impl PluginPanel for Panel {
                     (ids!(device), Themed::Bg),
                     (ids!(decision_card), Themed::Bg),
                     (ids!(survey_card), Themed::Bg),
+                    (ids!(joint_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
                 ],
@@ -752,19 +768,22 @@ impl PluginPanel for Panel {
                 }
             }
             "aisle_scene" => {
-                let editing = mobile && w.room_editor;
-                self.root
-                    .widget(cx, ids!(scene_modes))
-                    .set_visible(cx, mobile);
+                if self.joint_robot != Some(w.robot) {
+                    self.joint_robot = None;
+                }
+                let joints = self.joint_robot.is_some();
+                let editing = !joints && mobile && w.room_editor;
+                self.root.widget(cx, ids!(room_mode)).set_visible(cx, mobile);
+                self.root.button(cx, ids!(joint_mode)).set_enabled(cx, !joints && !w.busy());
                 self.root
                     .button(cx, ids!(room_mode))
                     .set_enabled(cx, !w.busy() && !editing);
                 self.root
                     .button(cx, ids!(robot_mode))
-                    .set_enabled(cx, !w.busy() && editing);
-                for id in [ids!(model_card), ids!(inspector)] {
-                    self.root.widget(cx, id).set_visible(cx, !editing);
-                }
+                    .set_enabled(cx, !w.busy() && (editing || joints));
+                self.root.widget(cx, ids!(model_card)).set_visible(cx, !editing);
+                self.root.widget(cx, ids!(inspector)).set_visible(cx, !editing && !joints);
+                self.root.widget(cx, ids!(joint_card)).set_visible(cx, joints);
                 for id in [ids!(photo_card), ids!(survey_card)] {
                     self.root.widget(cx, id).set_visible(cx, editing);
                 }
@@ -951,6 +970,7 @@ impl PluginPanel for Panel {
                 self.root
                     .button(cx, ids!(inspect))
                     .set_enabled(cx, !w.busy());
+                self.sync_joint_inspector(cx, w, joints);
                 let info = if w.scene.is_null() {
                     "Inspect the URDF to verify its meshes and joint limits.".into()
                 } else {
@@ -1731,6 +1751,9 @@ impl PluginPanel for Panel {
         }
     }
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, b: &mut dyn Backend) -> bool {
+        if self.page == "aisle_scene" && self.handle_joint_inspector(cx, actions, b) {
+            return true;
+        }
         let Some(_) = b.aisle() else {
             return false;
         };

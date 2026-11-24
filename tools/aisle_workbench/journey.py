@@ -1111,6 +1111,8 @@ def main():
             click("aisle_scene.compliant")
             done(lambda w: w["compliant"], "G1 compliant fixture selected")
         grab(robot + "-scene")
+        from joint_inspector_check import check as check_joint_limits
+        checks.append(check_joint_limits(robot, click, remote, wait, grab))
         page("run")
         before = report()["state"]["aisle"]["selected"]
         click("aisle_run.start_run")

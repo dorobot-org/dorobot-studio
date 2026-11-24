@@ -1463,7 +1463,8 @@ impl Workbench {
                 }
                 self.launch("fleet", Planner::Reference, None)
             }
-            Action::Inspect => self.launch("scene", Planner::Reference, None),
+            Action::Inspect => self.launch("scene", Planner::Reference, None)
+                .map(|()| self.scene = Value::Null),
             Action::Run => self.launch("run", Planner::Reference, None),
             Action::Previous | Action::Next => {
                 if let Some(i) = self
