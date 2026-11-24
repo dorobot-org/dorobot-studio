@@ -489,6 +489,11 @@ impl Workbench {
     pub fn busy(&self) -> bool {
         self.job.is_some()
     }
+    pub fn preflighting(&self) -> bool {
+        self.job
+            .as_ref()
+            .is_some_and(|job| job.op == "device-preflight")
+    }
     fn select_room(&mut self, selection: Value) {
         self.room_path = selection["revision"]
             .as_str()
@@ -921,6 +926,24 @@ impl Workbench {
                     let _ = fs::write(j.dir.join("stopped.json"), "{\"stopped\":true}");
                     if j.op == "run" {
                         self.select_run(j.dir);
+                    } else if j.op == "device-preflight" {
+                        let receipt = serde_json::json!({
+                            "trial": self.selected.as_ref().and_then(|p| p.file_name()).and_then(|n| n.to_str()),
+                            "robot": self.evidence["robot"], "kind": self.evidence["kind"],
+                            "controller_sha256": self.evidence["controller_hash"],
+                            "model_sha256": self.evidence["model_hash"],
+                            "state": "Dry run stopped", "reason": self.status,
+                            "motor_commands_sent": 0, "physical_qualification": false
+                        });
+                        let tmp = j.dir.join("cancelled-receipt.tmp");
+                        if let Err(e) = fs::write(&tmp, receipt.to_string())
+                            .and_then(|()| fs::rename(tmp, j.dir.join("preflight.json")))
+                        {
+                            self.error = Some(format!("Could not save the stopped preflight: {e}"));
+                        } else {
+                            self.remember_preflight(&j.dir);
+                            self.load_preflight();
+                        }
                     }
                 }
             }

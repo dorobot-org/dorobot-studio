@@ -928,7 +928,7 @@ impl PluginPanel for Panel {
                         .set_visible(cx, standing);
                     self.root
                         .widget(cx, ids!(device_stop))
-                        .set_visible(cx, w.busy());
+                        .set_visible(cx, w.preflighting());
                     self.root.button(cx, ids!(device_replay)).set_text(
                         cx,
                         if g1 {
@@ -945,8 +945,39 @@ impl PluginPanel for Panel {
                         .set_enabled(cx, !w.busy() && selected && standing);
                     let v = &w.preflight;
                     let summary = match v["state"].as_str() {
-                        Some("Dry run measured") => format!("{} · {} measurements\n{} joints · {} dry-run steps · 0 motor commands sent\nLongest source gap {:.1} ms · maximum sample age {:.1} ms\n{}Physical device qualification pending", v["source_kind"].as_str().unwrap_or("DDS"), v["samples"],v["joints"],v["dry_run_steps"],v["max_source_gap_ms"].as_f64().unwrap_or_default(),v["max_sample_age_ms"].as_f64().unwrap_or_default(),v["max_nexus_target_difference_rad"].as_f64().map(|x| format!("Maximum paired target difference {x:.6} rad\n")).unwrap_or_default()),
-                        Some(state) => format!("{state}\n{}",v["reason"].as_str().unwrap_or("")),
+                        Some("Dry run measured") => {
+                            let mut lines = vec![
+                                format!(
+                                    "{} · {} measurements",
+                                    v["source_kind"].as_str().unwrap_or("DDS"),
+                                    v["samples"]
+                                ),
+                                format!(
+                                    "{} joints · {} dry-run steps · 0 motor commands sent",
+                                    v["joints"], v["dry_run_steps"]
+                                ),
+                                format!(
+                                    "Longest gaps · source {:.1} ms · receiver {:.1} ms",
+                                    v["max_source_gap_ms"].as_f64().unwrap_or_default(),
+                                    v["max_receive_gap_ms"].as_f64().unwrap_or_default()
+                                ),
+                                format!(
+                                    "Peak target to measured joint difference {:.3} rad",
+                                    v["peak_target_feedback_difference_rad"]
+                                        .as_f64()
+                                        .unwrap_or_default()
+                                ),
+                            ];
+                            if let Some(difference) = v["max_nexus_target_difference_rad"].as_f64()
+                            {
+                                lines.push(format!(
+                                    "Maximum paired target difference {difference:.6} rad"
+                                ));
+                            }
+                            lines.push("Physical device qualification pending".into());
+                            lines.join("\n")
+                        }
+                        Some(state) => format!("{state}\n{}", v["reason"].as_str().unwrap_or("")),
                         None => String::new(),
                     };
                     self.label(cx, ids!(device_result), &summary);

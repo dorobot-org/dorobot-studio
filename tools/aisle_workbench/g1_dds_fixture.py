@@ -46,7 +46,7 @@ def publish(path, interface, domain_id):
     writer = DataWriter(
         participant, topic, listener=Listener(on_publication_matched=matched)
     )
-    if not ready.wait(5):
+    if not ready.wait(15):
         raise ValueError("No matching loopback G1 LowState subscriber")
     msg = unitree_hg_msg_dds__LowState_()
     start = time.monotonic()
