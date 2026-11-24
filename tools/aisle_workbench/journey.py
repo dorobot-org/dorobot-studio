@@ -528,6 +528,11 @@ def main():
                 )
                 assert stopped["room_path"] == first
                 checks[-1]["reason"] = stopped["status"]
+                # The camera report can push the geometry editor below the
+                # scroll viewport. Use the same wheel gesture as an operator.
+                x, y, width, height = report()["controls"]["aisle_scene.room_detail"]["rect"]
+                remote("mouse", "k=scroll", "w=0", f"x={x + width / 2}",
+                       f"y={y + height / 2}", "dy=320", "wait=1")
             fill_survey("geometry", "ottoman 0 0 0.35")
             click("aisle_scene.save_geometry")
             failed = done(
