@@ -108,6 +108,13 @@ def native_journey(args, checks, page, click, remote, done, grab):
         audit(Path(row["selected"]))
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
         return
+    three = args.wrist_faults == "three"
+    order = "red,green,blue" if three else "red"
+    instruction = (
+        "Move all three floor cubes onto the coffee table in red, green, blue order."
+        if three
+        else "Move the red floor cube onto the coffee table."
+    )
     page("task")
     click("aisle_task.nano")
     click("aisle_task.instruction")
@@ -118,12 +125,12 @@ def native_journey(args, checks, page, click, remote, done, grab):
         "logo=1" if sys.platform == "darwin" else "ctrl=1",
         "wait=1",
     )
-    remote("text", "w=0", "t=Move the red floor cube onto the coffee table.", "wait=1")
+    remote("text", "w=0", "t=" + instruction, "wait=1")
     click("aisle_task.codex" if args.provider == "codex" else "aisle_task.octos")
     done(
         lambda w: not w["busy"]
-        and (w.get("controller") or {}).get("color_order") == "red",
-        "Prepared single-cube transfer",
+        and (w.get("controller") or {}).get("color_order") == order,
+        f"Prepared transfer for {order}",
         180,
     )
     outcomes = []
@@ -148,7 +155,10 @@ def native_journey(args, checks, page, click, remote, done, grab):
             mode + " wrist transfer measured",
             360,
         )
-        outcomes.append(audit(Path(state["selected"])))
+        outcome = audit(Path(state["selected"]))
+        assert state["result"]["requested"] == order.split(",")
+        assert outcome["task_success"] == (mode != "disconnected")
+        outcomes.append(outcome)
         page("evidence")
         grab("wrist-" + mode)
     assert len({r["controller"] for r in outcomes}) == 1

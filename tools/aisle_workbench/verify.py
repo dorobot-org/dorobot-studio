@@ -102,7 +102,9 @@ def main():
     )
     scenario.add_argument(
         "--wrist-faults",
-        action="store_true",
+        nargs="?",
+        const="red",
+        choices=["red", "three"],
         help="Interrupt the left wrist camera during a Nano grasp and verify the motor hold",
     )
     scenario.add_argument(
@@ -437,7 +439,7 @@ def main():
                 if args.moving_target:
                     check.append("--moving-target")
                 if args.wrist_faults:
-                    check.append("--wrist-faults")
+                    check.extend(["--wrist-faults", args.wrist_faults])
                 if args.camera_faults:
                     check.append("--camera-faults")
                 if args.handoff:
