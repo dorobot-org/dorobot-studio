@@ -84,6 +84,7 @@ def run(args, page, click, remote, done, grab, checks):
                     "same robot",
                     "separate cohort",
                     "same robot, impact",
+                    "Archive SHA-256 differs",
                 )
             ),
             "Incompatible comparison rejected",

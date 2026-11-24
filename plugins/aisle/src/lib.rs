@@ -1199,12 +1199,18 @@ impl PluginPanel for Panel {
                         let archive_id = |side: &str| {
                             result[side]["archive_sha256"].as_str().and_then(|s| s.get(..8)).unwrap_or("?")
                         };
-                        let detail = format!(
+                        let mut detail = format!(
                             "Baseline {} · {} of {} passed\nCandidate {} · {} of {} passed\nBoth passed {} · gained {} · lost {} · both failed {} · unverified {}",
                             archive_id("baseline"), result["baseline"]["successes"], result["cases"],
                             archive_id("candidate"), result["candidate"]["successes"], result["cases"],
                             counts["both_passed"], counts["improved"], counts["regressed"], counts["both_failed"], counts["unverified"]
                         );
+                        let receipts = [result["baseline"]["archive_integrity"].as_str(), result["candidate"]["archive_integrity"].as_str()];
+                        if receipts.contains(&Some("Local output receipt")) {
+                            detail.push_str("\nIncludes a locally supplied camera archive receipt.");
+                        } else if receipts == [Some("Published Studio output digest"); 2] {
+                            detail.push_str("\nBoth camera archives match published digests.");
+                        }
                         self.label(cx, ids!(cohort_verdict), "Matched cohort comparison");
                         self.label(cx, ids!(cohort_detail), &detail);
                         let selected = failures.and_then(|v| v.get(w.failure_index));
@@ -1234,7 +1240,7 @@ impl PluginPanel for Panel {
                         self.label(cx, ids!(failure_detail), &detail);
                         return;
                     }
-                    let (title, detail) = if result["cases"].is_number() {
+                    let (title, mut detail) = if result["cases"].is_number() {
                         let title = if result["split"] == "development" {
                             "Development results"
                         } else if result["split"] == "matched" {
@@ -1268,6 +1274,9 @@ impl PluginPanel for Panel {
                     } else {
                         ("No evaluation selected", String::new())
                     };
+                    if let (Some(count), Some(receipt)) = (result["release_exposures"].as_u64(), result["archive_integrity"].as_str()) {
+                        detail.push_str(&format!("\n{count} camera packets · {receipt}"));
+                    }
                     self.label(cx, ids!(cohort_verdict), title);
                     self.label(cx, ids!(cohort_detail), &detail);
                     let failure = failures

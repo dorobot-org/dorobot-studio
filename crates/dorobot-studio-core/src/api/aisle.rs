@@ -564,12 +564,16 @@ impl Workbench {
     fn with_root(root: PathBuf) -> Self {
         let layout_seed = read(&root, "layout-seed.json")
             .and_then(|v| v.as_u64())
-            .and_then(|value| u32::try_from(value).ok())
-            .unwrap_or_default();
+            .and_then(|value| u32::try_from(value).ok());
+        let initial_status = if layout_seed.is_none() && root.join("layout-seed.json").exists() {
+            "Saved Nano layout is unreadable. Using layout 0."
+        } else {
+            "Ready"
+        };
         let mut w = Self {
             robot: Robot::Nano,
             task: REFERENCE.into(),
-            status: "Ready".into(),
+            status: initial_status.into(),
             error: None,
             scene: Value::Null,
             plan: Value::Null,
@@ -604,7 +608,7 @@ impl Workbench {
             room_draft_receipt: Value::Null,
             room_selection: Value::Null,
             room_request: None,
-            layout_seed,
+            layout_seed: layout_seed.unwrap_or_default(),
             comparison: None,
             transfer_comparison: None,
             dataset: None,
@@ -1647,6 +1651,10 @@ mod tests {
         assert_eq!(restored.layout_seed, u32::MAX);
         restored.dispatch(Action::Layout(1));
         assert_eq!(Workbench::with_root(root.clone()).layout_seed, 1);
+        fs::write(root.join("layout-seed.json"), "4294967296").unwrap();
+        let repaired = Workbench::with_root(root.clone());
+        assert_eq!(repaired.layout_seed, 0);
+        assert!(repaired.status.contains("Using layout 0"));
         fs::remove_dir_all(root).unwrap();
     }
 

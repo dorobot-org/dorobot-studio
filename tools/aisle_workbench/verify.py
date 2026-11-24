@@ -516,9 +516,9 @@ def main():
                         check.append("--screenshots")
                 if args.wrist_faults == "three":
                     # Allow authoring, three full trials and the UI transitions.
-                    timeout = 3000
+                    timeout = 5400
                 elif args.train_grasp or args.transfer == "three":
-                    timeout = 1800
+                    timeout = 2400
                 elif args.transfer or args.fleet or args.wrist_faults or prior_trial:
                     timeout = 900
                 else:

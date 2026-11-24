@@ -86,12 +86,19 @@ def main():
                 time.sleep(0.1)
         raise RuntimeError("Studio did not write an instrumentation report")
 
-    def wait(test, label, seconds=30):
+    def wait(test, label, seconds=30, *, advancing=False):
         deadline = time.monotonic() + seconds
+        last_step = -1
         while time.monotonic() < deadline:
             j = report()
             if test(j):
                 return j
+            if advancing:
+                workbench = j["state"]["aisle"]
+                step = (workbench.get("progress") or {}).get("step", -1)
+                if workbench["busy"] and step > last_step:
+                    deadline = time.monotonic() + seconds
+                    last_step = step
             time.sleep(0.12)
         raise RuntimeError(f"{label}: {report()['state'].get('aisle')}")
 
@@ -130,10 +137,10 @@ def main():
         click("workspace_tabs.plugin_tabs.plugin_tab_aisle_" + name)
         wait(lambda j: j["state"]["aisle_panel"] == "aisle_" + name, name)
 
-    def done(test, label, seconds=30):
-        row = wait(lambda j: test(j["state"]["aisle"]), label, seconds)["state"][
-            "aisle"
-        ]
+    def done(test, label, seconds=30, *, advancing=False):
+        row = wait(
+            lambda j: test(j["state"]["aisle"]), label, seconds, advancing=advancing
+        )["state"]["aisle"]
         checks.append(dict(check=label, robot=row["robot"], status=row["status"]))
         return row
 
@@ -549,7 +556,8 @@ def main():
         row = done(
             lambda w: not w["busy"] and w["result"] and w["result"].get("kind") == kind,
             label + " adjudicated",
-            900 if a.transfer == "three" else 600,
+            180 if a.transfer == "three" else 600,
+            advancing=a.transfer == "three",
         )
         result = row["result"]
         if a.pickup_motion:

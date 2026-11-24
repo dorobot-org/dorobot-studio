@@ -148,6 +148,12 @@ def native_journey(args, checks, page, click, remote, done, grab):
         f"Prepared transfer for {order}",
         180,
     )
+    page("scene")
+    if state["layout_seed"] != 0:
+        click("aisle_scene.layout0")
+        state = done(
+            lambda w: w["layout_seed"] == 0, "Selected wrist regression layout 0"
+        )
     outcomes = []
     for mode, button in [
         ("normal", "on_time"),
@@ -168,9 +174,11 @@ def native_journey(args, checks, page, click, remote, done, grab):
             and w["selected"] != previous
             and (w.get("result") or {}).get("wrist_timing", {}).get("fixture") == mode,
             mode + " wrist transfer measured",
-            900 if three else 360,
+            180 if three else 360,
+            advancing=three,
         )
         outcome = audit(Path(state["selected"]))
+        assert state["result"]["seed"] == 0
         assert state["result"]["requested"] == order.split(",")
         assert outcome["task_success"] == (mode != "disconnected")
         outcomes.append(outcome)

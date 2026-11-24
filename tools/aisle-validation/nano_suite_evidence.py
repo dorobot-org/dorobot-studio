@@ -1,11 +1,15 @@
 """Archive or independently open a disclosed Nano holdout and replay its motor records."""
 
 import argparse
+from io import BytesIO
+import math
 import json
 from pathlib import Path
 from shutil import copyfileobj
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from zipfile import ZIP_DEFLATED, ZipFile
+
+import numpy as np
 
 from nano_transfer_suite import MODEL, read, signature, summarize, worker
 
@@ -45,15 +49,99 @@ def pack(directory, output):
             for path in files:
                 if path.is_file():
                     archive.write(path, str(path.relative_to(directory)))
-    return worker.digest(output)
+    digest = worker.digest(output)
+    with NamedTemporaryFile(mode="w", dir=output.parent, delete=False) as receipt:
+        receipt.write(digest + "\n")
+    Path(receipt.name).replace(output.with_suffix(output.suffix + ".sha256"))
+    return digest
 
 
-def verify(archive_path, expected_manifest, include_trials=False, *, comparison=False):
+def verify_release_packet(raw, calibration, action):
+    """Check the on-board packet against the journal and calibrated sensor shapes."""
+    shapes = {"stamp_ns": (), "encoders": (len(calibration["joint_names"]),)}
+    for camera in ("head", "left_wrist", "right_wrist"):
+        w, h = calibration["cameras"][camera]["resolution"]
+        shapes[camera] = (h, w, 3)
+    with ZipFile(BytesIO(raw)) as packet:
+        if (
+            sorted(packet.namelist()) != sorted(name + ".npy" for name in shapes)
+            or sum(member.file_size for member in packet.infolist()) > 12_000_000
+        ):
+            raise ValueError("Unexpected release sensor channels or packet size")
+        for name, expected_shape in shapes.items():
+            info = packet.getinfo(name + ".npy")
+            with packet.open(info) as member:
+                if np.lib.format.read_magic(member) != (1, 0):
+                    raise ValueError("Unexpected release sensor array format")
+                shape, _, dtype = np.lib.format.read_array_header_1_0(member)
+                types = {"stamp_ns": ("int64",), "encoders": ("float32", "float64")}
+                size = math.prod(expected_shape) * dtype.itemsize
+                if (
+                    shape != expected_shape
+                    or dtype.name not in types.get(name, ("uint8",))
+                    or info.file_size != member.tell() + size
+                ):
+                    raise ValueError("Release sensor array disagrees with calibration")
+                payload = member.read(size)
+                if len(payload) != size:
+                    raise ValueError("Incomplete release sensor data")
+                if name == "stamp_ns":
+                    stamp = np.frombuffer(payload, dtype=dtype).item()
+                    if (
+                        stamp != action["stamp_ns"]
+                        or stamp != action["tick"] * 10_000_000
+                    ):
+                        raise ValueError(
+                            "Release exposure timestamp differs from its action"
+                        )
+                if (
+                    name == "encoders"
+                    and not np.isfinite(np.frombuffer(payload, dtype=dtype)).all()
+                ):
+                    raise ValueError("Release encoder sample is nonfinite")
+
+
+def verify(
+    archive_path,
+    expected_manifest,
+    include_trials=False,
+    *,
+    comparison=False,
+    expected_archive=None,
+):
     with ZipFile(archive_path) as archive, TemporaryDirectory() as name:
         tmp = Path(name)
         names = set(archive.namelist())
         if len(names) != len(archive.infolist()):
             raise ValueError("Evaluation archive has duplicate file names")
+        captures = {key for key in names if "/release-observations/" in key}
+        receipt = archive_path.with_suffix(archive_path.suffix + ".sha256")
+        pinned = read(Path(__file__).with_name("nano_published_outputs.json")).get(
+            expected_manifest
+        )
+        integrity = "Operator-supplied archive digest"
+        if pinned is not None:
+            if expected_archive is not None and expected_archive != pinned:
+                raise ValueError(
+                    "Archive SHA-256 differs from the published output receipt"
+                )
+            expected_archive = pinned
+            integrity = "Published Studio output digest"
+        elif expected_archive is None and receipt.is_file():
+            expected_archive = receipt.read_text().strip()
+            integrity = "Local output receipt"
+        if captures and not expected_archive:
+            raise ValueError(
+                "A trusted archive SHA-256 is required for the recorded release exposures"
+            )
+        archive_digest = None
+        if expected_archive is not None:
+            archive_digest = worker.digest(archive_path)
+            if archive_digest != expected_archive:
+                raise ValueError(
+                    "Archive SHA-256 differs from the published output receipt"
+                )
+        marked_captures = set()
         expanded = 0
 
         def copy_member(key, output, limit):
@@ -94,6 +182,36 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
                 key = f"{case.name}/{file}"
                 if key in names:
                     copy_member(key, case / file, 16 * 1024**2)
+            journal = case / "actions.jsonl"
+            if journal.is_file():
+                with journal.open("rb") as actions:
+                    for line in actions:
+                        if b'"release observation"' in line:
+                            action = json.loads(line)
+                            if action.get("op") == "release observation":
+                                key = f"{case.name}/release-observations/{action['tick']:06}.npz"
+                                if (
+                                    key not in captures
+                                    or archive.getinfo(key).file_size > 12_000_000
+                                ):
+                                    raise ValueError(
+                                        "Missing or oversized release exposure"
+                                    )
+                                expanded += archive.getinfo(key).file_size
+                                if expanded > 1024**3:
+                                    raise ValueError(
+                                        "Release records exceed the batch evidence size limit"
+                                    )
+                                verify_release_packet(
+                                    archive.read(key),
+                                    read(case / "calibration.json"),
+                                    action,
+                                )
+                                marked_captures.add(key)
+        if captures != marked_captures:
+            raise ValueError(
+                "Release exposure files differ from the marked action timestamps"
+            )
         summary = summarize(tmp, expected_manifest, manifest, members)
         replayed = read(tmp / "report.json")
         if manifest["split"] == "development":
@@ -106,6 +224,9 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
                         actual.pop(field, None)
         if replayed != reported:
             raise ValueError("Independent per-case or cohort score differs")
+        if captures:
+            summary["release_exposures"] = len(captures)
+            summary["archive_integrity"] = integrity
         if include_trials:
             n = summary["cases"]
             p = summary["successes"] / n
@@ -176,7 +297,7 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
             summary.update(
                 interval_95=[max(0.0, center - radius), min(1.0, center + radius)],
                 failures=failures,
-                archive_sha256=worker.digest(archive_path),
+                archive_sha256=archive_digest or worker.digest(archive_path),
                 requirement=manifest["success_requirement"],
             )
         if comparison:
@@ -185,7 +306,7 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
                 color_order=manifest["color_order"],
                 inputs=manifest["inputs"],
                 rows=replayed["rows"],
-                archive_sha256=worker.digest(archive_path),
+                archive_sha256=archive_digest or worker.digest(archive_path),
             )
         return summary
 
@@ -275,6 +396,10 @@ def main():
     audit = commands.add_parser("verify")
     audit.add_argument("archive", type=Path)
     audit.add_argument("--manifest-sha256", required=True)
+    audit.add_argument(
+        "--archive-sha256",
+        help="Trusted digest of the completed archive including camera captures",
+    )
     pair = commands.add_parser(
         "compare", help="Independently replay and pair two Nano archives by seed"
     )
@@ -298,7 +423,16 @@ def main():
             )
         )
     else:
-        print(json.dumps(verify(args.archive, args.manifest_sha256), indent=2))
+        print(
+            json.dumps(
+                verify(
+                    args.archive,
+                    args.manifest_sha256,
+                    expected_archive=args.archive_sha256,
+                ),
+                indent=2,
+            )
+        )
 
 
 if __name__ == "__main__":
