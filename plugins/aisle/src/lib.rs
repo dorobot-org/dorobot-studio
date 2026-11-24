@@ -1029,9 +1029,7 @@ impl PluginPanel for Panel {
             "aisle_run" => self.run(cx, w),
             _ => {
                 let decision = w.decision.is_some();
-                let can_pin = w.evidence["kind"] == "table-transfer"
-                    && w.evidence["room_revision_sha256"].is_string()
-                    && w.evidence["task_success"].is_boolean();
+                let can_pin = w.can_pin_room();
                 let pinned = w.room_baseline.is_some();
                 let show_baseline = !decision && !w.show_evaluation && !w.show_device && (can_pin || pinned);
                 self.root.widget(cx, ids!(room_baseline)).set_visible(cx, show_baseline);
