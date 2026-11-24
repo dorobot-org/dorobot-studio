@@ -5,10 +5,12 @@
 //! only queues `(topic, payload)`, so it never blocks Zenoh; when the queue is
 //! full (`RING_CAP` payloads or `INBOX_BYTES_CAP` bytes) the oldest payloads
 //! are evicted and counted as dropped. A sink that panics is replaced by a
-//! discarding one; receiving goes on.
+//! discarding one; receiving goes on. Only that thread calls the sink: other
+//! sink work (clearing an entity switched off) is queued in the state and
+//! done there before the next message.
 
 use crate::nav_scene::NavScene;
-use crate::route::{self, EntityInfo, SessionState, Sink, Visual};
+use crate::route::{self, EntityInfo, SessionState, Sink, SinkAction, Visual};
 use dviz_protocol::{GraphEdge, GraphNode, LogEntry, MvizMessage};
 use std::{
     any::Any,
@@ -98,7 +100,7 @@ pub struct SessionSnapshot {
     pub entities: BTreeMap<String, EntityInfo>,
     pub dropped: u64,
     pub malformed: u64,
-    /// Visual messages the sink rejected or panicked on.
+    /// Visual messages and clears the sink rejected or panicked on.
     pub sink_errors: u64,
     pub received: u64,
     pub nav: NavScene,
@@ -279,6 +281,10 @@ impl DvizSession {
         Ok(())
     }
 
+    /// Turns sink delivery for `entity` on or off. Switching it off only
+    /// queues a clear: the receiver thread hands it to the sink before its
+    /// next message, or within `POLL` when idle, so this never waits for the
+    /// sink. While no receiver runs (disconnected), it waits for the next one.
     pub fn set_entity_enabled(&self, entity: &str, enabled: bool) {
         lock(&self.shared.state).set_entity_enabled(entity, enabled);
     }
@@ -375,6 +381,9 @@ fn run(
         }
         let retry_at = Instant::now() + RETRY_DELAY;
         while Instant::now() < retry_at && !stop.load(Ordering::Relaxed) {
+            // Switch-offs still clear while Zenoh is down.
+            let actions = take_actions(shared, stop);
+            apply(shared, stop, &actions, None);
             thread::sleep(POLL);
         }
     }
@@ -434,7 +443,7 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
         let item = next
             .as_ref()
             .map(|(topic, payload)| (topic, payload.to_bytes()));
-        let visual = {
+        let (actions, visual) = {
             let mut state = lock(&shared.state);
             // Checked under the lock: once `connect` has stopped this
             // receiver, it may have cleared the state for other options.
@@ -443,34 +452,68 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
             }
             state.dropped += dropped;
             state.malformed += oversized;
-            match &item {
+            let actions = state.take_sink_actions();
+            let visual = match &item {
                 Some((topic, bytes)) => route::accept(&mut state, &options.prefix, topic, bytes),
                 None => None,
-            }
+            };
+            (actions, visual)
         };
         // The sink may be slow; the state lock is not held across it.
-        if let Some(visual) = visual {
-            if !deliver(shared, &visual) {
-                let mut state = lock(&shared.state);
-                if !stop.load(Ordering::Relaxed) {
-                    state.sink_errors += 1;
-                }
-            }
-        }
+        apply(shared, stop, &actions, visual.as_ref());
     }
     subscriber.undeclare().wait()?;
     session.close().wait()
 }
 
-/// Hands `visual` to the sink; false if the sink rejected it or panicked. A
+/// The queued sink work, unless this receiver has been stopped (the state
+/// may then belong to other options).
+fn take_actions(shared: &Shared, stop: &AtomicBool) -> VecDeque<SinkAction> {
+    let mut state = lock(&shared.state);
+    if stop.load(Ordering::Relaxed) {
+        return VecDeque::new();
+    }
+    state.take_sink_actions()
+}
+
+/// Hands `actions` and then `visual` to the sink, without the state lock,
+/// and counts what failed in `sink_errors`. The actions go first: they were
+/// queued before `visual` was accepted, so a clear only removes older data,
+/// also when its entity has been switched on again since.
+fn apply(
+    shared: &Shared,
+    stop: &AtomicBool,
+    actions: &VecDeque<SinkAction>,
+    visual: Option<&Visual<'_>>,
+) {
+    let mut failed = 0;
+    for action in actions {
+        if !with_sink(shared, |sink| action.apply(sink)) {
+            failed += 1;
+        }
+    }
+    if let Some(visual) = visual {
+        if !with_sink(shared, |sink| {
+            sink.log(&visual.entity, &visual.msg, visual.binary)
+        }) {
+            failed += 1;
+        }
+    }
+    if failed > 0 {
+        let mut state = lock(&shared.state);
+        if !stop.load(Ordering::Relaxed) {
+            state.sink_errors += failed;
+        }
+    }
+}
+
+/// Runs `call` on the sink; false if the sink rejected it or panicked. A
 /// sink that panics is replaced by a discarding one and the 3D window is
 /// reported as failed, so the receiver goes on.
-fn deliver(shared: &Shared, visual: &Visual<'_>) -> bool {
+fn with_sink(shared: &Shared, call: impl FnOnce(&mut dyn Sink) -> Result<(), String>) -> bool {
     let (crashed, message) = {
         let mut sink = lock(&shared.sink);
-        let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
-            sink.log(&visual.entity, &visual.msg, visual.binary)
-        }));
+        let outcome = panic::catch_unwind(AssertUnwindSafe(|| call(&mut **sink)));
         match outcome {
             Ok(delivered) => return delivered.is_ok(),
             // Under the same lock, so this is the sink that panicked.

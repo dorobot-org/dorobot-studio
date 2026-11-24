@@ -7,7 +7,10 @@ use dviz_protocol::{binary_formats, serialize_message, MvizMessage};
 use serde_json::{json, Value};
 use std::{
     net::TcpListener,
-    sync::atomic::{AtomicBool, AtomicU32, Ordering},
+    sync::{
+        atomic::{AtomicBool, AtomicU32, Ordering},
+        Arc, Mutex,
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -642,4 +645,132 @@ fn reconnect_elsewhere_clears_state() {
     let snapshot = session.snapshot();
     assert_eq!(snapshot.entities["world/scan"].count, 1);
     assert_eq!(snapshot.received, 1);
+}
+
+/// What a sink was asked to do, and on which thread.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SinkCall {
+    kind: &'static str,
+    entity: String,
+    thread: Option<String>,
+}
+
+/// Records every call with the name of the thread it ran on.
+#[derive(Clone, Default)]
+struct ThreadRecordingSink(Arc<Mutex<Vec<SinkCall>>>);
+
+impl ThreadRecordingSink {
+    fn record(&self, kind: &'static str, entity: &str) {
+        self.0.lock().unwrap().push(SinkCall {
+            kind,
+            entity: entity.to_string(),
+            thread: thread::current().name().map(str::to_string),
+        });
+    }
+
+    fn calls(&self, kind: &str, entity: &str) -> Vec<SinkCall> {
+        self.0
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|call| call.kind == kind && call.entity == entity)
+            .cloned()
+            .collect()
+    }
+}
+
+impl Sink for ThreadRecordingSink {
+    fn log(&mut self, entity: &str, _: &MvizMessage, _: Option<&[u8]>) -> Result<(), String> {
+        self.record("log", entity);
+        Ok(())
+    }
+
+    fn clear(&mut self, entity: &str) -> Result<(), String> {
+        self.record("clear", entity);
+        Ok(())
+    }
+}
+
+#[test]
+fn disable_sends_clear_from_the_worker_once() {
+    let prefix = "dviz_test_clear";
+    let (session, peer) = linked_session(prefix);
+    let sink = ThreadRecordingSink::default();
+    session.set_sink(Box::new(sink.clone()));
+    let lidar = matched_publisher(&peer, format!("{prefix}/world/lidar"));
+    lidar.put(points()).wait().unwrap();
+    assert!(
+        wait_until(SETTLE, || sink.calls("log", "world/lidar").len() == 1),
+        "{:?}",
+        session.snapshot()
+    );
+
+    // From this (the test's) thread, with no traffic: the idle worker clears.
+    session.set_entity_enabled("world/lidar", false);
+    session.set_entity_enabled("world/lidar", false);
+    assert!(
+        wait_until(Duration::from_secs(1), || !sink
+            .calls("clear", "world/lidar")
+            .is_empty()),
+        "no clear within 1 s"
+    );
+    thread::sleep(Duration::from_millis(300));
+    let clears = sink.calls("clear", "world/lidar");
+    assert_eq!(clears.len(), 1, "{clears:?}");
+    let me = thread::current().name().map(str::to_string);
+    assert_ne!(clears[0].thread, me, "cleared on the caller's thread");
+    assert_eq!(
+        clears[0].thread.as_deref(),
+        Some("dviz-zenoh"),
+        "not the worker"
+    );
+
+    // Switched off, its messages are counted but not sent.
+    lidar.put(points()).wait().unwrap();
+    assert!(wait_until(SETTLE, || session.snapshot().entities
+        ["world/lidar"]
+        .count
+        == 2));
+    assert_eq!(sink.calls("log", "world/lidar").len(), 1);
+
+    // Switched on again, the next message is sent as before, with no clear.
+    session.set_entity_enabled("world/lidar", true);
+    lidar.put(points()).wait().unwrap();
+    assert!(
+        wait_until(SETTLE, || sink.calls("log", "world/lidar").len() == 2),
+        "{:?}",
+        session.snapshot()
+    );
+    assert_eq!(sink.calls("clear", "world/lidar").len(), 1);
+    assert_eq!(session.snapshot().sink_errors, 0);
+}
+
+#[test]
+fn disable_clears_while_zenoh_is_down() {
+    // A client with nothing to connect to: Zenoh fails to open, and the
+    // receiver waits to retry.
+    let endpoint = format!("tcp/127.0.0.1:{}", free_port());
+    let session = DvizSession::new();
+    let sink = ThreadRecordingSink::default();
+    session.set_sink(Box::new(sink.clone()));
+    session
+        .connect(connect_options("client", &endpoint))
+        .unwrap();
+    assert!(
+        wait_until(SETTLE, || session.snapshot().last_error.is_some()),
+        "{:?}",
+        session.snapshot()
+    );
+
+    // Cleared between attempts: at most one blocked open (the 1 s connect
+    // timeout) later.
+    session.set_entity_enabled("world/lidar", false);
+    assert!(
+        wait_until(STOP_WAIT, || !sink.calls("clear", "world/lidar").is_empty()),
+        "no clear while Zenoh is down"
+    );
+    let clears = sink.calls("clear", "world/lidar");
+    assert_eq!(clears.len(), 1, "{clears:?}");
+    assert_eq!(clears[0].thread.as_deref(), Some("dviz-zenoh"));
+    session.disconnect();
 }

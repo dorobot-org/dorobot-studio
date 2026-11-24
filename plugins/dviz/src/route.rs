@@ -1,11 +1,14 @@
 //! Routing of one dviz payload into the session state and the visual sink.
 
-use crate::nav_scene::{nav_layer, NavScene};
+use crate::nav_scene::{nav_layer, NavLayer, NavScene};
 use dviz_protocol::{
     parse_message, GraphEdge, GraphNode, GraphUpdate, LogData, LogEntry, LogLevel, MvizMessage,
     NodeDefinition,
 };
-use std::collections::{BTreeMap, VecDeque};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    mem,
+};
 
 /// Most log entries kept; older ones are pushed out.
 pub const LOG_CAP: usize = 500;
@@ -16,18 +19,49 @@ pub const LOG_TEXT_CAP: usize = 2048;
 pub trait Sink: Send {
     fn log(&mut self, entity: &str, msg: &MvizMessage, binary: Option<&[u8]>)
         -> Result<(), String>;
+
+    /// Removes what is shown for `entity` and everything below it. Called
+    /// when the entity is switched off, on the session's worker thread like
+    /// `log` (never on the UI thread).
+    fn clear(&mut self, _entity: &str) -> Result<(), String> {
+        Ok(())
+    }
 }
 
-/// Records `(entity, msg_type)` for every call; for tests. It keeps every
-/// call, so the session's default sink is a discarding one instead.
+/// Sink work that does not come with a received payload. `SessionState`
+/// queues it; the session's worker hands it to the sink before the next
+/// message, so the UI thread never calls the sink.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum SinkAction {
+    /// `Sink::clear` of this entity.
+    Clear(String),
+}
+
+impl SinkAction {
+    pub(crate) fn apply(&self, sink: &mut dyn Sink) -> Result<(), String> {
+        match self {
+            SinkAction::Clear(entity) => sink.clear(entity),
+        }
+    }
+}
+
+/// Records `(entity, msg_type)` for every `log` and the entity of every
+/// `clear`; for tests. It keeps every call, so the session's default sink
+/// is a discarding one instead.
 #[derive(Debug, Default)]
 pub struct CountingSink {
     pub calls: Vec<(String, String)>,
+    pub clears: Vec<String>,
 }
 
 impl Sink for CountingSink {
     fn log(&mut self, entity: &str, msg: &MvizMessage, _: Option<&[u8]>) -> Result<(), String> {
         self.calls.push((entity.to_string(), msg.msg_type.clone()));
+        Ok(())
+    }
+
+    fn clear(&mut self, entity: &str) -> Result<(), String> {
+        self.clears.push(entity.to_string());
         Ok(())
     }
 }
@@ -38,6 +72,18 @@ pub struct EntityInfo {
     pub enabled: bool,
     pub count: u64,
     pub msg_type: String,
+}
+
+impl EntityInfo {
+    /// A newly seen entity: on, except the PCD map (`map/cloud`), which is
+    /// large and only sent once someone switches it on.
+    fn new(entity: &str) -> Self {
+        Self {
+            enabled: nav_layer(entity) != Some(NavLayer::MapCloud),
+            count: 0,
+            msg_type: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -51,29 +97,41 @@ pub struct SessionState {
     pub dropped: u64,
     /// Payloads that could not be parsed, or were refused as too large.
     pub malformed: u64,
-    /// Visual messages the sink rejected or panicked on.
+    /// Visual messages and clears the sink rejected or panicked on.
     pub sink_errors: u64,
     /// Payloads routed.
     pub received: u64,
     /// The latest navigation layers.
     pub nav: NavScene,
+    /// Sink work waiting for the next routing, oldest first; at most one
+    /// clear per entity.
+    pub(crate) sink_actions: VecDeque<SinkAction>,
 }
 
 impl SessionState {
-    /// Turns sink delivery for `entity` on or off; counting goes on either way.
+    /// Turns sink delivery for `entity` on or off; counting goes on either
+    /// way. Switching it off also queues a clear of what the sink shows for
+    /// it, which the next routing (the session's worker) carries out.
     pub fn set_entity_enabled(&mut self, entity: &str, enabled: bool) {
-        self.entities
+        let info = self
+            .entities
             .entry(entity.to_string())
-            .or_insert_with(|| EntityInfo {
-                enabled: true,
-                count: 0,
-                msg_type: String::new(),
-            })
-            .enabled = enabled;
+            .or_insert_with(|| EntityInfo::new(entity));
+        let was_enabled = mem::replace(&mut info.enabled, enabled);
+        let clear = SinkAction::Clear(entity.to_string());
+        if was_enabled && !enabled && !self.sink_actions.contains(&clear) {
+            self.sink_actions.push_back(clear);
+        }
+    }
+
+    /// The queued sink work, oldest first, leaving none queued.
+    pub(crate) fn take_sink_actions(&mut self) -> VecDeque<SinkAction> {
+        mem::take(&mut self.sink_actions)
     }
 }
 
-/// Routes one payload received on `topic`: logs and graph messages update
+/// Routes one payload received on `topic`: first the queued sink work (such
+/// as clears of entities switched off), then logs and graph messages update
 /// `state`; any other type registers its entity and, if that entity is
 /// enabled, goes to `sink`.
 pub fn route(
@@ -83,6 +141,11 @@ pub fn route(
     topic: &str,
     payload: &[u8],
 ) {
+    for action in state.take_sink_actions() {
+        if action.apply(sink).is_err() {
+            state.sink_errors += 1;
+        }
+    }
     if let Some(visual) = accept(state, prefix, topic, payload) {
         if sink
             .log(&visual.entity, &visual.msg, visual.binary)
@@ -135,11 +198,7 @@ pub(crate) fn accept<'a>(
             let info = state
                 .entities
                 .entry(entity.to_string())
-                .or_insert_with(|| EntityInfo {
-                    enabled: true,
-                    count: 0,
-                    msg_type: String::new(),
-                });
+                .or_insert_with(|| EntityInfo::new(entity));
             info.count += 1;
             if info.msg_type != msg.msg_type {
                 info.msg_type.clone_from(&msg.msg_type);
@@ -287,6 +346,10 @@ mod tests {
         fn log(&mut self, _: &str, _: &MvizMessage, _: Option<&[u8]>) -> Result<(), String> {
             Err("bad points".into())
         }
+
+        fn clear(&mut self, _: &str) -> Result<(), String> {
+            Err("cannot clear".into())
+        }
     }
 
     #[test]
@@ -338,6 +401,70 @@ mod tests {
         state.set_entity_enabled("world/lidar", true);
         route(&mut state, &mut sink, "dviz", "dviz/world/lidar", &points());
         assert_eq!(sink.calls.len(), 2);
+    }
+
+    #[test]
+    fn map_cloud_disabled_by_default() {
+        for (topic, entity) in [
+            ("dviz/tracer/map/cloud", "tracer/map/cloud"),
+            ("dviz/map/cloud", "map/cloud"),
+        ] {
+            let mut state = SessionState::default();
+            let mut sink = CountingSink::default();
+            route(&mut state, &mut sink, "dviz", topic, &points());
+            let info = &state.entities[entity];
+            assert!(!info.enabled, "{entity} is on by default");
+            assert_eq!(info.count, 1);
+            assert!(sink.calls.is_empty(), "{entity} reached the sink");
+
+            // Switched on, it is sent like any other entity.
+            state.set_entity_enabled(entity, true);
+            route(&mut state, &mut sink, "dviz", topic, &points());
+            assert_eq!(sink.calls, calls(&[(entity, "points3d")]));
+        }
+        // The live cloud stays on.
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        route(
+            &mut state,
+            &mut sink,
+            "dviz",
+            "dviz/tracer/sensors/cloud",
+            &points(),
+        );
+        assert!(state.entities["tracer/sensors/cloud"].enabled);
+    }
+
+    #[test]
+    fn switching_off_clears_once_before_the_next_message() {
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        route(&mut state, &mut sink, "dviz", "dviz/world/lidar", &points());
+        // Twice off is one switch-off; on and off again is another.
+        state.set_entity_enabled("world/lidar", false);
+        state.set_entity_enabled("world/lidar", false);
+        assert!(sink.clears.is_empty(), "cleared before the next routing");
+        route(&mut state, &mut sink, "dviz", "dviz/logs", &log_line(0));
+        assert_eq!(sink.clears, ["world/lidar"]);
+        route(&mut state, &mut sink, "dviz", "dviz/logs", &log_line(1));
+        assert_eq!(sink.clears, ["world/lidar"], "cleared again");
+
+        // Switching on clears nothing; the next message is sent again.
+        state.set_entity_enabled("world/lidar", true);
+        route(&mut state, &mut sink, "dviz", "dviz/world/lidar", &points());
+        assert_eq!(sink.clears.len(), 1);
+        assert_eq!(sink.calls.len(), 2);
+
+        // A sink that fails to clear is counted like any other sink error.
+        state.set_entity_enabled("world/lidar", false);
+        route(
+            &mut state,
+            &mut FailingSink,
+            "dviz",
+            "dviz/logs",
+            &log_line(2),
+        );
+        assert_eq!(state.sink_errors, 1);
     }
 
     #[test]
