@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+from bisect import bisect_right
 from pathlib import Path
 import sys
 
@@ -74,6 +75,60 @@ def retained_background(root, jobs, foreground):
         background_id=background,
         observation_ticks=[o["tick"] for o in observations],
         snapshot=snapshot,
+    )
+
+
+def verify_camera_rate(args, wait):
+    """Recompute the native label from the exact draw used to update its text."""
+    control = "aisle_run.camera_label"
+    title = "Foreground worker camera · "
+
+    def live(report):
+        label = report["controls"][control]
+        return (
+            label["visible"]
+            and label["text"].startswith(title)
+            and label["text"].endswith(" FPS")
+            and report["state"].get("aisle_camera_label_draw_ns") is not None
+        )
+
+    first_reading = wait(live, "Run displayed a foreground frame rate", 60)
+    ready = first_reading["state"]["aisle_camera_label_draw_ns"] + 2_000_000_000
+    ui = wait(
+        lambda report: live(report)
+        and report["state"]["aisle_camera_label_draw_ns"] >= ready,
+        "Run displayed a full window of foreground draws",
+        60,
+    )
+    endpoint = ui["state"]["aisle_camera_label_draw_ns"]
+    label = ui["controls"][control]["text"]
+    ticks, times = [], []
+    source = None
+    with (args.out / "journey-draws.jsonl").open("rb") as trace:
+        for line in trace:
+            draw = json.loads(line)
+            if draw["source"] != source or (ticks and draw["tick"] < ticks[-1]):
+                ticks.clear()
+                times.clear()
+                source = draw["source"]
+            if not ticks or draw["tick"] != ticks[-1]:
+                ticks.append(draw["tick"])
+                times.append(draw["elapsed_ns"])
+            if draw["elapsed_ns"] >= endpoint:
+                break
+    assert times and times[-1] == endpoint, "No draw for the displayed label timestamp"
+    first = bisect_right(times, endpoint - 2_000_000_000)
+    span = (endpoint - times[first]) / 1e9
+    intervals = len(times) - first - 1
+    assert span >= 0.5 and label == f"{title}{intervals / span:.1f} FPS"
+    return dict(
+        check="Visible Run page FPS matched native draw timestamps",
+        label=label,
+        first_tick=ticks[first],
+        last_tick=ticks[-1],
+        label_draw_ns=endpoint,
+        intervals=intervals,
+        seconds=span,
     )
 
 
@@ -317,6 +372,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             "Foreground stream delivered measured RGB",
             120,
         )
+        checks.append(verify_camera_rate(args, wait))
         result, backgrounds = while_streaming(args, foreground, done, grab)
         origin, trial = import_and_replay(foreground, result)
         cadence = verify_viewport(
@@ -344,6 +400,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         "Received a later frame",
         180,
     )
+    checks.append(verify_camera_rate(args, wait))
     grab("foreground")
     if args.fleet_controller:
         (prepared,) = (args.out.parent / "state/aisle").glob(
@@ -406,6 +463,10 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     assert selected(sample)["observation_period_s"] == period
     if args.background_clock == "simulation":
         assert snapshot["tick"] % (100 * period) == 0
+    wait(
+        lambda r: r["controls"]["aisle_run.camera_label"]["text"] == "Background RGB snapshot",
+        "Background snapshot is labeled separately from live FPS",
+    )
     grab("background-snapshot")
     grab("overlap")
     run_button("cancel_job")

@@ -1,0 +1,13 @@
+{
+  "studio_build": "macOS arm64",
+  "studio_sha256": "c89f404b2e4970acd376e0099a1020a00850619c1d0f200814129cf736fbca42",
+  "source_commit": "287c140839324f1e04e2543b18cd4e27e0243e3d",
+  "source_sha256": {
+    "crates/dorobot-studio-core/src/widgets/video_player.rs": "35586f002d05cc696124771488d8b9e0b82a8a22a387aec725ae0d1d2540bb98",
+    "crates/dorobot-studio-core/src/api/aisle.rs": "7bdea6704ea91fa0eb9cb57508573c96b1d9cb4e35e795535fc1251218ddf8e3",
+    "dorobot-flex/src/bin/dorobot-flex.rs": "a168e6aa32ed731b2d56008e95568ebf9e0a1a8af0d22e19a6311b83e4b24fb3",
+    "plugins/aisle/src/lib.rs": "6bdce54813ca55d541482eac617017014cabe9af5691a3c15652bbdf0e479c59",
+    "tools/aisle_workbench/fleet_check.py": "89accab7f9202fe68400aefdea82f699db63a31b1303a229c9c409cce70a5d3f"
+  },
+  "h100_worker": "Linux x86_64 with the qualified Nexus 0.2.1 wheel"
+}

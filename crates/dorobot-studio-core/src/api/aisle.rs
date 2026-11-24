@@ -706,6 +706,9 @@ impl Workbench {
     pub fn busy(&self) -> bool {
         self.job.is_some()
     }
+    pub fn running_local_trial(&self) -> bool {
+        self.job.as_ref().is_some_and(|job| job.op == "run")
+    }
     pub fn preflighting(&self) -> bool {
         self.job
             .as_ref()

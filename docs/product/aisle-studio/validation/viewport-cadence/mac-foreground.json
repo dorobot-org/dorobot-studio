@@ -1,0 +1,143 @@
+{
+  "physical_hosts": 2,
+  "foreground": {
+    "worker_backend": "metal",
+    "studio_backend": "offscreen",
+    "job": "2471b99c-7b73-4c27-aeac-aa7c7da9458e",
+    "task_success": true,
+    "frames_per_camera": 630
+  },
+  "observer": {
+    "worker_backend": "webgpu",
+    "author": "DeepSeek through Octos",
+    "job": "bb95bc61-e521-4cd5-a21f-f888a45f739e",
+    "task_success": true
+  },
+  "window_start_ns": 1899310433267250,
+  "seconds": 30,
+  "draw_fps": 29.4,
+  "received_hz": 2.0,
+  "passed_seconds": 30,
+  "per_second": [
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 27,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 28,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 28,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 31,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 28,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 31,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 29,
+      "received": 2
+    },
+    {
+      "draws": 30,
+      "received": 2
+    },
+    {
+      "draws": 28,
+      "received": 2
+    }
+  ]
+}

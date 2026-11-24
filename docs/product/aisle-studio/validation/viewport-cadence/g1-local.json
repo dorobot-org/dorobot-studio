@@ -1,0 +1,205 @@
+{
+  "kind": "standing-inspection",
+  "fixture": "standing-impact-development",
+  "robot": "G1",
+  "controller_hash": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88",
+  "task_success": true,
+  "steps": 2000,
+  "both_feet_loaded_steps": 2000,
+  "frames": 101,
+  "disturbance": {
+    "contacts": 2,
+    "normal_impulse_sum_ns": 0.13376372680068016,
+    "links": [
+      "torso_link"
+    ],
+    "recovery_s": 0.5,
+    "last_contact_step": 609,
+    "recovered_step": 709,
+    "passed": true
+  },
+  "provider": "octos-deepseek",
+  "backend": "offscreen",
+  "native_binary_sha256": "c89f404b2e4970acd376e0099a1020a00850619c1d0f200814129cf736fbca42",
+  "trace_file_exists": false,
+  "labels": [
+    {
+      "label": "External operator camera",
+      "progress": null,
+      "busy": false
+    },
+    {
+      "label": "External operator camera \u00b7 Waiting for frames",
+      "progress": null,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 60,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.2 FPS",
+      "progress": 120,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 140,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.2 FPS",
+      "progress": 160,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 180,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 360,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.9 FPS",
+      "progress": 420,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 460,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.8 FPS",
+      "progress": 620,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.7 FPS",
+      "progress": 640,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.6 FPS",
+      "progress": 660,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.7 FPS",
+      "progress": 700,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.9 FPS",
+      "progress": 840,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 860,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 880,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 900,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1000,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1020,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1200,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1220,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1280,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1300,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1320,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1340,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1360,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1380,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1400,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1420,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.9 FPS",
+      "progress": 1660,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1680,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.9 FPS",
+      "progress": 1940,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1960,
+      "busy": true
+    },
+    {
+      "label": "External operator camera",
+      "progress": 2000,
+      "busy": false
+    }
+  ],
+  "recovery": [
+    "standing evidence restored"
+  ]
+}

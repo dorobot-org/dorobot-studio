@@ -283,6 +283,14 @@ impl Panel {
             }
         }
     }
+    fn camera_title(&self, cx: &mut Cx, title: &str, streaming: bool) {
+        if streaming {
+            let cadence = self.root.video_player(cx, ids!(camera)).live_cadence();
+            self.label(cx, ids!(camera_label), &format!("{title} · {cadence}"));
+        } else {
+            self.label(cx, ids!(camera_label), title);
+        }
+    }
     fn model(&mut self, cx: &mut Cx, w: &Workbench) {
         let p = w.robot.model();
         let viewer = self.root.robot_view(cx, ids!(robot));
@@ -385,9 +393,14 @@ impl Panel {
         } else {
             &w.fleet["sample"]
         };
-        self.label(
+        let directory = if stream {
+            &w.worker_preview
+        } else {
+            &w.worker_sample
+        };
+        self.show_camera(cx, directory.as_ref());
+        self.camera_title(
             cx,
-            ids!(camera_label),
             if stream {
                 "Foreground worker camera"
             } else if frame.is_object() {
@@ -395,16 +408,11 @@ impl Panel {
             } else {
                 "Choose Get snapshot to view the latest background RGB image"
             },
+            stream && active,
         );
-        let directory = if stream {
-            &w.worker_preview
-        } else {
-            &w.worker_sample
-        };
         self.root
             .widget(cx, ids!(sample_job))
             .set_visible(cx, selected["mode"] == "observations");
-        self.show_camera(cx, directory.as_ref());
         let compatible = w.prepared.is_some()
             && caps["robots"][w.robot.name()].is_string()
             && caps["robots"][w.robot.name()] == w.plan["model_hash"];
@@ -452,14 +460,15 @@ impl Panel {
         let standing = w.progress["kind"] == "standing-inspection";
         let transfer = w.progress["kind"] == "table-transfer";
         let mobile = transfer || w.progress["kind"] == "visual-approach";
-        self.label(
+        self.show_camera(cx, w.live.as_ref());
+        self.camera_title(
             cx,
-            ids!(camera_label),
             if mobile {
                 "Onboard head camera · RGB"
             } else {
                 "External operator camera"
             },
+            w.running_local_trial(),
         );
         self.label(
             cx,
@@ -474,7 +483,6 @@ impl Panel {
                 "Measured joint response"
             },
         );
-        self.show_camera(cx, w.live.as_ref());
         let text = if transfer {
             format!(
                 "{} cube · {}\n{:.1} s simulated",
