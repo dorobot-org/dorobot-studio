@@ -543,7 +543,7 @@ def simulate(args, meta):
         ),
     )
     if standing:
-        from g1_stand import simulate as standing_trial
+        from g1_stand import DEFAULT_IMPACT_AIM, simulate as standing_trial
 
         weights = None
         if "reach_checkpoint" in plan:
@@ -560,7 +560,7 @@ def simulate(args, meta):
             control,
             impact=impact,
             reach_weights=weights,
-            impact_aim=getattr(args, "impact_aim", "torso-v2"),
+            impact_aim=getattr(args, "impact_aim", DEFAULT_IMPACT_AIM),
             parameters=json.loads(impact_recipe.read_text()) if impact_recipe else None,
         ) | dict(
             **(
@@ -751,8 +751,8 @@ def main():
     p.add_argument("--dataset", type=Path)
     p.add_argument(
         "--impact-aim",
-        choices=["pelvis-v1", "torso-v2"],
-        default="torso-v2",
+        choices=["pelvis-v1", "torso-v2", "frontal-torso-v3"],
+        default="frontal-torso-v3",
         help="Calibration of the simulated G1 impact",
     )
     p.add_argument("--onboard-context", action="store_true")

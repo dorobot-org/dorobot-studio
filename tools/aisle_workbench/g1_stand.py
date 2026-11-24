@@ -24,9 +24,18 @@ def impact_parameters(values):
     return values
 
 
+DEFAULT_IMPACT_AIM = "frontal-torso-v3"
+
+
 def launch_position(recipe, aim):
     if aim == "pelvis-v1":
         return [0.29, recipe["lateral_m"], 0.16]
+    if aim == DEFAULT_IMPACT_AIM:
+        # With the standing controller engaged, the frontal torso hull reaches
+        # x=0.109 m at z=0.195 m. The 65 mm block touches around x=0.14 m.
+        # A 55 mm approach limits gravity-induced drop before frontal contact.
+        flight_s = (0.195 - 0.14) / recipe["speed_m_s"]
+        return [0.195, recipe["lateral_m"], 0.195 + 0.5 * 9.81 * flight_s**2]
     if aim != "torso-v2":
         raise ValueError("Unknown G1 impact calibration")
     # The neutral G1 torso collision mesh spans z=0.035..0.356 m in the pelvis
@@ -42,7 +51,7 @@ def simulate(
     impact=False,
     parameters=None,
     reach_weights=None,
-    impact_aim="torso-v2",
+    impact_aim=DEFAULT_IMPACT_AIM,
 ):
     from g1_reach_checkpoint import features
     from aisle.kinematics import load_urdf_chain
@@ -381,7 +390,7 @@ def simulate(
                 and recovery_s is not None
                 and recovery_s <= 2
                 and (
-                    impact_aim != "torso-v2"
+                    impact_aim == "pelvis-v1"
                     or any(row["link"] == "torso_link" for row in impact_rows)
                 )
             ),

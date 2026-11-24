@@ -18,6 +18,16 @@ class G1ReachTests(unittest.TestCase):
             self.assertAlmostEqual(z - 0.5 * 9.81 * ((x - 0.05) / speed) ** 2, 0.195)
             self.assertEqual(launch_position(recipe, "pelvis-v1"), [0.29, 0.011, 0.16])
 
+    def test_frontal_aim_clears_the_robot_and_compensates_drop_to_the_contact_plane(self):
+        for speed in (1.1, 1.2, 1.3):
+            recipe = dict(mass_kg=0.25, speed_m_s=speed, lateral_m=-0.015)
+            x, y, z = launch_position(recipe, "frontal-torso-v3")
+            self.assertEqual(y, recipe["lateral_m"])
+            self.assertAlmostEqual(x - 0.14, 0.055)
+            self.assertAlmostEqual(z - 0.5 * 9.81 * ((x - 0.14) / speed) ** 2, 0.195)
+        with self.assertRaises(ValueError):
+            launch_position(recipe, "unknown")
+
     def test_closed_envelope(self):
         recipe = dict(mass_kg=0.2, speed_m_s=1.3, lateral_m=-0.015)
         self.assertEqual(impact_parameters(recipe), recipe)
