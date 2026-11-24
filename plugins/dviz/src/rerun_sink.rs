@@ -277,8 +277,11 @@ const CLOUD_ALPHA: u8 = 153;
 /// Length (m) of the axes drawn at every `transform3d` entity.
 const TRANSFORM_AXIS_LENGTH: f32 = 0.3;
 /// The robot pose's heading arrow, `<pose>/heading`.
-const HEADING_LENGTH: f32 = 0.4;
-const HEADING_RADIUS: f32 = 0.015;
+const HEADING_LENGTH: f32 = 0.6;
+const HEADING_RADIUS: f32 = 0.04;
+/// Lifted above the costmap mesh (z = 0.01) and the grid lines (z = 0.002),
+/// so neither tints nor hides the arrow.
+const HEADING_Z: f32 = 0.05;
 const HEADING_COLOR: [u8; 4] = [255, 25, 0, 255];
 /// The goal's ring, `<goal>/ring`, in the goal's colour (this one when the
 /// message has none) and line radius (this one when it has none).
@@ -719,7 +722,7 @@ impl Sink for RerunSink {
                     // Below the pose, so it moves with it; on the timeline, so
                     // a Clear of the pose takes it too.
                     let heading = rerun::Arrows3D::from_vectors([[HEADING_LENGTH, 0.0, 0.0]])
-                        .with_origins([[0.0; 3]])
+                        .with_origins([[0.0, 0.0, HEADING_Z]])
                         .with_colors([rgba(HEADING_COLOR)])
                         .with_radii([HEADING_RADIUS]);
                     self.log_now(&format!("{entity}/heading"), &heading)?;
@@ -1580,17 +1583,17 @@ mod tests {
         let heading = of_entity(&batches, "tracer/robot/pose/heading");
         assert_eq!(
             f32_leaves(&heading, "Arrows3D:vectors").concat(),
-            [0.4, 0.0, 0.0]
+            [0.6, 0.0, 0.0]
         );
         assert_eq!(
             f32_leaves(&heading, "Arrows3D:origins").concat(),
-            [0.0, 0.0, 0.0]
+            [0.0, 0.0, 0.05]
         );
         assert_eq!(
             u32_leaves(&heading, "Arrows3D:colors"),
             [packed([255, 25, 0, 255])]
         );
-        assert_eq!(f32_leaves(&heading, "Arrows3D:radii"), [[0.015]]);
+        assert_eq!(f32_leaves(&heading, "Arrows3D:radii"), [[0.04]]);
         // Logged on the timeline with the pose, so a Clear of the pose takes it too.
         assert!(heading.iter().all(|b| !is_static(b)), "static heading");
 
