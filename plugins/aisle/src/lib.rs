@@ -441,6 +441,9 @@ impl PluginPanel for Panel {
                     )
                 };
                 let mut detail = detail;
+                if let Some(target) = w.plan["trunk_yaw_rad"].as_f64() {
+                    detail.push_str(&format!("\nWaist turn · {:.1}° left", target.to_degrees()));
+                }
                 if let Some(target) = w.plan["trunk_pitch_rad"].as_f64() {
                     detail.push_str(&format!(
                         "\nUpright trunk · waist pitch target {target:+.2} rad"
@@ -931,6 +934,18 @@ impl PluginPanel for Panel {
                             .unwrap_or_default()
                             * 100.
                     );
+                    if let Some(target) = w.evidence["trunk_yaw_target_rad"]
+                        .as_f64()
+                        .filter(|&v| v != 0.0)
+                    {
+                        if let Some(actual) = w.evidence["settled_trunk_yaw_rad"].as_f64() {
+                            summary.push_str(&format!(
+                                "\nWaist turn · {:.1}° requested · {:.1}° measured",
+                                target.to_degrees(),
+                                actual.to_degrees()
+                            ));
+                        }
+                    }
                     if w.evidence["trunk_pitch_target_rad"]
                         .as_f64()
                         .is_some_and(|v| v != 0.0)

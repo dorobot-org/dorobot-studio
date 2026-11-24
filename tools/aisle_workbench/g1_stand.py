@@ -138,6 +138,8 @@ def simulate(
     scene.build()
     floor_id = scene.gpu_index(0, floor.handles[0])
     ankles = [names.index(f"{s}_ankle_pitch_joint") for s in ("left", "right")]
+    waist_yaw = names.index("waist_yaw_joint")
+    heading = plan.get("trunk_yaw_rad", 0.0)
     waist_pitch = names.index("waist_pitch_joint")
     trunk_target = plan.get("trunk_pitch_rad", 0.0)
     shoulder = names.index(plan["joint"])
@@ -171,6 +173,7 @@ def simulate(
             physics_dt_s=dt,
             gravity_m_s2=-9.81,
             warmup_steps=warmup,
+            trunk_yaw_target_rad=heading,
             trunk_pitch_target_rad=trunk_target,
             floor_z_m=float(floor_z),
             disturbance=(
@@ -195,6 +198,7 @@ def simulate(
         pitch = np.arcsin(np.clip(2 * (w * y - z * x), -1, 1))
         desired = targets.copy()
         desired[waist_pitch] = trunk_target
+        desired[waist_yaw] = heading
         desired[ankles] = np.clip(
             2.5 * pitch + 0.23 * (pitch - previous_pitch) / dt, -0.4, 0.4
         )
@@ -420,6 +424,8 @@ def simulate(
         disturbance=disturbance,
         wrist_reach=reach,
         trunk_pitch_target_rad=trunk_target,
+        trunk_yaw_target_rad=heading,
+        settled_trunk_yaw_rad=float(np.mean(energy[-100:, 3, waist_yaw])),
         settled_trunk_pitch_rad=float(np.mean(energy[-100:, 3, waist_pitch])),
         estimated_positive_joint_work_j=positive_work,
         estimated_negative_joint_work_j=negative_work,
