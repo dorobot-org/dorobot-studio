@@ -50,7 +50,7 @@ Both planners completed **40/50** with normal camera delivery on the same 50 liv
 | Only three-view passed | 3 | The two-view policy stacked green on red on layout 34, and blue on green on layouts 40 and 49. Each upper cube finished about 40 mm above the lower cube, with zero direct tabletop contact in the final 100 ticks. |
 | Both failed | 7 | Both runs retain their individual physical measurements and failure reasons. |
 
-All 100 motor records verified across 2,720,952 physics ticks with zero measured guard bypasses. The 17-target motor journals were byte-identical on 21 of the 50 paired layouts. One pair also had identical high-level action logs, which record observation requests, phase changes, wheel commands and other policy operations. The physics trials ran on the Mac. The Mac and a Linux CPU independently replayed those saved motor records and produced the same comparison file (SHA-256 `690f8f8db8d802fbf5dfb2dfe52c1d10dae5d3773fb709f262d7f6197543a643`). The compact native Evidence page also opened the disclosed two-view suite and restored its development result after restart. The six changed verdicts explain the tradeoff behind the opt-in release decision.
+All 100 motor records verified across 2,720,952 physics ticks with zero measured guard bypasses. The 17-target motor journals were byte-identical on 21 of the 50 paired layouts. One pair also had identical high-level action logs, which record observation requests, phase changes, wheel commands and other policy operations. The physics trials ran on the Mac. The Mac and a Linux CPU independently replayed those saved motor records and produced the same comparison file (SHA-256 `690f8f8db8d802fbf5dfb2dfe52c1d10dae5d3773fb709f262d7f6197543a643`). The compact native Evidence page also opened the disclosed two-view suite and restored its development result after restart. The six changed verdicts explain the tradeoff behind the opt-in release decision. These 50 pairs compare the two frozen policy builds. The later operator-selectable build was exercised separately on layout 0 under all three delivery fixtures. [Selection runs](#verify-the-operator-selection)
 
 ## Mac capacity with the wrist monitor running
 
@@ -102,14 +102,18 @@ To replay all 100 motor journals and compare the release policies by layout seed
 ~~~sh
 guide=docs/product/aisle-studio/validation/transfer-wrist-timing
 (cd "$guide" && shasum -a 256 -c matched.sha256)
-comparison=$(mktemp)
-"$DOROBOT_AISLE_PYTHON" tools/aisle-validation/nano_suite_evidence.py compare \
+verifier=$(mktemp -d)
+git archive 65926336ccac2645a8d512c204b984254435d518 \
+  tools/aisle-validation tools/aisle_workbench tools/nano-three-cubes \
+  data/adora_nano/adora_nano.urdf | tar -x -C "$verifier"
+comparison="$verifier/comparison.json"
+"$DOROBOT_AISLE_PYTHON" "$verifier/tools/aisle-validation/nano_suite_evidence.py" compare \
   "$guide/matched-baseline.zip" "$guide/qualification.zip" \
   --baseline-manifest 4f48725017d38217788b90704c12383e63de7bf03263fc9d867de1784d6194dc \
   --candidate-manifest 7a344127f816c49c53d12410516fd04f136ea471117cd3e9a68a8fddf126a978 > "$comparison"
 cmp "$guide/matched-comparison.json" "$comparison"
 ~~~
 
-To inspect either archive in Studio, copy it into its own folder together with the corresponding public manifest named `suite.json`. Open **Evidence → Batch evaluation**, enter the archive path, and choose **Verify evaluation**.
+On Linux, `sha256sum -c matched.sha256` performs the same checksum verification. To inspect either archive in Studio, copy it into its own folder together with the corresponding public manifest named `suite.json`. Open **Evidence → Batch evaluation**, enter the archive path, and choose **Verify evaluation**.
 
 The measurement archive SHA-256 is `d2a7ff81e76c3b13819385b30069b1e435a696a186fcb049f1e2eaeba2e829aa`. Add `--git-sources` to check the source manifests against the measured commits. [Measured outcomes](measurements.json) · [Original trials and datasets](measurements.zip) · [RGB release distances](release-distances.json)

@@ -68,7 +68,7 @@ Use `--remote /path/to/makepad-remote` for a locally built client. Omit `--codex
 
 Use `--octos-deepseek` in place of `--codex` in the native verification command to run the Nano approach and both G1 authoring turns through Octos. See the [measured provider comparison](validation/provider-comparison.md).
 
-The frozen three-cube Nano controller met the simulation qualification gate on 45/50 hidden layouts. [Cohort D and replayable evidence](validation/nano-holdout-d/README.md)
+The cohort D runtime met the Nano three-cube gate on 45/50 hidden layouts. On the later cohort E layouts, the frozen two-view and three-view wrist-monitor builds each scored 40/50. The final operator-selectable build has a separate layout-0 regression test. [Cohort D and replayable evidence](validation/nano-holdout-d/README.md)
 
 To reproduce a temporary wrist-camera loss or a sustained freeze during a Nano pick, choose the delivery condition on **Scene**. The experimental three-camera placement option recovered all three cubes on the demonstration layout and scored 40/50 on a separate concealed cohort. [Instructions, matched layouts and measured failures](validation/transfer-wrist-timing/README.md)
 
