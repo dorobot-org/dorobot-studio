@@ -1,0 +1,161 @@
+{
+  "backend": "offscreen",
+  "requested_size": "1440x900",
+  "native_binary_sha256": "b7884237c032428567786b33bdb7bebc3a4dd7ccb53e471a0b836956a523b188",
+  "studio_source_commit": "476f293006d0ac0f07c71d80501d86b7e925a26a",
+  "journey": [
+    {
+      "check": "Layout archive verified",
+      "robot": "Nano",
+      "status": "Evaluation verified \u00b7 Nano",
+      "evaluation": {
+        "archive_integrity": "Published Studio output digest",
+        "archive_sha256": "af163a41182f803308f8a473b173e9437d2b4e90e77238f90632cd91ac63c8dd",
+        "cases": 50,
+        "failures": [
+          {
+            "index": 15,
+            "reasons": [
+              "ValueError: Cube motion across the placement turn is inconsistent",
+              "blue \u00b7 0/100 table contacts, 34.6 mm rim margin, gripper release incomplete, center 81.7 mm above tabletop, still moving"
+            ],
+            "seed": 2559223189
+          },
+          {
+            "index": 27,
+            "reasons": [
+              "ValueError: Could not confirm red in the wrist camera after two grasps",
+              "red \u00b7 0/100 table contacts, -115.2 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -935.1 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -599.0 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 4022072275
+          },
+          {
+            "index": 29,
+            "reasons": [
+              "ValueError: No reachable clear release point on the visible tabletop",
+              "blue \u00b7 0/100 table contacts, 17.0 mm rim margin, gripper release incomplete, center 84.8 mm above tabletop, still moving"
+            ],
+            "seed": 259167547
+          },
+          {
+            "index": 40,
+            "reasons": [
+              "ValueError: Lost the observed cubes across consecutive placement-turn images",
+              "blue \u00b7 0/100 table contacts, 8.2 mm rim margin, gripper release incomplete, center 87.7 mm above tabletop, still moving"
+            ],
+            "seed": 342072357
+          },
+          {
+            "index": 48,
+            "reasons": [
+              "ValueError: Lost red after two normal carries and a supported carry",
+              "red \u00b7 0/100 table contacts, -106.0 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -349.1 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -891.2 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 305270804
+          }
+        ],
+        "interval_95": [
+          0.7863976856252035,
+          0.9565242350681096
+        ],
+        "manifest_sha256": "29d1e5aba4670dec9259a2e823228ffe46c1f97ebab76baf5cba2aa6c7a1b689",
+        "qualified": true,
+        "release_exposures": 101,
+        "requirement": 45,
+        "split": "hidden",
+        "successes": 45,
+        "verified": 50,
+        "verified_guard_bypasses": 0
+      }
+    },
+    {
+      "check": "Second failed layout opened",
+      "robot": "Nano",
+      "status": "Evaluation verified \u00b7 Nano"
+    },
+    {
+      "check": "First failed layout reopened",
+      "robot": "Nano",
+      "status": "Evaluation verified \u00b7 Nano"
+    },
+    {
+      "check": "Unreadable archive rejected",
+      "robot": "Nano",
+      "status": "[Errno 2] No such file or directory: '/Users/yuechen/home/aisle-transfer-wrist-timing/docs/product/aisle-studio/validation/nano-release-workspace/cohort-f/missing-archive-for-ui-check.zip'"
+    }
+  ],
+  "recovery": [
+    {
+      "check": "Layout evaluation restored",
+      "robot": "Nano",
+      "status": "Ready",
+      "evaluation": {
+        "archive_integrity": "Published Studio output digest",
+        "archive_sha256": "af163a41182f803308f8a473b173e9437d2b4e90e77238f90632cd91ac63c8dd",
+        "cases": 50,
+        "failures": [
+          {
+            "index": 15,
+            "reasons": [
+              "ValueError: Cube motion across the placement turn is inconsistent",
+              "blue \u00b7 0/100 table contacts, 34.6 mm rim margin, gripper release incomplete, center 81.7 mm above tabletop, still moving"
+            ],
+            "seed": 2559223189
+          },
+          {
+            "index": 27,
+            "reasons": [
+              "ValueError: Could not confirm red in the wrist camera after two grasps",
+              "red \u00b7 0/100 table contacts, -115.2 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -935.1 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -599.0 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 4022072275
+          },
+          {
+            "index": 29,
+            "reasons": [
+              "ValueError: No reachable clear release point on the visible tabletop",
+              "blue \u00b7 0/100 table contacts, 17.0 mm rim margin, gripper release incomplete, center 84.8 mm above tabletop, still moving"
+            ],
+            "seed": 259167547
+          },
+          {
+            "index": 40,
+            "reasons": [
+              "ValueError: Lost the observed cubes across consecutive placement-turn images",
+              "blue \u00b7 0/100 table contacts, 8.2 mm rim margin, gripper release incomplete, center 87.7 mm above tabletop, still moving"
+            ],
+            "seed": 342072357
+          },
+          {
+            "index": 48,
+            "reasons": [
+              "ValueError: Lost red after two normal carries and a supported carry",
+              "red \u00b7 0/100 table contacts, -106.0 mm rim margin, center -554.3 mm above tabletop",
+              "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -349.1 mm rim margin, center -554.3 mm above tabletop",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -891.2 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 305270804
+          }
+        ],
+        "interval_95": [
+          0.7863976856252035,
+          0.9565242350681096
+        ],
+        "manifest_sha256": "29d1e5aba4670dec9259a2e823228ffe46c1f97ebab76baf5cba2aa6c7a1b689",
+        "qualified": true,
+        "release_exposures": 101,
+        "requirement": 45,
+        "split": "hidden",
+        "successes": 45,
+        "verified": 50,
+        "verified_guard_bypasses": 0
+      }
+    }
+  ]
+}
