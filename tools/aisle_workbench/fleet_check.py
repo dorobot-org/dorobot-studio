@@ -1,9 +1,80 @@
-"""Exercise two overlapping Nexus jobs via native Run controls, then reopen the trial."""
+"""Submit or recover a Nexus fleet run via native controls and reopen its original trial."""
 
+import base64
 import hashlib
 import json
 from pathlib import Path
 import sys
+
+
+def submitted_foreground(root, node):
+    from fleet_bridge import record
+
+    fleet = json.loads((root / "worker-selection.json").read_bytes())
+    job = fleet["selected"]["id"]
+    saved = record(root, job)
+    request = json.loads(saved["request"])
+    if not (
+        fleet["node"] == saved["node"] == node
+        and fleet["selected"]["mode"] == saved["mode"] == request["mode"] == "stream"
+        and request["id"] == job
+        and job in fleet["jobs"]
+    ):
+        raise ValueError(
+            "Select the original foreground lease on the registered worker"
+        )
+    controller = base64.b64decode(request["controller"], validate=True)
+    digest = hashlib.sha256(controller).hexdigest()
+    if digest != request["controller_sha256"]:
+        raise ValueError("The retained submission and controller digest differ")
+    return fleet, digest, json.loads(controller)["provider"]
+
+
+def retained_background(root, jobs, foreground):
+    if jobs == [foreground]:
+        return {}
+    (background,) = (j for j in jobs if j != foreground)
+    candidates = [
+        json.loads(p.read_bytes()) for p in root.glob("*-Nano-fleet/fleet.json")
+    ]
+    snapshot = next(
+        (
+            r["sample"]
+            for r in candidates
+            if r.get("sample") and r["selected"]["id"] == background
+        ),
+        None,
+    )
+    if snapshot is None:
+        return dict(background_id=background, background_evidence="no saved snapshot")
+    stopped = next(
+        (
+            p.parent
+            for p in root.glob("*-Nano-run/worker-origin.json")
+            if json.loads(p.read_bytes())["job"] == background
+        ),
+        None,
+    )
+    if stopped is None:
+        return dict(
+            background_id=background,
+            background_evidence="snapshot without a downloaded trial",
+            unverified_snapshot=snapshot,
+        )
+    assert (stopped / "stopped.json").is_file()
+    observations = [
+        json.loads(l)
+        for l in (stopped / "background-observations.jsonl").read_bytes().splitlines()
+    ]
+    assert any(
+        o["sha256"] == snapshot["sha256"] and o["tick"] == snapshot["tick"]
+        for o in observations
+    )
+    return dict(
+        background_id=background,
+        observation_ticks=[o["tick"] for o in observations],
+        snapshot=snapshot,
+    )
 
 
 def native_journey(args, checks, page, click, remote, done, grab, wait):
@@ -78,12 +149,23 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         )
         page("evidence")
         grab("imported-evidence")
-        click("aisle_evidence.export")
-        row = done(
-            lambda w: not w["busy"] and w["dataset"], "Exported downloaded episode", 180
-        )
+        if not row["dataset"]:
+            click("aisle_evidence.export")
+            row = done(
+                lambda w: not w["busy"] and w["dataset"],
+                "Exported downloaded episode",
+                180,
+            )
         dataset = Path(row["dataset"])
-        assert (dataset / "meta/info.json").is_file()
+        metadata = json.loads((dataset / "meta/aisle.json").read_bytes())
+        assert (
+            metadata["trial"] == trial.name
+            and metadata["controller_hash"] == result["controller_hash"]
+        )
+        assert (
+            json.loads((dataset / "meta/info.json").read_bytes())["total_frames"]
+            == result["frames"]
+        )
         click("aisle_evidence.replay")
         wait(
             lambda j: j["state"]["screen"] == "Replay"
@@ -101,9 +183,10 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             and selected(w)["state"] == "completed",
             "Worker selection recovered",
         )
-        assert len(row["fleet"]["jobs"]) == (
-            1 if args.foreground_cadence or args.fleet_controller else 2
-        )
+        expected_jobs = [proof["foreground_id"]]
+        if "background_id" in proof:
+            expected_jobs.append(proof["background_id"])
+        assert sorted(row["fleet"]["jobs"]) == sorted(expected_jobs)
         if args.background_clock == "wall" and not args.foreground_cadence:
             run_button("newer_job")
             done(
@@ -135,56 +218,33 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         return
 
     if args.resume_fleet:
-        # The disconnected Studio already retained its background observation and cancellation.
         root = args.out.parent / "state/aisle"
-        fleet = json.loads((root / "worker-selection.json").read_bytes())
-        assert (
-            fleet["node"] == args.fleet_node and fleet["selected"]["mode"] == "stream"
-        )
+        fleet, expected, _ = submitted_foreground(root, args.fleet_node)
         foreground = fleet["selected"]["id"]
-        (background,) = (j for j in fleet["jobs"] if j != foreground)
-        candidates = [
-            json.loads(p.read_bytes()) for p in root.glob("*-Nano-fleet/fleet.json")
-        ]
-        snapshot = next(
-            r["sample"]
-            for r in candidates
-            if r.get("sample") and r["selected"]["id"] == background
-        )
-        stopped = next(
-            p.parent
-            for p in root.glob("*-Nano-run/worker-origin.json")
-            if json.loads(p.read_bytes())["job"] == background
-        )
-        assert (stopped / "stopped.json").is_file()
-        observations = [
-            json.loads(l)
-            for l in (stopped / "background-observations.jsonl")
-            .read_bytes()
-            .splitlines()
-        ]
-        assert any(
-            o["sha256"] == snapshot["sha256"] and o["tick"] == snapshot["tick"]
-            for o in observations
-        )
+        background = retained_background(root, fleet["jobs"], foreground)
+
+        def completed(w):
+            job = observed(w)
+            if selected(w).get("id") != foreground or job.get("id") != foreground:
+                return False
+            if job["state"] in ("failed", "cancelled"):
+                raise RuntimeError(
+                    f"Original foreground lease {foreground} {job['state']}"
+                )
+            return job["state"] == "completed"
+
         enter_workers()
-        row = done(
-            lambda w: selected(w).get("id") == foreground
-            and observed(w).get("state") == "completed",
-            "Reconnected to the completed SSH foreground",
-            100,
-        )
+        row = done(completed, "Reconnected to the completed foreground lease", 650)
         result = observed(row)["result"]
+        assert result["controller_hash"] == expected
         origin, _ = import_and_replay(foreground, result)
         checks.append(
             dict(
-                check="Reconnected and fetched the remote trial",
+                check="Reconnected and fetched the original worker trial",
                 foreground_id=foreground,
-                background_id=background,
-                observation_ticks=[o["tick"] for o in observations],
-                snapshot=snapshot,
                 origin=origin,
                 result=result,
+                **background,
             )
         )
         source.write_text(json.dumps(checks, indent=2))

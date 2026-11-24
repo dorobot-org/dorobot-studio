@@ -1,0 +1,152 @@
+{
+  "single": {
+    "native_backend": "offscreen",
+    "native_binary_sha256": "3a8fe79f828744f4c856353cca7355f224ee3828bbc8385f844d2bd1a9bf6889",
+    "verifier_commit": "82b208c582e34ac20cb3df8ff5bd8c45da71d740",
+    "provider": "codex",
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 15725
+      },
+      {
+        "stage": "recovery",
+        "pid": 16020
+      }
+    ],
+    "lease_id": "84e68521-36cd-4c69-b58d-36b5e15ffb5f",
+    "worker_leases": {
+      "84e68521-36cd-4c69-b58d-36b5e15ffb5f": "completed"
+    },
+    "controller_sha256": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+    "archive_sha256": "c45b52f5c15bc633559be7e7ef95932517ed1480f880db6efa65da110ed9b043",
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "supported_ticks": 6848,
+    "task_success": true,
+    "dataset_cameras": {
+      "head": {
+        "decoded_frames": 342,
+        "sha256": "6682b2601cba08c3b582d736aa1f06904c0533831158a08f340a61664feebdad"
+      },
+      "left_wrist": {
+        "decoded_frames": 342,
+        "sha256": "c26fb27e87ead814aa7cb04c50546a4673b5458188d3b0629b18969888950a70"
+      },
+      "right_wrist": {
+        "decoded_frames": 342,
+        "sha256": "eab5425efad2e153b241d97089791fef1d81411a706fc001f6faf11027761c06"
+      }
+    },
+    "interrupted_client": {
+      "state": "running",
+      "last_displayed_frame": {
+        "height": 360,
+        "sha256": "bfe779c6753fc2e224a125b50535b2a188e501276d9eb050bdd253318aa8da1d",
+        "tick": 156
+      }
+    }
+  },
+  "two": {
+    "native_backend": "headless",
+    "native_binary_sha256": "3a8fe79f828744f4c856353cca7355f224ee3828bbc8385f844d2bd1a9bf6889",
+    "verifier_commit": "82b208c582e34ac20cb3df8ff5bd8c45da71d740",
+    "provider": "codex",
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 16182
+      },
+      {
+        "stage": "recovery",
+        "pid": 16343
+      }
+    ],
+    "lease_id": "06b9ce68-a64b-4098-a628-fb146dc48364",
+    "worker_leases": {
+      "06b9ce68-a64b-4098-a628-fb146dc48364": "completed",
+      "c2492ea8-844d-415d-8aa2-bf9939c289b6": "cancelled"
+    },
+    "controller_sha256": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+    "archive_sha256": "e2e7404f04163fb87bdfaaf381bc60381e95a68bbe4dc469d3a5968da86f1012",
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "supported_ticks": 6848,
+    "task_success": true,
+    "dataset_cameras": {
+      "head": {
+        "decoded_frames": 342,
+        "sha256": "6682b2601cba08c3b582d736aa1f06904c0533831158a08f340a61664feebdad"
+      },
+      "left_wrist": {
+        "decoded_frames": 342,
+        "sha256": "c26fb27e87ead814aa7cb04c50546a4673b5458188d3b0629b18969888950a70"
+      },
+      "right_wrist": {
+        "decoded_frames": 342,
+        "sha256": "eab5425efad2e153b241d97089791fef1d81411a706fc001f6faf11027761c06"
+      }
+    },
+    "background_id": "c2492ea8-844d-415d-8aa2-bf9939c289b6",
+    "snapshot": {
+      "tick": 601,
+      "height": 360,
+      "sha256": "39af5ddd8a4994aa6f44d0c1ca464cd2dc2d123f97bc1ad386a050dd4c548bf7"
+    },
+    "verified_observation_ticks": [
+      1,
+      61,
+      120,
+      181,
+      239,
+      299,
+      361,
+      421,
+      481,
+      541,
+      601,
+      661,
+      721
+    ]
+  },
+  "legacy": {
+    "native_backend": "headless",
+    "native_binary_sha256": "3a8fe79f828744f4c856353cca7355f224ee3828bbc8385f844d2bd1a9bf6889",
+    "verifier_commit": "82b208c582e34ac20cb3df8ff5bd8c45da71d740",
+    "provider": "octos-deepseek",
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 20454
+      },
+      {
+        "stage": "recovery",
+        "pid": 20603
+      }
+    ],
+    "lease_id": "056a3d38-d454-4235-a5bc-09af393a151d",
+    "worker_leases": {
+      "056a3d38-d454-4235-a5bc-09af393a151d": "completed",
+      "595bc2e9-a9ed-47a5-8a41-0a1a01b03ff7": "cancelled"
+    },
+    "controller_sha256": "a9624d8b4477b571efe5700bc1b4d9c4f0a9630223379327c5a94b7e293557de",
+    "archive_sha256": "ff4c7293eea06c9e7740a3f770c6b69e2c3e3a99c98d90d49724cc30a73e8275",
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "supported_ticks": 6848,
+    "task_success": true,
+    "dataset_cameras": {
+      "head": {
+        "decoded_frames": 342,
+        "sha256": "6682b2601cba08c3b582d736aa1f06904c0533831158a08f340a61664feebdad"
+      },
+      "left_wrist": {
+        "decoded_frames": 342,
+        "sha256": "c26fb27e87ead814aa7cb04c50546a4673b5458188d3b0629b18969888950a70"
+      },
+      "right_wrist": {
+        "decoded_frames": 342,
+        "sha256": "eab5425efad2e153b241d97089791fef1d81411a706fc001f6faf11027761c06"
+      }
+    },
+    "background_id": "595bc2e9-a9ed-47a5-8a41-0a1a01b03ff7",
+    "background_evidence": "no saved snapshot"
+  }
+}
