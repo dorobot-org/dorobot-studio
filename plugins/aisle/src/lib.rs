@@ -165,9 +165,8 @@ script_mod! {
                     Bar{clock := mod.widgets.ux.ToolButton{text:"Sim time"} period := mod.widgets.ux.ToolButton{text:"RGB / 1 s"}}
                     Bar{queue_stream := mod.widgets.ux.PrimaryButton{text:"Stream run"} queue_background := mod.widgets.ux.ToolButton{text:"Background run"}}
                     Section{text:"Selected job"} job_detail := Body{}
-                    Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous job"} newer_job := mod.widgets.ux.ToolButton{text:"Next job"}}
-                    Bar{sample_job := mod.widgets.ux.ToolButton{text:"Snapshot"} fetch_job := mod.widgets.ux.ToolButton{text:"Fetch evidence"}}
-                    Bar{cancel_job := mod.widgets.ux.StopButton{text:"Cancel job"}}
+                    Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous"} newer_job := mod.widgets.ux.ToolButton{text:"Next"} sample_job := mod.widgets.ux.ToolButton{text:"Snapshot"}}
+                    Bar{cancel_job := mod.widgets.ux.StopButton{text:"Cancel job"} fetch_job := mod.widgets.ux.ToolButton{text:"Fetch evidence"}}
                 }
             }
             inspector := Card{width:275 height:Fill measure_label := Section{} detail := Body{}
