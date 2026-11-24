@@ -62,6 +62,11 @@ def main():
                     f"Unexpected measured outcome for {trial}. See {folder}/result.json"
                 )
 
+    subprocess.run(
+        [sys.executable, Path(__file__).with_name("audit.py"), "--recordings", output],
+        check=True,
+    )
+
 
 if __name__ == "__main__":
     main()
