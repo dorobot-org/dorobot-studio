@@ -131,7 +131,9 @@ def prepare(directory, controller, match=None):
         directory / "suite.json",
         dict(
             profile="g1-standing-reach-v1",
-            impact_aim=old.get("impact_aim", "pelvis-v1") if match else DEFAULT_IMPACT_AIM,
+            impact_aim=old.get("impact_aim", "pelvis-v1")
+            if match
+            else DEFAULT_IMPACT_AIM,
             **({"matched_manifest_sha256": referenced} if match else {}),
             cases=20,
             required=20,
@@ -258,6 +260,21 @@ def score(case, m, opening):
         ),
     )
     names = a["joints"].tolist()
+    if "trunk_pitch_rad" in plan:
+        posture = validate(plan, describe("G1")).get("trunk_pitch_rad", 0.0)
+        i = names.index("waist_pitch_joint")
+        measured = float(np.mean(a["q_after"][-100:, i]))
+        if (
+            src.get("trunk_pitch_target_rad") != posture
+            or result.get("trunk_pitch_target_rad") != posture
+            or not np.allclose(a["target"][:, i], posture, atol=1e-7, rtol=0)
+            or not np.isclose(
+                result["settled_trunk_pitch_rad"], measured, atol=1e-7, rtol=0
+            )
+        ):
+            raise ValueError(
+                "G1 trunk target or settled measurement differs from its motor trace"
+            )
     if len(set(names)) != 29 or float(a["dt"]) != 0.005 or float(w["dt"]) != 0.005:
         raise ValueError("Unexpected G1 joints or physical clock")
     xml = ET.parse(MODEL)
