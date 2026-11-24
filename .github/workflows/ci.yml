@@ -75,6 +75,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/aisle_workbench -p test_fleet_bridge.py
           python3 docs/product/aisle-studio/validation/foreground-preview/audit.py
+          python3 docs/product/aisle-studio/validation/native-cohort-comparison/audit.py
       - name: Test Nexus worker when present
         env:
           PYTHONDONTWRITEBYTECODE: "1"
