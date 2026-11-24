@@ -39,6 +39,21 @@ class InspectionTests(unittest.TestCase):
             [False, False, False, False, True, False, True],
         )
 
+    def test_nano_joint_catalog_includes_grippers_and_unbounded_wheels(self):
+        model = worker.describe("Nano")
+        joints = {joint["name"]: joint for joint in model["joints"]}
+        self.assertEqual(len(joints), 17)
+        gripper = joints["right_j6_gripper"]
+        self.assertEqual(
+            gripper["limits"], dict(lower=-0.3, upper=0.8771, velocity=2, effort=1)
+        )
+        wheels = [joint for joint in joints.values() if joint["type"] == "continuous"]
+        self.assertEqual(len(wheels), 3)
+        for wheel in wheels:
+            self.assertEqual(wheel["limits"], dict(velocity=5.45, effort=1.86))
+        with self.assertRaises(ValueError):
+            worker.validate(dict(joint=gripper["name"], delta_rad=0.06), model)
+
     def test_joint_and_displacement_guard(self):
         for joint, delta in [
             ("other", 0.05),

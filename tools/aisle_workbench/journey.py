@@ -530,9 +530,18 @@ def main():
                 checks[-1]["reason"] = stopped["status"]
                 # The camera report can push the geometry editor below the
                 # scroll viewport. Use the same wheel gesture as an operator.
-                x, y, width, height = report()["controls"]["aisle_scene.room_detail"]["rect"]
-                remote("mouse", "k=scroll", "w=0", f"x={x + width / 2}",
-                       f"y={y + height / 2}", "dy=320", "wait=1")
+                x, y, width, height = report()["controls"]["aisle_scene.room_detail"][
+                    "rect"
+                ]
+                remote(
+                    "mouse",
+                    "k=scroll",
+                    "w=0",
+                    f"x={x + width / 2}",
+                    f"y={y + height / 2}",
+                    "dy=320",
+                    "wait=1",
+                )
             fill_survey("geometry", "ottoman 0 0 0.35")
             click("aisle_scene.save_geometry")
             failed = done(
@@ -959,12 +968,35 @@ def main():
             (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
         return
     if a.recover:
+        previous = {
+            entry["check"]: entry
+            for entry in json.loads((a.out / "journey.json").read_text())
+        }
+        scored = previous["native Replay loaded episode"]
+        stopped = previous["operator stop retained"]
         page("evidence")
         row = done(
-            lambda w: w["result"] and w["result"].get("outcome") == "Stopped",
+            lambda w: w["selected"] == scored["trial"]
+            and (w["result"] or {}).get("task_success")
+            and w["result"]["controller_hash"] == scored["controller_hash"]
+            and w["dataset"] == scored["dataset"],
+            "selected scored trial and exported dataset restored",
+        )
+        assert Path(row["dataset"]).is_dir()
+        checks[-1].update(
+            trial=row["selected"], controller_hash=row["result"]["controller_hash"]
+        )
+        click("aisle_evidence.next")
+        row = done(
+            lambda w: w["selected"] == stopped["trial"]
+            and (w["result"] or {}).get("outcome") == "Stopped",
             "stopped run recovered on restart",
         )
-        assert (Path(row["selected"]) / "stopped.json").exists()
+        assert (
+            json.loads((Path(row["selected"]) / "stopped.json").read_text())["stopped"]
+            is True
+        )
+        checks[-1].update(trial=row["selected"])
         page("task")
         click("aisle_task.g1")
         done(
@@ -1112,6 +1144,7 @@ def main():
             done(lambda w: w["compliant"], "G1 compliant fixture selected")
         grab(robot + "-scene")
         from joint_inspector_check import check as check_joint_limits
+
         checks.append(check_joint_limits(robot, click, remote, wait, grab))
         page("run")
         before = report()["state"]["aisle"]["selected"]
@@ -1248,6 +1281,7 @@ def main():
         "operator stop retained",
     )
     assert (Path(row["selected"]) / "stopped.json").is_file()
+    checks[-1].update(trial=row["selected"])
 
     def group_is_stopped(_):
         processes = subprocess.check_output(["ps", "-axo", "pgid=,stat="], text=True)
@@ -1263,13 +1297,24 @@ def main():
     prior = done(lambda w: w["result"].get("task_success"), "reopen scored evidence")
     if not prior["dataset"]:
         click("aisle_evidence.export")
-        done(lambda w: w["dataset"] and not w["busy"], "revised episode exported", 60)
+        prior = done(
+            lambda w: w["dataset"] and not w["busy"], "revised episode exported", 60
+        )
     click("aisle_evidence.replay")
     wait(
         lambda j: j["state"]["screen"] == "Replay" and j["state"]["frames"] == 25,
         "episode opened in Studio Replay",
     )
-    checks.append(dict(check="native Replay loaded episode", robot="G1", frames=25))
+    checks.append(
+        dict(
+            check="native Replay loaded episode",
+            robot="G1",
+            frames=25,
+            trial=prior["selected"],
+            controller_hash=prior["result"]["controller_hash"],
+            dataset=prior["dataset"],
+        )
+    )
     grab("G1-replay")
     (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
 
