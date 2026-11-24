@@ -390,9 +390,9 @@ class LivingSimulation:
     def object_positions(self):
         return [np.asarray(b.get_pos()).tolist() for b in self.bodies]
 
-    def advance(self, rates, capture_contacts=False):
+    def advance(self, rates, capture_contacts=False, *, steps=round(CONTROL_DT / 0.01)):
         contacts = []
-        for _ in range(round(CONTROL_DT / 0.01)):
+        for _ in range(steps):
             self.targets[self.wheel_indices] += np.asarray(rates) * 0.01
             self.robot.control_dofs_position(self.targets.tolist(), self.dofs)
             self.scene.step()

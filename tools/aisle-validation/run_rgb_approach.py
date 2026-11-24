@@ -132,14 +132,88 @@ def timing_fault(captured_ns, received_ns, last_accepted_ns):
     return None
 
 
-def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="normal"):
+class SlidingCube:
+    """Independent Nexus fixture and evaluator. Its measurements never enter RGB packets."""
+
+    def __init__(self, cube, mode):
+        self.cube = cube
+        self.direction = {"slide-positive": 1, "slide-negative": -1}[mode]
+        self.mode = mode
+        self.initial = np.asarray(cube.get_pos()).copy()
+        self.before_last_step = None
+        self.pulse_ticks = []
+        self.moving_exposures = 0
+        self.errors = []
+
+    PULSE_TICKS = (76, 96, 116, 136, 156)
+
+    def advance(self, sim, rates):
+        # Keep the normal 20 physics steps and a single wheel command per camera
+        # period. Four steps after a pulse the next exposure sees a moving cube.
+        contacts = [sim.advance(rates, capture_contacts=True, steps=16)]
+        if sim.tick in self.PULSE_TICKS:
+            sim.scene.set_body_velocity(
+                0, self.cube.handles[0], [0, self.direction * 0.60, 0]
+            )
+            self.pulse_ticks.append(sim.tick)
+        contacts.append(sim.advance(rates, capture_contacts=True, steps=3))
+        self.before_last_step = np.asarray(self.cube.get_pos()).copy()
+        contacts.append(sim.advance(rates, capture_contacts=True, steps=1))
+        return np.concatenate(contacts)
+
+    def observe(self, truth, estimate, fresh):
+        world = np.asarray(self.cube.get_pos())
+        before = self.before_last_step
+        if before is not None and np.linalg.norm(world[:2] - before[:2]) / 0.01 > 0.02:
+            self.moving_exposures += 1
+            if fresh and estimate is not None:
+                self.errors.append(float(np.linalg.norm(truth - estimate)))
+        return {
+            "world_m": world.tolist(),
+            "world_one_tick_before_m": before.tolist() if before is not None else None,
+        }
+
+    def result(self):
+        displacement = float(self.cube.get_pos()[1] - self.initial[1])
+        maximum = max(self.errors, default=None)
+        return dict(
+            fixture=self.mode,
+            commanded_world_y_m_s=self.direction * 0.60,
+            pulse_ticks=self.pulse_ticks,
+            displacement_y_m=displacement,
+            moving_exposures=self.moving_exposures,
+            localized_moving_exposures=len(self.errors),
+            max_moving_error_m=maximum,
+            passed=tuple(self.pulse_ticks) == self.PULSE_TICKS
+            and displacement * self.direction >= 0.10
+            and self.moving_exposures >= 3
+            and len(self.errors) == self.moving_exposures
+            and maximum is not None
+            and maximum <= 0.035,
+        )
+
+
+def trial(
+    out,
+    seed,
+    plan,
+    room_objects=(),
+    room_settings=None,
+    rgb_timing="normal",
+    target_motion="stationary",
+):
     if rgb_timing not in ("normal", "intermittent", "disconnected"):
         raise ValueError("Unknown RGB timing fixture")
+    if target_motion not in ("stationary", "slide-positive", "slide-negative"):
+        raise ValueError("Unknown target motion fixture")
     meta = worker.describe("Nano")
     model = Path(meta["model"])
     sim = approach_scene(model, seed, room_objects, room_settings)
     by_name = {spec["name"]: body for spec, body in zip(sim.specs, sim.bodies)}
     cube = by_name[plan["color"]]
+    sliding = (
+        SlidingCube(cube, target_motion) if target_motion != "stationary" else None
+    )
     initial_cube = np.array(cube.get_pos())
     initial, initial_xy = evaluate_pose(sim, cube)
 
@@ -233,16 +307,31 @@ def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="norm
                         float(np.linalg.norm(seen)) if seen is not None else None
                     ),
                 )
+                _, truth = evaluate_pose(sim, cube)
+                motion_sample = {}
+                if sliding is not None:
+                    motion_sample = {
+                        "target_motion": sliding.observe(
+                            truth, seen, fault is None and captured_ns == received_ns
+                        )
+                    }
+                    progress.update(
+                        target_motion=target_motion,
+                        moving_exposures=sliding.moving_exposures,
+                    )
                 trajectory.append(progress)
                 preview = out / "preview.tmp"
                 preview.write_bytes(struct.pack(">I", sim.tick) + head.tobytes())
                 preview.replace(out / "preview.rgb")
                 worker.save(out / "progress.json", progress)
-                _, truth = evaluate_pose(sim, cube)
                 if command["xy"] is not None:
                     errors.append(float(np.linalg.norm(truth - command["xy"])))
                 rates = guard.accept(wheel_rates(speed, 0, yaw), sequence)
-                contacts = sim.advance(rates, capture_contacts=True)
+                contacts = (
+                    sliding.advance(sim, rates)
+                    if sliding is not None
+                    else sim.advance(rates, capture_contacts=True)
+                )
                 for tick, a, b in contacts:
                     if (a == floor and b in wheels) or (b == floor and a in wheels):
                         grounded.add(int(tick))
@@ -265,6 +354,7 @@ def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="norm
                             command=command,
                             wheels=rates.tolist(),
                             evaluator_xy=truth.tolist(),
+                            **motion_sample,
                         ),
                         allow_nan=False,
                     ),
@@ -273,7 +363,12 @@ def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="norm
                 )
                 settled = (
                     settled + 1
-                    if command["state"] == "reached" and np.max(np.abs(rates)) < 1e-5
+                    if command["state"] == "reached"
+                    and np.max(np.abs(rates)) < 1e-5
+                    and (
+                        sliding is None
+                        or received_ns > sliding.PULSE_TICKS[-1] * 10_000_000
+                    )
                     else 0
                 )
                 if settled >= 3 or (
@@ -292,8 +387,12 @@ def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="norm
     base, final_xy = evaluate_pose(sim, cube)
     distance = float(np.linalg.norm(final_xy))
     motion = float(np.linalg.norm(base[:2] - initial[:2]))
+    motion_result = (
+        sliding.result() if sliding is not None else {"fixture": "stationary"}
+    )
     passed = (
-        settled >= 3
+        motion_result.get("passed", True)
+        and settled >= 3
         and abs(distance - plan["standoff_m"]) <= 0.035
         and abs(math.atan2(final_xy[1], final_xy[0])) < 0.12
         and motion >= 0.07
@@ -305,6 +404,11 @@ def trial(out, seed, plan, room_objects=(), room_settings=None, rgb_timing="norm
         recipe=RECIPE,
         seed=seed,
         split="development",
+        target_motion=motion_result,
+        tracking_sources={
+            name: worker.digest(HERE / name)
+            for name in ("nano_rgb_policy.py", "run_rgb_approach.py", "nano_living.py")
+        },
         sensor_timing=dict(
             fixture=rgb_timing,
             maximum_age_ns=MAX_OBSERVATION_AGE_NS,
@@ -354,6 +458,11 @@ def main():
         choices=["normal", "intermittent", "disconnected"],
         default="normal",
     )
+    parser.add_argument(
+        "--target-motion",
+        choices=["stationary", "slide-positive", "slide-negative"],
+        default="stationary",
+    )
     args = parser.parse_args()
     if not 0.4 <= args.distance <= 0.55:
         parser.error("distance must be within [0.40, 0.55] m")
@@ -367,7 +476,13 @@ def main():
     args.out.mkdir(parents=True, exist_ok=False)
     plan = controller(args)
     worker.save(args.out / "controller.json", plan)
-    result = trial(args.out, args.seed, plan, rgb_timing=args.rgb_timing)
+    result = trial(
+        args.out,
+        args.seed,
+        plan,
+        rgb_timing=args.rgb_timing,
+        target_motion=args.target_motion,
+    )
     worker.save(args.out / "result.json", result)
     print(json.dumps(result, indent=2))
     return 0 if result["passed"] else 1

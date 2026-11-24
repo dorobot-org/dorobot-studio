@@ -79,17 +79,7 @@ def audit(run, result):
     )
 
 
-def native_journey(args, checks, page, click, remote, done, grab):
-    if args.recover:
-        page("evidence")
-        row = done(
-            lambda w: w["result"]
-            and w["result"].get("sensor_timing", {}).get("timed_out"),
-            "Camera timeout retained after restart",
-        )
-        assert not row["result"]["task_success"]
-        (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
-        return
+def prepare_visual_approach(args, page, click, remote, done):
     page("task")
     click("aisle_task.nano")
     click("aisle_task.instruction")
@@ -116,6 +106,20 @@ def native_journey(args, checks, page, click, remote, done, grab):
         "Visual approach prepared",
         180,
     )
+
+
+def native_journey(args, checks, page, click, remote, done, grab):
+    if args.recover:
+        page("evidence")
+        row = done(
+            lambda w: w["result"]
+            and w["result"].get("sensor_timing", {}).get("timed_out"),
+            "Camera timeout retained after restart",
+        )
+        assert not row["result"]["task_success"]
+        (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
+        return
+    prepare_visual_approach(args, page, click, remote, done)
     summaries = []
     for mode, button in [
         ("normal", None),

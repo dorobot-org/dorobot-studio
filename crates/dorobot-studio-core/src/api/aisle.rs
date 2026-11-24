@@ -60,6 +60,21 @@ impl RgbTiming {
         }
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TargetMotion {
+    Stationary,
+    PositiveY,
+    NegativeY,
+}
+impl TargetMotion {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Stationary => "stationary",
+            Self::PositiveY => "slide-positive",
+            Self::NegativeY => "slide-negative",
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub enum Action {
     Select(Robot),
@@ -72,6 +87,7 @@ pub enum Action {
     Fixture(bool),
     Impact(bool),
     RgbTiming(RgbTiming),
+    TargetMotion(TargetMotion),
     ToggleOnboardContext,
     EditRoom(bool),
     ImportRoom {
@@ -267,6 +283,7 @@ pub struct Workbench {
     pub compliant: bool,
     pub impact: bool,
     pub rgb_timing: RgbTiming,
+    pub target_motion: TargetMotion,
     pub onboard_context: bool,
     pub room_editor: bool,
     pub show_evaluation: bool,
@@ -310,6 +327,7 @@ impl Workbench {
             compliant: false,
             impact: false,
             rgb_timing: RgbTiming::Normal,
+            target_motion: TargetMotion::Stationary,
             onboard_context: false,
             room_editor: false,
             show_evaluation: false,
@@ -614,6 +632,7 @@ impl Workbench {
         if op == "run" {
             if self.plan["kind"] == "visual-approach" {
                 cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
+                cmd.arg("--target-motion").arg(self.target_motion.name());
             }
             cmd.arg("--seed").arg(self.layout_seed.to_string());
             cmd.args([
@@ -735,6 +754,10 @@ impl Workbench {
             }
             Action::ToggleOnboardContext => {
                 self.onboard_context = !self.onboard_context;
+                Ok(())
+            }
+            Action::TargetMotion(value) => {
+                self.target_motion = value;
                 Ok(())
             }
             Action::RgbTiming(value) => {

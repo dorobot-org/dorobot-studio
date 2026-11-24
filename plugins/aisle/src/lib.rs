@@ -1,6 +1,6 @@
 use dorobot_studio_core::{
     api::{
-        aisle::{Action, Planner, RgbTiming, Robot, Workbench, REFERENCE},
+        aisle::{Action, Planner, RgbTiming, Robot, TargetMotion, Workbench, REFERENCE},
         Backend, Intent,
     },
     data::robot_model::RobotModelLoader,
@@ -115,8 +115,10 @@ script_mod! {
                 save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
                 default_room := mod.widgets.ux.ToolButton{text:"Use default room"}
             }
-            inspector := Card{width:285 height:Fill Section{text:"Simulation fixture"} fixture_kind := Body{}
-                Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
+            inspector := Card{width:285 height:Fill padding:0.0
+                fixture_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:16.0 spacing:10.0
+                Section{text:"Simulation fixture"} fixture_kind := Body{}
+                fixed_fixtures := Bar{standard := mod.widgets.ux.ToolButton{text:"Standard"} compliant := mod.widgets.ux.ToolButton{text:"Compliant"}}
                 standing_fixtures := Bar{
                     level := mod.widgets.ux.ToolButton{text:"Level floor"}
                     impact := mod.widgets.ux.ToolButton{text:"Impact test"}
@@ -125,10 +127,14 @@ script_mod! {
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
                     Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
                 }
-                rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Onboard camera timing"}
+                rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0
+                    Section{text:"Cube motion · world Y"}
+                    Bar{still := mod.widgets.ux.ToolButton{text:"Still"} slide_pos := mod.widgets.ux.ToolButton{text:"+Y"} slide_neg := mod.widgets.ux.ToolButton{text:"−Y"}}
+                    Section{text:"Onboard camera timing"}
                     Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}
                 }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
+                }
             }
         }
         status := Body{}
@@ -253,10 +259,15 @@ impl Panel {
                 .as_f64()
                 .map(|v| format!("{v:.3} m"))
                 .unwrap_or_else(|| "Target out of view".into());
+            let motion = match w.progress["target_motion"].as_str() {
+                Some("slide-positive") => "\nCube slides along +Y",
+                Some("slide-negative") => "\nCube slides along −Y",
+                _ => "",
+            };
             format!(
                 "{} cube · {}
 RGB distance {}
-Requested {:.2} m",
+Requested {:.2} m{motion}",
                 w.progress["color"].as_str().unwrap_or(""),
                 w.progress["state"].as_str().unwrap_or(""),
                 distance,
@@ -544,6 +555,15 @@ impl PluginPanel for Panel {
                 self.root
                     .widget(cx, ids!(rgb_delivery))
                     .set_visible(cx, kind == "visual-approach");
+                for (id, motion) in [
+                    (ids!(still) as &[LiveId], TargetMotion::Stationary),
+                    (ids!(slide_pos), TargetMotion::PositiveY),
+                    (ids!(slide_neg), TargetMotion::NegativeY),
+                ] {
+                    self.root
+                        .button(cx, id)
+                        .set_enabled(cx, !w.busy() && w.target_motion != motion);
+                }
                 for (id, timing) in [
                     (ids!(on_time) as &[LiveId], RgbTiming::Normal),
                     (ids!(late_rgb), RgbTiming::Intermittent),
@@ -571,11 +591,9 @@ impl PluginPanel for Panel {
                         .button(cx, id)
                         .set_enabled(cx, !w.busy() && w.layout_seed != seed);
                 }
-                for id in [ids!(standard), ids!(compliant)] {
-                    self.root
-                        .widget(cx, id)
-                        .set_visible(cx, !mobile && !standing);
-                }
+                self.root
+                    .widget(cx, ids!(fixed_fixtures))
+                    .set_visible(cx, !mobile && !standing);
                 self.label(
                     cx,
                     ids!(fixture),
@@ -809,6 +827,18 @@ impl PluginPanel for Panel {
                         w.evidence["physics_ticks"],
                         w.evidence["obstacle_contact_ticks"]
                     );
+                    let motion = &w.evidence["target_motion"];
+                    if let Some(displacement) = motion["displacement_y_m"].as_f64() {
+                        detail.push_str(&format!(
+                            "\nCube travel {:+.1} cm along Y · localized in {}/{} moving exposures",
+                            displacement * 100.,
+                            motion["localized_moving_exposures"],
+                            motion["moving_exposures"]
+                        ));
+                        if let Some(error) = motion["max_moving_error_m"].as_f64() {
+                            detail.push_str(&format!(" · worst error {:.1} mm", error * 1000.));
+                        }
+                    }
                     let timing = &w.evidence["sensor_timing"];
                     if let Some(fixture) = timing["fixture"].as_str() {
                         let held: u64 = timing["rejected"]
@@ -817,7 +847,13 @@ impl PluginPanel for Panel {
                             .flat_map(|m| m.values())
                             .filter_map(|n| n.as_u64())
                             .sum();
-                        detail.push_str(&format!("\nCamera timing {fixture} · {held} withheld observations · {} recoveries", timing["recoveries"]));
+                        let recovered = timing["recoveries"].as_u64().unwrap_or_default();
+                        let noun = if recovered == 1 {
+                            "recovery"
+                        } else {
+                            "recoveries"
+                        };
+                        detail.push_str(&format!("\nCamera timing {fixture} · {held} withheld observations · {recovered} {noun}"));
                         if timing["timed_out"] == true {
                             detail.push_str(" · stopped after timeout");
                         }
@@ -1021,6 +1057,15 @@ impl PluginPanel for Panel {
             (ids!(level), Action::Impact(false)),
             (ids!(impact), Action::Impact(true)),
             (ids!(onboard), Action::ToggleOnboardContext),
+            (ids!(still), Action::TargetMotion(TargetMotion::Stationary)),
+            (
+                ids!(slide_pos),
+                Action::TargetMotion(TargetMotion::PositiveY),
+            ),
+            (
+                ids!(slide_neg),
+                Action::TargetMotion(TargetMotion::NegativeY),
+            ),
             (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
             (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
             (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),

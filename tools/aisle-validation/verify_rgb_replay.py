@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from nano_rgb_policy import VisualServo
+from run_rgb_approach import timing_fault
 
 
 def replay(run, model):
@@ -22,9 +23,27 @@ def replay(run, model):
         raise ValueError("Incomplete observation sequence")
     with (run / "trace.jsonl").open() as trace:
         for index, (packet, line) in enumerate(zip(packets, trace, strict=True)):
-            with np.load(packet, allow_pickle=False) as data:
-                generated = servo.command(data)
             expected = json.loads(line)
+            with np.load(packet, allow_pickle=False) as data:
+                if "receive_ns" in expected:
+                    captured = int(data["stamp_ns"])
+                    received = int(packet.stem) * 10_000_000
+                    fault = timing_fault(captured, received, servo.last_stamp)
+                    if (captured, received, fault) != (
+                        expected["capture_ns"],
+                        expected["receive_ns"],
+                        expected["sensor_fault"],
+                    ):
+                        raise ValueError(
+                            f"Recorded camera timing differs at observation {index}"
+                        )
+                else:
+                    fault = None
+                generated = (
+                    servo.stop("waiting for current RGB")
+                    if fault
+                    else servo.command(data)
+                )
             if index != expected["sequence"] or generated != expected["command"]:
                 raise ValueError(f"First differing command at observation {index}")
     return len(packets)
