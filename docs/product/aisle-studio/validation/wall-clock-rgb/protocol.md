@@ -9,3 +9,5 @@ Exercise the clock control in the native two-job journey. Verify the selected ob
 The first one-second wall cohort produced two received rates just below 1 Hz. A follow-up tests an explicit 0.5 s wall period using the same eight-session configuration, each provider separately, and the same delivery gate. The requested source rate for this follow-up is 2 Hz. Keep the one-second measurements and all strict failures.
 
 After the eight-session 0.5 s DeepSeek cohort passed, schedule 12 sessions with that setting. Test 16 if 12 meets the same native and delivered-rate gate. Repeat the largest passing tested load with Codex. Keep individual missed or failed runs and report the largest tested load and the host. This bounded follow-up makes no claim about the untested maximum.
+
+The matched 12-session runs produced 25.02 FPS and 24.80 FPS, and 16 sessions missed the viewport cutoff. Test the intermediate 10-session load once per provider at a 0.5-second wall period, using the final native layout and the same gates. Retain both outcomes. Report the largest load tested successfully by both providers.
