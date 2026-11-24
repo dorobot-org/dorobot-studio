@@ -9,7 +9,7 @@
   "frames": 101,
   "disturbance": {
     "contacts": 2,
-    "normal_impulse_sum_ns": 0.133757546544075,
+    "normal_impulse_sum_ns": 0.13376372680068016,
     "links": [
       "torso_link"
     ],
@@ -20,7 +20,7 @@
   },
   "provider": "octos-deepseek",
   "backend": "offscreen",
-  "native_binary_sha256": "ff3a565af3353a5b07807eb5f672bae94e9e3272634f4552e536ca1b2e7685b4",
+  "native_binary_sha256": "c89f404b2e4970acd376e0099a1020a00850619c1d0f200814129cf736fbca42",
   "trace_file_exists": false,
   "labels": [
     {
@@ -34,53 +34,43 @@
       "busy": true
     },
     {
-      "label": "External operator camera \u00b7 5.9 FPS",
-      "progress": 40,
-      "busy": true
-    },
-    {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 80,
+      "progress": 60,
       "busy": true
     },
     {
-      "label": "External operator camera \u00b7 5.9 FPS",
-      "progress": 100,
-      "busy": true
-    },
-    {
-      "label": "External operator camera \u00b7 6.0 FPS",
+      "label": "External operator camera \u00b7 6.2 FPS",
       "progress": 120,
       "busy": true
     },
     {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 140,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.2 FPS",
+      "progress": 160,
+      "busy": true
+    },
+    {
       "label": "External operator camera \u00b7 6.1 FPS",
-      "progress": 220,
+      "progress": 180,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 240,
+      "progress": 360,
       "busy": true
     },
     {
-      "label": "External operator camera \u00b7 6.1 FPS",
-      "progress": 260,
-      "busy": true
-    },
-    {
-      "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 380,
-      "busy": true
-    },
-    {
-      "label": "External operator camera \u00b7 6.1 FPS",
+      "label": "External operator camera \u00b7 5.9 FPS",
       "progress": 420,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 440,
+      "progress": 460,
       "busy": true
     },
     {
@@ -89,13 +79,18 @@
       "busy": true
     },
     {
-      "label": "External operator camera \u00b7 5.6 FPS",
+      "label": "External operator camera \u00b7 5.7 FPS",
       "progress": 640,
       "busy": true
     },
     {
-      "label": "External operator camera \u00b7 5.7 FPS",
+      "label": "External operator camera \u00b7 5.6 FPS",
       "progress": 660,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 5.7 FPS",
+      "progress": 700,
       "busy": true
     },
     {
@@ -110,22 +105,42 @@
     },
     {
       "label": "External operator camera \u00b7 6.1 FPS",
-      "progress": 1140,
+      "progress": 880,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 1140,
+      "progress": 900,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.1 FPS",
-      "progress": 1220,
+      "progress": 1000,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 1260,
+      "progress": 1020,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1200,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1220,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1280,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1300,
       "busy": true
     },
     {
@@ -140,32 +155,42 @@
     },
     {
       "label": "External operator camera \u00b7 6.1 FPS",
-      "progress": 1560,
+      "progress": 1360,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 1580,
+      "progress": 1380,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.1 FPS",
+      "progress": 1400,
+      "busy": true
+    },
+    {
+      "label": "External operator camera \u00b7 6.0 FPS",
+      "progress": 1420,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 5.9 FPS",
-      "progress": 1600,
+      "progress": 1660,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 1620,
+      "progress": 1680,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 5.9 FPS",
-      "progress": 1780,
+      "progress": 1940,
       "busy": true
     },
     {
       "label": "External operator camera \u00b7 6.0 FPS",
-      "progress": 1800,
+      "progress": 1960,
       "busy": true
     },
     {

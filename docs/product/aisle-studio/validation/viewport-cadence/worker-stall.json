@@ -1,100 +1,100 @@
 [
   {
     "seconds": 0.001,
-    "label": "Foreground worker camera \u00b7 17.1 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "label": "Foreground worker camera \u00b7 16.6 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 0.212,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "seconds": 0.211,
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
     "seconds": 0.422,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
     "seconds": 0.633,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
     "seconds": 0.844,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 1.053,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "seconds": 1.051,
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 1.255,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "seconds": 1.261,
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 1.466,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "seconds": 1.472,
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 1.677,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "seconds": 1.679,
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 1.883,
-    "label": "Foreground worker camera \u00b7 17.7 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "seconds": 1.882,
+    "label": "Foreground worker camera \u00b7 16.4 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 2.094,
+    "seconds": 2.083,
     "label": "Foreground worker camera \u00b7 Stream stalled",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 2.305,
+    "seconds": 2.294,
     "label": "Foreground worker camera \u00b7 Waiting for frames",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2921
+    "step": 261
   },
   {
-    "seconds": 2.516,
+    "seconds": 2.496,
     "label": "Foreground worker camera \u00b7 Waiting for frames",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2961
+    "step": 301
   },
   {
-    "seconds": 2.726,
-    "label": "Foreground worker camera \u00b7 21.6 FPS",
-    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "seconds": 2.703,
+    "label": "Foreground worker camera \u00b7 17.2 FPS",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
     "state": "running",
-    "step": 2961
+    "step": 301
   }
 ]

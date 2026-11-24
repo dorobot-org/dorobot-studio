@@ -49,12 +49,22 @@ def run(args):
         writer.apply(sim.robot, sim.dofs, targets[tick])
         sim.scene.step()
         sim.tick += 1
-        judge.tick(sim)
+        if args.setting != "camera-first":
+            judge.tick(sim)
         sensor_start = time.perf_counter_ns()
         head = sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
         finished = time.perf_counter_ns()
+        if args.setting == "camera-first":
+            judge.tick(sim)
+        judged = time.perf_counter_ns()
         if tick > 64:
-            rows.append([tick, sensor_start - started, finished - sensor_start])
+            rows.append(
+                [
+                    tick,
+                    sensor_start - started + judged - finished,
+                    finished - sensor_start,
+                ]
+            )
         if tick % 40 == 0:
             state.append(np.asarray(sim.robot.get_qpos()).copy())
             for name, camera in sim.rig.items():
@@ -90,5 +100,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     for name in ("repo", "journal", "out"):
         p.add_argument(name, type=Path)
-    p.add_argument("setting", choices=("reference", "floor", "2048", "1024"))
+    p.add_argument(
+        "setting", choices=("reference", "floor", "2048", "1024", "camera-first")
+    )
     run(p.parse_args())

@@ -10,12 +10,23 @@ The display uses draw intervals from the preceding two seconds, measured at the 
 
 | Foreground | Sample from visible camera heading | Task and recovery |
 | --- | ---: | --- |
-| M3 Max, 1440 × 900 offscreen, Codex-authored Nano | 30.6 FPS | The red cube reached the table. Studio switched to the background job’s snapshot, then recovered the original 342-frame foreground episode after restart. |
-| One H100 NVL, 1024 × 768 headless Studio, DeepSeek controller authored through Octos | 17.7 FPS | The red cube reached the table. Both the evidence and the 347-frame export reopened after restart. |
+| M3 Max, 1440 × 900 offscreen, Codex-authored Nano | 30.3 FPS | The red cube reached the table. Studio switched to the background job’s snapshot, then recovered the original 342-frame foreground episode after restart. |
+| One H100 NVL, 1024 × 768 headless Studio, DeepSeek controller authored through Octos | 16.1 FPS | The red cube reached the table. Both the evidence and the 347-frame export reopened after restart. |
 
-Both UI checks used the same macOS Studio binary. In the H100 check, Linux ran the Nexus worker and Studio received its frames over SSH. These readings are short samples of the on-screen counter. Immediately before interrupting the H100 camera receiver, Studio drew 35 intervals over 1.982 seconds. The operator saw **Stream stalled** after 2.094 seconds of the interruption, then **Waiting for frames**, then a new FPS value. The original simulation kept running on the same worker lease throughout. [Native draw timestamps](native-draws.json) · [Label sequence during interruption](worker-stall.json)
+The harness captured each camera title with the timestamp of the exact draw used to update it. The audit independently reconstructs the displayed rate from the draw intervals ending at that timestamp. Both checks used the same macOS Studio binary. In the H100 check, Linux ran the Nexus worker and Studio received its frames over SSH. When we interrupted that session’s receiver, the title showed **Stream stalled** at 2.083 seconds, followed by **Waiting for frames** and a fresh FPS reading on the same lease. Studio refreshes the selected Run panel on its playback timer. Each local trial and foreground watcher has its own directory. [Label and draw timestamps](native-draws.json) · [Interruption samples](worker-stall.json) · [Build and source hashes](provenance.json)
 
-The direct local path also ran the floating-base G1 standing reach with its development impact fixture and draw tracing disabled. Its external operator camera showed about 6 FPS during the trial and returned to its static heading on completion. Both feet stayed loaded for 2,000 steps. The episode contains 101 frames and reopened after restart. [G1 camera labels, impact and recovery](g1-local.json)
+The direct local path ran the floating-base G1 standing reach with draw tracing disabled. Its external operator camera showed about 6 FPS and returned to its static heading on completion. Both feet stayed loaded for 2,000 steps. The episode contains 101 frames, and Evidence restored the trial after restart. [G1 camera labels, impact and recovery](g1-local.json)
+
+## One stream across two physical hosts
+
+Each worker ran Nexus 0.2.1. The foreground streamed to native Studio on the M3 Max. The other worker delivered head-camera RGB on a 0.5-second wall-clock schedule. Both red-cube transfers completed in each direction.
+
+| Foreground worker | Background worker | Shared measurement interval | Native FPS | Background RGB received |
+| --- | --- | ---: | ---: | ---: |
+| H100 NVL | M3 Max | 103.998 s | 17.35 | 2.00 Hz |
+| M3 Max | H100 NVL | First 30 complete seconds | 29.40 | 2.00 Hz |
+
+With the Mac as foreground, 30/30 one-second bins delivered at least 25 distinct draws and at least one decoded background RGB image. The window began at the first received observer frame. With the H100 as foreground, the longer interval spans 1,805 actual viewport draws and 208 decoded background observations. Each observer image was checked against its worker’s recorded pixel digest. [H100 foreground measurements](mixed-hosts.json) · [H100 foreground trace](mixed-host-trace.zip) · [Mac foreground per-second counts](mac-foreground.json) · [Mac foreground trace and preregistered window](mac-foreground-trace.zip)
 
 ## Renderer measurements
 
@@ -31,6 +42,8 @@ On one H100 NVL we replayed the same 320 motor commands with no policy decisions
 | 0.3.0, original 4096 | 46.44 ms | 32.04 ms | 256,389 (6.18222%) | No |
 
 The denominator is 4,147,200 RGB pixels. A pixel counts as changed if any color channel differs. Even the floor-only change affected all 24 sampled images. The isolated 0.3.0 wheel changed the trajectory with the same motor commands. Studio continues to use the qualified 0.2.1 configuration. The measured production H100 viewport remains below the 25 FPS goal. [Full eight-H100 and Mac capacity measurements](../eight-h100/lossless-rgb/README.md)
+
+We also tried rendering the camera immediately after the physics step, before reading the scoring contacts. That ordering produced the same 24 RGB arrays and configuration samples. Two runs took 47.18 and 47.17 ms per step, compared with 46.20 ms with the original ordering between them. The simulation continues to score contacts before rendering. Use `camera-first` with the same measurement program to repeat this experiment. [Stage timings and sample digests](stage-order.json.gz)
 
 Run the following from this directory in a Python environment with NumPy. The audit verifies the motor journal against the published full transfer and recalculates comparisons from the original pixels, configuration samples and per-tick nanosecond records.
 
