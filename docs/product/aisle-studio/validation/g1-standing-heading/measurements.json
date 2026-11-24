@@ -1,0 +1,159 @@
+{
+  "matched": {
+    "verified": {
+      "profile": "g1-standing-reach-v1",
+      "manifest_sha256": "6009fe3d0b546ce4c22215895a2d61955e2f651fdfdbe1c3965c4c7d1cc2c309",
+      "cases": 20,
+      "successes": 20,
+      "verified": 20,
+      "verified_guard_bypasses": 0,
+      "qualified": true,
+      "split": "matched",
+      "requirement": 20,
+      "archive_sha256": "04bf4b2408036a9b2c1d0a40a1f94482c494608d4fd1c1ff432f862b8659b7bb",
+      "failures": []
+    },
+    "loaded_steps": 40000,
+    "worst_wrist_error_mm": 3.9734720346828656,
+    "torso_impulse_ns": [
+      0.014516534749418497,
+      0.1638231724500656
+    ],
+    "settled_yaw_rad": [
+      0.347780060172081,
+      0.34778027147054674
+    ]
+  },
+  "a": {
+    "verified": {
+      "profile": "g1-standing-reach-v1",
+      "manifest_sha256": "6186fda7c5d261a6b4663cfe514403861ff9cba5ef05486ce39d1a1dbcc1672f",
+      "cases": 20,
+      "successes": 18,
+      "verified": 20,
+      "verified_guard_bypasses": 0,
+      "qualified": false,
+      "split": "bounded-impact",
+      "requirement": 20,
+      "archive_sha256": "14039a89c9339dbcecb75d49d8217e1ecbf57139dc073a83ced91792de275da6",
+      "failures": [
+        {
+          "index": 9,
+          "salt": "89c2cc0ad354748063bcf3f42fa454df9355d3f4d24c63e9",
+          "recipe": {
+            "mass_kg": 0.282,
+            "speed_m_s": 1.106,
+            "lateral_m": 0.001
+          },
+          "passed": false,
+          "verified": true,
+          "reasons": [
+            "Missing block contact or stable two-second recovery"
+          ],
+          "loaded_steps": 2000,
+          "impacts": 1240,
+          "wrist_error_mm": 3.9734479346101432,
+          "recovery_s": null,
+          "positive_work_j": 0.6945205157519435,
+          "guard_bypasses": 0
+        },
+        {
+          "index": 11,
+          "salt": "ecb8ea3d768276919fd78f5e55914423e187c36703d7d891",
+          "recipe": {
+            "mass_kg": 0.228,
+            "speed_m_s": 1.137,
+            "lateral_m": 0.013
+          },
+          "passed": false,
+          "verified": true,
+          "reasons": [
+            "Missing block contact or stable two-second recovery"
+          ],
+          "loaded_steps": 2000,
+          "impacts": 1262,
+          "wrist_error_mm": 3.973038391741811,
+          "recovery_s": null,
+          "positive_work_j": 0.6524548758656774,
+          "guard_bypasses": 0
+        }
+      ]
+    },
+    "loaded_steps": 40000,
+    "worst_wrist_error_mm": 3.973871275288165,
+    "torso_impulse_ns": [
+      0.015031659044325352,
+      0.1419861726462841
+    ],
+    "settled_yaw_rad": [
+      0.3477799704670906,
+      0.34778035908937455
+    ]
+  },
+  "b": {
+    "verified": {
+      "profile": "g1-standing-reach-v1",
+      "manifest_sha256": "6186fda7c5d261a6b4663cfe514403861ff9cba5ef05486ce39d1a1dbcc1672f",
+      "cases": 20,
+      "successes": 18,
+      "verified": 20,
+      "verified_guard_bypasses": 0,
+      "qualified": false,
+      "split": "bounded-impact",
+      "requirement": 20,
+      "archive_sha256": "18a26f97e91a7719ee544bf4f32ca2a2e61c77651711ff502e77592767c6c8e1",
+      "failures": [
+        {
+          "index": 9,
+          "salt": "89c2cc0ad354748063bcf3f42fa454df9355d3f4d24c63e9",
+          "recipe": {
+            "mass_kg": 0.282,
+            "speed_m_s": 1.106,
+            "lateral_m": 0.001
+          },
+          "passed": false,
+          "verified": true,
+          "reasons": [
+            "Missing block contact or stable two-second recovery"
+          ],
+          "loaded_steps": 2000,
+          "impacts": 1240,
+          "wrist_error_mm": 3.97258761609854,
+          "recovery_s": null,
+          "positive_work_j": 0.6945044968909292,
+          "guard_bypasses": 0
+        },
+        {
+          "index": 11,
+          "salt": "ecb8ea3d768276919fd78f5e55914423e187c36703d7d891",
+          "recipe": {
+            "mass_kg": 0.228,
+            "speed_m_s": 1.137,
+            "lateral_m": 0.013
+          },
+          "passed": false,
+          "verified": true,
+          "reasons": [
+            "Missing block contact or stable two-second recovery"
+          ],
+          "loaded_steps": 2000,
+          "impacts": 1263,
+          "wrist_error_mm": 3.973391935233441,
+          "recovery_s": null,
+          "positive_work_j": 0.652463431762953,
+          "guard_bypasses": 0
+        }
+      ]
+    },
+    "loaded_steps": 40000,
+    "worst_wrist_error_mm": 3.9739599274532793,
+    "torso_impulse_ns": [
+      0.015043242834508419,
+      0.1419879775494337
+    ],
+    "settled_yaw_rad": [
+      0.34778004109859467,
+      0.3477803125977516
+    ]
+  }
+}
