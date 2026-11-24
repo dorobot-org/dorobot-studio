@@ -110,7 +110,8 @@ pub enum Action {
         baseline: Option<String>,
     },
     SelectFailure(bool),
-    Layout(u8),
+    Layout(u32),
+    CustomLayout(String),
     OlderPlan,
     NewerPlan,
     Run,
@@ -536,7 +537,7 @@ pub struct Workbench {
     room_draft_receipt: Value,
     room_selection: Value,
     room_request: Option<(String, String)>,
-    pub layout_seed: u8,
+    pub layout_seed: u32,
     pub comparison: Option<f64>,
     pub transfer_comparison: Option<TransferComparison>,
     pub dataset: Option<PathBuf>,
@@ -561,6 +562,10 @@ impl Default for Workbench {
 }
 impl Workbench {
     fn with_root(root: PathBuf) -> Self {
+        let layout_seed = read(&root, "layout-seed.json")
+            .and_then(|v| v.as_u64())
+            .and_then(|value| u32::try_from(value).ok())
+            .unwrap_or_default();
         let mut w = Self {
             robot: Robot::Nano,
             task: REFERENCE.into(),
@@ -599,7 +604,7 @@ impl Workbench {
             room_draft_receipt: Value::Null,
             room_selection: Value::Null,
             room_request: None,
-            layout_seed: 0,
+            layout_seed,
             comparison: None,
             transfer_comparison: None,
             dataset: None,
@@ -697,6 +702,16 @@ impl Workbench {
             .and_then(|p| read(p.parent()?, "room.json"))
             .unwrap_or_default();
         self.room_selection = selection;
+    }
+    fn save_layout(&mut self, seed: u32) -> io::Result<()> {
+        fs::create_dir_all(&self.root)?;
+        let path = self.root.join("layout-seed.json");
+        let temp = path.with_extension(format!("{}.tmp", std::process::id()));
+        fs::write(&temp, seed.to_string())?;
+        fs::rename(temp, path)?;
+        self.layout_seed = seed;
+        self.status = format!("Nano layout {seed} selected");
+        Ok(())
     }
     fn save_room(&mut self, selection: Value) -> io::Result<()> {
         fs::create_dir_all(&self.root)?;
@@ -1274,11 +1289,12 @@ impl Workbench {
                 self.compliant = value;
                 Ok(())
             }
-            Action::Layout(seed @ 0..=2) => {
-                self.layout_seed = seed;
-                Ok(())
-            }
-            Action::Layout(_) => Err(io::Error::other("Select a development layout from 0 to 2")),
+            Action::Layout(seed) => self.save_layout(seed),
+            Action::CustomLayout(text) => text
+                .trim()
+                .parse::<u32>()
+                .map_err(|_| io::Error::other("Enter a layout seed from 0 to 4294967295"))
+                .and_then(|seed| self.save_layout(seed)),
             Action::OlderPlan | Action::NewerPlan => {
                 if let Some(i) = self.revision_index() {
                     let index = if matches!(action, Action::OlderPlan) {
@@ -1614,6 +1630,24 @@ mod tests {
         ));
         fs::create_dir(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn custom_layout_persists_full_seed_and_rejects_invalid_input() {
+        let root = fixture("layout-seed");
+        let mut workbench = Workbench::with_root(root.clone());
+        workbench.dispatch(Action::CustomLayout(" 4294967295 ".into()));
+        assert_eq!(workbench.layout_seed, u32::MAX);
+        for invalid in ["", "-1", "4294967296", "layout"] {
+            workbench.dispatch(Action::CustomLayout(invalid.into()));
+            assert!(workbench.error.is_some());
+            assert_eq!(workbench.layout_seed, u32::MAX);
+        }
+        let mut restored = Workbench::with_root(root.clone());
+        assert_eq!(restored.layout_seed, u32::MAX);
+        restored.dispatch(Action::Layout(1));
+        assert_eq!(Workbench::with_root(root.clone()).layout_seed, 1);
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

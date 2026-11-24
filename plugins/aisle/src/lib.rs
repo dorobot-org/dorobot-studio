@@ -135,8 +135,9 @@ script_mod! {
                     impact := mod.widgets.ux.ToolButton{text:"Impact test"}
                 }
                 fixture := Body{}
-                layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
-                    Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
+                layouts := View{width:Fill height:Fit flow:Down spacing:6.0
+                    Bar{spacing:4.0 seed_title := Section{} layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
+                    Bar{seed_input := TextInput{width:Fill height:32 empty_text:"Enter a layout seed"} apply_seed := mod.widgets.ux.ToolButton{text:"Set seed"}}
                 }
                 rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0
                     Section{text:"Cube motion · world Y"}
@@ -891,6 +892,8 @@ impl PluginPanel for Panel {
                 self.root
                     .button(cx, ids!(impact))
                     .set_enabled(cx, !w.busy() && !w.impact);
+                self.label(cx, ids!(seed_title), &format!("Layout {}", w.layout_seed));
+                self.root.button(cx, ids!(apply_seed)).set_enabled(cx, !w.busy());
                 for (id, seed) in [
                     (ids!(layout0) as &[LiveId], 0),
                     (ids!(layout1), 1),
@@ -1801,6 +1804,11 @@ impl PluginPanel for Panel {
                 b.dispatch(Intent::Aisle(act));
                 return true;
             }
+        }
+        if self.root.button(cx, ids!(apply_seed)).clicked(actions) {
+            let seed = self.root.text_input(cx, ids!(seed_input)).text();
+            b.dispatch(Intent::Aisle(Action::CustomLayout(seed)));
+            return true;
         }
         if self.root.button(cx, ids!(device_listen)).clicked(actions) {
             let endpoint = self.root.text_input(cx, ids!(device_endpoint)).text();

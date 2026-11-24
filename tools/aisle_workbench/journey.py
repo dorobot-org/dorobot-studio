@@ -8,6 +8,13 @@ import subprocess
 import time
 
 
+def layout_seed(value):
+    seed = int(value)
+    if not 0 <= seed < 2**32:
+        raise argparse.ArgumentTypeError("Layout seeds range from 0 to 4294967295")
+    return seed
+
+
 def main():
     from worker import observation_seconds
 
@@ -46,7 +53,8 @@ def main():
     p.add_argument("--device-preflight", action="store_true")
     p.add_argument("--pickup-motion", choices=["slide-positive", "slide-negative"])
     p.add_argument("--transfer", choices=["red", "three"])
-    p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
+    p.add_argument("--layout", type=layout_seed, default=0)
+    p.add_argument("--wrist-clearance", action="store_true")
     p.add_argument("--heading", nargs="?", const=20, type=int, choices=(20, 30))
     p.add_argument("--upright", action="store_true")
     p.add_argument("--impact", action="store_true")
@@ -356,6 +364,8 @@ def main():
                 fixture=row["result"]["fixture"],
                 outcome=row["result"]["task_success"],
             )
+            if a.transfer and a.layout > 2 and not a.train_grasp:
+                assert row["layout_seed"] == row["result"]["seed"] == a.layout
             if a.device_preflight:
                 click("aisle_evidence.device_mode")
                 pre = done(
@@ -402,6 +412,8 @@ def main():
             if a.transfer == "red"
             else "Move all three floor cubes onto the coffee table in red, green, blue order."
         )
+        if a.wrist_clearance:
+            request += " Use experimental wrist clearance."
         if a.pickup_motion:
             request += " Track the moving cube with the wrist camera as the arm descends for pickup."
         if a.standing:
@@ -426,6 +438,8 @@ def main():
         assert (
             a.standing or row["controller"]["color_order"] == ",".join(wanted)
         ) and row["controller"]["provider"] == a.provider
+        if a.wrist_clearance:
+            assert row["controller"].get("wrist_clearance") is True
         grab(label + "-task")
         page("scene")
         if a.photo_input:
@@ -488,7 +502,27 @@ def main():
             for seed in [(a.layout + 1) % 3, a.layout]:
                 if report()["state"]["aisle"]["layout_seed"] == seed:
                     continue
-                click("aisle_scene.layout" + str(seed))
+                if seed <= 2:
+                    click("aisle_scene.layout" + str(seed))
+                else:
+                    click("aisle_scene.seed_input")
+                    remote("text", "w=0", "t=4294967296", "wait=1")
+                    click("aisle_scene.apply_seed")
+                    unchanged = done(
+                        lambda w: "Enter a layout seed" in w["status"],
+                        "Out-of-range layout rejected",
+                    )
+                    assert unchanged["layout_seed"] == (a.layout + 1) % 3
+                    click("aisle_scene.seed_input")
+                    remote(
+                        "key",
+                        "w=0",
+                        "c=KeyA",
+                        "logo=1" if sys.platform == "darwin" else "ctrl=1",
+                        "wait=1",
+                    )
+                    remote("text", "w=0", "t=" + str(seed), "wait=1")
+                    click("aisle_scene.apply_seed")
                 done(
                     lambda w: w["layout_seed"] == seed,
                     f"Living-room layout {seed} selected",
@@ -515,7 +549,7 @@ def main():
         row = done(
             lambda w: not w["busy"] and w["result"] and w["result"].get("kind") == kind,
             label + " adjudicated",
-            600,
+            900 if a.transfer == "three" else 600,
         )
         result = row["result"]
         if a.pickup_motion:
@@ -626,9 +660,9 @@ def main():
                 legible_pixels = sum(
                     n for i, n in enumerate(histogram) if abs(i - background) > 100
                 )
-                assert (
-                    legible_pixels >= 150
-                ), "Preflight measurements lack visible text contrast"
+                assert legible_pixels >= 150, (
+                    "Preflight measurements lack visible text contrast"
+                )
                 checks[-1]["contrasting_result_pixels"] = legible_pixels
             click("aisle_evidence.trial_mode")
             done(
