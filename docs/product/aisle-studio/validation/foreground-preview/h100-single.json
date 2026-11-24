@@ -5,6 +5,12 @@
   "viewport_fps": 17.890582678942028,
   "full_seconds": 381,
   "seconds_below_25": 381,
+  "reopened_result": {
+    "exact": false,
+    "field": "cubes.red.final_position_m[0]",
+    "worker": 0.17041552066802979,
+    "displayed": 0.1704155206680298
+  },
   "camera_reads": {
     "head": 7088,
     "left_wrist": 555,
@@ -19,5 +25,6 @@
   "physics_ticks": 6948,
   "wheel_supported_ticks": 6948,
   "frames_per_camera": 347,
+  "red_cube_table_inset_mm": 104,
   "task_success": true
 }

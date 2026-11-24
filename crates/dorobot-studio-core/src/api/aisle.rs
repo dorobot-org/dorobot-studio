@@ -1739,6 +1739,31 @@ mod tests {
     }
 
     #[test]
+    fn reopening_a_worker_trial_preserves_measured_coordinates_exactly() {
+        let root = tempfile::tempdir().unwrap();
+        let trial = root.path().join("1-Nano-run");
+        fs::create_dir(&trial).unwrap();
+        fs::write(
+            trial.join("result.json"),
+            br#"{"robot":"Nano","cubes":{"red":{"final_position_m":[0.17041552066802979,0.7041546106338501,0.5599989295005798]}}}"#,
+        )
+        .unwrap();
+        let bench = Workbench::with_root(root.path().to_path_buf());
+        let position = &bench.evidence["cubes"]["red"]["final_position_m"];
+        let original = [
+            0.17041552066802979_f64,
+            0.7041546106338501,
+            0.5599989295005798,
+        ];
+        for (index, expected) in original.iter().enumerate() {
+            assert_eq!(
+                position[index].as_f64().unwrap().to_bits(),
+                expected.to_bits()
+            );
+        }
+    }
+
+    #[test]
     fn restores_per_robot_revision_and_rejects_modified_or_missing_selection() {
         let root = fixture("selected-revision");
         for (name, robot) in [

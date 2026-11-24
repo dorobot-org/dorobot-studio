@@ -60,31 +60,7 @@ def rate(times):
     return (len(times) - 1) * 1e9 / (times[-1] - times[0])
 
 
-def same_display_value(original, displayed):
-    """Allow one adjacent binary64 value when Studio transcribes a JSON decimal."""
-    if type(original) is not type(displayed):
-        return False
-    if isinstance(original, dict):
-        return original.keys() == displayed.keys() and all(
-            same_display_value(v, displayed[k]) for k, v in original.items()
-        )
-    if isinstance(original, list):
-        return len(original) == len(displayed) and all(
-            same_display_value(a, b) for a, b in zip(original, displayed)
-        )
-    if isinstance(original, float):
-        return (
-            math.isfinite(original)
-            and math.isfinite(displayed)
-            and (
-                original == displayed
-                or math.nextafter(original, displayed) == displayed
-            )
-        )
-    return original == displayed
-
-
-def measure(archive, side):
+def measure(archive, side, *, report_reopened_position=False):
     def read(name):
         return json.loads(archive.read(f"{side}/{name}"))
 
@@ -92,10 +68,20 @@ def measure(archive, side):
     plan = archive.read(f"{side}/controller.json")
     timing = read("preview-timing.json")
     restored = read("reopened.json")
-    assert (
-        same_display_value(result, restored["result"])
-        and restored["job"] == read("worker-origin.json")["job"]
-    )
+    assert restored["job"] == read("worker-origin.json")["job"]
+    display = restored["result"]
+    reopen = dict(exact=display == result)
+    if report_reopened_position and not reopen["exact"]:
+        # The original H100 viewer rounded one red-cube X coordinate while
+        # parsing the worker JSON. Report both values and check every other field.
+        position = display["cubes"]["red"]["final_position_m"]
+        raw = result["cubes"]["red"]["final_position_m"][0]
+        assert math.nextafter(raw, position[0]) == position[0] != raw
+        reopen.update(
+            field="cubes.red.final_position_m[0]", worker=raw, displayed=position[0]
+        )
+        position[0] = raw
+    assert display == result
     manifest = read("mode-manifest.json")
     original, reopened = manifest["sessions"]
     assert (original["stage"], reopened["stage"]) == ("journey", "recovery")
@@ -177,6 +163,8 @@ def measure(archive, side):
         full_seconds=max(bins),
         seconds_below_25=sum(bins[i] < 25 for i in range(max(bins))),
     )
+    if report_reopened_position:
+        rates["reopened_result"] = reopen
     if side == "after":
         reads, renders = timing["camera_requests"], timing["camera_renders"]
         assert set(reads) == set(renders) == set(cameras)
@@ -213,7 +201,7 @@ def main():
                 pack(z, side, path)
     with ZipFile(args.archive) as z:
         if args.single:
-            rates, _, result = measure(z, "after")
+            rates, _, result = measure(z, "after", report_reopened_position=True)
             print(
                 json.dumps(
                     dict(
@@ -221,6 +209,9 @@ def main():
                         physics_ticks=result["physics_ticks"],
                         wheel_supported_ticks=result["wheel_supported_ticks"],
                         frames_per_camera=result["frames"],
+                        red_cube_table_inset_mm=round(
+                            1000 * result["cubes"]["red"]["nearest_table_edge_m"]
+                        ),
                         task_success=result["task_success"],
                     ),
                     indent=2,
