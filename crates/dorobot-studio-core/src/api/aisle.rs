@@ -961,26 +961,36 @@ impl Workbench {
     pub fn change_frame(&self, side: RevisionSide) -> Option<&ChangeFrame> {
         self.transfer_comparison.as_ref()?.frames[side.index()].as_ref()
     }
-    pub fn can_pin_room(&self) -> bool { room_pair::eligible(&self.evidence) }
+    pub fn can_pin_room(&self) -> bool {
+        room_pair::eligible(&self.evidence)
+    }
 
     fn toggle_room_baseline(&mut self) -> io::Result<()> {
-        if self.busy() { return Err(io::Error::other("Wait for the active job to finish")); }
-        let path = self.selected.clone().ok_or_else(|| io::Error::other("Select a Nano trial"))?;
+        if self.busy() {
+            return Err(io::Error::other("Wait for the active job to finish"));
+        }
         let baseline = if self.room_baseline.is_some() {
             None
         } else {
+            let path = self.selected.as_deref().ok_or_else(|| io::Error::other("Select a Nano trial"))?;
             let bytes = fs::read(path.join("result.json"))?;
             let result: Value = serde_json::from_slice(&bytes)?;
-            if result != self.evidence { return Err(io::Error::other("Selected verdict changed before pinning")); }
-            room_pair::check_baseline(&path, &result).map_err(io::Error::other)?;
+            if result != self.evidence {
+                return Err(io::Error::other("Selected verdict changed before pinning"));
+            }
+            room_pair::check_baseline(path, &result).map_err(io::Error::other)?;
+            let name = path.file_name().and_then(|n| n.to_str())
+                .ok_or_else(|| io::Error::other("Missing trial name"))?;
             Some(RoomBaseline {
-                trial: path.file_name().and_then(|n| n.to_str()).ok_or_else(|| io::Error::other("Missing trial name"))?.into(),
+                trial: name.to_owned(),
                 result_sha256: format!("{:x}", Sha256::digest(&bytes)),
             })
         };
         save_selection(&self.root, "room-baseline.json", &serde_json::to_value(&baseline)?)?;
         self.room_baseline = baseline;
-        self.select_run(path);
+        if let Some(path) = self.selected.clone() {
+            self.select_run(path);
+        }
         Ok(())
     }
 

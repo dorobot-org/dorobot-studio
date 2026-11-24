@@ -357,6 +357,26 @@ mod tests {
     }
 
     #[test]
+    fn clears_persisted_pin_after_all_runs_were_removed() {
+        use super::super::{Action, Workbench};
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+        let base = root.join("01-Nano-run");
+        trial(&base, json!([0.5, 0.5, 0.5]), 0.8);
+        let mut wb = Workbench::with_root(root.to_owned());
+        wb.dispatch(Action::ToggleRoomBaseline);
+        assert!(wb.room_baseline.is_some());
+        fs::remove_dir_all(&base).unwrap();
+        let mut reopened = Workbench::with_root(root.to_owned());
+        assert!(reopened.selected.is_none());
+        reopened.dispatch(Action::ToggleRoomBaseline);
+        assert!(reopened.room_baseline.is_none() && reopened.error.is_none());
+        assert!(Workbench::with_root(root.to_owned())
+            .room_baseline
+            .is_none());
+    }
+
+    #[test]
     fn pairs_only_controlled_room_changes() {
         let temp = tempfile::tempdir().unwrap();
         let (a, b) = (temp.path().join("a"), temp.path().join("b"));
