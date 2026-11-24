@@ -10,7 +10,7 @@ import sys
 import time
 from zipfile import ZipFile
 
-from fleet_client import send, submission
+from fleet_client import check_background_period, send, submission
 from fleet_artifacts import download
 from fleet_worker import initialize
 from worker import save
@@ -119,6 +119,7 @@ def while_streaming(args, foreground, done, grab):
     folder = args.out.parent
     node = json.loads((folder / "benchmark-nodes.json").read_bytes())[ALIAS]
     observers = args.foreground_cadence - 1
+    check_background_period(node, args.background_period_s or 1, args.background_clock)
     with ThreadPoolExecutor(max_workers=observers) as pool:
         jobs = [
             pool.submit(

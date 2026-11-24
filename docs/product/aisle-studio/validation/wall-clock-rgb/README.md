@@ -2,13 +2,13 @@
 
 In **AISLE Studio → Run → Workers**, connect to the worker. Select **Wall time** to request an image at a regular interval on the worker, or **Sim time** to space observations by physics time. Select **RGB** to cycle through the available periods. Both clocks offer 1, 2 and 5 seconds. Wall time also offers 0.5 seconds.
 
-Select **Background run**, then **Snapshot** to see its latest head-camera exposure. The selected job shows the clock and period used when it was submitted. **Cancel job** stops that lease. **Fetch evidence** imports its records. The foreground stream can continue throughout. Studio restores the selected lease and its settings after restart. Older workers advertise their compatible periods when Studio connects. [Worker setup](../worker-leases/README.md)
+Select **Background run**, then **Snapshot** to see its latest head-camera exposure. The selected job shows the clock and period used when it was submitted. **Cancel job** stops that lease. **Fetch evidence** imports its records. The foreground stream can continue throughout. Studio restores the selected lease and its settings after restart. The clock for a fresh submission starts at Sim time. Older workers advertise their compatible periods when Studio connects. [Worker setup](../worker-leases/README.md)
 
 ![The native Studio Run page showing the Nano head camera and a background job using a half-second wall interval](worker-clock.png)
 
 ## Measured Mac capacity
 
-One Apple M3 Max with 128 GiB unified memory and macOS 26.5 ran the Studio viewport and all the Nexus processes. Every session made its own call to the named provider before the controller executed. Each Nano used its onboard RGB and encoders to place the red floor cube on the coffee table on one fixed layout. The shared interval begins when every background is advancing and ends when the first stops reporting progress. The gate requires at least 30 seconds of overlap, 25 distinct native viewport draws per second and at least 1 delivered image per second for **every** observer. Rates use unrounded timestamps. [Preregistered workloads and follow-up](protocol.md)
+One Apple M3 Max with 128 GiB unified memory and macOS 26.5 ran the Studio viewport and all the Nexus processes. Every session made its own call to the named provider before the controller executed. Each Nano used its onboard RGB and encoders to place the red floor cube on the coffee table on one fixed layout. The shared interval begins when every background is advancing and ends when the first stops reporting progress. The gate requires at least 30 seconds of overlap, an average of 25 distinct native viewport draws per second and at least 1 delivered image per second for **every** observer. Rates use unrounded timestamps. [Preregistered workloads and follow-up](protocol.md)
 
 | Sessions | Author | Requested period | Common time | Foreground FPS | Observer delivery | Seconds below 25 FPS | Gate |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- |
@@ -22,11 +22,13 @@ One Apple M3 Max with 128 GiB unified memory and macOS 26.5 ran the Studio viewp
 | 12 | Codex | 0.5 s | 108.4 s | 24.80 | 1.9984–2.0066 Hz | 54/108 | Miss |
 | 16 | DeepSeek + Octos | 0.5 s | 145.5 s | 18.12 | 1.9836–2.0038 Hz | 145/145 | Miss |
 
-**Ten simultaneous sessions** passed with both providers, the largest tested load to do so. At 12 the DeepSeek run averaged 25.02 FPS and spent 45 of 108 complete seconds below 25 FPS. The Codex run averaged 24.80 FPS and missed the gate. At 16 the viewport averaged 18.12 FPS. All 92 Nano transfers passed on this fixed layout, with continuous measured wheel support and identical motor journals. The trials measure execution throughput. Nano performance on new layouts has a separate [three-cube qualification](../nano-qualification.md).
+**Ten simultaneous sessions** passed with both providers, the largest tested load to do so. At 12 the DeepSeek run averaged 25.02 FPS and spent 45 of 108 complete seconds below 25 FPS. The Codex run averaged 24.80 FPS and missed the gate. At 16 the viewport averaged 18.12 FPS. All 92 Nano transfers passed on this fixed layout, with continuous measured wheel support and identical motor journals. The 0.5-second setting requests twice as many background images as the 1-second wall setting. The trials measure execution throughput at these specific settings. Nano performance on new layouts has a separate [three-cube qualification](../nano-qualification.md).
 
 The foreground counts fresh 480 × 360 head-camera exposure ticks drawn by Makepad. Worker publication timestamps and client receipts describe how often images became available and how often the observer actually received them. The local measurements use the same host's monotonic clock. A delayed process advances its next deadline to the future and resumes with a fresh exposure. The ordinary control and recording clocks continue independently. The complete foreground export retains synchronized head, left-wrist and right-wrist images, encoders and actions.
 
-For the one-simulated-second setting, the original Mac benchmark passed with six sessions and missed at seven. With eight it measured 28.39 foreground FPS and 0.84–0.88 Hz at the observers. On the eight-H100 configuration, a Mac viewport receiving the remote stream drew 16.21–16.40 FPS under that original setting. All eight Linux workers advertised the new wall clock and 0.5-second period in a fresh SSH preflight. The scheduler reported the node down and existing processes used 96–99% of each GPU at the recorded sample. On the Mac, the configurable remote-cohort observer also completed a local Metal run with 216 verified RGB receipts and 12,608 consecutive supported physics ticks. A new eight-GPU throughput measurement is still open. [Worker capabilities and host occupancy](h100-preflight.json) [Earlier Mac measurements](../foreground-preview/README.md) · [Remote measurements and runner](../eight-h100/README.md)
+For the one-simulated-second setting, the original Mac benchmark passed with six sessions and missed at seven. With eight it measured 28.39 foreground FPS and 0.84–0.88 Hz at the observers. On the eight-H100 configuration, a Mac viewport receiving the remote stream drew 16.21–16.40 FPS under that original setting. All eight Linux workers advertised the new wall clock and 0.5-second period in a fresh SSH preflight. The scheduler reported the node down and existing processes used 96–99% of each GPU at the recorded sample. On the Mac, the H100 runner’s observer function was called directly against one local Metal worker after checking its advertised period. It returned 216 verified RGB receipts and 12,608 consecutive supported physics ticks. The separate SSH preflight recorded the capabilities and worker code digest of each Linux endpoint. A new eight-GPU throughput measurement is still open. [Worker capabilities and host occupancy](h100-preflight.json) [Earlier Mac measurements](../foreground-preview/README.md) · [Remote measurements and runner](../eight-h100/README.md)
+
+The eight-session 1-second cohorts used the same executable with checkout revisions `15f0930` and `21a07b2`. The eight-session half-second cohorts used `0f2a35c`. Twelve and sixteen used `5ccf753` with the same half-second executable. The ten-session cohorts used the final compact layout from `7cd5738`. The JSON records each native binary digest, source revision and source-manifest digest individually.
 
 ## Native controls and G1 balance
 
@@ -36,7 +38,7 @@ For G1, seven trials repeated the same floating-base standing reach under a boun
 
 ## Reproduce the checks
 
-Use the Studio Python environment and built native instrument. The capacity run uses the native Run controls to select the clock and period and collects the client receipts while the simulators advance. Use a fresh output directory per run.
+Use the Studio Python environment and built native instrument. The verifier selects the clock and period through the native Run controls. Studio starts the foreground. Independent clients submit the parallel observers with the same settings and timestamp each received image. The two-job journeys also submit their background job through Run. Use a fresh output directory per run.
 
 ~~~sh
 "$DOROBOT_AISLE_PYTHON" tools/aisle_workbench/verify.py \
@@ -48,7 +50,7 @@ Use the Studio Python environment and built native instrument. The capacity run 
 
 Use `--codex` for the other author. To exercise the snapshot and cancel controls with two jobs, omit `--foreground-cadence 8`. Use `--backend headless --size 1024x768` for the compact functional check. The legacy clock can be selected with `--background-clock simulation --background-period-s 1`.
 
-To reproduce the [measured values](measurements.json) from the [original observations, motor journals and dataset](measurements.zip), run the following command from the Studio checkout. The dataset option uses PyArrow and FFprobe to verify timestamps, frame counts and the 17 recorded action and encoder values. The G1 trace checks use NumPy.
+To reproduce the [measured values](measurements.json) from the [original observations, motor journals and dataset](measurements.zip), run the following command from the Studio checkout. The dataset option uses PyArrow and FFprobe to verify timestamps, frame counts and the 17 recorded action and encoder values. The G1 trace checks use NumPy. CI recomputes the numerical results. The full local audit also decodes the dataset videos. When the measured commits are available in the checkout, add `--git-sources` to verify all captured source digests against Git.
 
 ~~~sh
 guide=docs/product/aisle-studio/validation/wall-clock-rgb

@@ -4,7 +4,9 @@ import argparse
 import hashlib
 import io
 import json
+import re
 import runpy
+import subprocess
 from collections import Counter
 from pathlib import Path
 from itertools import combinations
@@ -18,6 +20,45 @@ from archive import BASE_CASES, EXTENDED_CASES, G1, NATIVE
 def rate(stamps):
     assert len(stamps) > 1 and all(a < b for a, b in zip(stamps, stamps[1:]))
     return (len(stamps) - 1) * 1e9 / (stamps[-1] - stamps[0])
+
+
+def builds(z, tags, verify_git):
+    summaries = {}
+    by_commit = {}
+    repository = Path(__file__).resolve().parents[5]
+    for tag in tags:
+        manifest = json.loads(z.read(tag + "/native-build.json"))
+        commit = manifest["studio_source_commit"]
+        binary = manifest["native_binary_sha256"]
+        sources = manifest["source_files_sha256"]
+        assert re.fullmatch("[0-9a-f]{40}", commit) and re.fullmatch(
+            "[0-9a-f]{64}", binary
+        )
+        assert sources and all(
+            re.fullmatch("[0-9a-f]{64}", h) for h in sources.values()
+        )
+        headless = tag.endswith("-headless")
+        assert manifest["backend"] == ("headless" if headless else "offscreen")
+        assert manifest["requested_size"] == ("1024x768" if headless else "1440x900")
+        author = json.loads(z.read(tag + "/foreground/author.json"))
+        assert author["provider"] == manifest["provider"]
+        if commit in by_commit:
+            assert by_commit[commit] == sources
+        elif verify_git:
+            for name, digest in sources.items():
+                data = subprocess.check_output(
+                    ["git", "cat-file", "blob", f"{commit}:{name}"], cwd=repository
+                )
+                assert hashlib.sha256(data).hexdigest() == digest, (commit, name)
+        by_commit[commit] = sources
+        summaries[tag] = dict(
+            source_commit=commit,
+            native_binary_sha256=binary,
+            source_manifest_sha256=hashlib.sha256(
+                json.dumps(sources, sort_keys=True).encode()
+            ).hexdigest(),
+        )
+    return summaries
 
 
 def case(z, tag, capacity):
@@ -266,6 +307,11 @@ def main():
     cli.add_argument("archive", type=Path)
     cli.add_argument("--output", type=Path)
     cli.add_argument(
+        "--git-sources",
+        action="store_true",
+        help="Verify the captured source digests against their original commits in the local Git history",
+    )
+    cli.add_argument(
         "--datasets",
         action="store_true",
         help="Decode three camera videos and verify the synchronized Parquet rows",
@@ -279,6 +325,22 @@ def main():
             p.split("/")[0] for p in z.namelist() if p.endswith("/preview-cadence.json")
         }
         assert recorded == set(declared)
+        provenance = builds(z, declared + list(NATIVE), args.git_sources)
+        preflight = json.loads(
+            Path(__file__).with_name("h100-preflight.json").read_bytes()
+        )
+        worker_digest = json.loads(z.read("10-half-codex/native-build.json"))[
+            "source_files_sha256"
+        ]["tools/aisle_workbench/worker.py"]
+        assert set(preflight["workers"]) == {f"gpu{i}" for i in range(8)}
+        for node in preflight["workers"].values():
+            assert (
+                node["backend"] == "webgpu" and node["worker_sha256"] == worker_digest
+            )
+            assert (
+                "wall" in node["background_rgb_clocks"]
+                and 0.5 in node["background_wall_rgb_periods_s"]
+            )
         capacity = {c: case(z, c, True) for c in declared}
         assert {
             "10-half-deepseek",
@@ -307,6 +369,7 @@ def main():
             native={c: case(z, c, False) for c in NATIVE},
             g1=g1(z),
             runner=runner(z),
+            native_builds=provenance,
         )
     data = json.dumps(results, indent=2) + "\n"
     if args.output:

@@ -229,8 +229,9 @@ def main():
     if a.background_period_s == 0.5 and a.background_clock != "wall":
         cli.error("A half-second period requires --background-clock wall")
     nodes = json.loads(a.nodes.read_bytes())
-    aliases = [f"gpu{i}" for i in range(8)]
-    assert set(nodes) == set(aliases) and len({v["spool"] for v in nodes.values()}) == 8
+    standard = [f"gpu{i}" for i in range(8)]
+    aliases = standard if set(nodes) == set(standard) else list(nodes)
+    assert len(aliases) == 8 and len({v["spool"] for v in nodes.values()}) == 8
     assert len({v["ssh"] for v in nodes.values()}) == 1
     authors = sorted(a.authors.glob("*-Nano-prepare"))
     preparations = json.loads((a.authors / "results.json").read_bytes())["authors"]
@@ -314,7 +315,7 @@ def main():
             pending = {
                 pool.submit(
                     observer,
-                    alias,
+                    f"gpu{index}",
                     nodes[alias],
                     author,
                     a.out,
@@ -322,7 +323,9 @@ def main():
                     a.background_clock,
                     a.background_period_s,
                 )
-                for alias, author in zip(aliases[1:], authors[1:])
+                for index, (alias, author) in enumerate(
+                    zip(aliases[1:], authors[1:]), start=1
+                )
             }
             deadline = time.monotonic() + 1050
             while pending or proc.poll() is None:
