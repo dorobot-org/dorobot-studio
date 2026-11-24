@@ -9,6 +9,8 @@ import time
 
 
 def main():
+    from worker import observation_seconds
+
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--remote", required=True)
     p.add_argument("--pid", required=True)
@@ -33,6 +35,9 @@ def main():
     p.add_argument("--fleet-controller", action="store_true")
     p.add_argument("--fleet-node")
     p.add_argument("--fleet", action="store_true")
+    p.add_argument(
+        "--background-period-s", type=observation_seconds, choices=(0.5, 1, 2, 5)
+    )
     p.add_argument(
         "--background-clock", choices=("simulation", "wall"), default="simulation"
     )

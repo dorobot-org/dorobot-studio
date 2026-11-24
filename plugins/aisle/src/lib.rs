@@ -329,7 +329,7 @@ impl Panel {
             let mode = if stream {
                 "foreground".to_owned()
             } else {
-                let period = selected["observation_period_s"].as_u64().unwrap_or(1);
+                let period = selected["observation_period_s"].as_f64().unwrap_or(1.0);
                 let clock = if selected["observation_clock"] == "wall" {
                     "wall"
                 } else {

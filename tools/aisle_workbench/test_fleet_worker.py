@@ -93,6 +93,33 @@ class WorkerLeaseTests(unittest.TestCase):
                 self.request | {"mode": "stream", "observation_clock": "wall"},
             )
 
+    def test_half_second_schedule_requires_advertised_wall_time(self):
+        from fleet_client import check_background_period
+        from worker import observation_seconds
+
+        self.assertIs(type(observation_seconds("2.0")), int)
+        self.assertEqual(observation_seconds("0.5"), 0.5)
+        caps = {
+            "background_rgb_periods_s": [1, 2, 5],
+            "background_rgb_clocks": ["simulation", "wall"],
+        }
+        with patch("fleet_client.send", return_value=caps):
+            with self.assertRaisesRegex(ValueError, "period"):
+                check_background_period({}, 0.5, "wall")
+        with patch(
+            "fleet_client.send",
+            return_value=caps | {"background_wall_rgb_periods_s": [0.5, 1, 2, 5]},
+        ):
+            check_background_period({}, 0.5, "wall")
+        req = self.request | {"mode": "observations", "observation_period_s": 0.5}
+        with self.assertRaisesRegex(ValueError, "period"):
+            dispatch(self.root, req)
+        with patch("fleet_worker.subprocess.Popen"):
+            self.assertEqual(
+                dispatch(self.root, req | {"observation_clock": "wall"})["state"],
+                "reserved",
+            )
+
     def test_background_clock_and_stream_are_distinct(self):
         for invalid in (True, 0, 3, 10):
             with self.assertRaisesRegex(ValueError, "observation period"):

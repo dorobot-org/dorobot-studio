@@ -37,7 +37,7 @@ def cancel_benchmark_jobs(root):
         send(node, dict(op="cancel", id=job["id"]))
 
 
-def background(index, node, folder, provider, clock="simulation"):
+def background(index, node, folder, provider, clock="simulation", period=1):
     author = folder / f"background-author-{index}"
     subprocess.run(
         [
@@ -57,6 +57,7 @@ def background(index, node, folder, provider, clock="simulation"):
         timeout=180,
     )
     request = submission(author / "controller.json", mode="observations")
+    request["observation_period_s"] = period
     if clock == "wall":
         request["observation_clock"] = clock
     ident = request["id"]
@@ -121,7 +122,13 @@ def while_streaming(args, foreground, done, grab):
     with ThreadPoolExecutor(max_workers=observers) as pool:
         jobs = [
             pool.submit(
-                background, i, node, folder, args.provider, args.background_clock
+                background,
+                i,
+                node,
+                folder,
+                args.provider,
+                args.background_clock,
+                args.background_period_s or 1,
             )
             for i in range(observers)
         ]
@@ -137,7 +144,7 @@ def while_streaming(args, foreground, done, grab):
     return row["worker_observation"]["job"]["result"], backgrounds
 
 
-def verify_viewport(out, trial, backgrounds, clock="simulation"):
+def verify_viewport(out, trial, backgrounds, clock="simulation", period=1):
     from statistics import median
 
     times = json.loads((trial / "preview-timing.json").read_bytes())["tick_time"]
@@ -175,6 +182,7 @@ def verify_viewport(out, trial, backgrounds, clock="simulation"):
     report = dict(
         sessions=1 + len(backgrounds),
         background_clock=clock,
+        background_period_s=period,
         draw_source=Path(live_source).name,
         background_wall_fps=background_rates,
         meets_cadence=phase_seconds >= 30 and fps >= 25 and min(background_rates) >= 1,

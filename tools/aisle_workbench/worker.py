@@ -34,13 +34,21 @@ def save(path, value):
     tmp.replace(path)
 
 
+def observation_seconds(raw):
+    """Preserve integer wire values for existing workers; wall time also accepts 0.5."""
+    seconds = float(raw)
+    return int(seconds) if seconds in (1, 2, 5) else seconds
+
+
 class BackgroundCadence:
     """Request at most one fresh physics exposure per deadline on the selected clock."""
 
     def __init__(self, clock, period_s, ticks_per_second):
         self.wall = clock == "wall"
-        self.period_ticks = period_s * ticks_per_second
-        self.period_ns = period_s * 1_000_000_000
+        if period_s == 0.5 and not self.wall:
+            raise ValueError("Half-second RGB observations require wall time")
+        self.period_ticks = int(period_s * ticks_per_second)
+        self.period_ns = int(period_s * 1_000_000_000)
         self.next_ns = None
 
     def due(self, tick, first=False):
@@ -1111,7 +1119,12 @@ def main():
     p.add_argument(
         "--observation-clock", choices=("simulation", "wall"), default="simulation"
     )
-    p.add_argument("--observation-period-s", type=int, choices=(1, 2, 5), default=1)
+    p.add_argument(
+        "--observation-period-s",
+        type=observation_seconds,
+        choices=(0.5, 1, 2, 5),
+        default=1,
+    )
     p.add_argument(
         "--live-preview",
         action="store_true",
@@ -1119,6 +1132,11 @@ def main():
     )
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
+    if args.operation == "run":
+        if args.observation_clock == "wall" and not args.observations_only:
+            p.error("--observation-clock wall requires --observations-only")
+        if args.observation_period_s == 0.5 and args.observation_clock != "wall":
+            p.error("The 0.5 second observation period requires wall time")
     if args.seed < 0:
         p.error("Scene seed must be nonnegative")
     args.out = args.out.resolve()

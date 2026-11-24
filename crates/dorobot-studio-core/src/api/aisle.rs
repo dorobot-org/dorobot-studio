@@ -533,7 +533,7 @@ pub struct Workbench {
     pub transfer_comparison: Option<TransferComparison>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
-    pub background_period_s: u8,
+    pub background_period_s: f32,
     pub observation_clock: ObservationClock,
     pub worker_sample: Option<PathBuf>,
     pub workers_open: bool,
@@ -595,7 +595,7 @@ impl Workbench {
             transfer_comparison: None,
             dataset: None,
             exports: Default::default(),
-            background_period_s: 1,
+            background_period_s: 1.0,
             observation_clock: ObservationClock::Simulation,
             worker_sample: None,
             workers_open: false,
@@ -1282,15 +1282,19 @@ impl Workbench {
             Action::ToggleObservationClock => {
                 self.observation_clock = match self.observation_clock {
                     ObservationClock::Simulation => ObservationClock::Wall,
-                    ObservationClock::Wall => ObservationClock::Simulation,
+                    ObservationClock::Wall => {
+                        self.background_period_s = self.background_period_s.max(1.0);
+                        ObservationClock::Simulation
+                    }
                 };
                 Ok(())
             }
             Action::CycleBackgroundPeriod => {
                 self.background_period_s = match self.background_period_s {
-                    1 => 2,
-                    2 => 5,
-                    _ => 1,
+                    1.0 => 2.0,
+                    2.0 => 5.0,
+                    5.0 if self.observation_clock == ObservationClock::Wall => 0.5,
+                    _ => 1.0,
                 };
                 Ok(())
             }

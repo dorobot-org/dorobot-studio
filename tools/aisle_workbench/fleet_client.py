@@ -9,6 +9,8 @@ import shlex
 import subprocess
 from uuid import uuid4
 
+from worker import observation_seconds
+
 
 def worker_command(node, *operation):
     args = [
@@ -64,7 +66,10 @@ def check_background_period(node, period, clock="simulation"):
         raise ValueError(
             "This worker does not advertise wall-clock RGB observations. Select simulation time or update the worker."
         )
-    if period not in capabilities.get("background_rgb_periods_s", []):
+    periods = capabilities.get("background_rgb_periods_s", [])
+    if clock == "wall":
+        periods = capabilities.get("background_wall_rgb_periods_s", periods)
+    if period not in periods:
         raise ValueError(
             "This worker does not advertise the selected background RGB period. Update its Studio checkout."
         )
@@ -119,7 +124,10 @@ def main():
         "--mode", choices=["stream", "observations"], default="observations"
     )
     submit.add_argument(
-        "--observation-period-s", type=int, choices=(1, 2, 5), default=1
+        "--observation-period-s",
+        type=observation_seconds,
+        choices=(0.5, 1, 2, 5),
+        default=1,
     )
     submit.add_argument(
         "--observation-clock", choices=("simulation", "wall"), default="simulation"
