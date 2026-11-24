@@ -36,6 +36,12 @@ def audit(folder):
     assert result["root_pose_writes"] == result["rejected_motor_writes"] == 0
     sources = {r["tick"]: r["source_sha256"] for r in rows}
     assert len(sources) == len(rows) == timing["received"]
+    senses = {
+        action["tick"]
+        for line in (folder / "actions.jsonl").read_bytes().splitlines()
+        if (action := json.loads(line))["op"] == "sense"
+    }
+    waiting_for_synchronized_rgb = False
     last = -1
     faults = Counter()
     hold = resumed = None
@@ -43,11 +49,14 @@ def audit(folder):
         t, c = r["tick"], r["capture_tick"]
         assert c <= t and sources[c] == r["delivered_sha256"]
         assert (r["capture_ns"], r["receive_ns"]) == (c * 10_000_000, t * 10_000_000)
+        waiting_for_synchronized_rgb |= t in senses
         cause = None
         if c <= last:
             cause = "repeated or out-of-order packet"
         elif t - c > 25:
             cause = "late packet"
+        elif waiting_for_synchronized_rgb and c != t:
+            cause = "unsynchronized wrist packet"
         assert cause == r["fault"]
         if cause:
             faults[cause] += 1
@@ -56,6 +65,7 @@ def audit(folder):
                 assert np.max(abs(motors[t, left_arm] - motors[t - 1, left_arm])) > 1e-6
         else:
             last = c
+            waiting_for_synchronized_rgb = False
             if hold is not None and resumed is None:
                 resumed = t
     for r in rows[:15]:
@@ -135,13 +145,12 @@ def native_journey(args, checks, page, click, remote, done, grab):
     )
     outcomes = []
     for mode, button in [
-        ("normal", None),
+        ("normal", "on_time"),
         ("intermittent", "late_rgb"),
         ("disconnected", "frozen_rgb"),
     ]:
         page("scene")
-        if button:
-            click("aisle_scene." + button)
+        click("aisle_scene." + button)
         state = done(
             lambda w: w["rgb_timing"] == mode, mode + " wrist delivery selected"
         )
