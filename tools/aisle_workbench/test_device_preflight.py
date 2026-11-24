@@ -1,14 +1,64 @@
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 
-from device_preflight import replay_samples
+from device_preflight import replay_samples, run
 from g1_dds_state import JOINTS
-from worker import ROOT
+from worker import ROOT, describe, digest, save
 
 
 class DevicePreflightTests(unittest.TestCase):
+    def test_nano_preflight_uses_the_selected_tasks_channels(self):
+        model = describe("Nano")
+        arm = {"arms", "joint_feedback"}
+        mobile = arm | {"mobile_base", "head", "cameras"}
+        cases = [
+            (
+                "joint-inspection",
+                dict(joint=model["allowed_joints"][0], delta_rad=0.08),
+                arm,
+            ),
+            (
+                "visual-approach",
+                dict(kind="visual-approach", color="blue", standoff_m=0.45),
+                mobile,
+            ),
+            (
+                "table-transfer",
+                dict(kind="table-transfer", color_order="red"),
+                mobile | {"measured_odometry"},
+            ),
+        ]
+        for kind, controller, required in cases:
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as folder:
+                trial = Path(folder)
+                out = trial / "preflight"
+                out.mkdir()
+                plan = dict(robot="Nano", model_hash=model["model_hash"], **controller)
+                save(trial / "controller.json", plan)
+                sha = digest(trial / "controller.json")
+                save(trial / "source.json", dict(controller_sha256=sha))
+                save(
+                    trial / "result.json",
+                    dict(
+                        kind=kind,
+                        robot="Nano",
+                        model_hash=model["model_hash"],
+                        task_success=True,
+                        controller_hash=sha,
+                    ),
+                )
+                receipt = run(SimpleNamespace(trial=trial, out=out, robot="Nano"))
+                self.assertEqual(set(receipt["required_capabilities"]), required)
+                self.assertEqual(
+                    set(receipt["missing_capabilities"]), required - {"mobile_base"}
+                )
+                self.assertEqual(receipt["state"], "Adapter incomplete")
+                self.assertFalse(receipt["physical_qualification"])
+                self.assertEqual(receipt["motor_commands_sent"], 0)
+
     def replay(self, change=None):
         plan = {"joint": "right_shoulder_pitch_joint", "delta_rad": -0.08}
         q = [0.0] * 29

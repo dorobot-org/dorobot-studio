@@ -10,6 +10,6 @@
   "speed_limit_ticks": 1500,
   "teleop_limit_ticks": 300,
   "command_timeout_ms": 250,
-  "capabilities": {"mobile_base": true, "strafe": true, "arms": false, "head": false, "cameras": false, "measured_odometry": false},
+  "capabilities": {"mobile_base": true, "strafe": true, "arms": false, "head": false, "cameras": false, "joint_feedback": false, "measured_odometry": false},
   "model": "data/adora_nano/adora_nano.urdf"
 }
