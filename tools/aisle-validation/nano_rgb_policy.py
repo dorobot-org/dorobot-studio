@@ -67,6 +67,15 @@ class VisualServo:
             )
         self.last_stamp = -1
 
+    def camera_candidates(self, name, rgb, encoders):
+        chain, indices, mount, intrinsics, (w, h) = self.cameras[name]
+        if rgb.dtype != np.uint8 or rgb.shape != (h, w, 3):
+            raise ValueError("invalid RGB frame")
+        pos, rot = chain.forward(encoders[indices])
+        pose = np.eye(4)
+        pose[:3, 3], pose[:3, :3] = pos, rot
+        return detect(rgb, self.target, intrinsics, pose @ mount)
+
     def command(self, packet, *, preferred_camera=None, resolve_ambiguity=False):
         if set(packet) != {*CAMERAS, "stamp_ns", "encoders"}:
             raise ValueError("unexpected observation channels")
@@ -82,14 +91,8 @@ class VisualServo:
             raise ValueError("invalid encoder vector")
         self.last_stamp = int(stamp)
         candidates = {}
-        for name, (chain, indices, mount, intrinsics, (w, h)) in self.cameras.items():
-            rgb = packet[name]
-            if rgb.dtype != np.uint8 or rgb.shape != (h, w, 3):
-                raise ValueError("invalid RGB frame")
-            pos, rot = chain.forward(q[indices])
-            pose = np.eye(4)
-            pose[:3, 3], pose[:3, :3] = pos, rot
-            views = detect(rgb, self.target, intrinsics, pose @ mount)
+        for name in self.cameras:
+            views = self.camera_candidates(name, packet[name], q)
             if len(views) > 1 and not resolve_ambiguity:
                 return self.stop("ambiguous")
             if views:

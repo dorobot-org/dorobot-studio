@@ -286,8 +286,9 @@ def execute(
     if plan.get("track_grasp"):
         import nano_rgb_policy
 
-        config["grasp_rgb_association"] = getattr(
-            nano_rgb_policy, "GRASP_RGB_ASSOCIATION", "all-views-unique-v1"
+        config["grasp_rgb_association"] = plan.get(
+            "grasp_association",
+            getattr(nano_rgb_policy, "GRASP_RGB_ASSOCIATION", "all-views-unique-v1"),
         )
     worker.save(out / "calibration.json", config)
     if detector is not None:

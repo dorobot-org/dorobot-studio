@@ -61,6 +61,10 @@ class Controller:
         self.colors = config["colors"]
         self.servo = VisualServo(config | {"color": self.colors[0], "standoff_m": 0.45})
         self.track_grasp = bool(config.get("track_grasp"))
+        self.resolve_pickup_ambiguity = (
+            config.get("grasp_rgb_association", "wrist-agreement-v1")
+            == "wrist-agreement-v1"
+        )
         self.targets = None
         self.last_stamp = -1
         self.grip = "left_j6_gripper"
@@ -204,7 +208,9 @@ class Controller:
         for index, height in enumerate(heights):
             packet = self.sense()
             reading = self.servo.command(
-                packet, preferred_camera="left_wrist", resolve_ambiguity=True
+                packet,
+                preferred_camera="left_wrist",
+                resolve_ambiguity=self.resolve_pickup_ambiguity,
             )
             point = reading["xy"]
             stamp_ns = int(packet["stamp_ns"])

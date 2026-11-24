@@ -630,6 +630,26 @@ impl PluginPanel for Panel {
                 if w.plan["track_grasp"] == true {
                     detail.push_str("\nWrist-guided interception during descent");
                 }
+                if let Some(reason) = w.plan["pickup_revision"]["rationale"].as_str() {
+                    let revision = &w.plan["pickup_revision"];
+                    let label = |v: &str| {
+                        if v == "wrist-agreement-v1" {
+                            "wrist agreement"
+                        } else {
+                            "unique detection per view"
+                        }
+                    };
+                    if let (Some(before), Some(after)) = (
+                        revision["previous_association"].as_str(),
+                        revision["grasp_association"].as_str(),
+                    ) {
+                        detail.push_str(&format!(
+                            "\nPickup rule · {} → {}\n{reason}",
+                            label(before),
+                            label(after)
+                        ));
+                    }
+                }
                 if let Some(target) = w.plan["trunk_yaw_rad"].as_f64() {
                     detail.push_str(&format!("\nWaist turn · {:.1}° left", target.to_degrees()));
                 }

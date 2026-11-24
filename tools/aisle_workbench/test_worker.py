@@ -107,6 +107,16 @@ class InspectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "tracking"):
             worker.validate(plan | {"track_grasp": "true"}, self.profile)
 
+    def test_association_requires_tracking_and_a_known_rule(self):
+        plan = dict(kind="table-transfer", color_order="red", track_grasp=True)
+        for rule in worker.GRASP_ASSOCIATIONS:
+            selected = plan | dict(grasp_association=rule)
+            self.assertEqual(worker.validate(selected, self.profile), selected)
+            with self.assertRaises(ValueError):
+                worker.validate(selected | {"track_grasp": False}, self.profile)
+        with self.assertRaises(ValueError):
+            worker.validate(plan | {"grasp_association": "unchecked"}, self.profile)
+
     def test_single_named_transfer_binds_saved_and_new_controllers(self):
         for color in ("red", "blue", "green"):
             plan = dict(
