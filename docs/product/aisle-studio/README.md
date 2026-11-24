@@ -67,3 +67,5 @@ The frozen three-cube Nano controller met the simulation qualification gate on 4
 For a recorded Nano transfer, Evidence can train a wrist detector from the exported dataset and evaluate the resulting revision on another layout. [Reproduce the three-cube training and comparison](validation/nano-grasp-checkpoint/README.md)
 
 To draft room geometry from a reference image and operator description, use **Draft from reference photo** on Scene. [Input format, review flow and measured native trials](validation/photo-room/README.md)
+
+[Reproduce the 30° G1 standing reach and its bounded frontal impact qualification](validation/g1-thirty-degree-reach/README.md)
