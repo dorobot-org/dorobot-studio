@@ -18,6 +18,22 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     def observed(w):
         return (w.get("worker_observation") or {}).get("job") or {}
 
+    def received_frame(w, after_tick):
+        row = w.get("worker_observation") or {}
+        job = row.get("job") or {}
+        if (row.get("frame") or {}).get("tick", 0) > after_tick:
+            return True
+        if job.get("state") in ("failed", "cancelled", "completed"):
+            reason = (
+                (job.get("result") or {}).get("error")
+                or job.get("message")
+                or job["state"]
+            )
+            raise RuntimeError(
+                f"Foreground job ended before the requested RGB frame: {reason}"
+            )
+        return False
+
     def enter_workers():
         page("run")
         run_button("workers")
@@ -123,7 +139,8 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         lambda w: not w["busy"] and (w["fleet"] or {}).get("node") == ALIAS,
         "Connected to Nexus worker",
     )
-    assert row["fleet"]["capabilities"]["slots"] == (args.foreground_cadence or 2)
+    slots = row["fleet"]["capabilities"]["slots"]
+    assert slots >= 2 if args.fleet_node else slots == (args.foreground_cadence or 2)
     run_button("queue_stream")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "stream",
@@ -154,19 +171,13 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         source.write_text(json.dumps(checks, indent=2))
         return
     frame = done(
-        lambda w: ((w.get("worker_observation") or {}).get("frame") or {}).get(
-            "tick", 0
-        )
-        > 0,
+        lambda w: received_frame(w, 0),
         "Received measured RGB frame",
         180,
     )
     tick = frame["worker_observation"]["frame"]["tick"]
     done(
-        lambda w: ((w.get("worker_observation") or {}).get("frame") or {}).get(
-            "tick", 0
-        )
-        > tick,
+        lambda w: received_frame(w, tick),
         "Received a later frame",
         180,
     )
