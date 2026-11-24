@@ -13,6 +13,22 @@ from zipfile import ZipFile
 def main(rerun_worker):
     here = Path(__file__).resolve().parent
     summary = json.loads((here / "results.json").read_bytes())
+    assert (summary["g1"]["backend"], summary["g1"]["size"]) == (
+        "offscreen",
+        "1440x900",
+    )
+    assert (summary["nano"]["backend"], summary["nano"]["size"]) == (
+        "offscreen",
+        "1024x768",
+    )
+    assert (summary["independent"]["backend"], summary["independent"]["size"]) == (
+        "headless",
+        "1024x768",
+    )
+    assert (
+        len({summary[mode]["studio_sha256"] for mode in ("g1", "nano", "independent")})
+        == 1
+    )
     with ZipFile(here / "trials.zip") as z:
 
         def read(name):
@@ -35,6 +51,18 @@ def main(rerun_worker):
                 source, result = read(prefix + "source.json"), read(
                     prefix + "result.json"
                 )
+                published = summary[case]["outcomes"][side]
+                expected_keys = {
+                    "kind",
+                    "task_success",
+                    "requested_delta",
+                    "measured_delta",
+                    "phase",
+                    "frames",
+                    "controller_hash",
+                } & result.keys()
+                assert set(published) == expected_keys
+                assert all(value == result[key] for key, value in published.items())
                 assert sha == report[side]["sha256"] == result["controller_hash"]
                 assert source["backend"] == "metal" and source["nexus"] == "0.2.1"
                 assert (
@@ -77,7 +105,9 @@ def main(rerun_worker):
                 with TemporaryDirectory() as tmp:
                     root = Path(tmp)
                     for side in ("before", "after"):
-                        folder = root / report[side]["revision"]
+                        name = report[side]["revision"]
+                        assert Path(name).name == name and name not in ("", ".", "..")
+                        folder = root / name
                         folder.mkdir()
                         (folder / "controller.json").write_bytes(
                             z.read(f"{case}/{side}/controller.json")
@@ -111,6 +141,10 @@ def main(rerun_worker):
                         json.loads((root / "fresh/comparison.json").read_bytes())
                         == report
                     )
+        assert (
+            read("nano-recovery.json")["controller_sha256"]
+            == read("nano-pickup-changes/comparison.json")["after"]["sha256"]
+        )
         restored = read("restored-g1.json")
         assert restored == read("g1-handoff-changes/comparison.json")
         unavailable = read("unavailable.json")

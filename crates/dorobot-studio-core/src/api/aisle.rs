@@ -1587,7 +1587,19 @@ impl Workbench {
         let artifact = job.artifact();
         if success && job.dir.join(artifact).is_file() {
             if job.op == "compare-controller" {
-                self.controller_diff = read(&job.dir, artifact);
+                self.controller_diff = read(&job.dir, artifact).filter(|report| {
+                    report["robot"] == self.robot.name()
+                        && self.prepared_sha256.as_deref().is_some_and(|selected| {
+                            report["after"]["sha256"].as_str() == Some(selected)
+                        })
+                });
+                if self.controller_diff.is_some() {
+                    self.status = "Controller comparison ready".into();
+                } else {
+                    self.status = "The comparison no longer matches the selected controller.".into();
+                    self.error = Some(self.status.clone());
+                }
+                return;
             }
             if job.op == "fleet" {
                 self.stop_watch();
@@ -1959,6 +1971,39 @@ mod tests {
         .unwrap();
         assert!(change_frame(&run, 40, &result).is_none());
         fs::remove_dir_all(run).unwrap();
+    }
+
+    #[test]
+    fn finished_controller_comparison_must_match_the_current_selection() {
+        let root = tempfile::tempdir().unwrap();
+        let mut workbench = Workbench::with_root(root.path().to_owned());
+        workbench.prepared_sha256 = Some("current".into());
+        for (robot, digest, accepted) in [
+            ("Nano", "current", true),
+            ("G1", "current", false),
+            ("Nano", "stale", false),
+        ] {
+            save_selection(
+                root.path(),
+                "comparison.json",
+                &serde_json::json!({"robot":robot,"after":{"sha256":digest}}),
+            )
+            .unwrap();
+            let mut child = Command::new(std::env::current_exe().unwrap())
+                .arg("--list")
+                .stdout(Stdio::null())
+                .spawn()
+                .unwrap();
+            assert!(child.wait().unwrap().success());
+            let job = Job {
+                child,
+                dir: root.path().to_owned(),
+                op: "compare-controller",
+                last: Instant::now(),
+            };
+            workbench.finish(job, true);
+            assert_eq!(workbench.controller_diff.is_some(), accepted);
+        }
     }
 
     #[test]

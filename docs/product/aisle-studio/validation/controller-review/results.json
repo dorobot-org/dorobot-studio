@@ -86,16 +86,16 @@
   "g1": {
     "backend": "offscreen",
     "size": "1440x900",
-    "studio_sha256": "8dcf918b738a853d3e5fae930b785dbf5365aa47cd93d66e257612801b83d6c5"
+    "studio_sha256": "d205a02673c5c3d7f795203d8078939e4197d43953e56658354e05fcb5325453"
   },
   "nano": {
     "backend": "offscreen",
     "size": "1024x768",
-    "studio_sha256": "8dcf918b738a853d3e5fae930b785dbf5365aa47cd93d66e257612801b83d6c5"
+    "studio_sha256": "d205a02673c5c3d7f795203d8078939e4197d43953e56658354e05fcb5325453"
   },
   "independent": {
     "backend": "headless",
     "size": "1024x768",
-    "studio_sha256": "8dcf918b738a853d3e5fae930b785dbf5365aa47cd93d66e257612801b83d6c5"
+    "studio_sha256": "d205a02673c5c3d7f795203d8078939e4197d43953e56658354e05fcb5325453"
   }
 }

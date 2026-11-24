@@ -125,7 +125,11 @@ def main(args):
             (destination / "checks.json").write_text(json.dumps(proof, indent=2) + "\n")
         finally:
             app.terminate()
-            app.wait(timeout=15)
+            try:
+                app.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                app.kill()
+                app.wait(timeout=10)
 
 
 if __name__ == "__main__":
