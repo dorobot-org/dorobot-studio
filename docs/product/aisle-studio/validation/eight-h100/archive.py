@@ -75,8 +75,9 @@ def pack(source, target, name):
             ):
                 add(trial / filename, base + filename)
             (dataset,) = state.glob("*-Nano-export/dataset")
-            for info in ("meta/info.json", "meta/episodes.jsonl"):
-                add(dataset / info, base + "dataset/" + info)
+            for file in sorted(dataset.rglob("*")):
+                if file.is_file():
+                    add(file, base + "dataset/" + file.relative_to(dataset).as_posix())
 
 
 def main():
