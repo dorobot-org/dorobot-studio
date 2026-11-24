@@ -281,6 +281,8 @@ def execute(
             "calibration_source", "Nominal URDF-mounted simulation optics"
         ),
     )
+    if plan.get("track_grasp"):
+        config["grasp_rgb_association"] = "wrist-agreement-v1"
     worker.save(out / "calibration.json", config)
     if detector is not None:
         config["grasp_plan"] = {

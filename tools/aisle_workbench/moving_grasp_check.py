@@ -49,7 +49,12 @@ def verify_optics(folder, color, samples, actions, trace, calibration):
             require(
                 int(packet["stamp_ns"]) == stamp == tick * 10_000_000, "Packet time"
             )
-            observed = servo.command(packet, preferred_camera="left_wrist")
+            observed = servo.command(
+                packet,
+                preferred_camera="left_wrist",
+                resolve_ambiguity=calibration.get("grasp_rgb_association")
+                == "wrist-agreement-v1",
+            )
         require(
             observed["cameras"] == action["cameras"] == sample["cameras"],
             "Camera identity",
@@ -289,7 +294,12 @@ def verify_trial(folder):
                 int(packet["stamp_ns"]) == failure["stamp_ns"],
                 "Failed pickup capture time",
             )
-            reading = servo.command(packet, preferred_camera="left_wrist")
+            reading = servo.command(
+                packet,
+                preferred_camera="left_wrist",
+                resolve_ambiguity=calibration.get("grasp_rgb_association")
+                == "wrist-agreement-v1",
+            )
         diagnostic["last_pickup"] = {
             "color": failure["color"],
             "tick": captures[-1],
