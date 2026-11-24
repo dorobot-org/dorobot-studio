@@ -34,7 +34,7 @@ def main():
     p.add_argument("--pickup-motion", choices=["slide-positive", "slide-negative"])
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
-    p.add_argument("--heading", action="store_true")
+    p.add_argument("--heading", nargs="?", const=20, type=int, choices=(20, 30))
     p.add_argument("--upright", action="store_true")
     p.add_argument("--impact", action="store_true")
     p.add_argument("--train-grasp", action="store_true")
@@ -354,7 +354,9 @@ def main():
         if a.standing:
             request = "Stand on both feet and track a right shoulder displacement of minus 0.08 rad for the standing test."
         if a.heading:
-            request += " Turn the waist 20 degrees to the left, with neutral pitch."
+            request += (
+                f" Turn the waist {a.heading} degrees to the left, with neutral pitch."
+            )
         if a.upright:
             request += " Use the upright trunk posture."
         remote("text", "w=0", "t=" + request, "wait=1")
@@ -479,12 +481,13 @@ def main():
             if a.heading:
                 import numpy as np
 
-                assert result["trunk_yaw_target_rad"] == 0.34906585
-                assert abs(result["settled_trunk_yaw_rad"] - 0.34906585) < 0.015
+                heading = {20: 0.34906585, 30: 0.52359878}[a.heading]
+                assert result["trunk_yaw_target_rad"] == heading
+                assert abs(result["settled_trunk_yaw_rad"] - heading) < 0.015
                 with np.load(Path(row["selected"]) / "motor-work.npz") as trace:
                     joint = trace["joints"].tolist().index("waist_yaw_joint")
                     assert np.allclose(
-                        trace["target"][:, joint], 0.34906585, atol=1e-7, rtol=0
+                        trace["target"][:, joint], heading, atol=1e-7, rtol=0
                     )
             if a.upright:
                 assert result["trunk_pitch_target_rad"] == -0.10

@@ -1,0 +1,371 @@
+{
+  "profile": "g1-standing-reach-v1",
+  "manifest_sha256": "6ccbd83565c81a522adeffc64968f3f30f9a6327590db10fb46908e130ff9030",
+  "rows": [
+    {
+      "index": 0,
+      "salt": "484d40739f596ec4f2a85237382195265105d6159a078a2d",
+      "recipe": {
+        "mass_kg": 0.2,
+        "speed_m_s": 1.1,
+        "lateral_m": -0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.985325305136048,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6220959069938574,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 1,
+      "salt": "715c56759a89e601780b3ad22fc794dbbefcca8bb0ce1b91",
+      "recipe": {
+        "mass_kg": 0.2,
+        "speed_m_s": 1.1,
+        "lateral_m": 0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.986238539377336,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6087498461219086,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 2,
+      "salt": "acc514c4f199e42789c812538ac1b01d68750b1f15cefe09",
+      "recipe": {
+        "mass_kg": 0.2,
+        "speed_m_s": 1.3,
+        "lateral_m": -0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 5,
+      "wrist_error_mm": 4.985521541416656,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6460041314466698,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 3,
+      "salt": "497eda7f511d26573a44a9a236cf474d64eaa67779436ace",
+      "recipe": {
+        "mass_kg": 0.2,
+        "speed_m_s": 1.3,
+        "lateral_m": 0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.986042675977276,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6283096314261636,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 4,
+      "salt": "7a63051080632d45bd93d8849c81641491d2105fd72ebc1b",
+      "recipe": {
+        "mass_kg": 0.3,
+        "speed_m_s": 1.1,
+        "lateral_m": -0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.985556579812623,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6840662176397514,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 5,
+      "salt": "5a02ae9fd2c25e1980b6a75a91f7dcb55e0f419fc4a44f4c",
+      "recipe": {
+        "mass_kg": 0.3,
+        "speed_m_s": 1.1,
+        "lateral_m": 0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.986575837573306,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6652288273238687,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 6,
+      "salt": "e115e866a0f71b36b35ca1fe93ac27df3aaaaa5dc7814ec6",
+      "recipe": {
+        "mass_kg": 0.3,
+        "speed_m_s": 1.3,
+        "lateral_m": -0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 5,
+      "wrist_error_mm": 4.986252388173073,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.7184402554576153,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 7,
+      "salt": "6866910b0ee4341c14b65fb39485217c9ccc4056026e5c72",
+      "recipe": {
+        "mass_kg": 0.3,
+        "speed_m_s": 1.3,
+        "lateral_m": 0.015
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.98718841009341,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6937490524285737,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 8,
+      "salt": "6faede8b8353beb703ade2fcb3b2085bcf2ead095d81b2bd",
+      "recipe": {
+        "mass_kg": 0.252,
+        "speed_m_s": 1.249,
+        "lateral_m": 0.009
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 2,
+      "wrist_error_mm": 4.986748430821023,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6648377482395255,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 9,
+      "salt": "f329b266280a9fa901fb3ac647467c32b8f5757afd2dd7b9",
+      "recipe": {
+        "mass_kg": 0.225,
+        "speed_m_s": 1.279,
+        "lateral_m": -0.006
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 2,
+      "wrist_error_mm": 4.9857324572929524,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6642430468219589,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 10,
+      "salt": "fcadd9e57f4169bce248bd915b773598d24b03e7c4e934a0",
+      "recipe": {
+        "mass_kg": 0.249,
+        "speed_m_s": 1.222,
+        "lateral_m": -0.011
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 4,
+      "wrist_error_mm": 4.985639055175259,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6730691402614633,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 11,
+      "salt": "d9fcb5dac3404877a40f13d0447453d59f2c58e5d742b5bc",
+      "recipe": {
+        "mass_kg": 0.262,
+        "speed_m_s": 1.271,
+        "lateral_m": 0.004
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 1,
+      "wrist_error_mm": 4.98673207184046,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6777662934749591,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 12,
+      "salt": "7f5404209b630ec8024308bfde81baafdd24824892cc9ba7",
+      "recipe": {
+        "mass_kg": 0.264,
+        "speed_m_s": 1.286,
+        "lateral_m": -0.013
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.983812739661638,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6899560720147894,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 13,
+      "salt": "327134734dc8fb6264e9d705d06505cea591e526e9d0a87a",
+      "recipe": {
+        "mass_kg": 0.204,
+        "speed_m_s": 1.293,
+        "lateral_m": -0.003
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 2,
+      "wrist_error_mm": 4.986409128993851,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6498900749503814,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 14,
+      "salt": "51e5a8bc9abc46ed22f8e1ae3e24d64eb76ae8f886c6e11f",
+      "recipe": {
+        "mass_kg": 0.251,
+        "speed_m_s": 1.213,
+        "lateral_m": 0.0
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.986931915164872,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6685674740203058,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 15,
+      "salt": "5870da392cb3e04c06491c3512b1c6d9dc92f0fca6ba8c93",
+      "recipe": {
+        "mass_kg": 0.215,
+        "speed_m_s": 1.176,
+        "lateral_m": 0.011
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.986218109136729,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.629003365640039,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 16,
+      "salt": "233657ca207ee76d74cfa130c7589bc30ae09a5e5a2b425d",
+      "recipe": {
+        "mass_kg": 0.282,
+        "speed_m_s": 1.103,
+        "lateral_m": -0.002
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 3,
+      "wrist_error_mm": 4.986614397116891,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6740291587687901,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 17,
+      "salt": "04048e9855906527ee3f1fdd65579fadc8394e639f57c953",
+      "recipe": {
+        "mass_kg": 0.237,
+        "speed_m_s": 1.22,
+        "lateral_m": -0.009
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 4,
+      "wrist_error_mm": 4.985576714393639,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.661474032240338,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 18,
+      "salt": "2ad433bdd1a81cd05c6a4f73a4ed01453a0b087995973377",
+      "recipe": {
+        "mass_kg": 0.261,
+        "speed_m_s": 1.169,
+        "lateral_m": 0.013
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 4,
+      "wrist_error_mm": 4.986501465966238,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6565864435889177,
+      "guard_bypasses": 0
+    },
+    {
+      "index": 19,
+      "salt": "cfdcd782358929ade27b081796f900cd619d24638ddd608f",
+      "recipe": {
+        "mass_kg": 0.281,
+        "speed_m_s": 1.258,
+        "lateral_m": 0.004
+      },
+      "passed": true,
+      "verified": true,
+      "reasons": [],
+      "loaded_steps": 2000,
+      "impacts": 1,
+      "wrist_error_mm": 4.986802864903788,
+      "recovery_s": 0.5,
+      "positive_work_j": 0.6888914762129916,
+      "guard_bypasses": 0
+    }
+  ],
+  "cases": 20,
+  "successes": 20,
+  "verified": 20,
+  "verified_guard_bypasses": 0,
+  "qualified": true
+}

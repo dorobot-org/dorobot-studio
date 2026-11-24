@@ -86,7 +86,12 @@ def main():
         help="Train a Nano wrist detector and run it on a different layout",
     )
     parser.add_argument(
-        "--heading", action="store_true", help="Test the 20-degree left waist turn"
+        "--heading",
+        nargs="?",
+        const=20,
+        type=int,
+        choices=(20, 30),
+        help="Test a bounded left waist turn in degrees",
     )
     parser.add_argument(
         "--pickup-motion",
@@ -247,7 +252,7 @@ def main():
                 if args.standing:
                     check.append("--standing")
                     if args.heading:
-                        check.append("--heading")
+                        check.extend(["--heading", str(args.heading)])
                     if args.upright:
                         check.append("--upright")
                     if args.impact:

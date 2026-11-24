@@ -64,6 +64,24 @@ class InspectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             worker.validate(plan | {"delta_rad": -0.5}, g1)
 
+    def test_standing_turn_requires_a_supported_angle_and_neutral_pitch(self):
+        meta = dict(
+            robot="G1", allowed_joints=["shoulder"], limits={"shoulder": [-1, 1]}
+        )
+        task = dict(kind="standing-inspection", joint="shoulder", delta_rad=-0.08)
+        for angle in (0.34906585, 0.52359878):
+            self.assertEqual(
+                worker.validate(task | {"trunk_yaw_rad": angle}, meta)["trunk_yaw_rad"],
+                angle,
+            )
+        for fields in (
+            {"trunk_yaw_rad": 0.6},
+            {"trunk_yaw_rad": 0.52359878, "trunk_pitch_rad": -0.10},
+            {"trunk_yaw_rad": 0.52359878, "kind": "joint-inspection"},
+        ):
+            with self.assertRaises(ValueError):
+                worker.validate(task | fields, meta)
+
     def test_upright_trunk_requires_standing_and_the_bounded_target(self):
         meta = self.profile | {"robot": "G1"}
         task = dict(kind="standing-inspection", joint="shoulder", delta_rad=-0.08)
