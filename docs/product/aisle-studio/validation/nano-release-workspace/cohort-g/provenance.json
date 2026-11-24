@@ -1,0 +1,7 @@
+{
+  "registration_revision": "d38d9b3c9fb56e7f9e63de5f622aff774e866cdf",
+  "runtime_revision": "3bec9043281f5a331491d20cf3c918aa6639b413",
+  "controller_sha256": "4bf8180214a6c0a67e8016afb588f628b2990ce441617e4127d638bab323f72d",
+  "policy_sha256": "e792494a08bc6cc959e7c908cb1b15cd82bf3adc9720e3578656556ec31423ba",
+  "registered_manifest": "docs/product/aisle-studio/validation/nano-release-workspace/cohort-g/suite.json"
+}

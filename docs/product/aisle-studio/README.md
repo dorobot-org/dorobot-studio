@@ -2,6 +2,18 @@
 
 Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and Codex can each author simulation tasks on the repository’s Adora Nano and Unitree G1 models. The Nano can approach colored cubes using onboard RGB or transfer them from the floor to a coffee table. The G1 can track a shoulder target in a fixed fixture or while standing on both feet. AISLE drives the Nexus simulation, and Studio displays independent measurements for each trial.
 
+[Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
+
+## Simulation acceptance
+
+| Reference task | Verified result |
+| --- | --- |
+| Adora Nano moves three floor cubes to the coffee table using onboard RGB and encoders | 45/50 previously hidden layouts for the continuous-tracking controller. All 50 motor records verified with zero guard bypasses. [Open the five failures or rerun a layout](validation/nano-release-workspace/cohort-f/README.md) |
+| Unitree G1 stands, reaches and recovers from bounded frontal impacts | 20/20 on the fresh 20-case set and 20/20 on a repeat of the same cases. Both feet stayed loaded on all 80,000 scored steps. [Inspect the impact envelope, wrist error and contacts](validation/g1-thirty-degree-reach/README.md) |
+| Task, Scene, Run and Evidence | The generated four-screen design scored 92/100 and the native UI scored 91/100 on the internal rubric. [Design deductions](design-review.md) · [Headless Makepad verification](validation/README.md) |
+
+## Operator guides
+
 [Revise a Nano controller after a measured loss of wheel support](validation/nano-forward-speed/README.md)
 
 [Stream a Linux H100 Nano worker, reconnect and replay its measured outcome](validation/remote-nano/README.md)
@@ -13,8 +25,6 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 [Rerun a disclosed Nano layout and inspect the onboard images behind a placement decision](validation/nano-release-workspace/README.md)
 
 [Compare two Nano or G1 evaluations in the native Evidence page](validation/native-cohort-comparison/README.md)
-
-[Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
 
 [Author from the actual Nano camera view](validation/onboard-authoring/README.md) · [Track a moving floor cube](validation/moving-target/README.md) · [Test camera delay and recovery](validation/camera-timing/README.md) · [Verify a 50-layout Nano evaluation](validation/nano-qualification.md) · [Import and edit a surveyed living room](validation/room-survey/README.md) · [Train and evaluate the G1 standing checkpoint](validation/g1-standing-checkpoint/README.md) · [Inspect the latest repeated G1 frontal impacts](validation/g1-frontal-impact/README.md) · [Inspect the previous torso-impact evaluations](validation/g1-torso-impact/README.md) · [Verify the original 20 G1 standing reaches under bounded impacts](validation/g1-standing-reach/README.md) · [Stand and track a shoulder target on G1](validation/g1-standing.md) · [Move cubes to the table with DeepSeek via Octos](validation/nano-table-transfer.md) · [Three-camera demo](validation/nano-table-transfer.mp4) · [Replayable three-cube dataset](validation/nano-table-transfer-lerobot.zip) · [Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
 

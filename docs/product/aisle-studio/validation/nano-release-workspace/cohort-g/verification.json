@@ -1,0 +1,121 @@
+{
+  "manifest_sha256": "c6dec55baf0e432ec4841f3821f2b9be4933b474c30ba7b90f0dc273fa1633dc",
+  "split": "hidden",
+  "cases": 50,
+  "successes": 38,
+  "verified": 50,
+  "verified_guard_bypasses": 0,
+  "qualified": false,
+  "release_exposures": 95,
+  "archive_integrity": "Published Studio output digest",
+  "interval_95": [
+    0.6258731624205708,
+    0.8570260860300828
+  ],
+  "failures": [
+    {
+      "index": 8,
+      "seed": 3251334093,
+      "reasons": [
+        "ValueError: Lost red after two normal carries and a supported carry",
+        "red \u00b7 0/100 table contacts, -187.5 mm rim margin, center -554.3 mm above tabletop",
+        "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -394.6 mm rim margin, center -554.3 mm above tabletop",
+        "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -910.8 mm rim margin, center -554.3 mm above tabletop"
+      ]
+    },
+    {
+      "index": 10,
+      "seed": 3610842878,
+      "reasons": [
+        "ValueError: Could not confirm blue in the wrist camera after two grasps",
+        "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -436.0 mm rim margin, center -554.3 mm above tabletop"
+      ]
+    },
+    {
+      "index": 14,
+      "seed": 2477546864,
+      "reasons": [
+        "ValueError: Cannot identify an earlier cube before changing the placement pose",
+        "green \u00b7 0/100 table contacts, -8.3 mm rim margin, gripper release incomplete, center 87.7 mm above tabletop, still moving",
+        "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -921.4 mm rim margin, center -554.3 mm above tabletop"
+      ]
+    },
+    {
+      "index": 15,
+      "seed": 1470892736,
+      "reasons": [
+        "ValueError: Lost blue after two normal carries and a supported carry",
+        "blue \u00b7 0/100 table contacts, -349.1 mm rim margin, center -554.3 mm above tabletop"
+      ]
+    },
+    {
+      "index": 16,
+      "seed": 500052062,
+      "reasons": [
+        "ValueError: No previous cube could be matched across the placement turn",
+        "blue \u00b7 0/100 table contacts, 22.8 mm rim margin, gripper release incomplete, center 86.6 mm above tabletop, still moving"
+      ]
+    },
+    {
+      "index": 19,
+      "seed": 3949413544,
+      "reasons": [
+        "ValueError: Stereo table docking timed out",
+        "No loaded wheel contact for 105 physics steps",
+        "green \u00b7 0/100 table contacts, -20.8 mm rim margin, center -554.3 mm above tabletop",
+        "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -551.4 mm rim margin, center -554.3 mm above tabletop"
+      ]
+    },
+    {
+      "index": 23,
+      "seed": 3012640272,
+      "reasons": [
+        "ValueError: The observed cubes disagree with a bounded placement turn",
+        "blue \u00b7 0/100 table contacts, gripper release incomplete, center 85.7 mm above tabletop, still moving"
+      ]
+    },
+    {
+      "index": 25,
+      "seed": 4038521605,
+      "reasons": [
+        "ValueError: No reachable clear release point on the visible tabletop",
+        "blue \u00b7 0/100 table contacts, 19.4 mm rim margin, gripper release incomplete, center 84.2 mm above tabletop, still moving"
+      ]
+    },
+    {
+      "index": 30,
+      "seed": 433391573,
+      "reasons": [
+        "No loaded wheel contact for 9 physics steps"
+      ]
+    },
+    {
+      "index": 36,
+      "seed": 1769054292,
+      "reasons": [
+        "ValueError: Could not confirm red in the wrist camera after two grasps",
+        "red \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -676.0 mm rim margin, center -554.3 mm above tabletop",
+        "green \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -358.3 mm rim margin, center -554.3 mm above tabletop",
+        "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -950.3 mm rim margin, center -554.3 mm above tabletop"
+      ]
+    },
+    {
+      "index": 46,
+      "seed": 2864151294,
+      "reasons": [
+        "blue \u00b7 0/100 table contacts, center 60.0 mm above tabletop"
+      ]
+    },
+    {
+      "index": 47,
+      "seed": 326165322,
+      "reasons": [
+        "ValueError: No reachable clear release point on the visible tabletop",
+        "green \u00b7 0/100 table contacts, -6.5 mm rim margin, gripper release incomplete, center 86.0 mm above tabletop",
+        "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -367.1 mm rim margin, center -554.3 mm above tabletop"
+      ]
+    }
+  ],
+  "archive_sha256": "5d8210a8cd2a43714c9d0146f012487b90c581f6601ef0aabd4807827e4a4892",
+  "requirement": 45
+}
