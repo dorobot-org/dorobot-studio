@@ -1,6 +1,7 @@
 """Archive or independently open a disclosed Nano holdout and replay its motor records."""
 
 import argparse
+import json
 from pathlib import Path
 from shutil import copyfileobj
 from tempfile import TemporaryDirectory
@@ -45,7 +46,7 @@ def pack(directory, output):
     return worker.digest(output)
 
 
-def verify(archive_path, expected_manifest, include_trials=False):
+def verify(archive_path, expected_manifest, include_trials=False, *, comparison=False):
     with ZipFile(archive_path) as archive, TemporaryDirectory() as name:
         tmp = Path(name)
         names = set(archive.namelist())
@@ -176,7 +177,89 @@ def verify(archive_path, expected_manifest, include_trials=False):
                 archive_sha256=worker.digest(archive_path),
                 requirement=manifest["success_requirement"],
             )
+        if comparison:
+            summary.update(
+                controller_sha256=manifest["controller_sha256"],
+                color_order=manifest["color_order"],
+                inputs=manifest["inputs"],
+                rows=replayed["rows"],
+                archive_sha256=worker.digest(archive_path),
+            )
         return summary
+
+
+def compare_archives(baseline, candidate, baseline_manifest, candidate_manifest):
+    before = verify(baseline, baseline_manifest, comparison=True)
+    after = verify(candidate, candidate_manifest, comparison=True)
+    if before["color_order"] != after["color_order"] or any(
+        before["inputs"][k] != after["inputs"][k]
+        for k in ("urdf", "mesh_inventory_sha256", "recipe")
+    ):
+        raise ValueError(
+            "Select Nano suites with the same robot, scene recipe and requested cubes"
+        )
+    old = {r["seed"]: r for r in before.pop("rows")}
+    new = {r["seed"]: r for r in after.pop("rows")}
+    if (
+        old.keys() != new.keys()
+        or len(old) != before["cases"]
+        or len(new) != after["cases"]
+    ):
+        raise ValueError(
+            "Each archive must contain the same set of distinct layout seeds"
+        )
+    pairs = []
+    for seed, left in old.items():
+        right = new[seed]
+        has_receipts = left["verified"] and right["verified"]
+        fields = {
+            "outcome": "passed",
+            "motor": "motor_sha256",
+            "actions": "actions_sha256",
+            "ticks": "physics_ticks",
+        }
+        matches = {
+            key: bool(
+                has_receipts
+                and left.get(field) is not None
+                and left[field] == right.get(field)
+            )
+            for key, field in fields.items()
+        }
+        pairs.append(
+            dict(
+                seed=seed,
+                baseline_index=left["index"],
+                candidate_index=right["index"],
+                both_verified=has_receipts,
+                baseline_passed=left["passed"],
+                candidate_passed=right["passed"],
+                same=matches,
+                baseline_ticks=left.get("physics_ticks"),
+                candidate_ticks=right.get("physics_ticks"),
+                baseline_motor_sha256=left.get("motor_sha256"),
+                candidate_motor_sha256=right.get("motor_sha256"),
+            )
+        )
+    return dict(
+        baseline=before,
+        candidate=after,
+        cases=len(pairs),
+        both_verified=sum(p["both_verified"] for p in pairs),
+        same={
+            field: sum(p["same"][field] for p in pairs)
+            for field in ("outcome", "motor", "actions", "ticks")
+        },
+        improved=sum(
+            p["both_verified"] and p["candidate_passed"] and not p["baseline_passed"]
+            for p in pairs
+        ),
+        regressed=sum(
+            p["both_verified"] and p["baseline_passed"] and not p["candidate_passed"]
+            for p in pairs
+        ),
+        pairs=pairs,
+    )
 
 
 def main():
@@ -188,12 +271,29 @@ def main():
     audit = commands.add_parser("verify")
     audit.add_argument("archive", type=Path)
     audit.add_argument("--manifest-sha256", required=True)
+    pair = commands.add_parser(
+        "compare", help="Independently replay and pair two Nano archives by seed"
+    )
+    pair.add_argument("baseline", type=Path)
+    pair.add_argument("candidate", type=Path)
+    pair.add_argument("--baseline-manifest", required=True)
+    pair.add_argument("--candidate-manifest", required=True)
     args = cli.parse_args()
     if args.op == "pack":
         print(pack(args.suite, args.archive))
+    elif args.op == "compare":
+        print(
+            json.dumps(
+                compare_archives(
+                    args.baseline,
+                    args.candidate,
+                    args.baseline_manifest,
+                    args.candidate_manifest,
+                ),
+                indent=2,
+            )
+        )
     else:
-        import json
-
         print(json.dumps(verify(args.archive, args.manifest_sha256), indent=2))
 
 
