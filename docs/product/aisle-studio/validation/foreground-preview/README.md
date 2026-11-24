@@ -25,6 +25,22 @@ Every transfer in the table completed with wheel support at all 6,848 physics ti
 
 One foreground through the ordinary local Run page drew 28.47 FPS. The loopback OpenSSH reader received 2,221 of 2,222 exposure ticks at 29.45 FPS. The source timing log contains a repeated publication on the terminal physics tick. The count above uses distinct ticks. The reader recorded 2,220 distinct pixel hashes. A fresh exposure can produce identical pixels while the robot is still. The current worker advertises the persistent binary stream during connection. Older workers continue to serve periodic RGB snapshots. The earlier capacity benchmark measured that polling path. [Previous polling measurements](../worker-observations/local-capacity/README.md)
 
+## Share one camera exposure at a physics tick
+
+During a live Nano transfer, the head camera feeds the operator preview, recording, and policy. The wrist cameras can also be requested by the policy, recorder and grasp checks at the same tick. The live worker now renders each requested camera once per physics tick and shares those pixels. Physics advancing invalidates every cached view. The wrist timing check still controls which exposure can reach the policy. If another preview is due when the three-camera recording finishes, Studio can publish that tick’s head capture.
+
+Two successive native journeys on the M3 Max used one foreground worker, the same DeepSeek-authored 80 mm/s red transfer, layout 0, offscreen Makepad at 1440 × 900, and the original 480 × 360 camera settings. Both placed red with 12,608 consecutive supported ticks. Across the pair, all 1,890 recorded camera PNGs, the entire motor journal, policy decisions, wrist delivery records, 17-channel action and encoder rows, and all three exported videos matched byte for byte. Both exports reopened after restarting Studio.
+
+| Measurement | Prior worker | Shared exposures |
+| --- | ---: | ---: |
+| Source camera publications per second | 29.62 | 29.92 |
+| Fresh frames drawn per second | 28.51 | 29.43 |
+| Full one-second intervals below 25 FPS | 2 / 140 | 0 / 135 |
+
+The revised worker served 6,072 camera reads with 5,775 renders. It reused 111 head, 128 left-wrist and 58 right-wrist exposures. These rates describe one paired foreground run on Metal. [Native draws, exposure timestamps, recorded-file digests and motor journals](exposure-reuse-metal.zip) · [Recalculate the comparison or capture a new pair](compare_exposures.py).
+
+Run `python3 compare_exposures.py exposure-reuse-metal.zip` from this directory. To compare fresh runs, pass a new archive path followed by `--pack BASELINE_NATIVE_DIR CANDIDATE_NATIVE_DIR`. Each directory must contain a completed and restarted `--fleet --fleet-node ... --fleet-controller ...` journey. The checker reads each saved camera file from the original workspaces when packing a pair.
+
 ## Reproduce the measurements
 
 From the Studio checkout, follow the build, AISLE Python environment and author credential instructions in the [workbench guide](../../README.md). Use a new output directory each time. These commands open the actual Studio binary, send Makepad input events, start independent worker jobs, export and reopen the foreground episode, and restart Studio.
