@@ -9,7 +9,7 @@
 
 ## What Studio checks
 
-The pin identifies a run and its verdict hash. Before opening a room comparison, Studio verifies both archived controllers, room revisions, surveys and reference photos. It checks that the target, seed, URDF, geometry, camera calibration, policy and execution settings match. Lighting and floor friction may differ together or individually. With both changed, the task outcome describes their combined effect. If a check fails, Evidence names the mismatch and keeps the pin for another selection. The chosen baseline survives a Studio restart. Joint inspections and other task types keep their own comparison while a room is pinned.
+The pin identifies a run and its verdict hash. Before opening a room comparison, Studio verifies both archived controllers, room revisions, surveys and reference photos. It checks that the target, seed, URDF, geometry, camera calibration, policy and execution settings match. Lighting and floor friction may differ together or individually. With both changed, the task outcome describes their combined effect. If a check fails, Evidence names the mismatch and keeps the pin for another selection. The chosen baseline survives a Studio restart. Joint inspections and other task types keep their own comparison while a room is pinned. To compare controller revisions on the same room, clear the pin. You can also clear it after removing the original recordings.
 
 ## Measured pair
 
@@ -23,7 +23,7 @@ The same DeepSeek-via-Octos controller placed the red cube in both Nexus recordi
 | Requested turn rate | 0.418485 rad/s | 0.419112 rad/s |
 | Replay position | Frame 1 of 345, 0.20 s | Frame 1 of 351, 0.20 s |
 
-Frame numbers and playback times start at zero. The two native checks used a 1440 × 900 headless window and a 1024 × 768 offscreen window. Each pinned a newer and an older baseline, rejected an intentionally damaged copy of the survey, exported both episodes and restored the baseline after restarting Studio. [Native measurements](paired-trials.json) · [Original and edited room settings, task verdicts and downloadable episode](README.md)
+Regenerating the baseline from the archived controller and original room reproduced both the action journal and motor-target journal byte for byte. Frame numbers and playback times start at zero. The two native checks used a 1440 × 900 headless window and a 1024 × 768 offscreen window. Each pinned a newer and an older baseline, rejected an intentionally damaged copy of the survey, exported both episodes and restored the baseline after restarting Studio. [Native measurements](paired-trials.json) · [Original and edited room settings, task verdicts and downloadable episode](README.md)
 
 ## Reproduce the native check
 

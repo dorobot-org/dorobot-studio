@@ -2,8 +2,8 @@
   {
     "backend": "headless",
     "size": "1440x900",
-    "studio_commit": "6dedb664cf86796909d958ea94c44835c5ba3839",
-    "binary_sha256": "749ea1a1c1d8f7abcace6f520d04cf3831fc2d100ee430596ec801551030f9e2",
+    "studio_commit": "99b4848f4685e562deabd9977c14ff1dac320742",
+    "binary_sha256": "2b25f704395c8d848035298a00d31cd57302c2eaf8e8b801b6a96db19dbfecc2",
     "mode": "pinned room comparison",
     "action_number": 7,
     "first_different_actions": [
@@ -61,15 +61,15 @@
       "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
     ],
     "verification_sha256": {
-      "journey.json": "7de021f09cd33e0dd1070774a188dd1a394113b74f5f9aac6316ed8886c94390",
-      "recovery.json": "7203b6a3ce33597a35eecf77700dde997b9e46e63b94fef805e434c9c71e6106"
+      "journey.json": "f00fa1d1bd9feff5873bc62ddc13847638555dabf41df742e03e83d5acf5f462",
+      "recovery.json": "f1dde83e1d2996e66017a20d8dff5c95454b5340605d3621ad56b36690fca0b7"
     }
   },
   {
     "backend": "offscreen",
     "size": "1024x768",
-    "studio_commit": "6dedb664cf86796909d958ea94c44835c5ba3839",
-    "binary_sha256": "749ea1a1c1d8f7abcace6f520d04cf3831fc2d100ee430596ec801551030f9e2",
+    "studio_commit": "99b4848f4685e562deabd9977c14ff1dac320742",
+    "binary_sha256": "2b25f704395c8d848035298a00d31cd57302c2eaf8e8b801b6a96db19dbfecc2",
     "mode": "pinned room comparison",
     "action_number": 7,
     "first_different_actions": [
@@ -127,15 +127,15 @@
       "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
     ],
     "verification_sha256": {
-      "journey.json": "8bd5c99d1c5bc30c2935764a6a9c2773c8117877c8727574939710a94bd8ee8b",
-      "recovery.json": "25c3cde8dc36c3b25321ff8a00b319b3bdefc75d673ee1e5b7377759ef5a6d93"
+      "journey.json": "c81f0eb0baae91b7a1f7e3b79ac9e9c8b1a86312c99b281c01af28d18dd6f614",
+      "recovery.json": "b76fc1cb8b14946afe72355a8a7e09d25c11113d0a2516607b08564dd684f2db"
     }
   },
   {
     "backend": "headless",
     "size": "1024x768",
-    "studio_commit": "6dedb664cf86796909d958ea94c44835c5ba3839",
-    "binary_sha256": "749ea1a1c1d8f7abcace6f520d04cf3831fc2d100ee430596ec801551030f9e2",
+    "studio_commit": "99b4848f4685e562deabd9977c14ff1dac320742",
+    "binary_sha256": "2b25f704395c8d848035298a00d31cd57302c2eaf8e8b801b6a96db19dbfecc2",
     "mode": "legacy same-room comparison",
     "action_number": 1148,
     "first_different_actions": [
@@ -192,8 +192,8 @@
     },
     "comparison": "Matched layout 0 \u00b7 previous 0001-Nano-run\nPrevious failed (2 settled) \u00b7 current passed (3 settled). Local policy or support code changed. First change at action 1148 \u00b7 previous trace ended, current grasp observation at tick 17814.",
     "verification_sha256": {
-      "journey.json": "205407c4a70e3e3158b86993b8c110d46552cb6c623d53f457acdd53450f3a17",
-      "recovery.json": "a2bb6997918f0b83d181f907ad16827d73cab1c708fdf94a1ad169b49e972044"
+      "journey.json": "90629eab330afbcb4889dc56f2be783f4b68ed55da8269bb81c44d5d35f926ae",
+      "recovery.json": "26cbc2636b8999215033a7d0cbead34ff0ecec8aa864f397d78bdc53342141a5"
     }
   }
 ]
