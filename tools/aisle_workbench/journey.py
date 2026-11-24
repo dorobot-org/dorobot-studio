@@ -72,7 +72,7 @@ def main():
     p.add_argument("--wrist-faults", nargs="?", const="red", choices=["red", "three"])
     p.add_argument("--camera-faults", action="store_true")
     p.add_argument("--moving-target", action="store_true")
-    p.add_argument("--observed-author", action="store_true")
+    p.add_argument("--observed-author", nargs="?", const="approach", choices=("approach", "transfer"))
     p.add_argument("--prepared-pickup", action="store_true")
     p.add_argument("--revise-drive", action="store_true")
     p.add_argument("--revise-pickup", action="store_true")
@@ -183,7 +183,7 @@ def main():
     if a.observed_author:
         from observed_author_check import journey
 
-        journey(a, checks, page, click, remote, done, grab)
+        journey(a, checks, page, click, remote, done, grab, wait)
         return
     if a.moving_target:
         from moving_target_check import native_journey

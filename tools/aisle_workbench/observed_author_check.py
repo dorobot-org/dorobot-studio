@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 
-def journey(args, checks, page, click, remote, done, grab):
+def journey(args, checks, page, click, remote, done, grab, wait):
     from onboard_scene import CALIBRATION, PACKET, SUMMARY, interpret
     import numpy as np
 
@@ -14,19 +14,37 @@ def journey(args, checks, page, click, remote, done, grab):
     sys.path.insert(0, str(validation))
     from worker import describe
 
+    from PIL import Image
+
     model = describe("Nano")["model"]
+    transfer = args.observed_author == "transfer"
+    kind = "table-transfer" if transfer else "visual-approach"
+    input_label = (
+        "Sent to Codex · Head and both wrist images plus measured positions"
+        if args.provider == "codex"
+        else "Sent to DeepSeek · Positions measured from onboard RGB"
+    )
     if args.recover:
         page("evidence")
         row = done(
             lambda w: w["result"]
             and w["result"].get("task_success")
-            and w["result"].get("kind") == "visual-approach",
-            "Observed target approach reopened",
+            and w["result"].get("kind") == kind,
+            "Observed target trial reopened",
         )
         assert (Path(row["selected"]) / PACKET).is_file()
+        page("task")
+        wait(
+            lambda j: j["controls"]["aisle_task.author_inputs"]["text"] == input_label,
+            "Original author input label restored",
+        )
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
         return
-    request = "Approach the leftmost visible floor cube as seen by the robot and stop 0.45 metres away."
+    request = (
+        "Move only the leftmost visible floor cube as seen by the robot onto the coffee table."
+        if transfer
+        else "Approach the leftmost visible floor cube as seen by the robot and stop 0.45 metres away."
+    )
     page("task")
     click("aisle_task.nano")
     click("aisle_task.onboard")
@@ -49,7 +67,11 @@ def journey(args, checks, page, click, remote, done, grab):
                 "Stale scene controller rejected",
                 45,
             )
-            assert not (Path(rejected["selected"]) / "trace.jsonl").exists()
+            rejected_folder = Path(rejected["selected"])
+            assert not any(
+                (rejected_folder / name).exists()
+                for name in ("trace.jsonl", "motor-targets.f64")
+            )
             page("task")
         click("aisle_task.instruction")
         remote(
@@ -73,7 +95,12 @@ def journey(args, checks, page, click, remote, done, grab):
             180,
         )
         plan = row["controller"]
-        assert plan["provider"] == args.provider
+        assert plan["provider"] == args.provider and plan["kind"] == kind
+        wait(
+            lambda j: j["controls"]["aisle_task.author_inputs"]["visible"]
+            and j["controls"]["aisle_task.author_inputs"]["text"] == input_label,
+            "Native Task identifies images and measured inputs",
+        )
         previous = row["selected"]
         grab("observed-task-" + str(seed))
         page("run")
@@ -82,9 +109,9 @@ def journey(args, checks, page, click, remote, done, grab):
             lambda w: not w["busy"]
             and w["selected"] != previous
             and w["result"]
-            and w["result"].get("task_success"),
+            and w["result"].get("kind") == kind,
             "Observed target reached on layout " + str(seed),
-            120,
+            300 if transfer else 120,
         )
         path = Path(row["selected"])
         binding = plan["scene_observation"]
@@ -100,31 +127,76 @@ def journey(args, checks, page, click, remote, done, grab):
                 "encoders",
                 "stamp_ns",
             }
+            author = next(
+                folder
+                for folder in path.parent.glob("*-Nano-prepare")
+                if (folder / "controller.json").is_file()
+                and hashlib.sha256(
+                    (folder / "controller.json").read_bytes()
+                ).hexdigest()
+                == row["result"]["controller_hash"]
+            )
+            provider_request = json.loads(
+                (author / "controller-request.json").read_bytes()
+            )
+            receipt = provider_request["onboard_input"]
+            assert receipt == binding["author_input"]
+            assert receipt["packet_sha256"] == binding["files"][PACKET]
+            assert receipt["calibration_sha256"] == binding["files"][CALIBRATION]
+            assert receipt["measurements_sha256"] == binding["files"][SUMMARY]
+            assert json.dumps(public) in provider_request["instruction"]
+            assert json.dumps(calibration["cameras"]) in provider_request["instruction"]
+            expected = (
+                ["head", "left_wrist", "right_wrist"]
+                if args.provider == "codex"
+                else []
+            )
+            assert [im["camera"] for im in receipt["images"]] == expected
+            for image in receipt["images"]:
+                png = author / image["file"]
+                assert hashlib.sha256(png.read_bytes()).hexdigest() == image["sha256"]
+                with Image.open(png) as pixels:
+                    assert np.array_equal(np.asarray(pixels), packet[image["camera"]])
         assert interpret((path / PACKET).read_bytes(), calibration, model) == public
         colors = {
             name: obj["y_left_m"]
             for name, obj in public["objects"].items()
             if obj["status"] == "localized"
         }
-        assert len(colors) == 3 and max(colors, key=colors.get) == plan["color"]
+        assert len(colors) == 3
+        target = max(colors, key=colors.get)
+        assert target == plan["color_order" if transfer else "color"]
         result = row["result"]
         assert (
-            result["wheel_supported_ticks"] == result["physics_ticks"]
-            and result["obstacle_contact_ticks"] == 0
-        )
+            result["task_success"]
+            and result["wheel_supported_ticks"] == result["physics_ticks"]
+        ), result.get("error")
+        if transfer:
+            assert result["requested"] == [target] and result["cubes"][target]["passed"]
+            assert (
+                result["root_pose_writes"]
+                == result["max_joint_excursion_rad"]
+                == result["rejected_motor_writes"]
+                == 0
+            )
+            outcome = {"cube": result["cubes"][target]}
+        else:
+            assert result["obstacle_contact_ticks"] == 0
+            outcome = {"final_distance_m": result["final_distance_m"]}
         selected.append(
             dict(
                 layout=seed,
                 controller=plan,
                 observation=public,
-                final_distance_m=result["final_distance_m"],
+                target=target,
+                **outcome,
                 physics_ticks=result["physics_ticks"],
                 controller_hash=result["controller_hash"],
             )
         )
         page("evidence")
         grab("observed-target-" + str(seed))
-    assert selected[0]["controller"]["color"] != selected[1]["controller"]["color"]
+    assert selected[0]["target"] != selected[1]["target"]
     checks.append(
         dict(
             check="Same instruction, different camera-selected targets", trials=selected

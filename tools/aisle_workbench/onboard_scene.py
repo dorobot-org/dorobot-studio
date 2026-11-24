@@ -78,6 +78,36 @@ def capture(output, meta, seed, room_hash, obstacles, settings):
     return public, binding
 
 
+def author_input(output, binding, provider):
+    """Prepare the selected provider's inputs from the retained sensor exposure."""
+    receipt = {
+        "packet_sha256": binding["files"][PACKET],
+        "calibration_sha256": binding["files"][CALIBRATION],
+        "measurements_sha256": binding["files"][SUMMARY],
+        "images": [],
+    }
+    if provider == "octos-deepseek":
+        return receipt
+    if provider != "codex":
+        raise ValueError("Choose a supported author for onboard perception")
+
+    import numpy as np
+    from PIL import Image
+    from nano_rgb_policy import CAMERAS
+
+    with np.load(output / PACKET, allow_pickle=False) as packet:
+        for name in CAMERAS:
+            rgb = packet[name]
+            if rgb.shape != (360, 480, 3) or rgb.dtype != np.uint8:
+                raise ValueError(f"Invalid onboard RGB capture for {name}")
+            path = output / f"author-{name}.png"
+            Image.fromarray(rgb).save(path)
+            receipt["images"].append(
+                dict(camera=name, file=path.name, sha256=digest(path))
+            )
+    return receipt
+
+
 def bind(source, output, binding, seed, room_hash):
     if (
         binding.get("layout") != seed
