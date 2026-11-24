@@ -52,6 +52,39 @@ def native_journey(args, page, click, done, wait, grab):
         assert abs(frame["time_s"] - sample / recording["fps"]) < 1e-8
         event_ticks.append(tick)
     grab("paired-evidence" if not args.recover else "restored-pair")
+    observation = None
+    if any(comparison["packets"]):
+        import hashlib
+        import numpy as np
+
+        click("aisle_evidence.decision_rgb")
+        selected = done(
+            lambda w: not w["busy"] and w["decision_observation"],
+            "Inspected the policy exposure",
+        )
+        folder, observation = selected["decision_observation"]
+        for side, name in enumerate(("previous", "current")):
+            if comparison["packets"][side] is None:
+                assert name not in observation["views"]
+                continue
+            row = observation["views"][name]
+            assert row["tick"] == event_ticks[side] and row["trial"] == runs[side].name
+            camera_file = runs[side] / row["file"]
+            assert (
+                hashlib.sha256(camera_file.read_bytes()).hexdigest()
+                == row["packet_sha256"]
+            )
+            with np.load(camera_file, allow_pickle=False) as captured:
+                assert int(captured["stamp_ns"]) == row["stamp_ns"]
+                rgb = np.concatenate(
+                    [captured[c] for c in observation["cameras"]], axis=1
+                )
+                assert rgb.tobytes() == (Path(folder) / (name + ".rgb")).read_bytes()
+        grab("decision-cameras" if not args.recover else "restored-decision-cameras")
+        click("aisle_evidence.trial_mode")
+        done(
+            lambda w: w["decision_observation"] is None, "Returned to the paired trial"
+        )
     if not args.recover:
         for side, name in enumerate(("previous", "current")):
             click("aisle_evidence." + name + "_change")
@@ -82,6 +115,7 @@ def native_journey(args, page, click, done, wait, grab):
     grab("replay-" + name)
     result = dict(
         action_number=index,
+        policy_observations=observation,
         first_different_actions=pair,
         ticks=event_ticks,
         comparison=comparison,

@@ -325,6 +325,8 @@ def main():
                     )
                 if stage == "recovery":
                     check.append("--recover")
+                    if args.compare_runs and args.backend == "offscreen":
+                        check.append("--screenshots")
                 else:
                     if args.provider:
                         check.append("--" + args.provider)

@@ -121,6 +121,7 @@ pub enum Action {
     Open,
     Export,
     ExportChange(RevisionSide),
+    InspectDecision,
     TrainReach,
     TrainGrasp,
 }
@@ -183,6 +184,7 @@ pub struct ChangeFrame {
 pub struct TransferComparison {
     pub summary: String,
     pub frames: [Option<ChangeFrame>; 2],
+    pub packets: [Option<(PathBuf, u64)>; 2],
 }
 
 fn change_frame(trial: &Path, action_tick: u64, result: &Value) -> Option<ChangeFrame> {
@@ -376,6 +378,21 @@ fn compare_transfer(
                 ]
             })
             .unwrap_or_default();
+        let packet = |trial: &Path, result: &Value, tick| {
+            let stopped = &result["last_pickup_observation"];
+            let path = if stopped["stopped_tick"].as_u64() == Some(tick) {
+                trial.join("last-pickup-observation.npz")
+            } else {
+                trial
+                    .join("grasp-observations")
+                    .join(format!("{tick:06}.npz"))
+            };
+            path.is_file().then(|| (trial.to_owned(), tick))
+        };
+        let packets = trace
+            .ticks
+            .map(|[a, b]| [packet(previous, &prior, a), packet(path, current, b)])
+            .unwrap_or_default();
         let outcome = |v: &Value| {
             if v["task_success"] == true {
                 "passed"
@@ -383,7 +400,7 @@ fn compare_transfer(
                 "failed"
             }
         };
-        return Some(TransferComparison {frames, summary:format!(
+        return Some(TransferComparison {frames,packets, summary:format!(
             "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {}",
             current["seed"],
             outcome(&prior),
@@ -409,6 +426,7 @@ impl Job {
             "room" | "room-draft" | "room-apply" => "room-ref.json",
             "evaluate" => "evaluation.json",
             "device-preflight" => "preflight.json",
+            "compare-observations" => "observations.json",
             "run" => "result.json",
             "prepare" | "train-reach" | "train-grasp" => "controller.json",
             _ => "scene.json",
@@ -449,6 +467,7 @@ pub struct Workbench {
     pub show_evaluation: bool,
     pub evaluation: Value,
     pub show_device: bool,
+    pub decision: Option<(PathBuf, Value)>,
     pub preflight: Value,
     device_endpoint: Option<(String, u8)>,
     preflights: std::collections::BTreeMap<String, PathBuf>,
@@ -509,6 +528,7 @@ impl Workbench {
             show_evaluation: false,
             evaluation: Value::Null,
             show_device: false,
+            decision: None,
             preflight: Value::Null,
             device_endpoint: None,
             preflights: Default::default(),
@@ -739,6 +759,7 @@ impl Workbench {
         self.transfer_comparison.as_ref()?.frames[side.index()].as_ref()
     }
     fn select_run(&mut self, path: PathBuf) {
+        self.decision = None;
         self.dataset = self.dataset_for(&path);
         self.evidence = Self::receipt(&path);
         self.transfer_comparison = compare_transfer(&self.history, &path, &self.evidence);
@@ -874,6 +895,20 @@ impl Workbench {
                     "--dds-domain",
                     &domain.to_string(),
                 ]);
+            }
+        }
+        if op == "compare-observations" {
+            let pair = self
+                .transfer_comparison
+                .as_ref()
+                .ok_or_else(|| io::Error::other("Select a matched Nano trial"))?;
+            for (flag, packet) in ["--previous-packet", "--current-packet"]
+                .into_iter()
+                .zip(&pair.packets)
+            {
+                if let Some((dir, tick)) = packet {
+                    cmd.arg(flag).arg(dir).arg(tick.to_string());
+                }
             }
         }
         if op == "evaluate" {
@@ -1098,13 +1133,18 @@ impl Workbench {
                     if revise { self.selected.clone() } else { None },
                 )
             }
+            Action::InspectDecision => {
+                self.launch("compare-observations", Planner::Reference, None)
+            }
             Action::ShowDevice => {
+                self.decision = None;
                 self.show_device = true;
                 self.show_evaluation = false;
                 Ok(())
             }
             Action::DevicePreflight(endpoint) => self.start_preflight(endpoint),
             Action::ShowEvaluation(value) => {
+                self.decision = None;
                 self.show_device = false;
                 self.show_evaluation = value;
                 Ok(())
@@ -1388,6 +1428,9 @@ impl Workbench {
                 self.room_draft_info = Value::Null;
                 self.room_draft_receipt = Value::Null;
             }
+            if job.op == "compare-observations" {
+                self.decision = read(&job.dir, artifact).map(|receipt| (job.dir.clone(), receipt));
+            }
             if job.op == "export" {
                 let dataset = job.dir.join("dataset");
                 if let Some(name) =
@@ -1534,6 +1577,36 @@ mod tests {
         fs::remove_file(runs[0].join("calibration.json")).unwrap();
         assert!(comparison().is_none());
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn decision_seek_uses_recorded_steps_and_zero_based_video_time() {
+        let run = fixture("recording-step");
+        let result = serde_json::json!({"frames":3});
+        fs::write(
+            run.join("recording.json"),
+            r#"{"samples":[{"step":20},{"step":40},{"step":60}],"fps":5}"#,
+        )
+        .unwrap();
+        for (tick, index, step) in [
+            (0, 0, 20),
+            (39, 0, 20),
+            (40, 1, 40),
+            (55, 1, 40),
+            (76, 2, 60),
+        ] {
+            let frame = change_frame(&run, tick, &result).unwrap();
+            assert_eq!((frame.index, frame.sample_tick), (index, step));
+            assert_eq!(frame.time_s, index as f64 / 5.);
+        }
+        assert!(change_frame(&run, 40, &serde_json::json!({"frames":4})).is_none());
+        fs::write(
+            run.join("recording.json"),
+            r#"{"samples":[{"step":20},{"step":60},{"step":40}],"fps":5}"#,
+        )
+        .unwrap();
+        assert!(change_frame(&run, 40, &result).is_none());
+        fs::remove_dir_all(run).unwrap();
     }
 
     #[test]

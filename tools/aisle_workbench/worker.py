@@ -863,6 +863,7 @@ def main():
             "room-apply",
             "evaluate",
             "device-preflight",
+            "compare-observations",
             "train-reach",
             "train-grasp",
             "fleet",
@@ -878,6 +879,8 @@ def main():
     p.add_argument("--task", default=REFERENCE)
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
+    p.add_argument("--previous-packet", nargs=2, metavar=("TRIAL", "TICK"))
+    p.add_argument("--current-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--trial", type=Path)
     p.add_argument("--archive", type=Path)
     p.add_argument(
@@ -970,6 +973,11 @@ def main():
             from device_preflight import run as device_preflight
 
             save(args.out / "preflight.json", device_preflight(args))
+            return
+        if args.operation == "compare-observations":
+            from decision_observations import compare
+
+            save(args.out / "observations.json", compare(args))
             return
         if args.operation == "fleet":
             from fleet_bridge import operate
