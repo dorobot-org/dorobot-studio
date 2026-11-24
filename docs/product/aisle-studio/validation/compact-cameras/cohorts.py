@@ -38,7 +38,15 @@ def measure(path):
     rates = [
         bounded_rate([t for t in times if begin <= t <= end]) for times in observations
     ]
+    source_rate = bounded_rate(
+        [
+            stamp
+            for tick, stamp in record["source_ticks"]
+            if window[0][2] <= tick <= window[-1][2]
+        ]
+    )
     summary = record["summary"]
+    assert abs(source_rate - summary["source_fps"]) < 1e-9
     assert abs(fps - summary["viewport_fps"]) < 1e-9
     assert abs(min(rates) - summary["min_wall_hz"]) < 1e-9
     assert abs(max(rates) - summary["max_wall_hz"]) < 1e-9
@@ -63,7 +71,7 @@ def measure(path):
     return dict(
         overlap_s=(end - begin) / 1e9,
         viewport_fps=fps,
-        source_fps=summary["source_fps"],
+        source_fps=source_rate,
         lowest_second=min(draw_counts),
         slowest_background_hz=min(rates),
         fastest_background_hz=max(rates),
