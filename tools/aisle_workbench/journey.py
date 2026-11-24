@@ -31,6 +31,7 @@ def main():
     )
     p.add_argument("--fleet", action="store_true")
     p.add_argument("--standing", action="store_true")
+    p.add_argument("--pickup-motion", choices=["slide-positive", "slide-negative"])
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     p.add_argument("--heading", nargs="?", const=20, type=int, choices=(20, 30))
@@ -348,6 +349,8 @@ def main():
             if a.transfer == "red"
             else "Move all three floor cubes onto the coffee table in red, green, blue order."
         )
+        if a.pickup_motion:
+            request += " Track the moving cube with the wrist camera as the arm descends for pickup."
         if a.standing:
             request = "Stand on both feet and track a right shoulder displacement of minus 0.08 rad for the standing test."
         if a.heading:
@@ -417,6 +420,17 @@ def main():
         if a.impact:
             click("aisle_scene.impact")
             done(lambda w: w["impact"], "G1 impact selected")
+        if a.pickup_motion:
+            assert row["controller"]["track_grasp"] is True
+            click(
+                "aisle_scene.slide_pos"
+                if a.pickup_motion == "slide-positive"
+                else "aisle_scene.slide_neg"
+            )
+            done(
+                lambda w: w["target_motion"] == a.pickup_motion,
+                "Selected moving floor cube",
+            )
         if a.transfer:
             for seed in [(a.layout + 1) % 3, a.layout]:
                 if report()["state"]["aisle"]["layout_seed"] == seed:
@@ -451,6 +465,13 @@ def main():
             600,
         )
         result = row["result"]
+        if a.pickup_motion:
+            from moving_grasp_check import verify_trial
+
+            proof = verify_trial(Path(row["selected"]))
+            checks.append(
+                dict(check="Onboard descent and physical moving grasp", audit=proof)
+            )
         page("evidence")
         grab(label + "-evidence")
         checks.append(dict(check=label + " physical verdict", **result))

@@ -136,8 +136,9 @@ script_mod! {
                 rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0
                     Section{text:"Cube motion · world Y"}
                     Bar{still := mod.widgets.ux.ToolButton{text:"Still"} slide_pos := mod.widgets.ux.ToolButton{text:"+Y"} slide_neg := mod.widgets.ux.ToolButton{text:"−Y"}}
+                    timing_controls := View{width:Fill height:Fit flow:Down spacing:6.0
                     Section{text:"Onboard camera timing"}
-                    Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}
+                    Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}}
                 }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
                 }
@@ -604,6 +605,9 @@ impl PluginPanel for Panel {
                     )
                 };
                 let mut detail = detail;
+                if w.plan["track_grasp"] == true {
+                    detail.push_str("\nWrist-guided interception during descent");
+                }
                 if let Some(target) = w.plan["trunk_yaw_rad"].as_f64() {
                     detail.push_str(&format!("\nWaist turn · {:.1}° left", target.to_degrees()));
                 }
@@ -772,6 +776,9 @@ impl PluginPanel for Panel {
                     .set_visible(cx, mobile || (w.robot == Robot::Nano && w.onboard_context));
                 self.root
                     .widget(cx, ids!(rgb_delivery))
+                    .set_visible(cx, mobile);
+                self.root
+                    .widget(cx, ids!(timing_controls))
                     .set_visible(cx, kind == "visual-approach");
                 for (id, motion) in [
                     (ids!(still) as &[LiveId], TargetMotion::Stationary),
@@ -979,6 +986,24 @@ impl PluginPanel for Panel {
                 self.label(cx, ids!(verdict), verdict);
                 let text = if transfer {
                     let mut lines = vec![];
+                    if let Some(cubes) = w.evidence["moving_grasp"]["cubes"].as_object() {
+                        for (color, slide) in cubes {
+                            let contact = &slide["first_contact"];
+                            let verdict = if slide["passed"] == true {
+                                "confirmed"
+                            } else {
+                                "incomplete"
+                            };
+                            if let Some(speed) = contact["prior_velocity_y_m_s"].as_f64() {
+                                lines.push(format!("{color} moving grasp {verdict} · {:+.1} mm/s before contact · {} two-finger lift steps",
+                                    1000.*speed,slide["first_attempt_lift_ticks"].as_u64().unwrap_or(0)));
+                            } else {
+                                lines.push(format!(
+                                    "{color} moving grasp {verdict} · no finger contact observed"
+                                ));
+                            }
+                        }
+                    }
                     if let Some(checkpoint) = w.evidence["grasp_checkpoint"].as_str() {
                         lines.push(format!(
                             "Trained wrist detector {}",

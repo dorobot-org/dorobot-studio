@@ -85,6 +85,13 @@ def describe(robot):
 
 
 def validate(plan, meta):
+    tracking = plan.get("track_grasp", False)
+    if type(tracking) is not bool or (
+        tracking and plan.get("kind") != "table-transfer"
+    ):
+        raise ValueError(
+            "Visual grasp tracking requires a Nano floor-to-table transfer"
+        )
     if plan.get("kind") == "table-transfer":
         if meta["robot"] != "Nano" or plan.get("color_order") not in CUBE_ORDERS:
             raise ValueError(
@@ -95,7 +102,11 @@ def validate(plan, meta):
             from nano_grasp_estimator import parameters
 
             parameters(plan)
-        return dict(kind="table-transfer", color_order=plan["color_order"])
+        return dict(
+            kind="table-transfer",
+            color_order=plan["color_order"],
+            **({"track_grasp": True} if tracking else {}),
+        )
     if plan.get("kind") == "visual-approach":
         if (
             meta["robot"] != "Nano"
@@ -441,10 +452,19 @@ def prepare(args, meta):
                 ),
                 color=dict(type="string", enum=["red", "green", "blue"]),
                 color_order=dict(type="string", enum=CUBE_ORDERS),
+                track_grasp=dict(type="boolean"),
                 standoff_m=dict(type="number"),
             )
-            schema["required"] += ["kind", "color", "standoff_m", "color_order"]
+            schema["required"] += [
+                "kind",
+                "color",
+                "standoff_m",
+                "color_order",
+                "track_grasp",
+            ]
             prompt = (
+                "For a table transfer, set track_grasp=true when asked to grasp a moving or sliding cube "
+                "or to update the pickup from RGB while the arm descends. For other tasks set track_grasp=false. "
                 "Select one Nano capability. For joint-inspection use a fixed-base shoulder "
                 "displacement of 0.03–0.15 rad in magnitude, within limits "
                 + json.dumps({j: meta["limits"][j] for j in meta["allowed_joints"]})
@@ -663,6 +683,7 @@ def simulate(args, meta):
                 control["color_order"].split(","),
                 record=not getattr(args, "observations_only", False),
                 observation_progress=getattr(args, "observations_only", False),
+                target_motion=getattr(args, "target_motion", "stationary"),
                 observation_period_s=getattr(args, "observation_period_s", 1),
                 room_objects=room_objects,
                 room_settings=room_settings,

@@ -223,6 +223,11 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
             continue;
         };
         if source["room_revision_sha256"] != old["room_revision_sha256"]
+            || source["grasp_motion"] != old["grasp_motion"]
+            || (source["grasp_motion"].is_string()
+                && (!source["support_code_hashes"]["nano_moving_grasp.py"].is_string()
+                    || source["support_code_hashes"]["nano_moving_grasp.py"]
+                        != old["support_code_hashes"]["nano_moving_grasp.py"]))
             || !["recipe", "nexus", "adapter_hash", "backend"]
                 .iter()
                 .all(|k| !source[*k].is_null() && source[*k] == old[*k])
@@ -764,6 +769,8 @@ impl Workbench {
         if op == "run" || submitting {
             if self.plan["kind"] == "visual-approach" {
                 cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
+            }
+            if mobile {
                 cmd.arg("--target-motion").arg(self.target_motion.name());
             }
             cmd.arg("--seed").arg(self.layout_seed.to_string());
@@ -1240,6 +1247,18 @@ mod tests {
         let mut changed = result.clone();
         changed["seed"] = serde_json::json!(2);
         assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
+        let mut sliding = source.clone();
+        sliding["grasp_motion"] = serde_json::json!("slide-negative");
+        sliding["support_code_hashes"]["nano_moving_grasp.py"] = serde_json::json!("fixture-v1");
+        fs::write(runs[1].join("source.json"), sliding.to_string()).unwrap();
+        assert!(comparison().is_none());
+        fs::write(runs[0].join("source.json"), sliding.to_string()).unwrap();
+        assert!(comparison().is_some());
+        sliding["support_code_hashes"]["nano_moving_grasp.py"] = serde_json::json!("fixture-v2");
+        fs::write(runs[0].join("source.json"), sliding.to_string()).unwrap();
+        assert!(comparison().is_none());
+        fs::write(runs[0].join("source.json"), source.to_string()).unwrap();
+        fs::write(runs[1].join("source.json"), source.to_string()).unwrap();
         fs::remove_file(runs[0].join("calibration.json")).unwrap();
         assert!(comparison().is_none());
         fs::remove_dir_all(dir).unwrap();

@@ -116,6 +116,7 @@ class TransferTests(unittest.TestCase):
         judge = Judge.__new__(Judge)
         judge.colors = ["red"]
         judge.airborne_in_jaw = {"red": False}
+        judge.pick_contacts = {}
         judge.object_ids = {1: "coffee_table", 2: "red"}
         judge.links = judge.slots = {23: "left_finger_a", 24: "left_finger_b"}
         judge.wheels = set()
@@ -134,6 +135,7 @@ class TransferTests(unittest.TestCase):
         judge.tick(sim)
         _, supported, held, gap = judge.tail["red"][-1]
         self.assertFalse(supported or held)
+        self.assertEqual(judge.pick_contacts["red"], ({}, False))
         self.assertFalse(judge.airborne_in_jaw["red"])
         self.assertGreater(gap, 0.001)
         self.assertEqual(judge.grasped["red"], 0)
@@ -144,6 +146,8 @@ class TransferTests(unittest.TestCase):
         judge.tick(sim)
         _, supported, held, _ = judge.tail["red"][-1]
         self.assertTrue(supported and held)
+        forces = {"left_finger_a": 0.001, "left_finger_b": 0.001}
+        self.assertEqual(judge.pick_contacts["red"], (forces, True))
         self.assertFalse(judge.airborne_in_jaw["red"])
         self.assertEqual(judge.grasped["red"], 0)
         sim.tick += 1
@@ -154,3 +158,4 @@ class TransferTests(unittest.TestCase):
             [dict(phase=judge.phase, first_step=1, last_step=3)],
         )
         self.assertEqual(judge.grasped["red"], 1)
+        self.assertEqual(judge.pick_contacts["red"], (forces, False))

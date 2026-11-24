@@ -93,6 +93,11 @@ def main():
         choices=(20, 30),
         help="Test a bounded left waist turn in degrees",
     )
+    parser.add_argument(
+        "--pickup-motion",
+        choices=["slide-positive", "slide-negative"],
+        help="Track and intercept a moving floor cube during Nano transfer",
+    )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
@@ -109,6 +114,8 @@ def main():
         parser.error("--survey requires --transfer")
     if args.train_grasp and not args.transfer:
         parser.error("--train-grasp requires --transfer")
+    if args.pickup_motion and not args.transfer:
+        parser.error("--pickup-motion requires --transfer")
     if args.train_reach and not args.standing:
         parser.error("--train-reach requires --standing")
     if args.heading and (not args.standing or args.upright):
@@ -254,6 +261,8 @@ def main():
                     check.extend(["--photo-input", str(args.photo_input.resolve())])
                 if args.survey:
                     check.extend(["--survey", str(args.survey.resolve())])
+                if args.pickup_motion:
+                    check.extend(["--pickup-motion", args.pickup_motion])
                 if args.transfer:
                     check.extend(
                         ["--transfer", args.transfer, "--layout", str(args.layout)]

@@ -66,7 +66,7 @@ class VisualServo:
             )
         self.last_stamp = -1
 
-    def command(self, packet):
+    def command(self, packet, *, preferred_camera=None):
         if set(packet) != {*CAMERAS, "stamp_ns", "encoders"}:
             raise ValueError("unexpected observation channels")
         stamp = packet["stamp_ns"]
@@ -100,6 +100,8 @@ class VisualServo:
         point = np.median(points, axis=0)
         if any(np.linalg.norm(p - point) > 0.06 for p in points):
             return self.stop("inconsistent views")
+        if preferred_camera in used:
+            point = points[used.index(preferred_camera)]
         bearing = math.atan2(point[1], point[0])
         error = np.linalg.norm(point) - self.distance
         aligned = abs(bearing) < 0.08
