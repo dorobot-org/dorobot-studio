@@ -1,7 +1,8 @@
 use dorobot_studio_core::{
     api::{
         aisle::{
-            Action, Planner, RgbTiming, Robot, TargetMotion, Workbench, WorkerAction, REFERENCE,
+            Action, Planner, RevisionSide, RgbTiming, Robot, TargetMotion, Workbench, WorkerAction,
+            REFERENCE,
         },
         Backend, Intent,
     },
@@ -65,6 +66,7 @@ impl StudioPlugin for AislePlugin {
             frame: None,
             draft: None,
             room_preview: None,
+            decision_preview: None,
         }))
     }
     fn can_disable(&self, b: &dyn Backend) -> Result<(), String> {
@@ -189,6 +191,17 @@ script_mod! {
         }
         summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
+        decision_card := Card{width:Fill height:Fill
+            decision_title := Title{}
+            Body{text:"Camera order from left to right · Head, left wrist, right wrist"}
+            prev_label := Section{} prev_rgb := VideoPlayer{width:Fill height:Fill}
+            curr_label := Section{} curr_rgb := VideoPlayer{width:Fill height:Fill}
+        }
+        change_bar := Bar{
+            decision_rgb := mod.widgets.ux.ToolButton{text:"Inspect decision RGB"}
+            previous_change := mod.widgets.ux.ToolButton{text:"Previous revision"}
+            current_change := mod.widgets.ux.ToolButton{text:"Current revision"}
+        }
         trial_bar := Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
             folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
             export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"} train_reach := mod.widgets.ux.ToolButton{text:"Train shoulder correction"} train_grasp := mod.widgets.ux.ToolButton{text:"Train grasp detector"}}
@@ -203,6 +216,7 @@ struct Panel {
     frame: Option<(PathBuf, u64)>,
     draft: Option<(Robot, Option<PathBuf>)>,
     room_preview: Option<PathBuf>,
+    decision_preview: Option<PathBuf>,
 }
 impl Panel {
     fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
@@ -499,6 +513,7 @@ impl PluginPanel for Panel {
                     (ids!(photo_card), Themed::Bg),
                     (ids!(cohort), Themed::Bg),
                     (ids!(device), Themed::Bg),
+                    (ids!(decision_card), Themed::Bg),
                     (ids!(survey_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
@@ -874,17 +889,43 @@ impl PluginPanel for Panel {
             }
             "aisle_run" => self.run(cx, w),
             _ => {
+                let decision = w.decision.is_some();
+                let has_packets = w
+                    .transfer_comparison
+                    .as_ref()
+                    .is_some_and(|c| c.packets.iter().any(Option::is_some));
+                self.root
+                    .widget(cx, ids!(decision_card))
+                    .set_visible(cx, decision);
+                self.root
+                    .widget(cx, ids!(decision_rgb))
+                    .set_visible(cx, has_packets);
+                self.root
+                    .button(cx, ids!(decision_rgb))
+                    .set_enabled(cx, !w.busy() && has_packets);
+                let has_frames = w
+                    .transfer_comparison
+                    .as_ref()
+                    .is_some_and(|c| c.frames.iter().any(Option::is_some));
+                self.root.widget(cx, ids!(change_bar)).set_visible(
+                    cx,
+                    (has_frames || has_packets)
+                        && !decision
+                        && !w.show_device
+                        && !w.show_evaluation,
+                );
                 for id in [ids!(summary), ids!(plot), ids!(trial_bar)] {
                     self.root
                         .widget(cx, id)
-                        .set_visible(cx, !w.show_evaluation && !w.show_device);
+                        .set_visible(cx, !decision && !w.show_evaluation && !w.show_device);
                 }
                 self.root
                     .widget(cx, ids!(cohort))
                     .set_visible(cx, w.show_evaluation);
-                self.root
-                    .button(cx, ids!(trial_mode))
-                    .set_enabled(cx, !w.busy() && (w.show_evaluation || w.show_device));
+                self.root.button(cx, ids!(trial_mode)).set_enabled(
+                    cx,
+                    !w.busy() && (decision || w.show_evaluation || w.show_device),
+                );
                 self.root
                     .button(cx, ids!(evaluation_mode))
                     .set_enabled(cx, !w.busy() && !w.show_evaluation);
@@ -894,6 +935,61 @@ impl PluginPanel for Panel {
                 self.root
                     .button(cx, ids!(device_mode))
                     .set_enabled(cx, !w.busy() && !w.show_device);
+                if let Some((dir, receipt)) = &w.decision {
+                    self.root.button(cx, ids!(trial_mode)).set_enabled(cx, true);
+                    self.label(
+                        cx,
+                        ids!(context_label),
+                        "Nano   /   Onboard policy observations",
+                    );
+                    self.label(
+                        cx,
+                        ids!(decision_title),
+                        match receipt["identical_inputs"].as_bool() {
+                            Some(true) => {
+                                "Both revisions received identical RGB, encoders and timestamps"
+                            }
+                            Some(false) => "The recorded policy inputs differ",
+                            None => "Recorded policy observation",
+                        },
+                    );
+                    for (side, label, view, name) in [
+                        (
+                            "previous",
+                            ids!(prev_label) as &[LiveId],
+                            ids!(prev_rgb) as &[LiveId],
+                            "Previous",
+                        ),
+                        ("current", ids!(curr_label), ids!(curr_rgb), "Current"),
+                    ] {
+                        let row = &receipt["views"][side];
+                        self.root.widget(cx, view).set_visible(cx, row.is_object());
+                        let content = if row.is_object() {
+                            format!(
+                                "{name} revision · physics tick {} · {} s",
+                                row["tick"],
+                                row["stamp_ns"].as_u64().unwrap_or(0) as f64 / 1e9
+                            )
+                        } else {
+                            format!("{name} revision · no retained exposure")
+                        };
+                        self.label(cx, label, &content);
+                        if row.is_object() && self.decision_preview.as_ref() != Some(dir) {
+                            let camera = self.root.video_player(cx, view);
+                            if let Some(mut player) = camera.borrow_mut() {
+                                player.clear(cx);
+                                if let Ok(rgb) = std::fs::read(dir.join(format!("{side}.rgb"))) {
+                                    if rgb.len() == 1440 * 360 * 3 {
+                                        player.set_frame(cx, 1440, 360, &rgb);
+                                    }
+                                }
+                            };
+                        }
+                    }
+                    self.decision_preview = Some(dir.clone());
+                    self.label(cx, ids!(status), "");
+                    return;
+                }
                 if w.show_device {
                     let g1 = w.evidence["robot"] == "G1";
                     let standing = g1 && w.evidence["kind"] == "standing-inspection";
@@ -1310,7 +1406,30 @@ impl PluginPanel for Panel {
                         .to_owned()
                 };
                 let status = if let Some(comparison) = &w.transfer_comparison {
-                    comparison.clone()
+                    for (id, side, label) in [
+                        (
+                            ids!(previous_change) as &[LiveId],
+                            RevisionSide::Previous,
+                            "previous",
+                        ),
+                        (ids!(current_change), RevisionSide::Current, "current"),
+                    ] {
+                        let frame = w.change_frame(side);
+                        self.root.widget(cx, id).set_visible(cx, frame.is_some());
+                        if let Some(frame) = frame {
+                            let verb = if w.dataset_for(&frame.trial).is_some() {
+                                "Replay"
+                            } else {
+                                "Export"
+                            };
+                            self.root.button(cx, id).set_text(
+                                cx,
+                                &format!("{verb} {label} · tick {}", frame.sample_tick),
+                            );
+                            self.root.button(cx, id).set_enabled(cx, !w.busy());
+                        }
+                    }
+                    comparison.summary.clone()
                 } else if let Some(diff) = w.comparison {
                     format!(
                         "Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png."
@@ -1432,6 +1551,24 @@ impl PluginPanel for Panel {
             b.dispatch(Intent::Aisle(Action::ConnectWorker(alias)));
             return true;
         }
+        for (id, side) in [
+            (ids!(previous_change) as &[LiveId], RevisionSide::Previous),
+            (ids!(current_change), RevisionSide::Current),
+        ] {
+            if self.root.button(cx, id).clicked(actions) {
+                let target = b.aisle().and_then(|w| {
+                    let frame = w.change_frame(side)?;
+                    Some((w.dataset_for(&frame.trial)?, frame.time_s))
+                });
+                if let Some((dataset, time)) = target {
+                    b.dispatch(Intent::OpenFolder(dataset));
+                    b.dispatch(Intent::Seek(time));
+                } else {
+                    b.dispatch(Intent::Aisle(Action::ExportChange(side)));
+                }
+                return true;
+            }
+        }
         if self.root.button(cx, ids!(replay)).clicked(actions) {
             if let Some(path) = b.aisle().and_then(|w| w.dataset.clone()) {
                 b.dispatch(Intent::OpenFolder(path));
@@ -1467,6 +1604,7 @@ impl PluginPanel for Panel {
             (ids!(device_stop), Action::Stop),
             (ids!(device_folder), Action::OpenPreflight),
             (ids!(trial_mode), Action::ShowEvaluation(false)),
+            (ids!(decision_rgb), Action::InspectDecision),
             (ids!(evaluation_mode), Action::ShowEvaluation(true)),
             (ids!(earlier_failure), Action::SelectFailure(false)),
             (ids!(later_failure), Action::SelectFailure(true)),

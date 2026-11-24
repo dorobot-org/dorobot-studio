@@ -21,6 +21,13 @@ def main():
     parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
     parser.add_argument("--dark", action="store_true")
     parser.add_argument(
+        "--compare-runs",
+        nargs=2,
+        type=Path,
+        metavar=("PREVIOUS", "CURRENT"),
+        help="Verify replay of the first changed action using two recorded Nano trials",
+    )
+    parser.add_argument(
         "--foreground-cadence",
         nargs="?",
         type=int,
@@ -164,6 +171,16 @@ def main():
         "DOROBOT_STUDIO_SOURCE_ROOT": str(studio_root),
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
+    if args.compare_runs:
+        import shutil
+
+        for index, source in enumerate(args.compare_runs, start=1):
+            if (
+                not (source / "recording.json").is_file()
+                or not (source / "result.json").is_file()
+            ):
+                parser.error(f"Missing recording or verdict in {source}")
+            shutil.copytree(source, output / "state/aisle" / f"000{index}-Nano-run")
     # The binary can come from another build directory. Its digest identifies the
     # executable, while these fields identify the workspace observed at launch.
     if args.foreground_cadence:
@@ -264,6 +281,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.compare_runs:
+                    check.append("--compare-runs")
                 if args.fleet:
                     check.append("--fleet")
                     if args.foreground_cadence:
@@ -306,6 +325,8 @@ def main():
                     )
                 if stage == "recovery":
                     check.append("--recover")
+                    if args.compare_runs and args.backend == "offscreen":
+                        check.append("--screenshots")
                 else:
                     if args.provider:
                         check.append("--" + args.provider)

@@ -284,7 +284,11 @@ def execute(
         ),
     )
     if plan.get("track_grasp"):
-        config["grasp_rgb_association"] = "wrist-agreement-v1"
+        import nano_rgb_policy
+
+        config["grasp_rgb_association"] = getattr(
+            nano_rgb_policy, "GRASP_RGB_ASSOCIATION", "all-views-unique-v1"
+        )
     worker.save(out / "calibration.json", config)
     if detector is not None:
         config["grasp_plan"] = {
