@@ -61,6 +61,8 @@ jobs:
           git -C "$aisle" fetch --depth=1 https://github.com/moxin-org/AISLE.git dbd34a71b6f82a011541b433306ca7e6a705e823
           git -C "$aisle" checkout -q --detach FETCH_HEAD
           "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: opencv-python-headless==5.1.0.95 scipy==1.18.1
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle_workbench -p test_room_revision.py
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/room-survey/check_camera_trials.py
           /usr/bin/python3 tools/fetch_robot_meshes.py g1
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_cohort_comparison.py
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_nano_rgb_transfer.py
