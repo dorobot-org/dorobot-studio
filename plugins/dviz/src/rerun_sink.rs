@@ -6,7 +6,7 @@
 //! nothing here may panic on message data: every shape is checked through
 //! serde or by length, and bad input comes back as `Err`.
 
-use crate::map_view::{grid_rgba, nav2_to_rviz, rviz_costmap_color};
+use crate::map_view::{grid_rgba, nav2_to_rviz, rviz_costmap_color, COSTMAP_ALPHA};
 use crate::nav_scene::{nav_layer, NavLayer};
 use crate::route::Sink;
 use dviz_protocol::{
@@ -374,9 +374,12 @@ fn grid_mesh(header: &Grid2DHeader, cells: &[u8]) -> Result<rerun::Mesh3D, Strin
 
 /// A Nav2 costmap as one flat mesh at `COSTMAP_Z`: a quad per run of
 /// neighbouring cells in a row with the same RViz costmap colour, coloured
-/// per vertex; free cells (RViz 0, transparent) are left out. Vertex colours
-/// and not a texture, because Rerun 0.28 draws a texture without its alpha
-/// and the costmap must let the map show through. Row 0 is the smallest y,
+/// per vertex; free cells (RViz 0, transparent) are left out. Rerun 0.28
+/// ignores the alpha of a texture and of vertex colours, so the 0.5 opacity
+/// that lets the map show through is the mesh's white albedo factor at the
+/// 2D costmap's alpha (every drawn cell has that alpha). Vertex colours and
+/// not a texture: a texture's per-pixel alpha is ignored too, so its free
+/// cells could not be left out. Row 0 is the smallest y,
 /// as on the wire. More than `COSTMAP_MAX_QUADS` quads is an error.
 fn costmap_mesh(header: &Grid2DHeader, cells: &[u8]) -> Result<rerun::Mesh3D, String> {
     let [ox, oy, yaw] = header.origin;
@@ -423,7 +426,13 @@ fn costmap_mesh(header: &Grid2DHeader, cells: &[u8]) -> Result<rerun::Mesh3D, St
     }
     Ok(rerun::Mesh3D::new(positions)
         .with_triangle_indices(triangles)
-        .with_vertex_colors(colors))
+        .with_vertex_colors(colors)
+        .with_albedo_factor(rerun::datatypes::Rgba32::from_unmultiplied_rgba(
+            255,
+            255,
+            255,
+            COSTMAP_ALPHA,
+        )))
 }
 
 /// The map's extent rounded out to whole metres, `[x0, x1, y0, y1]`; `None`
@@ -1400,15 +1409,20 @@ mod tests {
         let min_x = xyz.chunks(3).map(|p| p[0]).fold(f32::MAX, f32::min);
         let max_x = xyz.chunks(3).map(|p| p[0]).fold(f32::MIN, f32::max);
         assert_eq!((min_x, max_x), (0.5, 1.5), "{xyz:?}");
-        let colors = u32_leaves(&batches, "Mesh3D:vertex_colors");
-        assert_eq!(colors.len(), 8, "{colors:x?}");
-        assert!(
-            colors.contains(&packed([255, 0, 255, 128])),
-            "no magenta: {colors:x?}"
-        );
-        assert!(
-            colors.contains(&packed([0, 255, 255, 128])),
-            "no cyan: {colors:x?}"
+        // Rerun 0.28 ignores the alpha of vertex colours: only their RGB counts.
+        let rgb: Vec<u32> = u32_leaves(&batches, "Mesh3D:vertex_colors")
+            .iter()
+            .map(|c| c >> 8)
+            .collect();
+        assert_eq!(rgb.len(), 8, "{rgb:x?}");
+        assert!(rgb.contains(&0xFF00FF), "no magenta: {rgb:x?}");
+        assert!(rgb.contains(&0x00FFFF), "no cyan: {rgb:x?}");
+        // The 0.5 opacity is the albedo factor's alpha (white: the vertex
+        // colours stay as they are), the 2D costmap's alpha.
+        assert_eq!(
+            u32_leaves(&batches, "Mesh3D:albedo_factor"),
+            [packed([255, 255, 255, 128])],
+            "no white albedo factor at alpha 128"
         );
         let triangles = leaves(&batches, "Mesh3D:triangle_indices");
         assert_eq!(triangles.iter().map(|a| a.len()).sum::<usize>(), 4 * 3);

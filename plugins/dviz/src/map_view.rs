@@ -193,7 +193,7 @@ pub fn layer_color(scene: &NavScene, entity: &str) -> [u8; 4] {
 const RVIZ_UNKNOWN: [u8; 3] = [0x70, 0x89, 0x86];
 /// RViz map layer opacity 0.7 and costmap layer opacity 0.5, as alpha bytes.
 const MAP_ALPHA: u8 = 179;
-const COSTMAP_ALPHA: u8 = 128;
+pub(crate) const COSTMAP_ALPHA: u8 = 128;
 
 /// A Nav2 cost value (0 free, 1..=252 inflated, 253 inscribed, 254 lethal,
 /// 255 unknown) as RViz's 0..=100 scale; `None` is unknown.
