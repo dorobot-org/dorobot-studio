@@ -3,11 +3,13 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import tempfile
+import json
+import sys
 import unittest
 from unittest.mock import patch
 from uuid import uuid4
 
-from fleet_bridge import journal, reconcile, record, submit, update
+from fleet_bridge import journal, reconcile, record, submit, update, watch_foreground
 
 
 class WorkspaceAdmissionTests(unittest.TestCase):
@@ -29,6 +31,18 @@ class WorkspaceAdmissionTests(unittest.TestCase):
 
     def request(self, mode="stream"):
         return dict(op="submit", id=str(uuid4()), robot="Nano", mode=mode)
+
+    def test_a_truncated_rgb_stream_never_replaces_the_last_complete_frame(self):
+        ident = str(uuid4())
+        packet = dict(job=dict(id=ident, state="running"), bytes=4 + 480 * 320 * 3)
+        path = self.root / "preview.rgb"
+        path.write_bytes(b"last complete frame")
+        data = json.dumps(packet).encode() + b"\nshort"
+        cmd = [sys.executable, "-c", f"import sys; sys.stdout.buffer.write({data!r})"]
+        with patch("fleet_bridge.worker_command", return_value=cmd):
+            with self.assertRaisesRegex(ValueError, "Incomplete"):
+                watch_foreground({}, ident, self.root, self.root)
+        self.assertEqual(path.read_bytes(), b"last complete frame")
 
     def test_one_foreground_across_two_simultaneous_node_connections(self):
         def start(alias):
