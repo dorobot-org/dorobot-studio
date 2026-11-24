@@ -208,7 +208,14 @@ def main():
         metavar="PREPARED_DIRECTORY",
         help="Run one previously authored Nano red-cube transfer on the selected worker",
     )
+    parser.add_argument(
+        "--compact-visuals",
+        action="store_true",
+        help="Select compact Nano cameras in Scene before the registered fleet transfer",
+    )
     args = parser.parse_args()
+    if args.compact_visuals and not args.fleet_controller:
+        parser.error("--compact-visuals requires --fleet-controller")
     if args.room_baseline and not args.compare_runs:
         parser.error("--room-baseline requires --compare-runs BASELINE CANDIDATE")
     if args.background_period_s is not None and (
@@ -473,6 +480,8 @@ def main():
                         )
                     if args.fleet_controller:
                         check.append("--fleet-controller")
+                    if args.compact_visuals:
+                        check.append("--compact-visuals")
                     if args.resume_fleet:
                         check.append("--resume-fleet")
                     if args.fleet_node:

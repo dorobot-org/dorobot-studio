@@ -89,6 +89,7 @@ pub enum Action {
     Fixture(bool),
     Impact(bool),
     RgbTiming(RgbTiming),
+    CompactVisuals(bool),
     TargetMotion(TargetMotion),
     ToggleOnboardContext,
     EditRoom(bool),
@@ -391,6 +392,8 @@ fn compare_transfer(
                 != old["wrist_rgb_timing"].as_str().unwrap_or("normal")
             || source["support_code_hashes"]["nano_wrist_timing.py"]
                 != old["support_code_hashes"]["nano_wrist_timing.py"]
+            || source["visual_profile"] != old["visual_profile"]
+            || source["visual_bundle_sha256"] != old["visual_bundle_sha256"]
             || source["grasp_motion"] != old["grasp_motion"]
             || (source["grasp_motion"].is_string()
                 && (!source["support_code_hashes"]["nano_moving_grasp.py"].is_string()
@@ -555,6 +558,7 @@ pub struct Workbench {
     pub compliant: bool,
     pub impact: bool,
     pub rgb_timing: RgbTiming,
+    pub compact_visuals: bool,
     pub target_motion: TargetMotion,
     pub onboard_context: bool,
     pub room_editor: bool,
@@ -630,6 +634,7 @@ impl Workbench {
             compliant: false,
             impact: false,
             rgb_timing: RgbTiming::Normal,
+            compact_visuals: false,
             target_motion: TargetMotion::Stationary,
             onboard_context: false,
             room_editor: false,
@@ -893,6 +898,9 @@ impl Workbench {
         }
         self.task = plan["task"].as_str().unwrap_or(REFERENCE).to_owned();
         self.controller_diff = None;
+        if plan["kind"] != "table-transfer" || !plan["scene_observation"].is_null() {
+            self.compact_visuals = false;
+        }
         self.plan = plan;
         self.prepared = Some(path);
         self.prepared_sha256 = Some(hash);
@@ -1291,6 +1299,9 @@ impl Workbench {
             cmd.arg("--live-preview");
         }
         if op == "run" || submitting {
+            if self.compact_visuals && self.plan["kind"] == "table-transfer" {
+                cmd.args(["--visual-profile", "compact-v1"]);
+            }
             if mobile {
                 cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
                 cmd.arg("--target-motion").arg(self.target_motion.name());
@@ -1494,6 +1505,10 @@ impl Workbench {
             }
             Action::TargetMotion(value) => {
                 self.target_motion = value;
+                Ok(())
+            }
+            Action::CompactVisuals(value) => {
+                self.compact_visuals = value;
                 Ok(())
             }
             Action::RgbTiming(value) => {
@@ -2010,6 +2025,14 @@ mod tests {
         let mut changed = result.clone();
         changed["seed"] = serde_json::json!(2);
         assert!(compare_transfer(&runs, &runs[1], &changed, None).is_none());
+        let mut compact = source.clone();
+        compact["visual_profile"] = serde_json::json!("compact-v1");
+        compact["visual_bundle_sha256"] = serde_json::json!("bundle");
+        fs::write(runs[1].join("source.json"), compact.to_string()).unwrap();
+        assert!(comparison().is_none());
+        fs::write(runs[0].join("source.json"), compact.to_string()).unwrap();
+        assert!(comparison().is_some());
+        fs::write(runs[0].join("source.json"), source.to_string()).unwrap();
         let mut wrist = source.clone();
         wrist["wrist_rgb_timing"] = serde_json::json!("intermittent");
         wrist["support_code_hashes"]["nano_wrist_timing.py"] = serde_json::json!("guard-v1");

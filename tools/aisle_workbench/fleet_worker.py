@@ -19,6 +19,7 @@ import time
 from uuid import UUID
 import zlib
 
+from visual_profile import BUNDLE_SHA256, COMPACT, available, validate_profile
 from worker import describe, digest, validate
 
 HERE = Path(__file__).resolve().parent
@@ -160,6 +161,7 @@ def payload(request):
         raise ValueError(
             f"Choose a background observation period from {allowed} seconds for the selected clock"
         )
+    validate_profile(request.get("visual_profile", "original"), plan)
     control = validate(plan, profile)
     if request.get("rgb_timing", "normal") not in (
         "normal",
@@ -212,7 +214,11 @@ def submit(root, request):
     config = {
         k: request[k] for k in ("controller_sha256", "robot", "mode", "seed", "fixture")
     }
-    for key, default in (("rgb_timing", "normal"), ("target_motion", "stationary")):
+    for key, default in (
+        ("rgb_timing", "normal"),
+        ("target_motion", "stationary"),
+        ("visual_profile", "original"),
+    ):
         if request.get(key, default) != default:
             config[key] = request[key]
     if request.get("observation_clock", "simulation") == "wall":
@@ -348,7 +354,7 @@ def supervise(root, ident, token):
             "--out",
             str(trial),
         ]
-        for key in ("rgb_timing", "target_motion"):
+        for key in ("rgb_timing", "target_motion", "visual_profile"):
             if key in config:
                 args.extend(("--" + key.replace("_", "-"), config[key]))
         if config.get("room_sha256"):
@@ -445,6 +451,7 @@ def dispatch(root, request):
             background_rgb_periods_s=[1, 2, 5],
             background_rgb_clocks=["simulation", "wall"],
             transfer_wrist_timing=["normal", "intermittent", "disconnected"],
+            nano_visual_bundles={COMPACT: BUNDLE_SHA256} if available() else {},
             experimental_wrist_clearance=True,
             background_wall_rgb_periods_s=[0.5, 1, 2, 5],
             host=platform.node(),

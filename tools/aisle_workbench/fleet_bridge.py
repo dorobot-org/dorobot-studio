@@ -17,6 +17,7 @@ import time
 from uuid import uuid4
 from zipfile import ZipFile
 
+from visual_profile import BUNDLE_SHA256, validate_profile
 from fleet_artifacts import download
 from fleet_client import (
     check_background_period,
@@ -159,6 +160,25 @@ def verify_wrist_fixture(folder, request, state):
             )
 
 
+def verify_visual_profile(folder, request, state):
+    if state != "completed":
+        return
+    expected = request.get("visual_profile", "original")
+    for name in ("source.json", "result.json"):
+        path = folder / name
+        record = json.loads(path.read_bytes()) if path.is_file() else {}
+        if record.get("visual_profile", "original") != expected:
+            raise ValueError("Recorded Nano camera profile differs from the submission")
+        if (
+            name == "source.json"
+            and expected != "original"
+            and record.get("visual_bundle_sha256") != BUNDLE_SHA256
+        ):
+            raise ValueError(
+                "Recorded Nano camera geometry differs from the selected bundle"
+            )
+
+
 def import_trial(root, node, row, status):
     request = json.loads(row["request"])
     dest = root / row["trial"]
@@ -166,6 +186,7 @@ def import_trial(root, node, row, status):
         receipt = json.loads((dest / "worker-origin.json").read_bytes())
         if receipt["job"] != row["id"]:
             raise ValueError("Trial directory belongs to another worker job")
+        verify_visual_profile(dest, request, receipt["state"])
         verify_wrist_fixture(dest, request, receipt["state"])
         return dest
     with tempfile.TemporaryDirectory(dir=root) as tmp:
@@ -219,6 +240,7 @@ def import_trial(root, node, row, status):
                     or "Worker failed before producing a verdict"
                 ),
             )
+        verify_visual_profile(folder, request, status["state"])
         verify_wrist_fixture(folder, request, status["state"])
         save(
             folder / "worker-origin.json",
@@ -388,11 +410,24 @@ def operate(args):
             if clock == "wall":
                 req["observation_clock"] = clock
         plan = json.loads(base64.b64decode(req["controller"], validate=True))
+        visual_profile = getattr(args, "visual_profile", "original")
+        validate_profile(visual_profile, plan)
         wants_clearance = plan.get("wrist_clearance", False)
         if plan.get("kind") == "table-transfer" and (
-            args.rgb_timing != "normal" or wants_clearance
+            args.rgb_timing != "normal"
+            or wants_clearance
+            or visual_profile != "original"
         ):
             capabilities = send(node, {"op": "hello"})
+            if visual_profile != "original":
+                if (
+                    capabilities.get("nano_visual_bundles", {}).get(visual_profile)
+                    != BUNDLE_SHA256
+                ):
+                    raise ValueError(
+                        "Update the selected worker to install matching Nano compact visuals"
+                    )
+                req["visual_profile"] = visual_profile
             if (
                 wants_clearance
                 and capabilities.get("experimental_wrist_clearance") is not True

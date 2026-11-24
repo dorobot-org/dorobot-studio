@@ -833,6 +833,10 @@ def simulate(args, meta):
             getattr(args, "room_hash", None),
         )
     (args.out / "controller.json").write_bytes(original)
+    from visual_profile import validate_profile
+
+    visual_profile = getattr(args, "visual_profile", "original")
+    validate_profile(visual_profile, plan)
     mobile = control.get("kind") in ("visual-approach", "table-transfer")
     fixture = (
         "floating base, wheel contact under gravity"
@@ -953,6 +957,7 @@ def simulate(args, meta):
                 record=not getattr(args, "observations_only", False),
                 live_preview=getattr(args, "live_preview", False),
                 observation_progress=getattr(args, "observations_only", False),
+                visual_profile=visual_profile,
                 rgb_timing=getattr(args, "rgb_timing", "normal"),
                 target_motion=getattr(args, "target_motion", "stationary"),
                 observation_period_s=getattr(args, "observation_period_s", 1),
@@ -968,6 +973,11 @@ def simulate(args, meta):
                 kind=control["kind"],
                 room_revision_sha256=getattr(args, "room_hash", None),
                 room_obstacles=[b["name"] for b in room_objects],
+                **(
+                    {"visual_profile": visual_profile}
+                    if visual_profile != "original"
+                    else {}
+                ),
                 task_success=result["passed"],
             )
         from run_rgb_approach import trial
@@ -1153,6 +1163,9 @@ def main():
         choices=["pelvis-v1", "torso-v2", "frontal-torso-v3"],
         default="frontal-torso-v3",
         help="Calibration of the simulated G1 impact",
+    )
+    p.add_argument(
+        "--visual-profile", choices=("original", "compact-v1"), default="original"
     )
     p.add_argument("--onboard-context", action="store_true")
     p.add_argument(

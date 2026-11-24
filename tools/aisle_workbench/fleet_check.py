@@ -329,6 +329,12 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         180,
     )
     assert row["controller"]["color_order"] == "red"
+    if args.compact_visuals:
+        page("scene")
+        click("aisle_scene.compact_visuals")
+        done(
+            lambda w: w["compact_visuals"], "Selected compact onboard cameras in Scene"
+        )
     enter_workers()
     if args.foreground_cadence:
         from fleet_cadence import ALIAS, while_streaming, verify_viewport
@@ -418,6 +424,11 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             result["task_success"], bool
         )
         origin, trial = import_and_replay(foreground, result)
+        if args.compact_visuals:
+            assert result["visual_profile"] == "compact-v1"
+            checks.append(
+                dict(check="Worker scored a transfer using compact onboard cameras")
+            )
         checks.append(
             dict(
                 check="Submitted the frozen controller, streamed and recovered its original recording",

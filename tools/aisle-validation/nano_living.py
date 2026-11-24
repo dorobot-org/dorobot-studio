@@ -300,6 +300,7 @@ class LivingSimulation:
         specs=None,
         posture=None,
         room_settings=None,
+        visual_profile="original",
     ):
         from aisle.sim.nexus_backend import _ensure_nexus, _new_scene, NexusRobot
 
@@ -337,7 +338,7 @@ class LivingSimulation:
         )
         from nano_visuals import register_visuals
 
-        self.visuals = register_visuals(self.scene, native, model)
+        self.visuals = register_visuals(self.scene, native, model, visual_profile)
         self.robot = NexusRobot(self.scene, [native], "adora_nano")
         self.scene.robots.append(self.robot)
         import xml.etree.ElementTree as ET

@@ -262,7 +262,26 @@ class Judge:
         )
 
 
-def execute(
+def execute(*args, visual_profile="original", **kwargs):
+    if visual_profile == "original":
+        return _execute(*args, **kwargs)
+    from aisle.sim.nexus_backend import _ensure_nexus, load_nexus_physics
+    from visual_profile import COMPACT, available
+
+    if visual_profile != COMPACT or not available():
+        raise ValueError("Unknown or unavailable Nano camera profile")
+    viewer = _ensure_nexus().viewer
+    camera = load_nexus_physics()["camera"]
+    viewer.set_sensor_shadow_resolution(2048, 4)
+    try:
+        return _execute(*args, visual_profile=visual_profile, **kwargs)
+    finally:
+        viewer.set_sensor_shadow_resolution(
+            camera["shadow_resolution"], camera["shadow_atlas_layers"]
+        )
+
+
+def _execute(
     out,
     seed,
     colors,
@@ -275,6 +294,7 @@ def execute(
     observation_clock="simulation",
     target_motion="stationary",
     rgb_timing="normal",
+    visual_profile="original",
 ):
     from nano_grasp_estimator import parameters
     from nano_wrist_timing import WristTiming
@@ -289,6 +309,7 @@ def execute(
         specs=[*scene_recipe(seed), *room_objects],
         resolution=(480, 360),
         posture=POSTURE,
+        visual_profile=visual_profile,
         room_settings=room_settings,
     )
     dof = sim.robot.get_joint("left_j6_gripper").dofs_idx_local
@@ -361,6 +382,18 @@ def execute(
             recipe=RECIPE,
             **(
                 {"grasp_motion": target_motion} if target_motion != "stationary" else {}
+            ),
+            **(
+                dict(
+                    visual_profile=visual_profile,
+                    visual_bundle_sha256=worker.digest(
+                        MODEL.parent / "meshes/visual-compact-v1.zip"
+                    ),
+                    shadow_resolution=2048,
+                    shadow_atlas_layers=4,
+                )
+                if visual_profile != "original"
+                else {}
             ),
             wrist_rgb_timing=rgb_timing,
             wrist_clearance=config["wrist_clearance"],
