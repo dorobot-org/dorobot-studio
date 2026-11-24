@@ -59,7 +59,10 @@ def record(root, ident):
 
 def update(root, ident, state):
     with journal(root) as db:
-        db.execute("UPDATE jobs SET state=? WHERE id=?", (state, ident))
+        db.execute(
+            "UPDATE jobs SET state=? WHERE id=? AND state IN (?,?,?,?)",
+            (state, ident, *PENDING),
+        )
 
 
 def reconcile(root, row, node):

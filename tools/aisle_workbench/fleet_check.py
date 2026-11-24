@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+import sys
 
 
 def native_journey(args, checks, page, click, remote, done, grab):
@@ -42,6 +43,13 @@ def native_journey(args, checks, page, click, remote, done, grab):
 
     page("task")
     click("aisle_task.instruction")
+    remote(
+        "key",
+        "w=0",
+        "c=KeyA",
+        "logo=1" if sys.platform == "darwin" else "ctrl=1",
+        "wait=1",
+    )
     remote(
         "text",
         "w=0",
