@@ -33,7 +33,8 @@ def pack(archive, side, workspace):
     archive.write(dataset / "meta/aisle.json", f"{side}/export.json")
     hashes = {
         str(path.relative_to(trial)): digest(path.read_bytes())
-        for path in sorted((trial / "camera").glob("*/*.png"))
+        for path in sorted(trial.rglob("*"))
+        if path.suffix in (".png", ".npz")
     }
     for name in ("actions.jsonl", "recording.json", "wrist-delivery.jsonl"):
         hashes[name] = digest((trial / name).read_bytes())
@@ -70,9 +71,28 @@ def measure(archive, side):
         restored["result"] == result
         and restored["job"] == read("worker-origin.json")["job"]
     )
+    manifest = read("mode-manifest.json")
+    original, reopened = manifest["sessions"]
+    assert (original["stage"], reopened["stage"]) == ("journey", "recovery")
     assert (
-        read("mode-manifest.json")["sessions"][0]["pid"]
-        != read("mode-manifest.json")["sessions"][1]["pid"]
+        original["pid"] != reopened["pid"]
+        and original["observed_unix_ns"] <= reopened["started_unix_ns"]
+    )
+    assert (
+        read("recovery.json")[-1]["check"]
+        == "Imported worker trial and export recovered"
+    )
+    for name in ("recovery.json", "journey-draws.jsonl"):
+        assert digest(archive.read(f"{side}/{name}")) == manifest["files"][name]
+    worker_hash = read("source.json")["support_code_hashes"]["run_rgb_transfer.py"]
+    assert (
+        worker_hash
+        == manifest["source_files_sha256"]["tools/aisle-validation/run_rgb_transfer.py"]
+    )
+    assert (
+        ("camera_renders" in timing)
+        == ("camera_requests" in timing)
+        == (side == "after")
     )
     assert (
         read("export.json")["trial"] == restored["trial"]
@@ -172,6 +192,13 @@ def main():
             raise ValueError(
                 f"{len(diff)} mismatching artifacts; first five: {diff[:5]}"
             )
+        source = [
+            json.loads(z.read(f"{side}/source.json")) for side in ("before", "after")
+        ]
+        assert (
+            source[0]["support_code_hashes"]["run_rgb_transfer.py"]
+            != source[1]["support_code_hashes"]["run_rgb_transfer.py"]
+        )
         assert left == right
         print(
             json.dumps(

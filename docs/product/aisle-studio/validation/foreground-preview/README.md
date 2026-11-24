@@ -39,6 +39,8 @@ Two successive native journeys on the M3 Max used one foreground worker, the sam
 
 The revised worker served 6,072 camera reads with 5,775 renders. It reused 111 head, 128 left-wrist and 58 right-wrist exposures. These rates describe one paired foreground run on Metal. [Native draws, exposure timestamps, recorded-file digests and motor journals](exposure-reuse-metal.zip) · [Recalculate the comparison or capture a new pair](compare_exposures.py).
 
+A separate pair held the delivered left-wrist image at tick 1,080 while physics and the other cameras continued. Both live workers rejected ten stale deliveries and stopped the pickup at tick 1,280. Their motor journals, decisions, sensor delivery logs and all 192 saved images matched. [Stopped trials and original capture and delivery timestamps](exposure-reuse-disconnect.json)
+
 Run `python3 compare_exposures.py exposure-reuse-metal.zip` from this directory. To compare fresh runs, pass a new archive path followed by `--pack BASELINE_NATIVE_DIR CANDIDATE_NATIVE_DIR`. Each directory must contain a completed and restarted `--fleet --fleet-node ... --fleet-controller ...` journey. The checker reads each saved camera file from the original workspaces when packing a pair.
 
 ## Reproduce the measurements
