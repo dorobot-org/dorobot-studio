@@ -1,0 +1,60 @@
+{
+  "trials": {
+    "mac-04": {
+      "cap_m_s": 0.04,
+      "task_success": true,
+      "ticks": 7488,
+      "supported_ticks": 7488,
+      "placement": true,
+      "max_joint_excursion_rad": 0,
+      "motor_sha256": "9b146696e75d98bcc9d9d0c1d80a7a2169e1c06eb44ba09ce1b0bef9c1a1f1c7"
+    },
+    "linux-04": {
+      "cap_m_s": 0.04,
+      "task_success": true,
+      "ticks": 7488,
+      "supported_ticks": 7488,
+      "placement": true,
+      "max_joint_excursion_rad": 0,
+      "motor_sha256": "0d540efc6b194151cdc0405c6a242157a03d92934e6f6c8abec7649608fc39bb"
+    },
+    "mac-06": {
+      "cap_m_s": 0.06,
+      "task_success": true,
+      "ticks": 7108,
+      "supported_ticks": 7108,
+      "placement": true,
+      "max_joint_excursion_rad": 0,
+      "motor_sha256": "6a8eec26db80334c1de326c62d1584896bc6be6d65209ac6a81d9aa1476d093c"
+    },
+    "linux-06": {
+      "cap_m_s": 0.06,
+      "task_success": true,
+      "ticks": 11506,
+      "supported_ticks": 11506,
+      "placement": true,
+      "max_joint_excursion_rad": 0,
+      "motor_sha256": "3d2df2b3278594f9be689643b0ba9bcd4543de527fe18aae8fb708598342ac23"
+    },
+    "mac-08": {
+      "cap_m_s": 0.08,
+      "task_success": true,
+      "ticks": 12608,
+      "supported_ticks": 12608,
+      "placement": true,
+      "max_joint_excursion_rad": 0,
+      "motor_sha256": "1ca2f1638cd8a2aec287c907da3ac7cc3c78c6bd80330571fb295147378ca44b"
+    },
+    "linux-08": {
+      "cap_m_s": 0.08,
+      "task_success": true,
+      "ticks": 6948,
+      "supported_ticks": 6948,
+      "placement": true,
+      "max_joint_excursion_rad": 0,
+      "motor_sha256": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a"
+    }
+  },
+  "selected_speed_m_s": 0.08,
+  "controller_sha256": "c54b5b3fe26925b836b5984243e19a4d9818872fc98bee650d8e161a58ca001d"
+}

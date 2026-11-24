@@ -1,0 +1,9 @@
+{
+  "kind": "table-transfer",
+  "color_order": "red",
+  "robot": "Nano",
+  "task": "Move the red floor cube onto the coffee table.",
+  "provider": "octos-deepseek",
+  "policy_model": "deepseek-v4-flash",
+  "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+}
