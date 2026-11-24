@@ -4,12 +4,14 @@ The Mac runs DoRobot Studio and asks a provider to prepare one controller per se
 
 ## Measured capacity
 
+A subsequent run scheduled background images every 0.5 wall seconds using the same controllers and an updated worker. 7 of 14 background receivers averaged at least 1 Hz. The foreground still missed 25 FPS. [Paired measurements, gaps in individual seconds and both datasets](wall-clock/README.md)
+
 | Author | Eight-way overlap | Source camera | Native viewport | Seven background feeds | Nano tasks passed |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | DeepSeek via Octos | 90.74 s | 18.18 FPS | 16.40 FPS | 0.67–0.72 Hz | 8/8 |
 | Codex | 90.65 s | 17.75 FPS | 16.21 FPS | 0.66–0.70 Hz | 8/8 |
 
-Each provider made eight real authoring requests. Within each cohort the serialized controller was identical across requests. The two providers produced different controller files and the same motor journal. These are 16 independent executions of one fixed trajectory on one layout. They establish concurrency and repeatability. The 25 FPS foreground and 1 Hz per background targets both remain open on this configuration. The remote source camera itself produced fewer than 25 unique frames per second, so improving transport alone cannot meet the foreground target. Each background publishes once per simulated second. The simulations took roughly 90–100 wall seconds to advance through 69.48 simulated seconds, limiting the source cadence itself. Each task ran for 6,948 physics ticks with continuous measured wheel support, and red settled on the coffee table. Both foreground datasets reopened after Studio restarted. The two exports each contain 347 synchronized frames per camera, action and encoder data, and calibration. FFprobe decoded all 347 frames from each of the six exported 480 × 360 videos.
+Each provider made eight real authoring requests. Within each cohort the serialized controller was identical across requests. The two providers produced different controller files and the same motor journal. These are 16 independent executions of one fixed trajectory on one layout. They establish concurrency and repeatability. With the original one-second simulation clock, this configuration missed the 25 FPS foreground and 1 Hz background targets. The remote source camera itself produced fewer than 25 unique frames per second, so improving transport alone cannot meet the foreground target. Each background publishes once per simulated second. The simulations took roughly 90–100 wall seconds to advance through 69.48 simulated seconds, limiting the source cadence itself. Each task ran for 6,948 physics ticks with continuous measured wheel support, and red settled on the coffee table. Both foreground datasets reopened after Studio restarted. The two exports each contain 347 synchronized frames per camera, action and encoder data, and calibration. FFprobe decoded all 347 frames from each of the six exported 480 × 360 videos.
 
 ![Measured foreground draw rates and per-GPU background receipt rates](cadence.png)
 

@@ -1,0 +1,126 @@
+{
+  "codex": {
+    "controllers_reused": 8,
+    "identical_motor_journals": 8,
+    "tasks_passed": 8,
+    "window_seconds": 101.138275584,
+    "viewport_fps": 13.395535294463274,
+    "source_fps": 18.082909534124717,
+    "previous_viewport_fps": 16.214457174727404,
+    "background_worker_hz": [
+      1.9998204863341202,
+      1.9999820823303343
+    ],
+    "background_receiver_hz": [
+      0.703587681239594,
+      0.7128130779066207
+    ],
+    "previous_background_receiver_hz": [
+      0.659481001415494,
+      0.7014251732943666
+    ],
+    "receivers_at_1hz": 0,
+    "all_seven_receivers_at_1hz": false,
+    "qualified": false,
+    "receipt_intervals": {
+      "complete_seconds": 101,
+      "foreground": {
+        "seconds_below_target": 101,
+        "max_gap_ms": 393.400042
+      },
+      "background": [
+        {
+          "seconds_below_target": 35,
+          "max_gap_ms": 2923.242917
+        },
+        {
+          "seconds_below_target": 35,
+          "max_gap_ms": 2845.322125
+        },
+        {
+          "seconds_below_target": 36,
+          "max_gap_ms": 2632.840125
+        },
+        {
+          "seconds_below_target": 35,
+          "max_gap_ms": 2910.859625
+        },
+        {
+          "seconds_below_target": 35,
+          "max_gap_ms": 2766.583958
+        },
+        {
+          "seconds_below_target": 34,
+          "max_gap_ms": 2633.527834
+        },
+        {
+          "seconds_below_target": 35,
+          "max_gap_ms": 2772.368084
+        }
+      ]
+    },
+    "datasets_frames_per_camera": 347
+  },
+  "deepseek": {
+    "controllers_reused": 8,
+    "identical_motor_journals": 8,
+    "tasks_passed": 8,
+    "window_seconds": 102.075734833,
+    "viewport_fps": 17.02082862239643,
+    "source_fps": 18.617193142914477,
+    "previous_viewport_fps": 16.39880621736626,
+    "background_worker_hz": [
+      1.9998206234539018,
+      1.9999823743251448
+    ],
+    "background_receiver_hz": [
+      1.0775513602776674,
+      1.0956884881324889
+    ],
+    "previous_background_receiver_hz": [
+      0.6655971755773273,
+      0.7206164342609437
+    ],
+    "receivers_at_1hz": 7,
+    "all_seven_receivers_at_1hz": true,
+    "qualified": false,
+    "receipt_intervals": {
+      "complete_seconds": 102,
+      "foreground": {
+        "seconds_below_target": 102,
+        "max_gap_ms": 367.094084
+      },
+      "background": [
+        {
+          "seconds_below_target": 8,
+          "max_gap_ms": 2488.617291
+        },
+        {
+          "seconds_below_target": 7,
+          "max_gap_ms": 2671.697916
+        },
+        {
+          "seconds_below_target": 8,
+          "max_gap_ms": 2894.084875
+        },
+        {
+          "seconds_below_target": 8,
+          "max_gap_ms": 2780.246166
+        },
+        {
+          "seconds_below_target": 9,
+          "max_gap_ms": 3011.065166
+        },
+        {
+          "seconds_below_target": 9,
+          "max_gap_ms": 2856.965459
+        },
+        {
+          "seconds_below_target": 8,
+          "max_gap_ms": 2478.126333
+        }
+      ]
+    },
+    "datasets_frames_per_camera": 347
+  }
+}
