@@ -57,6 +57,10 @@ In layout 36, the Nano was holding blue with red and green already on the table.
 | 265.92 s | ![Head after braking](26592-head.png) | ![Left wrist after braking](26592-left_wrist.png) | ![Right wrist after braking](26592-right_wrist.png) |
 
 
+## Choosing the maneuver from the camera images
+
+The controller counts distinct previously placed colors with a clear RGB silhouette when it exhausts the stationary release search. It turns with two visible colors, tries a slow steered sidestep with one, and holds with none. On five disclosed failures it recovered four transfers. The fifth stopped with green held and had lost wheel support for one tick earlier in the episode. All four regression controls retained their original motor journals. The independent 50-layout test for this controller is cohort G. [Maneuver limits, layout outcomes and native comparison](landmark-development/README.md) · [Cohort G protocol](cohort-g/protocol.md)
+
 ## Input commitments and recorded output
 
 Cohort F was registered in commit `e1e8046` before dispatch. The manifest commits the executable inputs, controller and 50 concealed layouts. Independent scoring requires 45 complete transfers, 50 verified motor journals and zero guard bypasses. [Cohort F input manifest](cohort-f/suite.json)
