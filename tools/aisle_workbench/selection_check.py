@@ -5,8 +5,10 @@ import json
 import sys
 from pathlib import Path
 
+from controller_review_check import inspect
 
-def native_journey(args, checks, page, click, remote, done, grab):
+
+def native_journey(args, checks, page, click, remote, done, grab, wait):
     state = args.report.parent / "state/aisle"
 
     def simulate(robot, expected, label):
@@ -126,6 +128,18 @@ def native_journey(args, checks, page, click, remote, done, grab):
         click("aisle_task.reference")
         later = selected(robot, 1, "reference")
         assert later["delta"] > 0 and later["sha256"] != earlier["sha256"]
+
+        inspect(
+            args,
+            click,
+            wait,
+            grab,
+            robot + "-earlier-changes",
+            "earlier",
+            earlier["sha256"],
+            later["sha256"],
+            "Joint displacement",
+        )
         measured = simulate(robot, later, robot + " reference controller measured")
         page("task")
         click("aisle_task.older")

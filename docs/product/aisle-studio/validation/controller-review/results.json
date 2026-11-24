@@ -1,0 +1,101 @@
+{
+  "g1-handoff-changes": {
+    "robot": "G1",
+    "relation": "parent",
+    "display": "Recorded parent \u00b7 3cc8e548b50b\n\nSelected revision \u00b7 817efa55215a\n\nJoint displacement \u00b7 -0.08 rad \u2192 -0.06 rad\n\nAuthor \u00b7 Codex (gpt-6.2-astra) \u2192 DeepSeek via Octos (deepseek-v4-flash)\n\nEarlier task \u00b7 Inspect the right shoulder pitch using minus 0.08 rad.\n\nSelected task \u00b7 Repeat the preceding inspection at three quarters of its signed displacement.",
+    "outcomes": {
+      "before": {
+        "task_success": true,
+        "requested_delta": -0.08,
+        "measured_delta": -0.07995885610580444,
+        "frames": 25,
+        "controller_hash": "3cc8e548b50be9a014efc545a4c2f97429b5468b19d10f5a7f762846e759603f"
+      },
+      "after": {
+        "task_success": true,
+        "requested_delta": -0.06,
+        "measured_delta": -0.059966642409563065,
+        "frames": 25,
+        "controller_hash": "817efa55215afd780f31e728cb73b59ed68f42fbe29663685bf0305a5d2d72f9"
+      }
+    }
+  },
+  "G1-earlier-changes": {
+    "robot": "G1",
+    "relation": "earlier",
+    "display": "Earlier saved revision \u00b7 5b64b4329512\n\nSelected revision \u00b7 d1eea99860ef\n\nJoint displacement \u00b7 -0.06 rad \u2192 0.1 rad\n\nAuthor \u00b7 Codex (gpt-6.2-astra) \u2192 Reference\n\nEarlier task \u00b7 Inspect the left shoulder with a negative 0.06 radian movement.\n\nSelected task \u00b7 Inspect the left shoulder with a small positive joint movement.",
+    "outcomes": {
+      "before": {
+        "task_success": true,
+        "requested_delta": -0.06,
+        "measured_delta": -0.05996658653020859,
+        "frames": 25,
+        "controller_hash": "5b64b432951295423996a977b54ae8447231e029245a2918940efb4f1372af05"
+      },
+      "after": {
+        "task_success": true,
+        "requested_delta": 0.1,
+        "measured_delta": 0.0999169871211052,
+        "frames": 25,
+        "controller_hash": "d1eea99860efa9509e462063084fa9f31b2b2ba0e0dd0b72023eeb7b0f7ee9b4"
+      }
+    }
+  },
+  "Nano-earlier-changes": {
+    "robot": "Nano",
+    "relation": "earlier",
+    "display": "Earlier saved revision \u00b7 adf45c58374d\n\nSelected revision \u00b7 6b2fb3c2d1af\n\nJoint displacement \u00b7 -0.06 rad \u2192 0.1 rad\n\nAuthor \u00b7 Codex (gpt-6.2-astra) \u2192 Reference\n\nEarlier task \u00b7 Inspect the left shoulder with a negative 0.06 radian movement.\n\nSelected task \u00b7 Inspect the left shoulder with a small positive joint movement.",
+    "outcomes": {
+      "before": {
+        "task_success": true,
+        "requested_delta": -0.06,
+        "measured_delta": -0.05995935574173927,
+        "frames": 25,
+        "controller_hash": "adf45c58374d1c3c2934aae204ea8526dd38549cabc7bc260d4e1d5be4170698"
+      },
+      "after": {
+        "task_success": true,
+        "requested_delta": 0.1,
+        "measured_delta": 0.09993226826190948,
+        "frames": 25,
+        "controller_hash": "6b2fb3c2d1af7366f006bed3605f5707380080610ecb938a84e1dbd34a581a97"
+      }
+    }
+  },
+  "nano-pickup-changes": {
+    "robot": "Nano",
+    "relation": "parent",
+    "display": "Recorded parent \u00b7 fd9dcab6ee4c\n\nSelected revision \u00b7 572689d2f502\n\nPickup association \u00b7 all-views-unique-v1 \u2192 wrist-agreement-v1\n\nAuthor \u00b7 Reference \u2192 Codex (gpt-6.2-astra)\n\nEarlier task \u00b7 Revise the failed moving pickup. Use our onboard RGB observations to track the cubes as the arm descends and place all three moving floor cubes on the coffee table in red, green, blue order.\n\nSelected task \u00b7 Revise the failed Nano pickup using the recorded onboard observations. Preserve the three moving cubes, their order and the coffee table destination. Keep the robot stopped whenever the visible evidence cannot identify a single target.",
+    "outcomes": {
+      "before": {
+        "kind": "table-transfer",
+        "task_success": false,
+        "phase": "pick",
+        "frames": 890,
+        "controller_hash": "fd9dcab6ee4c76bb7a25252a0006c67ab81fd4ac838641d033f1373bbaed42b2"
+      },
+      "after": {
+        "kind": "table-transfer",
+        "task_success": true,
+        "phase": "back away",
+        "frames": 1179,
+        "controller_hash": "572689d2f502225075aaac728f6cae766a6ecc1a32e16d55ec51b55b90b590d2"
+      }
+    }
+  },
+  "g1": {
+    "backend": "offscreen",
+    "size": "1440x900",
+    "studio_sha256": "8dcf918b738a853d3e5fae930b785dbf5365aa47cd93d66e257612801b83d6c5"
+  },
+  "nano": {
+    "backend": "offscreen",
+    "size": "1024x768",
+    "studio_sha256": "8dcf918b738a853d3e5fae930b785dbf5365aa47cd93d66e257612801b83d6c5"
+  },
+  "independent": {
+    "backend": "headless",
+    "size": "1024x768",
+    "studio_sha256": "8dcf918b738a853d3e5fae930b785dbf5365aa47cd93d66e257612801b83d6c5"
+  }
+}

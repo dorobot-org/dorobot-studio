@@ -128,6 +128,7 @@ pub enum Action {
     Export,
     ExportChange(RevisionSide),
     InspectDecision,
+    ReviewController,
     TrainReach,
     TrainGrasp,
 }
@@ -492,6 +493,7 @@ impl Job {
             "evaluate" => "evaluation.json",
             "device-preflight" => "preflight.json",
             "compare-observations" => "observations.json",
+            "compare-controller" => "comparison.json",
             "run" => "result.json",
             "prepare" | "train-reach" | "train-grasp" => "controller.json",
             _ => "scene.json",
@@ -524,6 +526,7 @@ pub struct Workbench {
     pub trace: Vec<f32>,
     pub live: Option<PathBuf>,
     pub revisions: Vec<PathBuf>,
+    pub controller_diff: Option<Value>,
     pub compliant: bool,
     pub impact: bool,
     pub rgb_timing: RgbTiming,
@@ -596,6 +599,7 @@ impl Workbench {
             trace: Vec::new(),
             live: None,
             revisions: Vec::new(),
+            controller_diff: None,
             compliant: false,
             impact: false,
             rgb_timing: RgbTiming::Normal,
@@ -749,6 +753,7 @@ impl Workbench {
         Ok(())
     }
     fn restore_profile(&mut self) {
+        self.controller_diff = None;
         let suffix = format!("-{}-prepare", self.robot.name());
         let trained_suffix = match self.robot {
             Robot::Nano => "-Nano-train-grasp",
@@ -858,6 +863,7 @@ impl Workbench {
             )?;
         }
         self.task = plan["task"].as_str().unwrap_or(REFERENCE).to_owned();
+        self.controller_diff = None;
         self.plan = plan;
         self.prepared = Some(path);
         self.prepared_sha256 = Some(hash);
@@ -1206,6 +1212,13 @@ impl Workbench {
                     "standard"
                 },
             ]);
+        }
+        if op == "compare-controller" {
+            if let Some(i) = self.revision_index().and_then(|i| i.checked_sub(1)) {
+                cmd.arg("--baseline").arg(&self.revisions[i]);
+            }
+        }
+        if op == "run" || submitting || op == "compare-controller" {
             cmd.arg("--controller-sha256").arg(
                 self.prepared_sha256
                     .as_ref()
@@ -1315,6 +1328,13 @@ impl Workbench {
                     planner,
                     if revise { self.selected.clone() } else { None },
                 )
+            }
+            Action::ReviewController => {
+                if self.controller_diff.take().is_some() {
+                    Ok(())
+                } else {
+                    self.launch("compare-controller", Planner::Reference, None)
+                }
             }
             Action::InspectDecision => {
                 self.launch("compare-observations", Planner::Reference, None)
@@ -1566,6 +1586,9 @@ impl Workbench {
         }
         let artifact = job.artifact();
         if success && job.dir.join(artifact).is_file() {
+            if job.op == "compare-controller" {
+                self.controller_diff = read(&job.dir, artifact);
+            }
             if job.op == "fleet" {
                 self.stop_watch();
                 self.fleet = read(&job.dir, artifact).unwrap_or_default();
