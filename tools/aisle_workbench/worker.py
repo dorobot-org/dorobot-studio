@@ -622,6 +622,7 @@ def simulate(args, meta):
             getattr(args, "seed", 0),
             plan,
             rgb_timing=getattr(args, "rgb_timing", "normal"),
+            target_motion=getattr(args, "target_motion", "stationary"),
             room_objects=room_objects,
             room_settings=room_settings,
         )
@@ -760,6 +761,11 @@ def main():
         "--rgb-timing",
         choices=["normal", "intermittent", "disconnected"],
         default="normal",
+    )
+    p.add_argument(
+        "--target-motion",
+        choices=["stationary", "slide-positive", "slide-negative"],
+        default="stationary",
     )
     p.add_argument("--room-source", type=Path)
     p.add_argument("--room-revision", type=Path)

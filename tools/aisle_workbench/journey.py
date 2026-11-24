@@ -38,6 +38,7 @@ def main():
     p.add_argument("--evaluation", type=Path)
     p.add_argument("--handoff", action="store_true")
     p.add_argument("--camera-faults", action="store_true")
+    p.add_argument("--moving-target", action="store_true")
     p.add_argument("--observed-author", action="store_true")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -116,6 +117,11 @@ def main():
         from observed_author_check import journey
 
         journey(a, checks, page, click, remote, done, grab)
+        return
+    if a.moving_target:
+        from moving_target_check import native_journey
+
+        native_journey(a, checks, page, click, remote, done, grab)
         return
     if a.camera_faults:
         from sensor_timing_check import native_journey

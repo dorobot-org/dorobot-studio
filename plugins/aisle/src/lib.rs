@@ -1,6 +1,6 @@
 use dorobot_studio_core::{
     api::{
-        aisle::{Action, Planner, RgbTiming, Robot, Workbench, REFERENCE},
+        aisle::{Action, Planner, RgbTiming, Robot, TargetMotion, Workbench, REFERENCE},
         Backend, Intent,
     },
     data::robot_model::RobotModelLoader,
@@ -125,7 +125,10 @@ script_mod! {
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
                     Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
                 }
-                rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Onboard camera timing"}
+                rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0
+                    Section{text:"Cube motion · world Y"}
+                    Bar{still := mod.widgets.ux.ToolButton{text:"Still"} slide_pos := mod.widgets.ux.ToolButton{text:"+Y"} slide_neg := mod.widgets.ux.ToolButton{text:"−Y"}}
+                    Section{text:"Onboard camera timing"}
                     Bar{on_time := mod.widgets.ux.ToolButton{text:"On time"} late_rgb := mod.widgets.ux.ToolButton{text:"Delay"} frozen_rgb := mod.widgets.ux.ToolButton{text:"Freeze"}}
                 }
                 inspect := mod.widgets.ux.PrimaryButton{text:"Inspect model"} Section{text:"Model and motion limits"} detail := Body{}
@@ -253,10 +256,15 @@ impl Panel {
                 .as_f64()
                 .map(|v| format!("{v:.3} m"))
                 .unwrap_or_else(|| "Target out of view".into());
+            let motion = match w.progress["target_motion"].as_str() {
+                Some("slide-positive") => "\nCube slides along +Y",
+                Some("slide-negative") => "\nCube slides along −Y",
+                _ => "",
+            };
             format!(
                 "{} cube · {}
 RGB distance {}
-Requested {:.2} m",
+Requested {:.2} m{motion}",
                 w.progress["color"].as_str().unwrap_or(""),
                 w.progress["state"].as_str().unwrap_or(""),
                 distance,
@@ -544,6 +552,15 @@ impl PluginPanel for Panel {
                 self.root
                     .widget(cx, ids!(rgb_delivery))
                     .set_visible(cx, kind == "visual-approach");
+                for (id, motion) in [
+                    (ids!(still) as &[LiveId], TargetMotion::Stationary),
+                    (ids!(slide_pos), TargetMotion::PositiveY),
+                    (ids!(slide_neg), TargetMotion::NegativeY),
+                ] {
+                    self.root
+                        .button(cx, id)
+                        .set_enabled(cx, !w.busy() && w.target_motion != motion);
+                }
                 for (id, timing) in [
                     (ids!(on_time) as &[LiveId], RgbTiming::Normal),
                     (ids!(late_rgb), RgbTiming::Intermittent),
@@ -809,6 +826,18 @@ impl PluginPanel for Panel {
                         w.evidence["physics_ticks"],
                         w.evidence["obstacle_contact_ticks"]
                     );
+                    let motion = &w.evidence["target_motion"];
+                    if let Some(displacement) = motion["displacement_y_m"].as_f64() {
+                        detail.push_str(&format!(
+                            "\nCube travel {:+.1} cm along Y · localized in {}/{} moving exposures",
+                            displacement * 100.,
+                            motion["localized_moving_exposures"],
+                            motion["moving_exposures"]
+                        ));
+                        if let Some(error) = motion["max_moving_error_m"].as_f64() {
+                            detail.push_str(&format!(" · worst error {:.1} mm", error * 1000.));
+                        }
+                    }
                     let timing = &w.evidence["sensor_timing"];
                     if let Some(fixture) = timing["fixture"].as_str() {
                         let held: u64 = timing["rejected"]
@@ -1021,6 +1050,15 @@ impl PluginPanel for Panel {
             (ids!(level), Action::Impact(false)),
             (ids!(impact), Action::Impact(true)),
             (ids!(onboard), Action::ToggleOnboardContext),
+            (ids!(still), Action::TargetMotion(TargetMotion::Stationary)),
+            (
+                ids!(slide_pos),
+                Action::TargetMotion(TargetMotion::PositiveY),
+            ),
+            (
+                ids!(slide_neg),
+                Action::TargetMotion(TargetMotion::NegativeY),
+            ),
             (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
             (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
             (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),
