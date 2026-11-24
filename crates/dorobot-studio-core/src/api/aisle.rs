@@ -182,6 +182,7 @@ fn save_selection(root: &Path, name: &str, value: &Value) -> io::Result<()> {
     fs::create_dir_all(root)?;
     let mut temporary = tempfile::NamedTempFile::new_in(root)?;
     serde_json::to_writer(temporary.as_file_mut(), value)?;
+    temporary.as_file().sync_all()?;
     temporary.persist(root.join(name))?;
     Ok(())
 }
@@ -1656,12 +1657,12 @@ impl Workbench {
             }
             if matches!(job.op, "prepare" | "train-reach" | "train-grasp") {
                 let p = job.dir.join(artifact);
-                self.revisions.push(p.clone());
-                if let Err(error) = self.activate_revision(p, None, true) {
+                if let Err(error) = self.activate_revision(p.clone(), None, true) {
                     self.status = format!("Could not select the prepared controller. {error}");
                     self.error = Some(self.status.clone());
                     return;
                 }
+                self.revisions.push(p);
             }
             if job.op == "run" {
                 self.select_run(job.dir);

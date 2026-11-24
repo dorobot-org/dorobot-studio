@@ -16,13 +16,38 @@ def main():
             prefix = author + "/"
             native = read(prefix + "native/mode-manifest.json")
             assert native["provider"] == author and len(native["sessions"]) == 2
+            first, second = native["sessions"]
+            assert [first["stage"], second["stage"]] == ["journey", "recovery"]
+            assert first["pid"] != second["pid"]
+            assert first["observed_unix_ns"] <= second["started_unix_ns"]
             original = read(prefix + "native/journey.json")[-1]["profiles"]
             reopened = {
                 entry["robot"]: entry
                 for entry in read(prefix + "native/recovery.json")
                 if entry["check"] == "Measured restored controller"
             }
+            (rejected,) = (
+                row
+                for row in read(prefix + "native/recovery.json")
+                if row["check"] == "Rejected changed controller"
+            )
+            assert rejected["artifacts"] == {
+                "trajectory.json": False,
+                "result.json": False,
+            }
             for robot in ("Nano", "G1"):
+                for session, trial in (
+                    (first, original[robot]["measured"]["trial"]),
+                    (second, reopened[robot]["trial"]),
+                    (second, rejected["trial"]),
+                ):
+                    assert trial in native["trials"]
+                    started = int(trial.split("-", 1)[0])
+                    assert (
+                        session["started_unix_ns"]
+                        <= started
+                        <= session["observed_unix_ns"]
+                    )
                 root = prefix + robot + "/"
                 selected = read(root + "selected.json")
                 assert selected["revision"] == original[robot]["earlier"]["revision"]

@@ -85,8 +85,18 @@ def native_journey(args, checks, page, click, remote, done, grab):
             )
             directory = Path(stopped["selected"])
             assert (directory / "error.json").is_file()
-            assert not (directory / "trajectory.json").exists()
-            assert not (directory / "result.json").exists()
+            artifacts = {
+                name: (directory / name).exists()
+                for name in ("trajectory.json", "result.json")
+            }
+            assert not any(artifacts.values())
+            checks.append(
+                dict(
+                    check="Rejected changed controller",
+                    trial=directory.name,
+                    artifacts=artifacts,
+                )
+            )
         finally:
             chosen.write_bytes(original)
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))

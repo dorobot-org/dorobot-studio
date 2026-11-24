@@ -404,6 +404,7 @@ def main():
                 output / "verified" / f"{stage}-draws.jsonl"
             )
         with (output / f"{stage}.log").open("w") as log:
+            started_ns = time.time_ns()
             process = subprocess.Popen(
                 command, env=env, stdout=log, stderr=subprocess.STDOUT
             )
@@ -555,6 +556,8 @@ def main():
                     dict(
                         stage=stage,
                         pid=process.pid,
+                        started_unix_ns=started_ns,
+                        observed_unix_ns=time.time_ns(),
                         observed_dark=state["dark"],
                         observed_source_root=state["aisle_source_root"],
                         windows=[w.get("sz") for w in windows],

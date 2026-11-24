@@ -3,18 +3,18 @@
 import base64
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from types import SimpleNamespace
 import tempfile
 import json
 import os
 import sys
+import sqlite3
+import subprocess
 import unittest
 from unittest.mock import patch
 from uuid import uuid4
 
 from fleet_bridge import (
     foreground_packets,
-    operate,
     journal,
     reconcile,
     record,
@@ -36,24 +36,37 @@ class WorkspaceAdmissionTests(unittest.TestCase):
     def test_changed_selected_controller_is_rejected_before_lease(self):
         path = self.root / "controller.json"
         path.write_text('{"robot":"Nano","model_hash":"test"}')
-        args = SimpleNamespace(
-            out=self.root / "result",
-            node="a",
-            job_id=None,
-            fleet_action="stream",
-            controller=path,
-            controller_sha256="0" * 64,
-            seed=0,
-            fixture="standard",
-            room_revision=None,
-        )
-        with (
-            patch("fleet_bridge.nodes", return_value=self.nodes),
-            patch("fleet_bridge.submit") as send,
-        ):
-            with self.assertRaisesRegex(ValueError, "contents changed"):
-                operate(args)
-            send.assert_not_called()
+        out = self.root / "result"
+        arguments = [
+            sys.executable,
+            "-S",
+            str(Path(__file__).with_name("worker.py")),
+            "fleet",
+            "--robot",
+            "Nano",
+            "--out",
+            str(out),
+            "--fleet-action",
+            "stream",
+            "--controller",
+            str(path),
+            "--controller-sha256",
+            "0" * 64,
+        ]
+        env = os.environ.copy()
+        env.pop("DOROBOT_AISLE_WORKERS", None)
+        result = subprocess.run(arguments, capture_output=True, text=True, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        error = json.loads((out / "error.json").read_text())
+        self.assertIn("controller contents changed", error["message"])
+        with journal(self.root) as studio:
+            self.assertEqual(
+                studio.execute("SELECT COUNT(*) FROM jobs").fetchone()[0], 0
+            )
+        with sqlite3.connect(self.root / "local-worker/leases.sqlite") as worker:
+            self.assertEqual(
+                worker.execute("SELECT COUNT(*) FROM jobs").fetchone()[0], 0
+            )
 
     def transport(self, node, request):
         key = (node, request["id"])

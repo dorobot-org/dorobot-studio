@@ -5,7 +5,6 @@ import math
 from pathlib import Path
 import shutil
 
-import numpy as np
 from worker import digest, save
 
 PACKET = "onboard-scene.npz"
@@ -15,6 +14,7 @@ PREVIEW = "onboard-head.rgb"
 
 
 def interpret(payload, calibration, model):
+    import numpy as np
     from nano_rgb_policy import COLORS, VisualServo
 
     objects = {}
