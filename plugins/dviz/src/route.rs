@@ -6,9 +6,16 @@ use dviz_protocol::{
     MvizMessage, NodeDefinition,
 };
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     mem,
 };
+
+/// Most robot ids kept per connection; later ones are ignored. A bound on
+/// what a peer can make Studio remember, and on the queries one E-STOP
+/// starts (one per robot).
+pub const ROBOTS_MAX: usize = 64;
+/// Longest robot id taken from a status topic.
+pub const ROBOT_ID_MAX: usize = 64;
 
 /// Most log entries kept; older ones are pushed out.
 pub const LOG_CAP: usize = 500;
@@ -135,6 +142,10 @@ pub struct SessionState {
     pub(crate) sink_actions: VecDeque<SinkAction>,
     /// The body model this connection's status named, if any yet.
     robot_model: Option<RobotModel>,
+    /// The robot ids seen on `<prefix>/<id>/nav/status` since the
+    /// connection started (at most `ROBOTS_MAX`): where E-STOP and Disarm
+    /// go, and the one robot goal and pose commands need.
+    pub robots: BTreeSet<String>,
 }
 
 impl SessionState {
@@ -166,9 +177,11 @@ impl SessionState {
     }
 
     /// Starts a new connection: the next status that names a body model
-    /// sends it again.
+    /// sends it again, and robots are known again only once they send their
+    /// status.
     pub(crate) fn start_connection(&mut self) {
         self.robot_model = None;
+        self.robots.clear();
         self.sink_actions
             .retain(|action| !matches!(action, SinkAction::Model { .. }));
     }
@@ -216,6 +229,33 @@ impl SessionState {
     pub(crate) fn take_sink_actions(&mut self) -> VecDeque<SinkAction> {
         mem::take(&mut self.sink_actions)
     }
+
+    /// Notes the robot whose status topic `topic` is, if it is one.
+    fn note_robot(&mut self, prefix: &str, topic: &str) {
+        let Some(robot) = status_robot(prefix, topic) else {
+            return;
+        };
+        if self.robots.len() < ROBOTS_MAX && !self.robots.contains(robot) {
+            self.robots.insert(robot.to_string());
+        }
+    }
+}
+
+/// The robot id in `topic` if it is exactly `<prefix>/<id>/nav/status` and
+/// `<id>` is one segment of 1 to `ROBOT_ID_MAX` characters from
+/// `[A-Za-z0-9_-]`, so it is also a valid key segment of `<prefix>/<id>/cmd`.
+fn status_robot<'a>(prefix: &str, topic: &'a str) -> Option<&'a str> {
+    let robot = topic
+        .strip_prefix(prefix)?
+        .strip_prefix('/')?
+        .strip_suffix(nav_entities::NAV_STATUS)?
+        .strip_suffix('/')?;
+    let valid = !robot.is_empty()
+        && robot.len() <= ROBOT_ID_MAX
+        && robot
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
+    valid.then_some(robot)
 }
 
 /// Routes one payload received on `topic`: logs and graph messages update
@@ -262,6 +302,9 @@ pub(crate) fn accept<'a>(
     payload: &'a [u8],
 ) -> Option<Visual<'a>> {
     state.received += 1;
+    // Before parsing: any payload on a status topic names its robot, so an
+    // E-STOP also reaches a robot whose status this Studio cannot read.
+    state.note_robot(prefix, topic);
     let Some((msg, binary)) = parse_message(payload) else {
         state.malformed += 1;
         return None;
@@ -675,6 +718,82 @@ mod tests {
         assert_eq!(models(&sink, "robot/pose/model"), 1);
         route(&mut state, &mut sink, "dviz", "dviz/nav/status", &named);
         assert_eq!(models(&sink, "robot/pose/model"), 2);
+    }
+
+    fn robots(state: &SessionState) -> Vec<&str> {
+        state.robots.iter().map(String::as_str).collect()
+    }
+
+    #[test]
+    fn robots_from_status_topics() {
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        let mut send = |state: &mut SessionState, topic: &str, payload: &[u8]| {
+            route(state, &mut sink, "dviz", topic, payload);
+        };
+        send(&mut state, "dviz/tracer/nav/status", &status(None));
+        assert_eq!(robots(&state), ["tracer"]);
+
+        // Only `<prefix>/<one id segment>/nav/status` names a robot.
+        let id64 = "r".repeat(64);
+        let id65 = "r".repeat(65);
+        for topic in [
+            "dviz/tracer_sim/robot/pose".to_string(),
+            "dviz/a/b/nav/status".into(),
+            "dviz/nav/status".into(),
+            "dviz//nav/status".into(),
+            "dviz/tr.acer/nav/status".into(),
+            "dviz/tr acer/nav/status".into(),
+            format!("dviz/{id65}/nav/status"),
+            "other/tracer2/nav/status".into(),
+            "dvizz/tracer2/nav/status".into(),
+            "dviz/tracer2/nav/status/x".into(),
+        ] {
+            send(&mut state, &topic, &status(None));
+            assert_eq!(robots(&state), ["tracer"], "{topic} named a robot");
+        }
+
+        // Any payload on the topic counts, so an E-STOP also reaches a robot
+        // whose status cannot be read here; ids are kept once, sorted.
+        send(&mut state, "dviz/tracer_sim/nav/status", b"{not json");
+        send(&mut state, "dviz/A-1/nav/status", &status(None));
+        send(
+            &mut state,
+            &format!("dviz/{id64}/nav/status"),
+            &status(None),
+        );
+        send(&mut state, "dviz/tracer/nav/status", &status(None));
+        assert_eq!(robots(&state), ["A-1", &id64, "tracer", "tracer_sim"]);
+    }
+
+    #[test]
+    fn robots_are_capped() {
+        let mut state = SessionState::default();
+        let mut sink = CountingSink::default();
+        for n in 0..ROBOTS_MAX + 5 {
+            let topic = format!("dviz/robot{n:03}/nav/status");
+            route(&mut state, &mut sink, "dviz", &topic, &status(None));
+        }
+        assert_eq!(state.robots.len(), ROBOTS_MAX);
+        assert!(state.robots.contains("robot000"));
+        assert!(!state.robots.contains(&format!("robot{ROBOTS_MAX:03}")));
+    }
+
+    #[test]
+    fn robots_cleared_on_reconnect() {
+        let mut state = SessionState::default();
+        assert!(state.robots.is_empty());
+        let mut sink = CountingSink::default();
+        route(
+            &mut state,
+            &mut sink,
+            "dviz",
+            "dviz/tracer/nav/status",
+            &status(None),
+        );
+        assert_eq!(robots(&state), ["tracer"]);
+        state.start_connection();
+        assert!(state.robots.is_empty(), "{:?}", state.robots);
     }
 
     #[test]

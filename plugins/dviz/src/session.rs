@@ -8,24 +8,40 @@
 //! discarding one; receiving goes on. Only that thread calls the sink: other
 //! sink work (clearing an entity switched off, sending the robot body model)
 //! is queued in the state and done there before the next message.
+//!
+//! Navigation commands go out as Zenoh queries on the receiver's session
+//! (`DvizSession::send_command`), each on a short-lived thread, and their
+//! replies land in the snapshot's `command`. The robots they go to are the
+//! ids seen on `<prefix>/<id>/nav/status` since the connection started.
 
 use crate::nav_scene::NavScene;
 use crate::route::{self, EntityInfo, SessionState, Sink, SinkAction, Visual};
-use dviz_protocol::{GraphEdge, GraphNode, LogEntry, MvizMessage};
+use dviz_protocol::{
+    cmd_key, parse_cmd_ack, CmdAck, CmdRequest, GraphEdge, GraphNode, LogEntry, MvizMessage,
+};
 use std::{
     any::Any,
     collections::{BTreeMap, VecDeque},
     fmt::Display,
+    io::Read,
     mem,
     panic::{self, AssertUnwindSafe},
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, AtomicU32, Ordering},
-        Arc, Condvar, Mutex, MutexGuard, OnceLock, PoisonError,
+        Arc, Condvar, Mutex, MutexGuard, OnceLock, PoisonError, Weak,
     },
     thread::{self, JoinHandle},
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
-use zenoh::{bytes::ZBytes, key_expr::KeyExpr, sample::Sample, Wait};
+use zenoh::{
+    bytes::ZBytes,
+    key_expr::KeyExpr,
+    qos::{CongestionControl, Priority},
+    query::Reply,
+    sample::Sample,
+    Wait,
+};
 
 /// Payloads queued between the Zenoh callback and the worker.
 pub const RING_CAP: usize = 64;
@@ -40,6 +56,18 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(1);
 const LINK_CHECK: Duration = Duration::from_millis(100);
 const RETRY_DELAY: Duration = Duration::from_secs(1);
 const POLL: Duration = Duration::from_millis(50);
+/// How long a command query waits for the robot's reply.
+const COMMAND_TIMEOUT: Duration = Duration::from_secs(3);
+/// Longest token file read; a longer one is no token.
+const TOKEN_FILE_MAX: u64 = 4096;
+
+/// `CommandOutcome::NotConnected`: no Zenoh session.
+pub const NOT_CONNECTED: &str = "not connected";
+/// `CommandOutcome::NotConnected`: connected, but no robot status yet.
+pub const NO_ROBOT_SEEN: &str = "no robot seen yet";
+/// `CommandOutcome::NotConnected`: a goal or pose estimate with several
+/// robots on the connection.
+pub const MORE_THAN_ONE_ROBOT: &str = "more than one robot on this connection";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionOptions {
@@ -105,6 +133,139 @@ pub struct SessionSnapshot {
     pub received: u64,
     pub nav: NavScene,
     pub viewer: ViewerState,
+    /// The latest command sent, with its replies so far.
+    pub command: Option<CommandRecord>,
+    /// Whether the last connect read a command token (the token itself is
+    /// never in the snapshot).
+    pub has_token: bool,
+    /// The robot ids seen on `<prefix>/<id>/nav/status` this connection,
+    /// sorted; empty while disconnected.
+    pub robots: Vec<String>,
+}
+
+/// A navigation command from the operator.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NavCommand {
+    /// Drive to (`x`, `y`) in the map frame, facing `yaw` (rad) if given.
+    Goal { x: f64, y: f64, yaw: Option<f64> },
+    /// Tell localization the robot is at (`x`, `y`) facing `yaw`.
+    InitialPose { x: f64, y: f64, yaw: f64 },
+    /// Latch the robot's e-stop.
+    Estop,
+    /// Disarm the robot.
+    Disarm,
+}
+
+impl NavCommand {
+    /// The request's `cmd`.
+    fn name(self) -> &'static str {
+        match self {
+            NavCommand::Goal { .. } => "goal",
+            NavCommand::InitialPose { .. } => "initialpose",
+            NavCommand::Estop => "estop",
+            NavCommand::Disarm => "disarm",
+        }
+    }
+
+    /// E-STOP and Disarm: to every robot seen, without the token, at the
+    /// highest priority and never dropped under congestion.
+    fn stops(self) -> bool {
+        matches!(self, NavCommand::Estop | NavCommand::Disarm)
+    }
+
+    fn request(self, id: &str, token: Option<String>) -> CmdRequest {
+        let (x, y, yaw) = match self {
+            NavCommand::Goal { x, y, yaw } => (Some(x), Some(y), yaw),
+            NavCommand::InitialPose { x, y, yaw } => (Some(x), Some(y), Some(yaw)),
+            NavCommand::Estop | NavCommand::Disarm => (None, None, None),
+        };
+        CmdRequest {
+            cmd: self.name().to_string(),
+            id: id.to_string(),
+            token,
+            x,
+            y,
+            yaw,
+        }
+    }
+}
+
+/// What became of a command at one robot.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CommandOutcome {
+    /// Sent; no reply yet.
+    Pending,
+    /// The robot's bridge replied.
+    Ack(CmdAck),
+    /// Not sent, and why: `NOT_CONNECTED`, `NO_ROBOT_SEEN` or
+    /// `MORE_THAN_ONE_ROBOT`.
+    NotConnected(&'static str),
+    /// The query ended (after 3 s at most) without a valid reply.
+    Timeout,
+}
+
+/// A command and its replies so far.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CommandRecord {
+    /// The request id; see `command_id`.
+    pub id: String,
+    /// `goal`, `initialpose`, `estop` or `disarm`.
+    pub cmd: &'static str,
+    pub sent: Instant,
+    /// One entry per robot the command went to, sorted by robot. A command
+    /// that was not sent has a single entry: an empty robot and
+    /// `NotConnected`.
+    pub replies: Vec<(String, CommandOutcome)>,
+}
+
+/// The operator's command token in `path`, surrounding whitespace removed;
+/// `None` if the file is missing, unreadable, not UTF-8, longer than 4 KiB
+/// or blank.
+pub fn load_cmd_token(path: &Path) -> Option<String> {
+    let mut text = String::new();
+    std::fs::File::open(path)
+        .ok()?
+        .take(TOKEN_FILE_MAX + 1)
+        .read_to_string(&mut text)
+        .ok()?;
+    if text.len() as u64 > TOKEN_FILE_MAX {
+        return None;
+    }
+    let token = text.trim();
+    (!token.is_empty()).then(|| token.to_string())
+}
+
+/// The request id `s<seq>-<suffix>`: `suffix` is `started_unix_s` modulo
+/// 36⁴ as four lowercase base-36 digits (`s3-k9xq`). `seq` counts the
+/// commands of this process from 1, and the suffix makes a restarted Studio
+/// most likely use other ids.
+pub fn command_id(seq: u64, started_unix_s: u64) -> String {
+    const DIGITS: &[u8; 36] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+    let mut rest = started_unix_s % 36u64.pow(4);
+    let mut suffix = [b'0'; 4];
+    for digit in suffix.iter_mut().rev() {
+        *digit = DIGITS[(rest % 36) as usize];
+        rest /= 36;
+    }
+    let suffix: String = suffix.iter().map(|&digit| char::from(digit)).collect();
+    format!("s{seq}-{suffix}")
+}
+
+/// Unix seconds when this process first made a session.
+fn process_started_unix_s() -> u64 {
+    static STARTED: OnceLock<u64> = OnceLock::new();
+    *STARTED.get_or_init(|| {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |since| since.as_secs())
+    })
+}
+
+/// `$HOME/.config/dviz/cmd_token`, if `HOME` is set.
+fn default_token_path() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|home| !home.is_empty())
+        .map(|home| PathBuf::from(home).join(".config/dviz/cmd_token"))
 }
 
 pub struct DvizSession {
@@ -112,12 +273,34 @@ pub struct DvizSession {
     control: Mutex<Control>,
 }
 
+/// Lock order: `state` before `cmd` when both are held (only
+/// `send_command` holds both). Command reply callbacks take `cmd` alone, and
+/// nothing calls into Zenoh while holding `cmd`: Zenoh may drop a callback,
+/// which takes `cmd`, inside a call.
 struct Shared {
     state: Mutex<SessionState>,
     sink: Mutex<Box<dyn Sink>>,
     link: Mutex<Link>,
     receivers_alive: AtomicU32,
     viewer: Mutex<ViewerState>,
+    /// In its own `Arc` so that reply callbacks hold a weak reference to
+    /// this alone, not to the sink and the rest.
+    cmd: Arc<Mutex<CmdLink>>,
+}
+
+/// What sending commands needs; see `DvizSession::send_command`.
+#[derive(Default)]
+struct CmdLink {
+    /// The running receiver's open Zenoh session and its topic prefix.
+    session: Option<(zenoh::Session, String)>,
+    /// The operator's token, read at every connect. Never shown or logged.
+    token: Option<String>,
+    /// Where `connect` reads the token; `None` is `default_token_path`.
+    token_path: Option<PathBuf>,
+    /// The latest command.
+    last: Option<CommandRecord>,
+    /// Commands made so far; the next id's sequence number minus 1.
+    seq: u64,
 }
 
 #[derive(Default)]
@@ -165,6 +348,8 @@ impl DvizSession {
 
     /// An independent session; for tests.
     pub fn new() -> DvizSession {
+        // Pins the command id suffix to when the first session was made.
+        process_started_unix_s();
         DvizSession {
             shared: Arc::new(Shared {
                 state: Mutex::new(SessionState::default()),
@@ -172,6 +357,7 @@ impl DvizSession {
                 link: Mutex::new(Link::default()),
                 receivers_alive: AtomicU32::new(0),
                 viewer: Mutex::new(ViewerState::Closed),
+                cmd: Arc::default(),
             }),
             control: Mutex::new(Control::default()),
         }
@@ -182,11 +368,13 @@ impl DvizSession {
     /// land in `last_error`. Only invalid options fail here. Options other
     /// than the last connect's (mode, endpoints or prefix) start from a clear
     /// state: no entities, logs, nodes or edges, and every counter at 0.
+    /// Robots are forgotten either way, and the command token is read again.
     pub fn connect(&self, options: SessionOptions) -> Result<(), String> {
         if let Err(error) = validate(&options) {
             lock(&self.shared.link).last_error = Some(error.clone());
             return Err(error);
         }
+        self.load_token();
         let mut control = lock(&self.control);
         self.stop_current(&mut control);
         // After the stop: a receiver checks its flag under the state lock
@@ -304,6 +492,10 @@ impl DvizSession {
         };
         let receivers_alive = self.shared.receivers_alive.load(Ordering::Relaxed);
         let viewer = lock(&self.shared.viewer).clone();
+        let (command, has_token) = {
+            let cmd = lock(&self.shared.cmd);
+            (cmd.last.clone(), cmd.token.is_some())
+        };
         let state = lock(&self.shared.state);
         SessionSnapshot {
             connected,
@@ -321,7 +513,111 @@ impl DvizSession {
             received: state.received,
             nav: state.nav.clone(),
             viewer,
+            command,
+            has_token,
+            robots: state.robots.iter().cloned().collect(),
         }
+    }
+
+    /// Sends `command` and returns its request id at once; what becomes of
+    /// it lands in the snapshot's `command`, which it replaces. Never waits
+    /// for the network: each robot's query is issued on a short-lived
+    /// thread, since with blocking congestion control Zenoh may wait up to
+    /// 5 s (`wait_before_close`) for room on a congested link.
+    ///
+    /// - Without a Zenoh session the record says `NotConnected("not
+    ///   connected")`; before any robot status, `NotConnected("no robot seen
+    ///   yet")`.
+    /// - E-STOP and Disarm go to every robot seen, without the token, with
+    ///   `Priority::RealTime` and `CongestionControl::Block`.
+    /// - A goal or pose estimate carries the token and needs exactly one
+    ///   robot; with more, nothing is sent and the record says
+    ///   `NotConnected("more than one robot on this connection")`.
+    /// - A robot's reply becomes `Ack`; a query that ends without a valid
+    ///   one (3 s timeout) becomes `Timeout`.
+    pub fn send_command(&self, command: NavCommand) -> String {
+        let shared = &self.shared;
+        // Lock order: state, then cmd. Both held, the robots and the
+        // session belong to the same connection.
+        let state = lock(&shared.state);
+        let mut cmd = lock(&shared.cmd);
+        let robots: Vec<String> = state.robots.iter().cloned().collect();
+        drop(state);
+        cmd.seq += 1;
+        let id = command_id(cmd.seq, process_started_unix_s());
+        let mut record = CommandRecord {
+            id: id.clone(),
+            cmd: command.name(),
+            sent: Instant::now(),
+            replies: Vec::new(),
+        };
+        let target = match &cmd.session {
+            None => Err(NOT_CONNECTED),
+            Some(_) if robots.is_empty() => Err(NO_ROBOT_SEEN),
+            Some(_) if robots.len() > 1 && !command.stops() => Err(MORE_THAN_ONE_ROBOT),
+            Some((session, prefix)) => Ok((session.clone(), prefix.clone())),
+        };
+        let (session, prefix) = match target {
+            Ok(target) => target,
+            Err(reason) => {
+                record.replies = vec![(String::new(), CommandOutcome::NotConnected(reason))];
+                cmd.last = Some(record);
+                return id;
+            }
+        };
+        let token = if command.stops() {
+            None
+        } else {
+            cmd.token.clone()
+        };
+        let payload = serde_json::to_vec(&command.request(&id, token)).unwrap_or_default();
+        // In place before any query, so every reply finds it.
+        record.replies = robots
+            .iter()
+            .map(|robot| (robot.clone(), CommandOutcome::Pending))
+            .collect();
+        cmd.last = Some(record);
+        drop(cmd);
+
+        let queries: Vec<CommandQuery> = robots
+            .into_iter()
+            .map(|robot| CommandQuery {
+                session: session.clone(),
+                key: cmd_key(&prefix, &robot),
+                payload: payload.clone(),
+                stops: command.stops(),
+                target: ReplyTarget {
+                    cmd: Arc::downgrade(&shared.cmd),
+                    id: id.clone(),
+                    robot,
+                },
+            })
+            .collect();
+        // The queries hold handles too, and the receiver closes the session
+        // itself, so dropping this one never closes it here.
+        drop(session);
+        for query in queries {
+            run_elsewhere("dviz-cmd", move || query.send());
+        }
+        id
+    }
+
+    /// Where `connect` reads the command token, instead of
+    /// `$HOME/.config/dviz/cmd_token`.
+    #[cfg(test)]
+    pub(crate) fn set_token_path(&self, path: PathBuf) {
+        lock(&self.shared.cmd).token_path = Some(path);
+    }
+
+    /// Reads the command token again (also when it is gone now).
+    fn load_token(&self) {
+        let path = lock(&self.shared.cmd)
+            .token_path
+            .clone()
+            .or_else(default_token_path);
+        // Read without the lock.
+        let token = path.as_deref().and_then(load_cmd_token);
+        lock(&self.shared.cmd).token = token;
     }
 
     fn stop_current(&self, control: &mut Control) {
@@ -329,11 +625,21 @@ impl DvizSession {
             stop.store(true, Ordering::Relaxed);
         }
         // After the flag: a receiver checks it under this lock before it
+        // offers its session, so no command goes out on a stopped one. The
+        // receiver closes its session itself, so dropping this handle never
+        // closes it here.
+        let session = lock(&self.shared.cmd).session.take();
+        drop(session);
+        // After the flag: a receiver checks it under this lock before it
         // reports, so a stopped receiver can no longer overwrite this.
         let mut link = lock(&self.shared.link);
         link.connected = false;
         link.listening_since = None;
         link.last_error = None;
+        drop(link);
+        // A receiver checks the flag under the state lock before it routes,
+        // so a stopped one cannot add robots again.
+        lock(&self.shared.state).robots.clear();
     }
 }
 
@@ -447,6 +753,7 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
         .declare_subscriber(format!("{}/**", options.prefix))
         .callback(move |sample| callback_inbox.push(sample))
         .wait()?;
+    let offered = CommandSession::offer(shared, stop, &session, &options.prefix);
 
     let mut watch = LinkWatch::new(options);
     while !stop.load(Ordering::Relaxed) {
@@ -475,8 +782,159 @@ fn receive(shared: &Shared, options: &SessionOptions, stop: &AtomicBool) -> zeno
         // The sink may be slow; the state lock is not held across it.
         apply(shared, stop, &actions, visual.as_ref());
     }
-    subscriber.undeclare().wait()?;
-    session.close().wait()
+    // No new command on a closing session (also needed when the
+    // `DvizSession` is dropped, which only sets the flag).
+    drop(offered);
+    // Closed in any case, so a command thread still holding a handle never
+    // has to close it.
+    let undeclared = subscriber.undeclare().wait();
+    session.close().wait()?;
+    undeclared
+}
+
+/// Offers the receiver's session for commands while it lives, and takes it
+/// back when dropped, also when the receiver panics.
+struct CommandSession<'a>(&'a Mutex<CmdLink>);
+
+impl<'a> CommandSession<'a> {
+    /// Checked under the lock: once `connect` or `disconnect` has stopped
+    /// this receiver, it has also taken the session back, so a stopped
+    /// receiver never offers it.
+    fn offer(
+        shared: &'a Shared,
+        stop: &AtomicBool,
+        session: &zenoh::Session,
+        prefix: &str,
+    ) -> Self {
+        let mut cmd = lock(&shared.cmd);
+        if !stop.load(Ordering::Relaxed) {
+            cmd.session = Some((session.clone(), prefix.to_string()));
+        }
+        CommandSession(&shared.cmd)
+    }
+}
+
+impl Drop for CommandSession<'_> {
+    fn drop(&mut self) {
+        // Outside the lock. The receiver closes the session itself.
+        let session = lock(self.0).session.take();
+        drop(session);
+    }
+}
+
+/// One robot's command query.
+struct CommandQuery {
+    session: zenoh::Session,
+    key: String,
+    /// The request JSON; it may hold the token, so it is never logged.
+    payload: Vec<u8>,
+    stops: bool,
+    target: ReplyTarget,
+}
+
+impl CommandQuery {
+    /// Issues the query; returns once Zenoh has taken it, not on its reply.
+    fn send(self) {
+        let CommandQuery {
+            session,
+            key,
+            payload,
+            stops,
+            target,
+        } = self;
+        let guard = ReplyGuard(target.clone());
+        let mut get = session.get(key).payload(payload).timeout(COMMAND_TIMEOUT);
+        if stops {
+            get = get
+                .priority(Priority::RealTime)
+                .congestion_control(CongestionControl::Block);
+        }
+        // Zenoh drops the callback, and the guard with it, once the query
+        // has ended: after the final reply, at the timeout, or when the
+        // session closes. On an error it has already dropped it.
+        let issued = get.callback(move |reply| guard.0.reply(&reply)).wait();
+        if issued.is_err() {
+            // The session closed under it: the command never went out.
+            target.update(|outcome| *outcome = CommandOutcome::NotConnected(NOT_CONNECTED));
+        }
+    }
+}
+
+/// Where a reply to one robot goes: that robot's entry of the latest
+/// command, if it is still the command with `id`.
+#[derive(Clone)]
+struct ReplyTarget {
+    cmd: Weak<Mutex<CmdLink>>,
+    id: String,
+    robot: String,
+}
+
+impl ReplyTarget {
+    fn update(&self, change: impl FnOnce(&mut CommandOutcome)) {
+        let Some(cmd) = self.cmd.upgrade() else {
+            return;
+        };
+        let mut cmd = lock(&cmd);
+        let Some(record) = cmd.last.as_mut().filter(|record| record.id == self.id) else {
+            // A newer command has replaced it.
+            return;
+        };
+        if let Some((_, outcome)) = record
+            .replies
+            .iter_mut()
+            .find(|(robot, _)| *robot == self.robot)
+        {
+            change(outcome);
+        }
+    }
+
+    /// A reply from Zenoh: a valid ack to this request becomes the outcome.
+    /// Anything else (Zenoh's timeout error, an error reply, a malformed or
+    /// foreign ack) leaves it to the guard.
+    fn reply(&self, reply: &Reply) {
+        let Ok(sample) = reply.result() else {
+            return;
+        };
+        let Ok(ack) = parse_cmd_ack(&sample.payload().to_bytes()) else {
+            return;
+        };
+        if ack.id == self.id {
+            self.update(|outcome| *outcome = CommandOutcome::Ack(ack));
+        }
+    }
+}
+
+/// Owned by a query's callback. Dropped with it when the query has ended:
+/// a robot still `Pending` then has had no valid reply, so `Timeout`.
+struct ReplyGuard(ReplyTarget);
+
+impl Drop for ReplyGuard {
+    fn drop(&mut self) {
+        self.0.update(|outcome| {
+            if *outcome == CommandOutcome::Pending {
+                *outcome = CommandOutcome::Timeout;
+            }
+        });
+    }
+}
+
+/// Runs `job` on a short-lived thread named `name`, or right here if no
+/// thread can be started: a command must go out even then.
+fn run_elsewhere(name: &str, job: impl FnOnce() + Send + 'static) {
+    let slot = Arc::new(Mutex::new(Some(job)));
+    let thread_slot = slot.clone();
+    let spawned = thread::Builder::new().name(name.into()).spawn(move || {
+        let job = lock(&thread_slot).take();
+        if let Some(job) = job {
+            job();
+        }
+    });
+    if spawned.is_err() {
+        let job = lock(&slot).take();
+        if let Some(job) = job {
+            job();
+        }
+    }
 }
 
 /// The queued sink work, unless this receiver has been stopped (the state
@@ -938,6 +1396,588 @@ mod tests {
         let (_, oldest) = oldest.expect("the newest payloads stay queued");
         assert_eq!(oldest.to_bytes()[0], KEPT as u8, "the oldest went first");
         assert_eq!(lock(&inbox.pending).bytes, CAP - CHUNK);
+    }
+
+    // ---- navigation commands -------------------------------------------
+
+    use dviz_protocol::{parse_cmd_request, serialize_message, CmdAck, CmdRequest, CmdResult};
+    use std::{
+        net::TcpListener,
+        path::{Path, PathBuf},
+        sync::atomic::AtomicU64,
+    };
+
+    /// Opening a session, linking and the first status take well under this.
+    const SETTLE: Duration = Duration::from_secs(5);
+    /// `send_command` returns at once.
+    const SEND_MAX: Duration = Duration::from_millis(50);
+
+    fn free_port() -> u16 {
+        TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    }
+
+    /// A fresh directory standing in for `$HOME`, removed when dropped.
+    struct TempHome(PathBuf);
+
+    impl TempHome {
+        fn new() -> Self {
+            static NEXT: AtomicU64 = AtomicU64::new(0);
+            let n = NEXT.fetch_add(1, Ordering::Relaxed);
+            let dir =
+                std::env::temp_dir().join(format!("dviz-session-test-{}-{n}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            Self(dir)
+        }
+
+        /// Writes `text` to the token file below this home; returns its path.
+        fn token(&self, text: &str) -> PathBuf {
+            let path = self.0.join(".config/dviz/cmd_token");
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, text).unwrap();
+            path
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for TempHome {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn status_payload() -> Vec<u8> {
+        let header = MvizMessage {
+            msg_type: "status".into(),
+            timestamp: Some(0.5),
+            data: serde_json::json!({"loc_ok": true, "loc_reason": "", "armed": true,
+                                     "estop": false, "gate_reason": ""}),
+            format: None,
+            count: None,
+        };
+        serialize_message(&header, None)
+    }
+
+    /// What the fake bridge's queryables do with a request.
+    #[derive(Clone, Copy, PartialEq)]
+    enum Queryables {
+        /// None declared.
+        Absent,
+        /// Reply `ok` at once.
+        Answer,
+        /// Keep the query and never reply.
+        Silent,
+    }
+
+    /// A peer listening on a free loopback port, standing in for robot
+    /// bridges: it publishes a minimal `dviz/<robot>/nav/status` for each
+    /// robot at 5 Hz and may declare `dviz/<robot>/cmd` queryables.
+    struct FakeRobots {
+        endpoint: String,
+        /// `(robot, request)` for every query a queryable got.
+        requests: Arc<Mutex<Vec<(String, CmdRequest)>>>,
+        stop: Arc<AtomicBool>,
+        publisher: Option<JoinHandle<()>>,
+        _queryables: Vec<zenoh::query::Queryable<()>>,
+        _held: Arc<Mutex<Vec<zenoh::query::Query>>>,
+    }
+
+    impl FakeRobots {
+        fn requests(&self) -> Vec<(String, CmdRequest)> {
+            lock(&self.requests).clone()
+        }
+    }
+
+    impl Drop for FakeRobots {
+        fn drop(&mut self) {
+            self.stop.store(true, Ordering::Relaxed);
+            if let Some(publisher) = self.publisher.take() {
+                let _ = publisher.join();
+            }
+        }
+    }
+
+    fn fake_robots(robots: &[&str], queryables: Queryables) -> FakeRobots {
+        let endpoint = format!("tcp/127.0.0.1:{}", free_port());
+        let mut config = zenoh::Config::default();
+        config.insert_json5("mode", r#""peer""#).unwrap();
+        config
+            .insert_json5("listen/endpoints", &format!(r#"["{endpoint}"]"#))
+            .unwrap();
+        config.insert_json5("connect/endpoints", "[]").unwrap();
+        config
+            .insert_json5("scouting/multicast/enabled", "false")
+            .unwrap();
+        config
+            .insert_json5("transport/shared_memory/enabled", "false")
+            .unwrap();
+        let peer = zenoh::open(config).wait().unwrap();
+
+        let requests: Arc<Mutex<Vec<(String, CmdRequest)>>> = Arc::default();
+        let held: Arc<Mutex<Vec<zenoh::query::Query>>> = Arc::default();
+        let mut declared = Vec::new();
+        if queryables != Queryables::Absent {
+            for robot in robots {
+                let (requests, held, robot) = (requests.clone(), held.clone(), robot.to_string());
+                let queryable = peer
+                    .declare_queryable(format!("dviz/{robot}/cmd"))
+                    .callback(move |query| {
+                        let bytes = query.payload().map(|p| p.to_bytes().into_owned());
+                        let request = parse_cmd_request(&bytes.unwrap_or_default())
+                            .expect("a valid command request");
+                        let ack = CmdAck {
+                            id: request.id.clone(),
+                            cmd: request.cmd.clone(),
+                            result: CmdResult::Ok,
+                            reason: "sent to nav_command".into(),
+                        };
+                        lock(&requests).push((robot.clone(), request));
+                        if queryables == Queryables::Silent {
+                            lock(&held).push(query);
+                            return;
+                        }
+                        query
+                            .reply(query.key_expr().clone(), serde_json::to_vec(&ack).unwrap())
+                            .wait()
+                            .unwrap();
+                    })
+                    .wait()
+                    .unwrap();
+                declared.push(queryable);
+            }
+        }
+
+        let stop = Arc::new(AtomicBool::new(false));
+        let topics: Vec<String> = robots
+            .iter()
+            .map(|robot| format!("dviz/{robot}/nav/status"))
+            .collect();
+        let publisher = {
+            let stop = stop.clone();
+            thread::spawn(move || {
+                while !stop.load(Ordering::Relaxed) {
+                    for topic in &topics {
+                        let _ = peer.put(topic, status_payload()).wait();
+                    }
+                    thread::sleep(Duration::from_millis(200));
+                }
+            })
+        };
+        FakeRobots {
+            endpoint,
+            requests,
+            stop,
+            publisher: Some(publisher),
+            _queryables: declared,
+            _held: held,
+        }
+    }
+
+    fn client_options(endpoint: &str) -> SessionOptions {
+        SessionOptions {
+            mode: "client".into(),
+            connect_endpoints: vec![endpoint.to_string()],
+            listen_endpoints: Vec::new(),
+            prefix: "dviz".into(),
+        }
+    }
+
+    /// A session connected as a client to `robots`, with the token file
+    /// `token_path`; returns once it has seen every robot.
+    fn connected_session(robots: &FakeRobots, names: &[&str], token_path: PathBuf) -> DvizSession {
+        let session = DvizSession::new();
+        session.set_token_path(token_path);
+        session.connect(client_options(&robots.endpoint)).unwrap();
+        assert!(
+            wait_for(SETTLE, || session.snapshot().robots == names),
+            "robots never seen: {:?}",
+            session.snapshot()
+        );
+        session
+    }
+
+    /// `send_command`, checked to return at once.
+    fn send(session: &DvizSession, command: NavCommand) -> String {
+        let started = Instant::now();
+        let id = session.send_command(command);
+        let took = started.elapsed();
+        assert!(took < SEND_MAX, "send_command took {took:?}");
+        id
+    }
+
+    /// The latest command record, if it is the one with `id`.
+    fn record(session: &DvizSession, id: &str) -> Option<CommandRecord> {
+        session.snapshot().command.filter(|record| record.id == id)
+    }
+
+    fn outcomes(record: &CommandRecord) -> Vec<(&str, &CommandOutcome)> {
+        record
+            .replies
+            .iter()
+            .map(|(robot, outcome)| (robot.as_str(), outcome))
+            .collect()
+    }
+
+    fn acked_ok(record: &CommandRecord) -> bool {
+        !record.replies.is_empty()
+            && record
+                .replies
+                .iter()
+                .all(|(_, outcome)| matches!(outcome, CommandOutcome::Ack(ack) if ack.result == CmdResult::Ok))
+    }
+
+    const GOAL: NavCommand = NavCommand::Goal {
+        x: 1.0,
+        y: -2.0,
+        yaw: Some(0.5),
+    };
+
+    #[test]
+    fn studio_token_trims_whitespace() {
+        let home = TempHome::new();
+        assert_eq!(load_cmd_token(&home.token(" t0k\r\n")), Some("t0k".into()));
+        assert_eq!(
+            load_cmd_token(&home.token("\tab c\n\n")),
+            Some("ab c".into())
+        );
+        assert_eq!(load_cmd_token(&home.token(" \r\n\t")), None);
+        assert_eq!(load_cmd_token(&home.token("")), None);
+        assert_eq!(load_cmd_token(&home.path().join("missing")), None);
+        // A directory is no token either.
+        assert_eq!(load_cmd_token(home.path()), None);
+    }
+
+    #[test]
+    fn command_ids_unique_and_short() {
+        assert_eq!(command_id(3, 0), "s3-0000");
+        assert_eq!(command_id(3, 945_998), "s3-k9xq");
+        // The suffix is the start second modulo 36^4.
+        assert_eq!(command_id(1, 36u64.pow(4) + 35), "s1-000z");
+        assert_eq!(
+            command_id(12, u64::MAX),
+            command_id(12, u64::MAX % 36u64.pow(4))
+        );
+        let started = 1_795_000_000;
+        let ids: BTreeMap<String, u64> = (1..=1000)
+            .map(|seq| (command_id(seq, started), seq))
+            .collect();
+        assert_eq!(ids.len(), 1000, "ids repeat");
+        for id in ids.keys().chain([&command_id(u64::MAX, u64::MAX)]) {
+            assert!(!id.is_empty() && id.len() <= 64, "{id}");
+            assert!(
+                id.bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-'),
+                "{id}"
+            );
+        }
+    }
+
+    #[test]
+    fn estop_without_connection_is_not_connected() {
+        let session = DvizSession::new();
+        let id = send(&session, NavCommand::Estop);
+        let record = record(&session, &id).expect("a record of the e-stop");
+        assert_eq!(record.cmd, "estop");
+        assert_eq!(
+            outcomes(&record),
+            [("", &CommandOutcome::NotConnected("not connected"))]
+        );
+        // Each command gets its own id.
+        let next = send(&session, NavCommand::Disarm);
+        assert_ne!(next, id);
+        assert_eq!(record_cmd(&session, &next), Some("disarm"));
+    }
+
+    fn record_cmd(session: &DvizSession, id: &str) -> Option<&'static str> {
+        record(session, id).map(|record| record.cmd)
+    }
+
+    #[test]
+    fn snapshot_has_no_token() {
+        const TOKEN: &str = "sekret-snapshot-t0ken";
+        let home = TempHome::new();
+        let session = DvizSession::new();
+        assert!(!session.snapshot().has_token);
+        session.set_token_path(home.token(&format!("{TOKEN}\n")));
+        let listen = SessionOptions {
+            mode: "peer".into(),
+            connect_endpoints: Vec::new(),
+            listen_endpoints: vec![format!("tcp/127.0.0.1:{}", free_port())],
+            prefix: "dviz".into(),
+        };
+        session.connect(listen.clone()).unwrap();
+        // Read at connect, kept in memory only.
+        let snapshot = session.snapshot();
+        assert!(snapshot.has_token);
+        let _ = send(&session, GOAL);
+        let shown = format!("{:?}", session.snapshot());
+        assert!(!shown.contains(TOKEN), "{shown}");
+
+        // Read again at every connect: gone from the disk, gone here.
+        std::fs::remove_file(home.path().join(".config/dviz/cmd_token")).unwrap();
+        session.connect(listen).unwrap();
+        assert!(!session.snapshot().has_token);
+    }
+
+    #[test]
+    fn estop_before_any_status_is_no_robot_seen_yet() {
+        let robots = fake_robots(&[], Queryables::Answer);
+        let home = TempHome::new();
+        let session = DvizSession::new();
+        session.set_token_path(home.token("t0k"));
+        session.connect(client_options(&robots.endpoint)).unwrap();
+        assert!(
+            wait_for(SETTLE, || session.snapshot().connected),
+            "{:?}",
+            session.snapshot()
+        );
+        let id = send(&session, NavCommand::Estop);
+        assert_eq!(
+            outcomes(&record(&session, &id).unwrap()),
+            [("", &CommandOutcome::NotConnected("no robot seen yet"))]
+        );
+    }
+
+    #[test]
+    fn command_round_trip_over_zenoh() {
+        const TOKEN: &str = "t0k-round-trip";
+        let robots = fake_robots(&["tracer"], Queryables::Answer);
+        let home = TempHome::new();
+        let session = connected_session(&robots, &["tracer"], home.token(&format!(" {TOKEN}\r\n")));
+        assert!(session.snapshot().has_token);
+
+        let id = send(&session, GOAL);
+        assert!(
+            wait_for(Duration::from_secs(2), || record(&session, &id)
+                .is_some_and(|record| acked_ok(&record))),
+            "{:?}",
+            session.snapshot().command
+        );
+        let record = record(&session, &id).unwrap();
+        assert_eq!(record.cmd, "goal");
+        let ack = CmdAck {
+            id: id.clone(),
+            cmd: "goal".into(),
+            result: CmdResult::Ok,
+            reason: "sent to nav_command".into(),
+        };
+        assert_eq!(outcomes(&record), [("tracer", &CommandOutcome::Ack(ack))]);
+
+        let requests = robots.requests();
+        assert_eq!(requests.len(), 1, "{requests:?}");
+        let (robot, request) = &requests[0];
+        assert_eq!(robot, "tracer");
+        let expected = CmdRequest {
+            cmd: "goal".into(),
+            id: id.clone(),
+            token: Some(TOKEN.into()),
+            x: Some(1.0),
+            y: Some(-2.0),
+            yaw: Some(0.5),
+        };
+        assert_eq!(request, &expected);
+        let shown = format!("{:?}", session.snapshot());
+        assert!(!shown.contains(TOKEN), "{shown}");
+
+        // A pose estimate always carries its heading.
+        let pose = send(
+            &session,
+            NavCommand::InitialPose {
+                x: 0.5,
+                y: 0.25,
+                yaw: -1.0,
+            },
+        );
+        assert!(wait_for(Duration::from_secs(2), || robots.requests().len() == 2));
+        let (_, request) = &robots.requests()[1];
+        assert_eq!(
+            (
+                request.cmd.as_str(),
+                request.id.as_str(),
+                request.x,
+                request.y,
+                request.yaw
+            ),
+            (
+                "initialpose",
+                pose.as_str(),
+                Some(0.5),
+                Some(0.25),
+                Some(-1.0)
+            )
+        );
+        assert_eq!(request.token.as_deref(), Some(TOKEN));
+
+        // Disconnected: the robots are forgotten at once, also while the
+        // receiver is still finishing, and nothing is sent any more.
+        session.disconnect();
+        assert!(session.snapshot().robots.is_empty());
+        let estop = send(&session, NavCommand::Estop);
+        assert_eq!(
+            outcomes(&self::record(&session, &estop).unwrap()),
+            [("", &CommandOutcome::NotConnected("not connected"))]
+        );
+        thread::sleep(Duration::from_millis(500));
+        assert!(
+            session.snapshot().robots.is_empty(),
+            "the stopped receiver added robots"
+        );
+        assert_eq!(robots.requests().len(), 2, "sent after the disconnect");
+    }
+
+    #[test]
+    fn no_queryable_times_out() {
+        let robots = fake_robots(&["tracer"], Queryables::Absent);
+        let home = TempHome::new();
+        let session = connected_session(&robots, &["tracer"], home.token("t0k"));
+        let id = send(&session, GOAL);
+        assert!(
+            wait_for(Duration::from_millis(3500), || record(&session, &id)
+                .is_some_and(
+                    |record| outcomes(&record) == [("tracer", &CommandOutcome::Timeout)]
+                )),
+            "{:?}",
+            session.snapshot().command
+        );
+    }
+
+    #[test]
+    fn silent_bridge_times_out_after_3_s() {
+        let robots = fake_robots(&["tracer"], Queryables::Silent);
+        let home = TempHome::new();
+        let session = connected_session(&robots, &["tracer"], home.token("t0k"));
+        let sent = Instant::now();
+        let id = send(&session, NavCommand::Disarm);
+        assert!(wait_for(SETTLE, || robots.requests().len() == 1));
+        // Still waiting well into the 3 s.
+        thread::sleep(Duration::from_millis(2500).saturating_sub(sent.elapsed()));
+        assert_eq!(
+            outcomes(&record(&session, &id).unwrap()),
+            [("tracer", &CommandOutcome::Pending)]
+        );
+        assert!(
+            wait_for(
+                Duration::from_millis(3500).saturating_sub(sent.elapsed()),
+                || {
+                    record(&session, &id).is_some_and(|record| {
+                        outcomes(&record) == [("tracer", &CommandOutcome::Timeout)]
+                    })
+                }
+            ),
+            "{:?}",
+            session.snapshot().command
+        );
+    }
+
+    #[test]
+    fn estop_goes_to_every_robot() {
+        let robots = fake_robots(&["tracer", "tracer_sim"], Queryables::Answer);
+        let home = TempHome::new();
+        let session = connected_session(&robots, &["tracer", "tracer_sim"], home.token("t0k"));
+
+        let id = send(&session, NavCommand::Estop);
+        assert!(
+            wait_for(Duration::from_secs(2), || record(&session, &id)
+                .is_some_and(|record| acked_ok(&record))),
+            "{:?}",
+            session.snapshot().command
+        );
+        let record = record(&session, &id).unwrap();
+        let robots_replied: Vec<&str> = outcomes(&record).iter().map(|(robot, _)| *robot).collect();
+        assert_eq!(robots_replied, ["tracer", "tracer_sim"]);
+        let mut requests = robots.requests();
+        requests.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(requests.len(), 2, "{requests:?}");
+        for ((robot, request), expected) in requests.iter().zip(["tracer", "tracer_sim"]) {
+            assert_eq!(robot, expected);
+            assert_eq!(
+                (request.cmd.as_str(), request.id.as_str()),
+                ("estop", id.as_str())
+            );
+            // E-STOP needs no token, so it carries none.
+            assert_eq!(request.token, None);
+        }
+
+        // A goal is for one robot only: not sent at all.
+        let goal = send(&session, GOAL);
+        assert_eq!(
+            outcomes(&self::record(&session, &goal).unwrap()),
+            [(
+                "",
+                &CommandOutcome::NotConnected("more than one robot on this connection")
+            )]
+        );
+        let pose = send(
+            &session,
+            NavCommand::InitialPose {
+                x: 0.0,
+                y: 0.0,
+                yaw: 0.0,
+            },
+        );
+        assert_eq!(
+            outcomes(&self::record(&session, &pose).unwrap()),
+            [(
+                "",
+                &CommandOutcome::NotConnected("more than one robot on this connection")
+            )]
+        );
+        // Disarm goes to both, like the E-STOP.
+        let disarm = send(&session, NavCommand::Disarm);
+        assert!(wait_for(Duration::from_secs(2), || self::record(
+            &session, &disarm
+        )
+        .is_some_and(
+            |record| record.replies.len() == 2 && acked_ok(&record)
+        )));
+        thread::sleep(Duration::from_millis(300));
+        let cmds: Vec<String> = robots
+            .requests()
+            .iter()
+            .map(|(_, r)| r.cmd.clone())
+            .collect();
+        assert_eq!(
+            cmds.iter()
+                .filter(|cmd| *cmd == "goal" || *cmd == "initialpose")
+                .count(),
+            0
+        );
+        assert_eq!(cmds.len(), 4, "{cmds:?}");
+    }
+
+    #[test]
+    fn an_older_query_ending_leaves_the_newer_record_alone() {
+        let robots = fake_robots(&["tracer"], Queryables::Silent);
+        let home = TempHome::new();
+        let session = connected_session(&robots, &["tracer"], home.token("t0k"));
+        let first_sent = Instant::now();
+        let first = send(&session, NavCommand::Disarm);
+        thread::sleep(Duration::from_millis(1500));
+        let second = send(&session, NavCommand::Estop);
+        assert!(wait_for(SETTLE, || robots.requests().len() == 2));
+        // The first query has timed out (3 s after it was sent); the record
+        // is the second's, which still waits.
+        thread::sleep(Duration::from_millis(3600).saturating_sub(first_sent.elapsed()));
+        assert!(record(&session, &first).is_none());
+        assert_eq!(
+            outcomes(&record(&session, &second).expect("the newer record stays")),
+            [("tracer", &CommandOutcome::Pending)]
+        );
+        assert!(
+            wait_for(Duration::from_secs(2), || record(&session, &second)
+                .is_some_and(
+                    |record| outcomes(&record) == [("tracer", &CommandOutcome::Timeout)]
+                )),
+            "{:?}",
+            session.snapshot().command
+        );
     }
 
     #[test]

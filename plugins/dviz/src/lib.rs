@@ -31,9 +31,14 @@ pub use nav_panel::{connection_text, nav_status_text, status_is_stale, DvizNavPa
 pub use nav_scene::{nav_layer, GridLayer, NavLayer, NavScene, Pose2D};
 #[cfg(feature = "rerun")]
 pub use rerun_sink::{RerunSink, ViewerOptions};
-pub use route::{route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP, LOG_TEXT_CAP};
+pub use route::{
+    route, CountingSink, EntityInfo, SessionState, Sink, LOG_CAP, LOG_TEXT_CAP, ROBOTS_MAX,
+    ROBOT_ID_MAX,
+};
 pub use session::{
-    DvizSession, SessionOptions, SessionSnapshot, ViewerState, INBOX_BYTES_CAP, RING_CAP,
+    command_id, load_cmd_token, CommandOutcome, CommandRecord, DvizSession, NavCommand,
+    SessionOptions, SessionSnapshot, ViewerState, INBOX_BYTES_CAP, MORE_THAN_ONE_ROBOT,
+    NOT_CONNECTED, NO_ROBOT_SEEN, RING_CAP,
 };
 pub use view_panel::DvizViewPanel;
 
