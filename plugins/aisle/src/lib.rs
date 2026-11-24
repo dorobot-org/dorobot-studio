@@ -437,6 +437,11 @@ impl PluginPanel for Panel {
                     )
                 };
                 let mut detail = detail;
+                if let Some(target) = w.plan["trunk_pitch_rad"].as_f64() {
+                    detail.push_str(&format!(
+                        "\nUpright trunk · waist pitch target {target:+.2} rad"
+                    ));
+                }
                 if let Some(n) = w.plan["scene_observation"]["visible"].as_u64() {
                     detail.push_str(&format!(
                         "\nAuthored from onboard RGB · {n} cubes localized"
@@ -873,6 +878,16 @@ impl PluginPanel for Panel {
                             .unwrap_or_default()
                             * 100.
                     );
+                    if w.evidence["trunk_pitch_target_rad"]
+                        .as_f64()
+                        .is_some_and(|v| v != 0.0)
+                    {
+                        if let Some(measured) = w.evidence["settled_trunk_pitch_rad"].as_f64() {
+                            summary.push_str(&format!(
+                                "\nUpright trunk · measured waist pitch {measured:+.3} rad"
+                            ));
+                        }
+                    }
                     if let Some(joules) = w.evidence["estimated_positive_joint_work_j"].as_f64() {
                         summary.push_str(&format!("\nEstimated positive joint work {joules:.2} J"));
                     }

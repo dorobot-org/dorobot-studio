@@ -67,6 +67,9 @@ def main():
         action="store_true",
         help="Train and run a correction from the exported G1 episode",
     )
+    parser.add_argument(
+        "--upright", action="store_true", help="Request an upright G1 trunk posture"
+    )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
@@ -81,6 +84,8 @@ def main():
         parser.error("--survey requires --transfer")
     if args.train_reach and not args.standing:
         parser.error("--train-reach requires --standing")
+    if args.upright and not args.standing:
+        parser.error("--upright requires --standing")
     if args.impact and not args.standing:
         parser.error("--impact requires --standing")
     if args.layout and not args.transfer:
@@ -206,6 +211,8 @@ def main():
                     check.append("--train-reach")
                 if args.standing:
                     check.append("--standing")
+                    if args.upright:
+                        check.append("--upright")
                     if args.impact:
                         check.append("--impact")
                 if args.survey:
