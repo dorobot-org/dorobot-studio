@@ -74,6 +74,7 @@ def check(robot, click, remote, wait, grab):
         and j["controls"][scene + "joint_detail"]["text"] == "",
         "Empty search cleared the marker",
     )
+    grab(robot + "-joint-empty")
     query, selected = (
         ("GRIPPER", "right_j6_gripper")
         if robot == "Nano"

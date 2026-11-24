@@ -375,6 +375,8 @@ def main():
                         "crates/dorobot-studio-core/src/runtime.rs",
                         "crates/dorobot-studio-core/src/widgets/video_player.rs",
                         "plugins/aisle/src/lib.rs",
+                        "plugins/aisle/src/joint_inspector.rs",
+                        "vendor/makepad-urdf-player/src/robot_view.rs",
                         "crates/dorobot-studio-core/src/api/aisle.rs",
                         "dorobot-flex/src/bin/dorobot-flex.rs",
                     )
