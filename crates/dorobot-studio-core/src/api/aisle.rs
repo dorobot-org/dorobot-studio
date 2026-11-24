@@ -1,4 +1,5 @@
 //! Local simulation jobs shared by the four AISLE Studio panels.
+mod room_pair;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
@@ -106,6 +107,7 @@ pub enum Action {
     ApplyRoomDraft,
     DiscardRoomDraft,
     DefaultRoom,
+    ToggleRoomBaseline,
     ShowEvaluation(bool),
     ShowDevice,
     DevicePreflight(Option<String>),
@@ -214,8 +216,17 @@ pub struct ChangeFrame {
     pub time_s: f64,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct RoomBaseline {
+    pub trial: String,
+    result_sha256: String,
+    #[serde(default)]
+    source_calibration_sha256: [String; 2],
+}
+
 #[derive(serde::Serialize)]
 pub struct TransferComparison {
+    pub room: Option<room_pair::Measurements>,
     pub summary: String,
     pub frames: [Option<ChangeFrame>; 2],
     pub packets: [Option<(PathBuf, u64)>; 2],
@@ -337,6 +348,7 @@ fn compare_transfer(
     history: &[PathBuf],
     path: &Path,
     current: &Value,
+    pinned_room: Option<(&str, &Value)>,
 ) -> Option<TransferComparison> {
     if current["kind"] != "table-transfer" || !current["task_success"].is_boolean() {
         return None;
@@ -348,8 +360,10 @@ fn compare_transfer(
             .as_object()
             .map(|c| c.values().filter(|r| r["passed"] == true).count())
     };
-    for previous in history.iter().rev().filter(|p| p.as_path() < path) {
-        let Some(prior) = read(previous, "result.json") else {
+    for previous in history.iter().rev().filter(|p| {
+        p.as_path() != path && (pinned_room.is_some() || p.as_path() < path)
+    }) {
+        let Some(prior) = pinned_room.map(|(_, checked)| checked.clone()).or_else(|| read(previous, "result.json")) else {
             continue;
         };
         if !prior["task_success"].is_boolean()
@@ -372,7 +386,7 @@ fn compare_transfer(
         let Some(old_cal) = read(previous, "calibration.json") else {
             continue;
         };
-        if source["room_revision_sha256"] != old["room_revision_sha256"]
+        if (pinned_room.is_none() && source["room_revision_sha256"] != old["room_revision_sha256"])
             || source["wrist_rgb_timing"].as_str().unwrap_or("normal")
                 != old["wrist_rgb_timing"].as_str().unwrap_or("normal")
             || source["support_code_hashes"]["nano_wrist_timing.py"]
@@ -470,14 +484,17 @@ fn compare_transfer(
                 "failed"
             }
         };
-        return Some(TransferComparison {frames,packets, summary:format!(
-            "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {}",
-            current["seed"],
-            outcome(&prior),
-            previous_count,
-            outcome(current),
-            settled(current)?,trace.summary
-        )});
+        let count = settled(current)?;
+        let room = pinned_room.map(|(delta, _)| room_pair::Measurements::new(delta, &prior, current));
+        let summary = if room.is_some() {
+            format!("Baseline {label} · {}", trace.summary)
+        } else {
+            format!(
+                "Matched layout {} · previous {label}\nPrevious {} ({previous_count} settled) · current {} ({count} settled). {code} {}",
+                current["seed"], outcome(&prior), outcome(current), trace.summary
+            )
+        };
+        return Some(TransferComparison { room, frames, packets, summary });
     }
     None
 }
@@ -561,6 +578,8 @@ pub struct Workbench {
     pub layout_seed: u32,
     pub comparison: Option<f64>,
     pub transfer_comparison: Option<TransferComparison>,
+    pub room_baseline: Option<RoomBaseline>,
+    pub room_pair_note: Option<String>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     pub background_period_s: f32,
@@ -634,6 +653,8 @@ impl Workbench {
             layout_seed: layout_seed.unwrap_or_default(),
             comparison: None,
             transfer_comparison: None,
+            room_baseline: read(&root, "room-baseline.json").and_then(|v| serde_json::from_value(v).ok()),
+            room_pair_note: None,
             dataset: None,
             exports: Default::default(),
             background_period_s: 1.0,
@@ -942,11 +963,71 @@ impl Workbench {
     pub fn change_frame(&self, side: RevisionSide) -> Option<&ChangeFrame> {
         self.transfer_comparison.as_ref()?.frames[side.index()].as_ref()
     }
+    pub fn can_pin_room(&self) -> bool {
+        room_pair::eligible(&self.evidence)
+    }
+
+    fn toggle_room_baseline(&mut self) -> io::Result<()> {
+        if self.busy() {
+            return Err(io::Error::other("Wait for the active job to finish"));
+        }
+        let baseline = if self.room_baseline.is_some() {
+            None
+        } else {
+            let path = self.selected.as_deref().ok_or_else(|| io::Error::other("Select a Nano trial"))?;
+            let bytes = fs::read(path.join("result.json"))?;
+            let result: Value = serde_json::from_slice(&bytes)?;
+            if result != self.evidence {
+                return Err(io::Error::other("Selected verdict changed before pinning"));
+            }
+            let source_calibration_sha256 = room_pair::check_baseline(path, &result).map_err(io::Error::other)?;
+            let name = path.file_name().and_then(|n| n.to_str())
+                .ok_or_else(|| io::Error::other("Missing trial name"))?;
+            Some(RoomBaseline {
+                trial: name.to_owned(),
+                source_calibration_sha256,
+                result_sha256: format!("{:x}", Sha256::digest(&bytes)),
+            })
+        };
+        save_selection(&self.root, "room-baseline.json", &serde_json::to_value(&baseline)?)?;
+        self.room_baseline = baseline;
+        if let Some(path) = self.selected.clone() {
+            self.select_run(path);
+        }
+        Ok(())
+    }
+
+    fn pinned_room_pair(&self, baseline: &RoomBaseline, path: &Path) -> Result<TransferComparison, String> {
+        let prior = self.history.iter().find(|p| p.file_name().and_then(|n| n.to_str()) == Some(baseline.trial.as_str()))
+            .ok_or("The pinned baseline is missing from run history")?;
+        let raw = fs::read(prior.join("result.json")).map_err(|_| "Missing baseline verdict")?;
+        if format!("{:x}", Sha256::digest(&raw)) != baseline.result_sha256 {
+            return Err("The pinned baseline verdict changed".into());
+        }
+        if prior == path { return Err("Select another Nano transfer to compare".into()); }
+        let checked = serde_json::from_slice(&raw).map_err(|_| "Invalid baseline verdict")?;
+        let delta = room_pair::summary(prior, &checked, path, &self.evidence, &baseline.source_calibration_sha256)?;
+        compare_transfer(std::slice::from_ref(prior), path, &self.evidence, Some((&delta, &checked)))
+            .ok_or_else(|| "Run records lack matching physics, calibration or scoring evidence".into())
+    }
+
     fn select_run(&mut self, path: PathBuf) {
         self.decision = None;
         self.dataset = self.dataset_for(&path);
         self.evidence = Self::receipt(&path);
-        self.transfer_comparison = compare_transfer(&self.history, &path, &self.evidence);
+        self.room_pair_note = None;
+        self.transfer_comparison = if let Some(baseline) = self.room_baseline.as_ref()
+            .filter(|_| room_pair::eligible(&self.evidence)) {
+            match self.pinned_room_pair(baseline, &path) {
+                Ok(pair) => Some(pair),
+                Err(reason) => {
+                    self.room_pair_note = Some(format!("Room baseline {} · {reason}", baseline.trial));
+                    None
+                }
+            }
+        } else {
+            compare_transfer(&self.history, &path, &self.evidence, None)
+        };
         self.comparison = self
             .history
             .iter()
@@ -1506,6 +1587,7 @@ impl Workbench {
             Action::Inspect => self.launch("scene", Planner::Reference, None)
                 .map(|()| self.scene = Value::Null),
             Action::Run => self.launch("run", Planner::Reference, None),
+            Action::ToggleRoomBaseline => self.toggle_room_baseline(),
             Action::Previous | Action::Next => {
                 if let Some(i) = self
                     .history
@@ -1915,7 +1997,7 @@ mod tests {
             fs::write(run.join("actions.jsonl"), "{\"op\":\"sense\",\"tick\":0}\n").unwrap();
             runs.push(run);
         }
-        let comparison = || compare_transfer(&runs, &runs[1], &result);
+        let comparison = || compare_transfer(&runs, &runs[1], &result, None);
         assert!(comparison()
             .unwrap()
             .summary
@@ -1927,7 +2009,7 @@ mod tests {
             .contains("First change at action 1"));
         let mut changed = result.clone();
         changed["seed"] = serde_json::json!(2);
-        assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
+        assert!(compare_transfer(&runs, &runs[1], &changed, None).is_none());
         let mut wrist = source.clone();
         wrist["wrist_rgb_timing"] = serde_json::json!("intermittent");
         wrist["support_code_hashes"]["nano_wrist_timing.py"] = serde_json::json!("guard-v1");
