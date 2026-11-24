@@ -1,6 +1,8 @@
 use dorobot_studio_core::{
     api::{
-        aisle::{Action, Planner, RgbTiming, Robot, TargetMotion, Workbench, REFERENCE},
+        aisle::{
+            Action, Planner, RgbTiming, Robot, TargetMotion, Workbench, WorkerAction, REFERENCE,
+        },
         Backend, Intent,
     },
     data::robot_model::RobotModelLoader,
@@ -141,8 +143,21 @@ script_mod! {
     }
     mod.widgets.AisleRun=Page{
         Title{text:"Live simulation"} context_label := Section{}
+        Bar{local_run := mod.widgets.ux.ToolButton{text:"Simulation"} workers := mod.widgets.ux.ToolButton{text:"Workers"}}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             viewport := Card{width:Fill height:Fill camera_label := Section{} camera := VideoPlayer{width:Fill height:Fill}}
+            fleet_controls := Card{width:310 height:Fill padding:0
+                fleet_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:14 spacing:8
+                    Section{text:"Worker connection"}
+                    node := TextInput{width:Fill height:34 empty_text:"local or configured SSH worker"}
+                    Bar{connect := mod.widgets.ux.ToolButton{text:"Connect"} refresh := mod.widgets.ux.ToolButton{text:"Refresh"}}
+                    capacity := Body{}
+                    Bar{queue_stream := mod.widgets.ux.PrimaryButton{text:"Stream run"} queue_background := mod.widgets.ux.ToolButton{text:"Background run"}}
+                    Section{text:"Selected job"} job_detail := Body{}
+                    Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous job"} newer_job := mod.widgets.ux.ToolButton{text:"Next job"}}
+                    Bar{cancel_job := mod.widgets.ux.StopButton{text:"Cancel job"} fetch_job := mod.widgets.ux.ToolButton{text:"Fetch evidence"}}
+                }
+            }
             inspector := Card{width:275 height:Fill measure_label := Section{} detail := Body{}
                 start_run := mod.widgets.ux.PrimaryButton{text:"Start run"} stop_run := mod.widgets.ux.StopButton{text:"Stop"}
             }
@@ -199,7 +214,123 @@ impl Panel {
             }
         }
     }
+    fn fleet(&mut self, cx: &mut Cx, w: &Workbench) {
+        let caps = &w.fleet["capabilities"];
+        let jobs = w.fleet["jobs"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        let selected = &w.fleet["selected"];
+        let observed = &w.worker_observation["job"];
+        let job = if observed["id"].is_string() && observed["id"] == selected["id"] {
+            observed
+        } else {
+            selected
+        };
+        let state = job["state"].as_str().unwrap_or("");
+        let active = ["reserved", "running", "stopping"].contains(&state);
+        let stream = selected["mode"] == "stream";
+        let cap = if let Some(host) = caps["host"].as_str() {
+            format!(
+                "{} · {} · {}\n{} of {} slots occupied at refresh",
+                w.fleet["node"].as_str().unwrap_or("local"),
+                host,
+                caps["backend"].as_str().unwrap_or("Nexus"),
+                caps["active"].as_array().map_or(0, Vec::len),
+                caps["slots"]
+            )
+        } else {
+            "Connect to see available simulation slots.".into()
+        };
+        self.label(cx, ids!(capacity), &cap);
+        let pos = jobs.iter().position(|j| j == &selected["id"]);
+        let info = if let Some(i) = pos {
+            let outcome = match job["result"]["task_success"].as_bool() {
+                Some(true) => " · passed",
+                Some(false) => " · failed",
+                None => "",
+            };
+            let ticks = job["result"]["physics_ticks"]
+                .as_u64()
+                .or_else(|| job["result"]["steps"].as_u64())
+                .or_else(|| job["progress"]["step"].as_u64())
+                .unwrap_or(0);
+            format!(
+                "{} of {} · {} · {}\n{} · {} physics steps{}",
+                i + 1,
+                jobs.len(),
+                selected["robot"].as_str().unwrap_or("Robot"),
+                if stream { "foreground" } else { "background" },
+                state,
+                ticks,
+                outcome
+            )
+        } else {
+            "No jobs submitted to this worker.".into()
+        };
+        self.label(cx, ids!(job_detail), &info);
+        self.label(
+            cx,
+            ids!(camera_label),
+            if stream {
+                "Foreground worker camera"
+            } else {
+                "Camera preview is available for a foreground job"
+            },
+        );
+        let frame = &w.worker_observation["frame"];
+        let current = w
+            .worker_preview
+            .as_ref()
+            .zip(frame["tick"].as_u64())
+            .map(|(dir, tick)| (dir.clone(), tick));
+        if self.frame != current {
+            let camera = self.root.video_player(cx, ids!(camera));
+            if let Some((dir, tick)) = &current {
+                let height = frame["height"].as_u64().unwrap_or(0) as usize;
+                if let Ok(raw) = std::fs::read(dir.join("preview.rgb")) {
+                    if matches!(height, 320 | 360)
+                        && raw.len() == 4 + 480 * height * 3
+                        && u32::from_be_bytes(raw[..4].try_into().unwrap()) as u64 == *tick
+                    {
+                        camera.set_frame(cx, 480, height, &raw[4..]);
+                        self.frame = current;
+                    }
+                }
+            } else {
+                camera.clear(cx);
+                self.frame = None;
+            }
+        }
+        let compatible = w.prepared.is_some()
+            && caps["robots"][w.robot.name()].is_string()
+            && caps["robots"][w.robot.name()] == w.plan["model_hash"];
+        for (button, enabled) in [
+            (ids!(connect) as &[LiveId], true),
+            (ids!(refresh), caps.is_object()),
+            (ids!(queue_stream), compatible),
+            (ids!(queue_background), compatible),
+            (ids!(older_job), pos.is_some_and(|i| i > 0)),
+            (ids!(newer_job), pos.is_some_and(|i| i + 1 < jobs.len())),
+            (ids!(cancel_job), active),
+            (ids!(fetch_job), matches!(state, "completed" | "failed")),
+        ] {
+            self.root
+                .button(cx, button)
+                .set_enabled(cx, enabled && !w.busy());
+        }
+    }
     fn run(&mut self, cx: &mut Cx, w: &Workbench) {
+        self.root
+            .widget(cx, ids!(fleet_controls))
+            .set_visible(cx, w.workers_open);
+        self.root
+            .widget(cx, ids!(inspector))
+            .set_visible(cx, !w.workers_open);
+        if w.workers_open {
+            self.fleet(cx, w);
+            return;
+        }
         let current = w
             .live
             .as_ref()
@@ -322,6 +453,7 @@ impl PluginPanel for Panel {
                     (ids!(inspector), Themed::Bg),
                     (ids!(model_card), Themed::Bg),
                     (ids!(viewport), Themed::Bg),
+                    (ids!(fleet_controls), Themed::Bg),
                     (ids!(photo_card), Themed::Bg),
                     (ids!(cohort), Themed::Bg),
                     (ids!(survey_card), Themed::Bg),
@@ -1082,6 +1214,11 @@ impl PluginPanel for Panel {
         let Some(_) = b.aisle() else {
             return false;
         };
+        if self.root.button(cx, ids!(connect)).clicked(actions) {
+            let alias = self.root.text_input(cx, ids!(node)).text();
+            b.dispatch(Intent::Aisle(Action::ConnectWorker(alias)));
+            return true;
+        }
         if self.root.button(cx, ids!(replay)).clicked(actions) {
             if let Some(path) = b.aisle().and_then(|w| w.dataset.clone()) {
                 b.dispatch(Intent::OpenFolder(path));
@@ -1121,6 +1258,18 @@ impl PluginPanel for Panel {
             (ids!(default_room), Action::DefaultRoom),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
+            (ids!(local_run), Action::Workers(false)),
+            (ids!(workers), Action::Workers(true)),
+            (ids!(refresh), Action::Worker(WorkerAction::Refresh)),
+            (ids!(queue_stream), Action::Worker(WorkerAction::Stream)),
+            (
+                ids!(queue_background),
+                Action::Worker(WorkerAction::Observations),
+            ),
+            (ids!(older_job), Action::Worker(WorkerAction::Previous)),
+            (ids!(newer_job), Action::Worker(WorkerAction::Next)),
+            (ids!(cancel_job), Action::Worker(WorkerAction::Cancel)),
+            (ids!(fetch_job), Action::Worker(WorkerAction::Fetch)),
             (ids!(start_run), Action::Run),
             (ids!(stop_run), Action::Stop),
             (ids!(previous), Action::Previous),

@@ -59,6 +59,8 @@ def piece(job, request):
 
 def download(send, node, ident, destination):
     info = send(node, dict(op="archive", id=ident))
+    if not 0 < info["bytes"] <= 16 * 1024**3:
+        raise ValueError("Trial archive exceeds the supported transfer size")
     if destination.exists():
         raise ValueError("Choose a new output archive")
     destination.parent.mkdir(parents=True, exist_ok=True)

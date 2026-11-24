@@ -29,6 +29,7 @@ def main():
         action="store_true",
         help="Verify a previously stopped run after restarting Studio",
     )
+    p.add_argument("--fleet", action="store_true")
     p.add_argument("--standing", action="store_true")
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
@@ -115,6 +116,11 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.fleet:
+        from fleet_check import native_journey
+
+        native_journey(a, checks, page, click, remote, done, grab)
+        return
     if a.observed_author:
         from observed_author_check import journey
 

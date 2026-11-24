@@ -102,6 +102,9 @@ pub enum Action {
     OlderPlan,
     NewerPlan,
     Run,
+    Workers(bool),
+    ConnectWorker(String),
+    Worker(WorkerAction),
     Stop,
     Previous,
     Next,
@@ -109,6 +112,33 @@ pub enum Action {
     Export,
     TrainReach,
     TrainGrasp,
+}
+#[derive(Clone, Copy, Debug)]
+pub enum WorkerAction {
+    Connect,
+    Refresh,
+    Stream,
+    Observations,
+    Previous,
+    Next,
+    Cancel,
+    Fetch,
+    Watch,
+}
+impl WorkerAction {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Connect => "connect",
+            Self::Refresh => "refresh",
+            Self::Stream => "stream",
+            Self::Observations => "observations",
+            Self::Previous => "previous",
+            Self::Next => "next",
+            Self::Cancel => "cancel",
+            Self::Fetch => "fetch",
+            Self::Watch => "watch",
+        }
+    }
 }
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
@@ -247,6 +277,7 @@ struct Job {
 impl Job {
     fn artifact(&self) -> &'static str {
         match self.op {
+            "fleet" => "fleet.json",
             "export" => "export.json",
             "room" => "room-ref.json",
             "evaluate" => "evaluation.json",
@@ -300,6 +331,13 @@ pub struct Workbench {
     pub transfer_comparison: Option<String>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
+    pub workers_open: bool,
+    pub fleet: Value,
+    pub worker_observation: Value,
+    pub worker_preview: Option<PathBuf>,
+    worker_node: String,
+    worker_action: WorkerAction,
+    watcher: Option<Job>,
     job: Option<Job>,
     root: PathBuf,
 }
@@ -344,6 +382,13 @@ impl Workbench {
             transfer_comparison: None,
             dataset: None,
             exports: Default::default(),
+            workers_open: false,
+            fleet: read(&root, "worker-selection.json").unwrap_or_default(),
+            worker_observation: Value::Null,
+            worker_preview: None,
+            worker_node: String::from("local"),
+            worker_action: WorkerAction::Connect,
+            watcher: None,
             job: None,
             root,
         };
@@ -380,6 +425,9 @@ impl Workbench {
         }
         if let Some(selection) = read(&w.root, "selected-room.json") {
             w.select_room(selection);
+        }
+        if let Some(alias) = w.fleet["node"].as_str() {
+            w.worker_node = alias.to_owned();
         }
         w.restore_profile();
         w
@@ -555,7 +603,7 @@ impl Workbench {
             });
         let mut cmd = Command::new(python);
         cmd.arg(worker)
-            .arg(op)
+            .arg(if op == "fleet-watch" { "fleet" } else { op })
             .arg("--out")
             .arg(&dir)
             .arg("--robot")
@@ -607,7 +655,25 @@ impl Workbench {
                 .arg("--seed")
                 .arg(self.layout_seed.to_string());
         }
-        if op == "room" || (op == "run" && mobile) || capture_onboard {
+        let submitting = op == "fleet"
+            && matches!(
+                self.worker_action,
+                WorkerAction::Stream | WorkerAction::Observations
+            );
+        if matches!(op, "fleet" | "fleet-watch") {
+            let action = if op == "fleet-watch" {
+                WorkerAction::Watch
+            } else {
+                self.worker_action
+            };
+            cmd.args(["--fleet-action", action.name(), "--node", &self.worker_node]);
+            if self.fleet["node"].as_str() == Some(&self.worker_node) {
+                if let Some(id) = self.fleet["selected"]["id"].as_str() {
+                    cmd.args(["--job-id", id]);
+                }
+            }
+        }
+        if op == "room" || ((op == "run" || submitting) && mobile) || capture_onboard {
             if let Some(path) = &self.room_path {
                 cmd.arg("--room-revision").arg(path).arg("--room-hash").arg(
                     self.room_selection["sha256"]
@@ -633,7 +699,7 @@ impl Workbench {
         if op == "prepare" {
             cmd.args(["--provider", planner.name(), "--task", &self.task]);
         }
-        if op == "run" {
+        if op == "run" || submitting {
             if self.plan["kind"] == "visual-approach" {
                 cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
                 cmd.arg("--target-motion").arg(self.target_motion.name());
@@ -677,13 +743,19 @@ impl Workbench {
             self.history.push(dir.clone());
             self.select_run(dir.clone());
         }
-        self.status = format!("Running · {} · {op}", self.robot.name());
-        self.job = Some(Job {
+        let job = Job {
             child: child?,
             dir,
             op,
             last: Instant::now(),
-        });
+        };
+        if op == "fleet-watch" {
+            self.worker_preview = Some(job.dir.clone());
+            self.watcher = Some(job);
+        } else {
+            self.status = format!("Running · {} · {op}", self.robot.name());
+            self.job = Some(job);
+        }
         Ok(())
     }
     pub fn dispatch(&mut self, action: Action) {
@@ -795,6 +867,32 @@ impl Workbench {
             Action::TrainGrasp => self.launch("train-grasp", Planner::Reference, None),
             Action::TrainReach => self.launch("train-reach", Planner::Reference, None),
             Action::Export => self.launch("export", Planner::Reference, None),
+            Action::Workers(open) => {
+                self.workers_open = open;
+                self.stop_watch();
+                if open && self.fleet.is_object() {
+                    self.worker_action = WorkerAction::Refresh;
+                    self.launch("fleet", Planner::Reference, None)
+                } else {
+                    Ok(())
+                }
+            }
+            Action::ConnectWorker(node) => {
+                self.worker_action = WorkerAction::Connect;
+                self.worker_node = if node.trim().is_empty() {
+                    "local".into()
+                } else {
+                    node.trim().into()
+                };
+                self.launch("fleet", Planner::Reference, None)
+            }
+            Action::Worker(action) => {
+                self.worker_action = action;
+                if let Some(alias) = self.fleet["node"].as_str() {
+                    self.worker_node = alias.to_owned();
+                }
+                self.launch("fleet", Planner::Reference, None)
+            }
             Action::Inspect => self.launch("scene", Planner::Reference, None),
             Action::Run => self.launch("run", Planner::Reference, None),
             Action::Previous | Action::Next => {
@@ -837,7 +935,35 @@ impl Workbench {
             self.error = Some(self.status.clone());
         }
     }
+    fn stop_watch(&mut self) {
+        if let Some(mut watch) = self.watcher.take() {
+            watch.stop();
+            let _ = fs::remove_dir_all(watch.dir);
+        }
+        if let Some(path) = self.worker_preview.take() {
+            let _ = fs::remove_dir_all(path);
+        }
+        self.worker_observation = Value::Null;
+    }
     pub fn poll(&mut self) {
+        if let Some(watch) = self.watcher.as_mut() {
+            if watch.last.elapsed() >= Duration::from_millis(100) {
+                watch.last = Instant::now();
+                if let Some(obs) = read(&watch.dir, "watch.json") {
+                    self.worker_observation = obs;
+                }
+                if let Ok(Some(code)) = watch.child.try_wait() {
+                    if !code.success() {
+                        self.status = read(&watch.dir, "error.json")
+                            .and_then(|e| e["message"].as_str().map(str::to_owned))
+                            .unwrap_or_else(|| {
+                                "Worker observation interrupted. Refresh to reconnect.".into()
+                            });
+                    }
+                    self.watcher = None;
+                }
+            }
+        }
         let Some(job) = &mut self.job else { return };
         if job.last.elapsed() < Duration::from_millis(70) {
             return;
@@ -861,6 +987,46 @@ impl Workbench {
         }
         let artifact = job.artifact();
         if success && job.dir.join(artifact).is_file() {
+            if job.op == "fleet" {
+                self.stop_watch();
+                self.fleet = read(&job.dir, artifact).unwrap_or_default();
+                if let Err(error) = fs::copy(
+                    job.dir.join(artifact),
+                    self.root
+                        .join(format!("worker-selection.{}.tmp", std::process::id())),
+                )
+                .and_then(|_| {
+                    fs::rename(
+                        self.root
+                            .join(format!("worker-selection.{}.tmp", std::process::id())),
+                        self.root.join("worker-selection.json"),
+                    )
+                }) {
+                    self.status = error.to_string();
+                    self.error = Some(self.status.clone());
+                    return;
+                }
+                if let Some(name) = self.fleet["imported"]
+                    .as_str()
+                    .filter(|n| n.ends_with("-run") && Path::new(n).components().count() == 1)
+                {
+                    let path = self.root.join(name);
+                    if !self.history.contains(&path) {
+                        self.history.push(path.clone());
+                        self.history.sort();
+                    }
+                    self.select_run(path);
+                    self.status = "Worker trial available in Evidence".into();
+                } else {
+                    self.status = "Connected to simulation worker".into();
+                }
+                if self.workers_open && self.fleet["selected"]["id"].is_string() {
+                    if let Err(e) = self.launch("fleet-watch", Planner::Reference, None) {
+                        self.status = e.to_string();
+                    }
+                }
+                return;
+            }
             if job.op == "evaluate" {
                 self.evaluation = read(&job.dir, artifact).unwrap_or_default();
                 self.failure_index = 0;
@@ -924,6 +1090,7 @@ impl Workbench {
 }
 impl Drop for Workbench {
     fn drop(&mut self) {
+        self.stop_watch();
         if let Some(j) = &mut self.job {
             j.stop();
             if !j.dir.join(j.artifact()).is_file() && !j.dir.join("error.json").is_file() {

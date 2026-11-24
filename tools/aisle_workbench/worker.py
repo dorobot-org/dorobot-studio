@@ -556,9 +556,7 @@ def simulate(args, meta):
                 else (
                     "standing-development"
                     if standing
-                    else "living-room"
-                    if mobile
-                    else args.fixture
+                    else "living-room" if mobile else args.fixture
                 )
             ),
             adapter_hash=digest(Path(nx.__file__)),
@@ -770,6 +768,7 @@ def main():
             "evaluate",
             "train-reach",
             "train-grasp",
+            "fleet",
         ],
     )
     p.add_argument("--robot", choices=MODELS, required=True)
@@ -818,6 +817,22 @@ def main():
         action="store_true",
         help="Run live control without recording a camera dataset",
     )
+    p.add_argument(
+        "--fleet-action",
+        choices=[
+            "connect",
+            "refresh",
+            "stream",
+            "observations",
+            "previous",
+            "next",
+            "cancel",
+            "fetch",
+            "watch",
+        ],
+    )
+    p.add_argument("--node", default="local")
+    p.add_argument("--job-id")
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
     if args.seed < 0:
@@ -840,6 +855,13 @@ def main():
     else:
         args.out.mkdir(parents=True, exist_ok=False)
     try:
+        if args.operation == "fleet":
+            from fleet_bridge import operate
+
+            result = operate(args)
+            if result is not None:
+                save(args.out / "fleet.json", result)
+            return
         if args.operation == "evaluate":
             if args.archive is None:
                 raise ValueError(

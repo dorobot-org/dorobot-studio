@@ -42,6 +42,8 @@ def companion_names(plan):
         names.update(files)
     if "reach_checkpoint" in plan:
         names.update(("training.json", "reach-checkpoint.json"))
+    if "grasp_checkpoint" in plan:
+        names.update(("training.json", "grasp-checkpoint.json"))
     return names
 
 
@@ -133,7 +135,22 @@ def payload(request):
         and hashes["reach-checkpoint.json"] != plan["reach_checkpoint"]
     ):
         raise ValueError("The selected revision or checkpoint bytes have changed")
+    if "grasp_checkpoint" in plan and (
+        hashes["grasp-checkpoint.json"] != plan["grasp_checkpoint"]
+        or hashes["training.json"] != plan["grasp_estimator"]["training_sha256"]
+    ):
+        raise ValueError("The selected grasp checkpoint or its training record changed")
     control = validate(plan, profile)
+    if request.get("rgb_timing", "normal") not in (
+        "normal",
+        "intermittent",
+        "disconnected",
+    ) or request.get("target_motion", "stationary") not in (
+        "stationary",
+        "slide-positive",
+        "slide-negative",
+    ):
+        raise ValueError("Unknown simulation camera timing or target motion")
     if (
         request.get("mode") not in ("stream", "observations")
         or type(request.get("seed")) is not int
@@ -175,6 +192,9 @@ def submit(root, request):
     config = {
         k: request[k] for k in ("controller_sha256", "robot", "mode", "seed", "fixture")
     }
+    for key, default in (("rgb_timing", "normal"), ("target_motion", "stationary")):
+        if request.get(key, default) != default:
+            config[key] = request[key]
     if hashes:
         config["files_sha256"] = hashes
     if request.get("room_sha256"):
@@ -303,6 +323,9 @@ def supervise(root, ident, token):
             "--out",
             str(trial),
         ]
+        for key in ("rgb_timing", "target_motion"):
+            if key in config:
+                args.extend(("--" + key.replace("_", "-"), config[key]))
         if config.get("room_sha256"):
             args.extend(
                 [
