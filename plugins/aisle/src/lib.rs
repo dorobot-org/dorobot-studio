@@ -107,10 +107,12 @@ script_mod! {
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
             photo_card := Card{width:Fill height:Fill Section{text:"Surveyed floor footprint"} photo := VideoPlayer{width:Fill height:Fill}}
-            survey_card := Card{width:295 height:Fill
-                Section{text:"Room survey file"} survey_path := TextInput{width:Fill height:38 empty_text:"Absolute path to survey.json"}
+            survey_card := ScrollYView{width:295 height:Fill flow:Down spacing:8 padding:10
+                Section{text:"Room input file"} survey_path := TextInput{width:Fill height:38 empty_text:"Path to a survey or photo input"}
                 import_survey := mod.widgets.ux.PrimaryButton{text:"Import survey"}
+                Bar{photo_octos := mod.widgets.ux.ToolButton{text:"Draft with DeepSeek"} photo_codex := mod.widgets.ux.ToolButton{text:"Draft with Codex"}}
                 room_detail := Body{}
+                draft_actions := Bar{apply_draft := mod.widgets.ux.PrimaryButton{text:"Use this room"} discard_draft := mod.widgets.ux.ToolButton{text:"Discard draft"}}
                 Section{text:"Edit obstacle · metres"} geometry := TextInput{width:Fill height:38 empty_text:"name x y height"}
                 save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
                 default_room := mod.widgets.ux.ToolButton{text:"Use default room"}
@@ -501,11 +503,32 @@ impl PluginPanel for Panel {
                     self.root.widget(cx, id).set_visible(cx, editing);
                 }
                 if editing {
-                    let mut text = vec![w.room_info["description"]
+                    let draft = w.room_draft_path.is_some();
+                    let info = if draft {
+                        &w.room_draft_info
+                    } else {
+                        &w.room_info
+                    };
+                    let preview = w.room_draft_path.as_ref().or(w.room_path.as_ref());
+                    self.root
+                        .widget(cx, ids!(draft_actions))
+                        .set_visible(cx, draft);
+                    for id in [
+                        ids!(photo_octos),
+                        ids!(photo_codex),
+                        ids!(apply_draft),
+                        ids!(discard_draft),
+                    ] {
+                        self.root.button(cx, id).set_enabled(cx, !w.busy());
+                    }
+                    let mut text = vec![info["description"]
                         .as_str()
                         .unwrap_or("Default living room")
                         .to_string()];
-                    for b in w.room_info["obstacles"].as_array().into_iter().flatten() {
+                    if draft {
+                        text.insert(0, "Draft · review the footprint before use".to_owned());
+                    }
+                    for b in info["obstacles"].as_array().into_iter().flatten() {
                         let name = b["name"].as_str().unwrap_or("").trim_start_matches("room_");
                         text.push(format!(
                             "{name} · x {:.2}, y {:.2}, height {:.2}",
@@ -521,21 +544,19 @@ impl PluginPanel for Panel {
                     for id in [ids!(save_geometry), ids!(default_room)] {
                         self.root
                             .button(cx, id)
-                            .set_enabled(cx, !w.busy() && w.room_path.is_some());
+                            .set_enabled(cx, !w.busy() && !draft && w.room_path.is_some());
                     }
-                    if self.room_preview != w.room_path {
+                    if self.room_preview.as_ref() != preview {
                         let player = self.root.video_player(cx, ids!(photo));
                         player.clear(cx);
-                        if let Some(raw) = w
-                            .room_path
-                            .as_ref()
+                        if let Some(raw) = preview
                             .and_then(|p| std::fs::read(p.with_file_name("room-preview.rgb")).ok())
                         {
                             if raw.len() == 480 * 320 * 3 {
                                 player.set_frame(cx, 480, 320, &raw);
                             }
                         }
-                        self.room_preview = w.room_path.clone();
+                        self.room_preview = preview.cloned();
                     }
                 }
                 self.label(
@@ -1083,6 +1104,8 @@ impl PluginPanel for Panel {
             (ids!(previous), Action::Previous),
             (ids!(next), Action::Next),
             (ids!(folder), Action::Open),
+            (ids!(apply_draft), Action::ApplyRoomDraft),
+            (ids!(discard_draft), Action::DiscardRoomDraft),
             (ids!(export), Action::Export),
             (ids!(train_reach), Action::TrainReach),
         ] {
@@ -1095,6 +1118,21 @@ impl PluginPanel for Panel {
             let path = self.root.text_input(cx, ids!(archive_path)).text();
             b.dispatch(Intent::Aisle(Action::Evaluate(path.trim().to_owned())));
             return true;
+        }
+        for (id, planner) in [
+            (ids!(photo_octos) as &[LiveId], Planner::OctosDeepSeek),
+            (ids!(photo_codex), Planner::Codex),
+        ] {
+            if self.root.button(cx, id).clicked(actions) {
+                let source = self
+                    .root
+                    .text_input(cx, ids!(survey_path))
+                    .text()
+                    .trim()
+                    .to_owned();
+                b.dispatch(Intent::Aisle(Action::DraftRoom { source, planner }));
+                return true;
+            }
         }
         let importing = self.root.button(cx, ids!(import_survey)).clicked(actions);
         if importing || self.root.button(cx, ids!(save_geometry)).clicked(actions) {

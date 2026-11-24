@@ -67,6 +67,11 @@ def main():
         action="store_true",
         help="Train and run a correction from the exported G1 episode",
     )
+    parser.add_argument(
+        "--photo-input",
+        type=Path,
+        help="Draft and review the reference room from its calibrated photograph",
+    )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
@@ -77,6 +82,8 @@ def main():
         help="Import and edit the Nano reference survey during a transfer",
     )
     args = parser.parse_args()
+    if args.photo_input and (args.survey or not args.transfer):
+        parser.error("--photo-input requires a transfer without --survey")
     if args.survey and not args.transfer:
         parser.error("--survey requires --transfer")
     if args.train_reach and not args.standing:
@@ -208,6 +215,8 @@ def main():
                     check.append("--standing")
                     if args.impact:
                         check.append("--impact")
+                if args.photo_input:
+                    check.extend(["--photo-input", str(args.photo_input.resolve())])
                 if args.survey:
                     check.extend(["--survey", str(args.survey.resolve())])
                 if args.transfer:

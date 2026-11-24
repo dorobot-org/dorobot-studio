@@ -34,6 +34,7 @@ def main():
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     p.add_argument("--impact", action="store_true")
     p.add_argument("--train-reach", action="store_true")
+    p.add_argument("--photo-input", type=Path)
     p.add_argument("--survey", type=Path)
     p.add_argument("--evaluation", type=Path)
     p.add_argument("--handoff", action="store_true")
@@ -307,6 +308,12 @@ def main():
                     == row["controller"]["reach_checkpoint"]
                 )
                 checks[-1]["reach_checkpoint"] = row["result"]["reach_checkpoint"]
+            if a.photo_input:
+                assert (
+                    row["room_info"]["photo_draft"]
+                    and row["result"]["room_revision_sha256"]
+                )
+                checks[-1]["photo_room"] = row["room_info"]
             if a.survey:
                 assert row["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
                 assert row["result"]["room_revision_sha256"]
@@ -345,6 +352,10 @@ def main():
         ) and row["controller"]["provider"] == a.provider
         grab(label + "-task")
         page("scene")
+        if a.photo_input:
+            from photo_room_check import draft
+
+            photo_object, photo_revision = draft(a, checks, click, remote, done, grab)
         if a.survey:
             click("aisle_scene.room_mode")
             done(lambda w: w["room_editor"], "Room survey editor opened")
@@ -512,6 +523,17 @@ def main():
             )
             (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
         else:
+            if a.photo_input:
+                from photo_room_check import verify_run
+
+                body = verify_run(result, photo_object, photo_revision)
+                checks.append(
+                    dict(
+                        check="Nexus measured the approved photographic geometry",
+                        body=body,
+                        room_sha256=photo_revision,
+                    )
+                )
             if a.survey:
                 assert result["room_revision_sha256"] and result["room_obstacles"] == [
                     "room_ottoman"
