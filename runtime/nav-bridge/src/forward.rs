@@ -6,6 +6,7 @@ use crate::command::{decide, gate_view, nav_command_payload, CmdPolicy, Decision
 use dviz_protocol::{CmdAck, CmdKind, CmdRequest, CmdResult};
 use std::io::Write;
 use std::net::{SocketAddr, UdpSocket};
+use std::panic::AssertUnwindSafe;
 use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -48,18 +49,20 @@ pub enum Forwarded {
     NoReply,
 }
 
-/// Send one datagram from a fresh `127.0.0.1:0` socket and wait up to `timeout` for `{"ok":bool}`.
-/// A reply that is not that JSON counts as `Rejected`.
-pub fn forward_udp(target: SocketAddr, payload: &[u8], timeout: Duration) -> Forwarded {
-    let Ok(sock) = UdpSocket::bind("127.0.0.1:0") else { return Forwarded::NoReply };
-    if sock.send_to(payload, target).is_err() {
-        return Forwarded::NoReply;
-    }
-    let deadline = Instant::now() + timeout;
+/// Send one datagram from a fresh `127.0.0.1:0` socket; the socket is kept to await the reply.
+fn send_step(target: SocketAddr, payload: &[u8]) -> Option<UdpSocket> {
+    let sock = UdpSocket::bind("127.0.0.1:0").ok()?;
+    sock.send_to(payload, target).ok()?;
+    Some(sock)
+}
+
+/// Wait until `deadline` for `{"ok":bool}` from `target`. A reply that is not that JSON counts
+/// as `Rejected`. A reply already waiting in the socket is read even if the deadline has passed.
+fn await_step(sock: &UdpSocket, target: SocketAddr, deadline: Instant) -> Forwarded {
     let mut buf = [0u8; 4096];
     loop {
         let left = deadline.saturating_duration_since(Instant::now());
-        if left.is_zero() || sock.set_read_timeout(Some(left)).is_err() {
+        if sock.set_read_timeout(Some(left.max(Duration::from_millis(1)))).is_err() {
             return Forwarded::NoReply;
         }
         match sock.recv_from(&mut buf) {
@@ -69,9 +72,19 @@ pub fn forward_udp(target: SocketAddr, payload: &[u8], timeout: Duration) -> For
                     .and_then(|v| v.get("ok").and_then(|o| o.as_bool()));
                 return if ok == Some(true) { Forwarded::Ok } else { Forwarded::Rejected };
             }
-            Ok(_) => {} // not from nav_command: keep waiting
-            Err(_) => return Forwarded::NoReply,
+            Ok(_) if !left.is_zero() => {} // not from nav_command: keep waiting
+            _ => return Forwarded::NoReply,
         }
+    }
+}
+
+/// Send one datagram from a fresh `127.0.0.1:0` socket and wait up to `timeout` for `{"ok":bool}`.
+/// A reply that is not that JSON counts as `Rejected`.
+pub fn forward_udp(target: SocketAddr, payload: &[u8], timeout: Duration) -> Forwarded {
+    let deadline = Instant::now() + timeout;
+    match send_step(target, payload) {
+        Some(sock) => await_step(&sock, target, deadline),
+        None => Forwarded::NoReply,
     }
 }
 
@@ -128,7 +141,9 @@ fn answer(log: &SharedLog, job: Job, req: Option<&CmdRequest>, result: CmdResult
         result,
         reason: reason.to_string(),
     };
-    job.replier.reply(&ack);
+    // a panicking Replier must not take the lane thread down
+    let replier = job.replier;
+    let _ = std::panic::catch_unwind(AssertUnwindSafe(move || replier.reply(&ack)));
 }
 
 fn forward_and_answer(
@@ -139,12 +154,25 @@ fn forward_and_answer(
     target: SocketAddr,
     timeout: Duration,
 ) {
-    let (result, reason) = match forward_udp(target, payload, timeout) {
+    let outcome = forward_udp(target, payload, timeout);
+    answer_forwarded(log, job, req, outcome);
+}
+
+fn answer_forwarded(log: &SharedLog, job: Job, req: &CmdRequest, outcome: Forwarded) {
+    let (result, reason) = match outcome {
         Forwarded::Ok => (CmdResult::Ok, ""),
         Forwarded::Rejected => (CmdResult::NavRejected, "nav_command rejected the command"),
         Forwarded::NoReply => (CmdResult::NoReply, "no reply from nav_command"),
     };
     answer(log, job, Some(req), result, reason);
+}
+
+/// A stop command already sent, waiting for nav_command's answer on the reply thread.
+struct Pending {
+    sock: Option<UdpSocket>,
+    job: Job,
+    req: CmdRequest,
+    deadline: Instant,
 }
 
 impl CommandLanes {
@@ -178,6 +206,19 @@ impl CommandLanes {
                 }
             }
         });
+        // The stop lane thread only sends; a second thread awaits answers, logs and replies, so a
+        // slow nav_command or a blocked Replier can never delay the next estop / disarm.
+        let (pending_tx, pending_rx) = sync_channel::<Pending>(LANE_CAPACITY);
+        let reply_log = log.clone();
+        let reply_thread = std::thread::spawn(move || {
+            for p in pending_rx {
+                let outcome = match &p.sock {
+                    Some(sock) => await_step(sock, target, p.deadline),
+                    None => Forwarded::NoReply,
+                };
+                answer_forwarded(&reply_log, p.job, &p.req, outcome);
+            }
+        });
         let stop_thread = std::thread::spawn(move || {
             for job in stop_rx {
                 let req = match &job.request {
@@ -187,11 +228,23 @@ impl CommandLanes {
                         continue;
                     }
                 };
-                let payload = nav_command_payload(&req);
-                forward_and_answer(&log, job, &req, &payload, target, timeout);
+                let deadline = Instant::now() + timeout;
+                let sock = send_step(target, &nav_command_payload(&req));
+                let pending = Pending { sock, job, req, deadline };
+                if let Err(TrySendError::Full(p) | TrySendError::Disconnected(p)) = pending_tx.try_send(pending) {
+                    // Sent, but nobody can take the answer: drop the ack (the asker times out).
+                    let line = format!(
+                        "nav-bridge: cmd {} {} sent, ack lost (reply thread busy or gone)\n",
+                        clean(&p.req.cmd),
+                        clean(&p.req.id)
+                    );
+                    let mut w = log.lock().unwrap_or_else(|e| e.into_inner());
+                    let _ = w.write_all(line.as_bytes());
+                    let _ = w.flush();
+                }
             }
         });
-        CommandLanes { main, stop, threads: vec![main_thread, stop_thread] }
+        CommandLanes { main, stop, threads: vec![main_thread, stop_thread, reply_thread] }
     }
 
     /// False when the lane is full (the asker will time out) or its thread is gone.
@@ -380,7 +433,7 @@ mod tests {
         let gate = Arc::new(GateSlot::new());
         armed(&gate);
         let l = lanes(f.addr, Duration::from_millis(1000), &gate, &SharedBuf::default());
-        let (g, _grx) = job(&goal_json("s1-aaaa", TOKEN));
+        let (g, grx) = job(&goal_json("s1-aaaa", TOKEN));
         assert!(l.submit(g));
         std::thread::sleep(Duration::from_millis(10));
         let (e, erx) = job(r#"{"cmd":"estop","id":"s2-bbbb"}"#);
@@ -388,7 +441,9 @@ mod tests {
         assert!(l.submit(e));
         // arrivals: the goal first, then the estop
         let mut estop_at = None;
+        let mut order = Vec::new();
         while let Ok((at, v)) = f.rx.recv_timeout(LONG) {
+            order.push(v["cmd"].as_str().unwrap_or("").to_string());
             if v["cmd"] == "estop" {
                 estop_at = Some(at);
                 break;
@@ -396,7 +451,66 @@ mod tests {
         }
         let took = estop_at.expect("estop never arrived").duration_since(submitted);
         assert!(took < Duration::from_millis(50), "estop took {took:?}");
+        assert_eq!(order, ["goal", "estop"]);
         assert_eq!(erx.recv_timeout(LONG).unwrap().result, CmdResult::Ok);
+        assert_eq!(grx.recv_timeout(LONG).unwrap().result, CmdResult::NoReply);
+        l.stop();
+    }
+
+    #[test]
+    fn second_estop_not_queued_behind_first() {
+        // nav_command withholds its answer to the first estop
+        let mut n = 0;
+        let f = fake(move |_| {
+            n += 1;
+            if n == 1 { None } else { Some(true) }
+        });
+        let gate = Arc::new(GateSlot::new());
+        let l = lanes(f.addr, Duration::from_millis(1000), &gate, &SharedBuf::default());
+        let (e1, rx1) = job(r#"{"cmd":"estop","id":"s1-aaaa"}"#);
+        assert!(l.submit(e1));
+        std::thread::sleep(Duration::from_millis(10));
+        let (e2, rx2) = job(r#"{"cmd":"disarm","id":"s2-bbbb"}"#);
+        let submitted = Instant::now();
+        assert!(l.submit(e2));
+        f.rx.recv_timeout(LONG).unwrap(); // first estop
+        let (at, v) = f.rx.recv_timeout(LONG).unwrap();
+        assert_eq!(v["cmd"], "disarm");
+        let took = at.duration_since(submitted);
+        assert!(took < Duration::from_millis(50), "second stop took {took:?}");
+        assert_eq!(rx2.recv_timeout(LONG).unwrap().result, CmdResult::Ok);
+        assert_eq!(rx1.recv_timeout(LONG).unwrap().result, CmdResult::NoReply);
+        l.stop();
+    }
+
+    struct PanicReplier;
+    impl Replier for PanicReplier {
+        fn reply(self: Box<Self>, _ack: &CmdAck) {
+            panic!("replier blew up");
+        }
+    }
+
+    #[test]
+    fn panicking_replier_does_not_stop_estops() {
+        let f = fake(|_| Some(true));
+        let gate = Arc::new(GateSlot::new());
+        armed(&gate);
+        let l = lanes(f.addr, LONG, &gate, &SharedBuf::default());
+        let bad = |json: &str| Job {
+            request: dviz_protocol::parse_cmd_request(json.as_bytes()),
+            replier: Box::new(PanicReplier),
+        };
+        assert!(l.submit(bad(r#"{"cmd":"estop","id":"s1-aaaa"}"#)));
+        f.rx.recv_timeout(LONG).unwrap();
+        let (e2, rx2) = job(r#"{"cmd":"estop","id":"s2-bbbb"}"#);
+        assert!(l.submit(e2));
+        assert_eq!(rx2.recv_timeout(LONG).unwrap().result, CmdResult::Ok);
+        // the main lane survives a panicking replier too
+        assert!(l.submit(bad(&goal_json("s3-cccc", TOKEN))));
+        f.rx.recv_timeout(LONG).unwrap();
+        let (g, grx) = job(&goal_json("s4-dddd", TOKEN));
+        assert!(l.submit(g));
+        assert_eq!(grx.recv_timeout(LONG).unwrap().result, CmdResult::Ok);
         l.stop();
     }
 
@@ -466,19 +580,26 @@ mod tests {
             request: dviz_protocol::parse_cmd_request(json.as_bytes()),
             replier: Box::new(BlockedReplier { entered: entered_tx.clone(), release: release.clone() }),
         };
-        let estop = r#"{"cmd":"estop","id":"s1-aaaa"}"#;
-        assert!(l.submit(blocked(estop)));
-        entered_rx.recv_timeout(LONG).unwrap(); // the lane thread now holds job 1
+        // main lane: a bad request is answered (so the replier blocks) without any UDP
+        let main_job = || blocked("not json");
+        assert!(l.submit(main_job()));
+        entered_rx.recv_timeout(LONG).unwrap(); // the main thread now holds job 1
         for i in 0..16 {
-            assert!(l.submit(blocked(estop)), "queued job {i}");
+            assert!(l.submit(main_job()), "queued job {i}");
         }
         let start = Instant::now();
-        assert!(!l.submit(blocked(estop)), "18th submit must be refused");
+        assert!(!l.submit(main_job()), "18th submit must be refused");
         assert!(start.elapsed() < Duration::from_millis(100));
-        // the other lane is unaffected
-        let (j, rx) = job(r#"{"cmd":"arm","id":"s9-zzzz"}"#);
-        assert!(l.submit(j));
-        assert_eq!(rx.recv_timeout(LONG).unwrap().result, CmdResult::NotAllowed);
+        // the stop lane is unaffected, even with its own repliers blocked: all of these are sent
+        let estop = r#"{"cmd":"estop","id":"s1-aaaa"}"#;
+        for i in 0..40 {
+            assert!(l.submit(blocked(estop)), "estop {i}");
+            std::thread::sleep(Duration::from_millis(3));
+        }
+        for i in 0..40 {
+            let (_, v) = f.rx.recv_timeout(LONG).unwrap_or_else(|_| panic!("estop {i} not sent"));
+            assert_eq!(v["cmd"], "estop");
+        }
         drop(release_tx);
         l.stop();
     }
