@@ -106,6 +106,31 @@ class InspectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "tracking"):
             worker.validate(plan | {"track_grasp": "true"}, self.profile)
 
+    def test_single_named_transfer_binds_saved_and_new_controllers(self):
+        for color in ("red", "blue", "green"):
+            plan = dict(
+                kind="table-transfer",
+                task=f"Move the {color} floor cube onto the coffee table.",
+            )
+            self.assertEqual(
+                worker.validate(plan | {"color_order": color}, self.profile)[
+                    "color_order"
+                ],
+                color,
+            )
+            for wrong in [
+                dict(color_order="red,green,blue"),
+                dict(kind="visual-approach", color=color),
+            ]:
+                with self.assertRaisesRegex(ValueError, "operator requested only"):
+                    worker.validate(plan | wrong, self.profile)
+        for instruction in (
+            "Move all three floor cubes onto the coffee table in red, green, blue order.",
+            "Move the cube left of the red cube onto the coffee table.",
+            "Move the red cube onto the coffee table. Then move the nearest cube.",
+        ):
+            self.assertIsNone(worker.named_cube_transfer(instruction))
+
     def test_transfer_requires_nano_and_a_distinct_color_order(self):
         for order in ["blue", "green,blue,red"]:
             p = dict(kind="table-transfer", color_order=order)
