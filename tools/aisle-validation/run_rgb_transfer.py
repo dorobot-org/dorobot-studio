@@ -46,8 +46,9 @@ def finger_gap(point, position, rotation, bounds, cube_radius):
 
 
 class Judge:
-    def __init__(self, sim, colors):
+    def __init__(self, sim, colors, record_labels=False):
         self.colors = colors
+        self.airborne_in_jaw = {n: False for n in colors} if record_labels else None
         objects = {s["name"]: b for s, b in zip(sim.specs, sim.bodies)}
         self.cubes = {name: objects[name] for name in colors}
         self.table = objects["coffee_table"]
@@ -164,11 +165,12 @@ class Judge:
             pos = np.asarray(cube.get_pos()).copy()
             if not np.isfinite(pos).all():
                 raise ValueError("Nonfinite cube state")
-            if (
-                n not in other_support
-                and len(fingers[n]) == 2
-                and pos[2] - self.initial[n][2] > 0.05
-            ):
+            elevated = pos[2] - self.initial[n][2] > 0.05
+            if self.airborne_in_jaw is not None:
+                self.airborne_in_jaw[n] = bool(
+                    elevated and fingers[n] and n not in other_support
+                )
+            if n not in other_support and len(fingers[n]) == 2 and elevated:
                 self.grasped[n] += 1
             gap = min(
                 finger_gap(pos, p, r, bounds, self.radii[n]) for p, r, bounds in jaws
@@ -260,7 +262,7 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         for j in metadata["limits"]
     }
     guard = WheelGuard()
-    judge = Judge(sim, colors)
+    judge = Judge(sim, colors, record_labels=record)
     envelope = MotorEnvelope(MODEL, sim.names, sim.scene.dt)
     journal = out / "motor-targets.f64"
     policy = HERE / "nano_rgb_transfer_policy.py"
@@ -319,6 +321,7 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
                     step=sim.tick,
                     state=np.asarray(sim.robot.get_qpos())[sim.dofs].tolist(),
                     action=sim.targets.tolist(),
+                    airborne_in_jaw=[judge.airborne_in_jaw[n] for n in colors],
                 )
             )
         tmp = out / "preview.tmp"
@@ -495,7 +498,13 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         worker.save(out / "trajectory.json", rows)
         worker.save(
             out / "recording.json",
-            dict(joints=sim.names, fps=5, cameras=list(CAMERAS), samples=samples),
+            dict(
+                joints=sim.names,
+                fps=5,
+                cameras=list(CAMERAS),
+                label_colors=colors,
+                samples=samples,
+            ),
         )
     if error and (out / "policy.log").stat().st_size:
         error = (out / "policy.log").read_text().strip().splitlines()[-1][-350:]
