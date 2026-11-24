@@ -71,3 +71,5 @@ The native headless and offscreen sessions each independently verified all 50 ca
 ## Cohort D
 
 The wrist-confirmed supported recovery met the preregistered gate on **45 of 50 fresh layouts**, with 50 verified records and zero measured guard bypasses. The independent cohorts scored 32/50, 36/50, 43/50 and 45/50. The 45/50 result measures this frozen controller on cohort D. [Protocol, all five failures, raw evidence and native verification](nano-holdout-d/README.md)
+
+[Matched replay of all 50 disclosed cohort D layouts and per-case motor journals](nano-d-matched-replay/README.md)
