@@ -481,8 +481,15 @@ def main():
                         check.append("--screenshots")
                 timeout = (
                     1800
-                    if args.train_grasp
-                    else 900 if args.transfer or args.fleet or prior_trial else 330
+                    if args.train_grasp or args.wrist_faults == "three"
+                    else (
+                        900
+                        if args.transfer
+                        or args.fleet
+                        or args.wrist_faults
+                        or prior_trial
+                        else 330
+                    )
                 )
                 try:
                     subprocess.run(check, check=True, timeout=timeout)
