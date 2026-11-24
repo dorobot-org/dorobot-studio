@@ -134,6 +134,11 @@ def main():
         type=Path,
         help="Import and edit the Nano reference survey during a transfer",
     )
+    parser.add_argument(
+        "--prepared-pickup",
+        type=Path,
+        help="Reopen the original native authoring receipt without a second model call",
+    )
     args = parser.parse_args()
     if args.photo_input and (args.survey or not args.transfer):
         parser.error("--photo-input requires a transfer without --survey")
@@ -178,6 +183,8 @@ def main():
         "DOROBOT_STUDIO_SOURCE_ROOT": str(studio_root),
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
+    if args.prepared_pickup and not args.revise_pickup:
+        parser.error("--prepared-pickup requires --revise-pickup")
     if args.revise_pickup and args.compare_runs:
         parser.error("Select one recorded-trial journey")
     if args.revise_pickup:
@@ -200,6 +207,14 @@ def main():
             ):
                 parser.error(f"Missing recording or verdict in {source}")
             shutil.copytree(source, output / "state/aisle" / f"000{index}-Nano-run")
+    if args.prepared_pickup:
+        name = args.prepared_pickup.name
+        if (
+            not name.endswith("-Nano-prepare")
+            or not (args.prepared_pickup / "controller.json").is_file()
+        ):
+            parser.error("Select a completed native Nano preparation")
+        shutil.copytree(args.prepared_pickup, output / "state/aisle" / name)
     # The binary can come from another build directory. Its digest identifies the
     # executable, while these fields identify the workspace observed at launch.
     if args.foreground_cadence:
@@ -300,6 +315,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.prepared_pickup:
+                    check.append("--prepared-pickup")
                 if args.revise_pickup:
                     check.append("--revise-pickup")
                 if args.compare_runs:

@@ -48,6 +48,7 @@ def main():
     p.add_argument("--camera-faults", action="store_true")
     p.add_argument("--moving-target", action="store_true")
     p.add_argument("--observed-author", action="store_true")
+    p.add_argument("--prepared-pickup", action="store_true")
     p.add_argument("--revise-pickup", action="store_true")
     p.add_argument("--compare-runs", action="store_true")
     a = p.parse_args()

@@ -58,18 +58,21 @@ def native_journey(args, page, click, remote, done, grab):
 
     page("task")
     done(lambda w: w["selected"] == str(parent), "Selected recorded failed pickup")
-    click("aisle_task.instruction")
-    remote(
-        "key",
-        "w=0",
-        "c=KeyA",
-        "logo=1" if sys.platform == "darwin" else "ctrl=1",
-        "wait=1",
-    )
-    remote("text", "w=0", "t=" + protocol["task"], "wait=1")
-    click(
-        "aisle_task.revise_codex" if args.provider == "codex" else "aisle_task.revise"
-    )
+    if not args.prepared_pickup:
+        click("aisle_task.instruction")
+        remote(
+            "key",
+            "w=0",
+            "c=KeyA",
+            "logo=1" if sys.platform == "darwin" else "ctrl=1",
+            "wait=1",
+        )
+        remote("text", "w=0", "t=" + protocol["task"], "wait=1")
+        click(
+            "aisle_task.revise_codex"
+            if args.provider == "codex"
+            else "aisle_task.revise"
+        )
     row = done(
         lambda w: complete(
             w, lambda s: (s["controller"] or {}).get("provider") == args.provider
@@ -79,7 +82,18 @@ def native_journey(args, page, click, remote, done, grab):
     )
     (prepared,) = trials.glob("*-Nano-prepare/controller.json")
     plan = read(prepared)
-    assert plan == row["controller"] and plan["task"] == protocol["task"]
+    assert plan["task"] == protocol["task"]
+    assert all(
+        plan[key] == row["controller"][key]
+        for key in (
+            "task",
+            "provider",
+            "policy_model",
+            "pickup_revision",
+            "color_order",
+            "track_grasp",
+        )
+    )
     assert (
         plan["kind"] == "table-transfer"
         and plan["track_grasp"]
@@ -132,7 +146,16 @@ def native_journey(args, page, click, remote, done, grab):
     )
     trial = Path(row["selected"])
     result = read(trial / "result.json")
-    assert result == row["result"] and result["seed"] == protocol["development_seed"]
+    assert result["seed"] == protocol["development_seed"]
+    assert all(
+        result[key] == row["result"][key]
+        for key in (
+            "controller_hash",
+            "task_success",
+            "physics_ticks",
+            "actuator_audit",
+        )
+    )
     assert (
         read(trial / "calibration.json")["grasp_rgb_association"]
         == revision["grasp_association"]

@@ -59,6 +59,18 @@ def pickup_feedback(trial, robot, failure, output):
         or not 0 <= stamp <= round(stop * calibration["physics_dt_s"] * 1e9)
     ):
         raise ValueError("Invalid stopped pickup timestamp")
+    last_capture = None
+    with (trial / "actions.jsonl").open() as log:
+        for action in map(json.loads, log):
+            if action.get("op") == "sense":
+                last_capture = action["tick"]
+    if (
+        last_capture is None
+        or round(last_capture * calibration["physics_dt_s"] * 1e9) != stamp
+    ):
+        raise ValueError(
+            "Pickup exposure differs from the last recorded sensor request"
+        )
     packet = channels(raw, stamp, calibration)
     servo = VisualServo(
         dict(
