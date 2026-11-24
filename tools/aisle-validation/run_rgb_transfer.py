@@ -236,6 +236,7 @@ def execute(
     room_objects=(),
     room_settings=None,
     observation_progress=False,
+    observation_period_s=1,
 ):
     from nano_grasp_estimator import parameters
 
@@ -377,6 +378,11 @@ def execute(
         if record and sim.tick % 20 == 0:
             publish(sample=True)
         elif observation_progress and sim.tick % 100 == 0:
+            if sim.tick % (100 * observation_period_s) == 0:
+                rgb = sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[
+                    0
+                ]
+                worker.publish_background_rgb(out, sim.tick, rgb)
             worker.save(
                 out / "progress.json",
                 dict(

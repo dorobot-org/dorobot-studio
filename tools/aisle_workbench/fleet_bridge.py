@@ -197,6 +197,27 @@ def import_trial(root, node, row, status):
     return dest
 
 
+def receive_frame(node, ident, operation, out):
+    reply = send(node, dict(op=operation, id=ident))
+    if not reply["ready"]:
+        return None
+    data = base64.b64decode(reply["data"], validate=True)
+    if (
+        reply["width"] != 480
+        or reply["height"] not in (320, 360)
+        or len(data) != 480 * reply["height"] * 3
+    ):
+        raise ValueError("Invalid worker camera frame")
+    tmp = out / "preview.tmp"
+    tmp.write_bytes(reply["tick"].to_bytes(4, "big") + data)
+    tmp.replace(out / "preview.rgb")
+    return dict(
+        tick=reply["tick"],
+        height=reply["height"],
+        sha256=hashlib.sha256(data).hexdigest(),
+    )
+
+
 def operate(args):
     root = args.out.parent
     registry = nodes(root)
@@ -216,19 +237,7 @@ def operate(args):
             info = reconcile(root, row, node)
             frame = None
             if row["mode"] == "stream":
-                reply = send(node, dict(op="frame", id=ident))
-                if reply["ready"]:
-                    data = base64.b64decode(reply["data"], validate=True)
-                    if (
-                        reply["width"] != 480
-                        or reply["height"] not in (320, 360)
-                        or len(data) != 480 * reply["height"] * 3
-                    ):
-                        raise ValueError("Invalid worker camera frame")
-                    tmp = args.out / "preview.tmp"
-                    tmp.write_bytes(reply["tick"].to_bytes(4, "big") + data)
-                    tmp.replace(args.out / "preview.rgb")
-                    frame = dict(tick=reply["tick"], height=reply["height"])
+                frame = receive_frame(node, ident, "frame", args.out)
             save(args.out / "watch.json", dict(job=info, frame=frame))
             if info["state"] not in ACTIVE:
                 return
@@ -246,6 +255,8 @@ def operate(args):
         )
         if args.room_hash and req["room_sha256"] != args.room_hash:
             raise ValueError("Selected room revision has changed")
+        if op == "observations":
+            req["observation_period_s"] = args.observation_period_s
         req.update(rgb_timing=args.rgb_timing, target_motion=args.target_motion)
         ident = submit(root, registry, alias, req)["id"]
     with journal(root) as db:
@@ -259,17 +270,30 @@ def operate(args):
     if op in ("previous", "next") and ident:
         i = ids.index(ident) + (1 if op == "next" else -1)
         ident = ids[max(0, min(len(ids) - 1, i))]
-    info, trial = None, None
+    info, trial, sample = None, None, None
     if ident:
         row = record(root, ident)
         info = reconcile(root, row, node)
         if op == "cancel":
             info = send(node, dict(op="cancel", id=ident))
             update(root, ident, info["state"])
+        if op == "sample":
+            sample = receive_frame(node, ident, "observation", args.out)
+            if sample is None:
+                raise ValueError("Waiting for the first background RGB exposure")
         if op == "fetch":
             trial = import_trial(root, node, row, info).name
         info.update(robot=row["robot"], mode=row["mode"])
+        if row["mode"] == "observations":
+            info["observation_period_s"] = json.loads(row["request"]).get(
+                "observation_period_s", 1
+            )
     capabilities = send(node, dict(op="hello"))
     return dict(
-        node=alias, capabilities=capabilities, jobs=ids, selected=info, imported=trial
+        node=alias,
+        capabilities=capabilities,
+        jobs=ids,
+        selected=info,
+        imported=trial,
+        sample=sample,
     )
