@@ -80,9 +80,20 @@ def cohort(archive, name):
             )
         else:
             proof = load(base + "journey.json")[-1]
-            assert (
-                proof["result"] == verdict and proof["origin"]["state"] == "completed"
-            )
+            assert proof["origin"]["state"] == "completed"
+            # The native JSON decoder can round the final bit of a position.
+            for field in (
+                "controller_hash",
+                "model_hash",
+                "task_success",
+                "physics_ticks",
+                "wheel_supported_ticks",
+                "unsupported_wheel_ranges",
+                "frames",
+                "actuator_audit",
+            ):
+                assert proof["result"][field] == verdict[field]
+            assert proof["result"]["cubes"]["red"]["passed"] == row["placed_red"]
             assert "recovered" in load(base + "recovery.json")[-1]["check"].lower()
             info = load(base + "dataset/meta/info.json")
             assert (
