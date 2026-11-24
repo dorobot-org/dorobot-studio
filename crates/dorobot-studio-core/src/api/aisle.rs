@@ -224,6 +224,7 @@ pub struct RoomBaseline {
 
 #[derive(serde::Serialize)]
 pub struct TransferComparison {
+    pub room: Option<room_pair::Measurements>,
     pub summary: String,
     pub frames: [Option<ChangeFrame>; 2],
     pub packets: [Option<(PathBuf, u64)>; 2],
@@ -482,18 +483,16 @@ fn compare_transfer(
             }
         };
         let count = settled(current)?;
-        let summary = if let Some(delta) = room_delta {
-            format!(
-                "Room comparison · layout {} · baseline {label}\n{delta}\nBaseline {} ({previous_count} settled, {} ticks) · current {} ({count} settled, {} ticks). {}",
-                current["seed"], outcome(&prior), prior["physics_ticks"], outcome(current), current["physics_ticks"], trace.summary
-            )
+        let room = room_delta.map(|delta| room_pair::Measurements::new(delta, &prior, current));
+        let summary = if room.is_some() {
+            format!("Baseline {label} · {}", trace.summary)
         } else {
             format!(
                 "Matched layout {} · previous {label}\nPrevious {} ({previous_count} settled) · current {} ({count} settled). {code} {}",
                 current["seed"], outcome(&prior), outcome(current), trace.summary
             )
         };
-        return Some(TransferComparison { frames, packets, summary });
+        return Some(TransferComparison { room, frames, packets, summary });
     }
     None
 }

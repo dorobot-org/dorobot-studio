@@ -160,6 +160,59 @@ pub(super) fn summary(previous: &Path, current: &Path, after: &Value) -> Result<
     Ok(deltas.join(" · "))
 }
 
+#[derive(serde::Serialize)]
+pub struct Measurements {
+    pub outcome: String,
+    pub detail: String,
+}
+
+impl Measurements {
+    pub(super) fn new(delta: &str, baseline: &Value, current: &Value) -> Self {
+        let verdict = |r: &Value| {
+            if r["task_success"] == true {
+                "passed"
+            } else {
+                "failed"
+            }
+        };
+        let outcome = format!(
+            "Baseline {} · Current {}",
+            verdict(baseline),
+            verdict(current)
+        );
+        let mut rows = vec![delta.to_owned()];
+        if let Some(colors) = current["requested"].as_array() {
+            for color in colors.iter().filter_map(Value::as_str) {
+                let measurement = |r: &Value| {
+                    let cube = &r["cubes"][color];
+                    let state = match cube["passed"].as_bool() {
+                        Some(true) => "settled",
+                        Some(false) => "failed",
+                        None => "unscored",
+                    };
+                    cube["nearest_table_edge_m"].as_f64().map_or_else(
+                        || format!("{state} (gap unmeasured)"),
+                        |gap| format!("{state} ({:.1} mm)", 1000.0 * gap),
+                    )
+                };
+                rows.push(format!(
+                    "{color} · baseline {} → current {} · nearest table edge",
+                    measurement(baseline),
+                    measurement(current)
+                ));
+            }
+        }
+        rows.push(format!(
+            "Physics steps {} → {}",
+            baseline["physics_ticks"], current["physics_ticks"]
+        ));
+        Self {
+            outcome,
+            detail: rows.join("\n"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

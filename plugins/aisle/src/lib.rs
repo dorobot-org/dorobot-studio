@@ -215,7 +215,7 @@ script_mod! {
             failure_bar := Bar{earlier_failure := mod.widgets.ux.ToolButton{text:"Previous failure"} later_failure := mod.widgets.ux.ToolButton{text:"Next failure"}}
             ScrollYView{width:Fill height:Fill flow:Down failure_detail := Body{max_lines:64}}
         }
-        summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
+        summary := Card{width:Fill height:Fit summary_title := Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
         decision_card := Card{width:Fill height:Fill
             decision_title := Title{}
@@ -1402,7 +1402,10 @@ impl PluginPanel for Panel {
                         }
                     }
                 };
-                self.label(cx, ids!(verdict), verdict);
+                let room = w.transfer_comparison.as_ref().and_then(|pair| pair.room.as_ref());
+                let title = room.map(|_| format!("Room comparison · layout {}", w.evidence["seed"]));
+                self.label(cx, ids!(summary_title), title.as_deref().unwrap_or("Task outcome"));
+                self.label(cx, ids!(verdict), room.map_or(verdict, |r| r.outcome.as_str()));
                 let text = if transfer {
                     let mut lines = vec![];
                     if w.evidence["wrist_clearance"] == true {
@@ -1736,7 +1739,7 @@ impl PluginPanel for Panel {
                 self.root
                     .button(cx, ids!(train_reach))
                     .set_enabled(cx, !w.busy());
-                self.label(cx, ids!(detail), &text);
+                self.label(cx, ids!(detail), room.map_or(text.as_str(), |r| r.detail.as_str()));
                 let trace: Vec<_> = w.trace.iter().map(|&x| x as f64).collect();
                 self.root
                     .widget(cx, ids!(trace))
