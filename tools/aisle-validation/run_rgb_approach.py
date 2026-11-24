@@ -201,6 +201,7 @@ def trial(
     room_settings=None,
     rgb_timing="normal",
     target_motion="stationary",
+    observation_period_s=None,
 ):
     if rgb_timing not in ("normal", "intermittent", "disconnected"):
         raise ValueError("Unknown RGB timing fixture")
@@ -320,9 +321,12 @@ def trial(
                         moving_exposures=sliding.moving_exposures,
                     )
                 trajectory.append(progress)
-                preview = out / "preview.tmp"
-                preview.write_bytes(struct.pack(">I", sim.tick) + head.tobytes())
-                preview.replace(out / "preview.rgb")
+                if observation_period_s is None:
+                    preview = out / "preview.tmp"
+                    preview.write_bytes(struct.pack(">I", sim.tick) + head.tobytes())
+                    preview.replace(out / "preview.rgb")
+                elif sim.tick % (100 * observation_period_s) == 0:
+                    worker.publish_background_rgb(out, sim.tick, head)
                 worker.save(out / "progress.json", progress)
                 if command["xy"] is not None:
                     errors.append(float(np.linalg.norm(truth - command["xy"])))

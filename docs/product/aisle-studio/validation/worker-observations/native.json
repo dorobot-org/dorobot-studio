@@ -1,0 +1,968 @@
+{
+  "headless": {
+    "journey": [
+      {
+        "check": "DeepSeek prepared a Nano transfer",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Workers page opened",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Connected to local Nexus worker",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Submitted foreground",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Received measured RGB frame",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Received a later frame",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Studio rejected a second foreground",
+        "robot": "Nano",
+        "status": "A foreground stream is already running in this Studio workspace"
+      },
+      {
+        "check": "Selected one RGB observation every two simulated seconds",
+        "robot": "Nano",
+        "status": "A foreground stream is already running in this Studio workspace"
+      },
+      {
+        "check": "Submitted a background run",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Background simulation advanced while foreground ran",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Retrieved one background head-camera snapshot",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Cancelled only the background job",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Imported the cancelled job receipt",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Stopped episode reopened",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Foreground completed independently",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Downloaded and selected the worker trial",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Exported downloaded episode",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 export"
+      },
+      {
+        "check": "Two leased simulations through native Studio",
+        "foreground_id": "5ac39c01-af38-452c-8c40-41b7d5274ba0",
+        "background_id": "0b65b7b4-6eba-43ba-b8f5-a47db3e51479",
+        "background_step": 600,
+        "observation_ticks": [
+          200,
+          400,
+          600
+        ],
+        "snapshot": {
+          "height": 360,
+          "sha256": "e792be64db064689d51f06f1702079aedd8d2ef6a494bc41e78d811e3a2b7dad",
+          "tick": 600
+        },
+        "origin": {
+          "job": "5ac39c01-af38-452c-8c40-41b7d5274ba0",
+          "node": "local",
+          "state": "completed",
+          "sha256": "94c1733be2c81429d422abc5b696cc0bf041f998b36556d2dfe8149c81ca8ba6"
+        },
+        "result": {
+          "actuator_audit": {
+            "applied_rows": 6848,
+            "format": "little-endian float64, initial targets then one row per physics tick",
+            "initial_targets_valid": true,
+            "invalid_rows": 0,
+            "passed": true,
+            "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+            "unmatched_ticks": 0
+          },
+          "carry_annotations": true,
+          "controller_hash": "a9624d8b4477b571efe5700bc1b4d9c4f0a9630223379327c5a94b7e293557de",
+          "cubes": {
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1555689126253128,
+                0.7180509567260742,
+                0.5599989891052246
+              ],
+              "min_finger_clearance_tail_m": 0.29385481821736925,
+              "nearest_table_edge_m": 0.11805095672607424,
+              "opposing_finger_airborne_ticks": 3182,
+              "passed": true,
+              "required_table_inset_m": 0.035,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": null,
+          "fixture": "living-room",
+          "frames": 342,
+          "grasp_checkpoint": null,
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "measured_room_bodies": {},
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 128,
+          "passed": true,
+          "phase": "back away",
+          "physics_ticks": 6848,
+          "recording": true,
+          "rejected_motor_writes": 0,
+          "requested": [
+            "red"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "room_obstacles": [],
+          "room_revision_sha256": null,
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": true,
+          "training_dataset": null,
+          "unsupported_wheel_ranges": [],
+          "wheel_supported_ticks": 6848
+        }
+      }
+    ],
+    "recovery": [
+      {
+        "check": "Workers page opened",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Worker selection recovered",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Imported worker trial and export recovered",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      }
+    ],
+    "mode-manifest": {
+      "backend": "headless",
+      "requested_size": "1024x768",
+      "provider": "octos-deepseek",
+      "native_binary_sha256": "fbdecd87c4dd82edacbdf2a9a9df2953892d28f2b842ea1ff5bf435aea0fbce5",
+      "studio_source_commit": "d3bca83b24facc7f66bfa07e4140db7e52ab1567",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "fca135f917d04d66ec68b624bc92511de55b14492d38f5be2cb652061564e539",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "631c0105e6c7147bff017a53a0f035b87a920cbe1a06db771c855eb767164449",
+        "plugins/aisle/src/lib.rs": "2964eaee0edcdcd00d1b45de6e9ec258c42ffba6410a8d2dc781cfc6dd3d591d",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "b5c45b90fbea0dce33a62d9cb88e3eb54bd0d267f3bd793aa2575ba2d21f4f2d",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "fa2cf6b35933bdc041d359c043053fe635f752fdcb13abc112ae9aca25d8178a",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "d4b136423aa98f90f21c46e2b67b71c38ca7b30071eb91c2ec5df70f756f757e",
+        "tools/aisle-validation/run_rgb_transfer.py": "93eb8d8ea4b757fa39f9fda98e82e2e9eb3ea8cdce356ab7192ba97d67e957fd",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "c490755d6bf779afc397785d50b49d8fa9695b626d3447683ff944ebdce3910f",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/fleet_artifacts.py": "7ebaa221ca375acf47b3225fabcd7b7535609ad51d99b027ee4e857ac7f296af",
+        "tools/aisle_workbench/fleet_bridge.py": "66dfbd333e8ffd4fb7a4a1d28bd85e5d0c3e3ee95496ece544939a9052d206d7",
+        "tools/aisle_workbench/fleet_check.py": "d13aeb0177410a4c3fc96e554e7ad323f27d182cc9a01e6993a8c1c56fad74db",
+        "tools/aisle_workbench/fleet_client.py": "3568f4515a8e299b9e80eae9060a8a577d68cedf31e7fe0eb4447738b1017073",
+        "tools/aisle_workbench/fleet_worker.py": "c064686e22444c45ec6b41fd7ff56dc610e6fd15614c63349b87687d140d4ca9",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+        "tools/aisle_workbench/g1_stand.py": "beac87a5157b03f3bc88e5bfe959f167eff39dfc13bc397517ccff4f262cb9f1",
+        "tools/aisle_workbench/journey.py": "6f0807b84935f97830167d491fbff3a11e1f5c0da88b6a1936ca93b457b9b6b7",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observation_period_check.py": "49fda87c4f8ed2c354f7df2578771438d86690c7d431fbe012e28442495685ae",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_fleet_bridge.py": "0f2d6cc8847066b86981d779ae3c151c81737c6a17e8c7e2df331494a1768156",
+        "tools/aisle_workbench/test_fleet_worker.py": "289723fea3eb461efe878a9dffb2449b290aa964b385e602d82f471815ab343d",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "866a32ee5c348c81cc3809853e2f0b9988da0fc751ce5e5022efe3fbd84b4e54",
+        "tools/aisle_workbench/verify.py": "f747c58671706e19c0f62e137aa773ed6011d4251e882d4422c07bcf34e5ca86",
+        "tools/aisle_workbench/worker.py": "552a7ae199adf72d1f59ff1ab895350d58b723a2dcc724bc1abcb65d837da503",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 41526,
+          "observed_dark": true,
+          "observed_source_root": "/Users/yuechen/home/aisle-worker-observation-cadence",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 60041,
+          "observed_dark": true,
+          "observed_source_root": "/Users/yuechen/home/aisle-worker-observation-cadence",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        }
+      ],
+      "trials": [
+        "1795486865315973000-Nano-run",
+        "1795486873864590000-Nano-run"
+      ],
+      "files": {
+        "journey.json": "3ea5ba4b91771e9920c8d15ea05e0d2e06b0447d48b741f0ff7bc8073418dba2",
+        "recovery.json": "6ed83c617fdda475b39a040092aa98f2223db3549f5e5a1773e58638b8ea40a7"
+      }
+    }
+  },
+  "offscreen": {
+    "journey": [
+      {
+        "check": "DeepSeek prepared a Nano transfer",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Workers page opened",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Connected to local Nexus worker",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Submitted foreground",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Received measured RGB frame",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Received a later frame",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Studio rejected a second foreground",
+        "robot": "Nano",
+        "status": "A foreground stream is already running in this Studio workspace"
+      },
+      {
+        "check": "Selected one RGB observation every two simulated seconds",
+        "robot": "Nano",
+        "status": "A foreground stream is already running in this Studio workspace"
+      },
+      {
+        "check": "Submitted a background run",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Background simulation advanced while foreground ran",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Retrieved one background head-camera snapshot",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Cancelled only the background job",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Imported the cancelled job receipt",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Stopped episode reopened",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Foreground completed independently",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Downloaded and selected the worker trial",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Exported downloaded episode",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 export"
+      },
+      {
+        "check": "Two leased simulations through native Studio",
+        "foreground_id": "774125ef-557f-48a4-9f8c-3a7e451e1815",
+        "background_id": "b6a25bd9-f170-4a9d-8ff6-5a06265b654d",
+        "background_step": 700,
+        "observation_ticks": [
+          200,
+          400,
+          600,
+          800,
+          1000
+        ],
+        "snapshot": {
+          "height": 360,
+          "sha256": "e792be64db064689d51f06f1702079aedd8d2ef6a494bc41e78d811e3a2b7dad",
+          "tick": 600
+        },
+        "origin": {
+          "job": "774125ef-557f-48a4-9f8c-3a7e451e1815",
+          "node": "local",
+          "state": "completed",
+          "sha256": "843b846229ec8a721d18bd970e4f6f914ee77fe405adbef58e394f097a2fec75"
+        },
+        "result": {
+          "actuator_audit": {
+            "applied_rows": 6848,
+            "format": "little-endian float64, initial targets then one row per physics tick",
+            "initial_targets_valid": true,
+            "invalid_rows": 0,
+            "passed": true,
+            "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+            "unmatched_ticks": 0
+          },
+          "carry_annotations": true,
+          "controller_hash": "a9624d8b4477b571efe5700bc1b4d9c4f0a9630223379327c5a94b7e293557de",
+          "cubes": {
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1555689126253128,
+                0.7180509567260742,
+                0.5599989891052246
+              ],
+              "min_finger_clearance_tail_m": 0.29385481821736925,
+              "nearest_table_edge_m": 0.11805095672607424,
+              "opposing_finger_airborne_ticks": 3182,
+              "passed": true,
+              "required_table_inset_m": 0.035,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": null,
+          "fixture": "living-room",
+          "frames": 342,
+          "grasp_checkpoint": null,
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "measured_room_bodies": {},
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 128,
+          "passed": true,
+          "phase": "back away",
+          "physics_ticks": 6848,
+          "recording": true,
+          "rejected_motor_writes": 0,
+          "requested": [
+            "red"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "room_obstacles": [],
+          "room_revision_sha256": null,
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": true,
+          "training_dataset": null,
+          "unsupported_wheel_ranges": [],
+          "wheel_supported_ticks": 6848
+        }
+      }
+    ],
+    "recovery": [
+      {
+        "check": "Workers page opened",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Worker selection recovered",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Imported worker trial and export recovered",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      }
+    ],
+    "mode-manifest": {
+      "backend": "offscreen",
+      "requested_size": "1024x768",
+      "provider": "octos-deepseek",
+      "native_binary_sha256": "fbdecd87c4dd82edacbdf2a9a9df2953892d28f2b842ea1ff5bf435aea0fbce5",
+      "studio_source_commit": "d3bca83b24facc7f66bfa07e4140db7e52ab1567",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "fca135f917d04d66ec68b624bc92511de55b14492d38f5be2cb652061564e539",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "631c0105e6c7147bff017a53a0f035b87a920cbe1a06db771c855eb767164449",
+        "plugins/aisle/src/lib.rs": "2964eaee0edcdcd00d1b45de6e9ec258c42ffba6410a8d2dc781cfc6dd3d591d",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "b5c45b90fbea0dce33a62d9cb88e3eb54bd0d267f3bd793aa2575ba2d21f4f2d",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "fa2cf6b35933bdc041d359c043053fe635f752fdcb13abc112ae9aca25d8178a",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "d4b136423aa98f90f21c46e2b67b71c38ca7b30071eb91c2ec5df70f756f757e",
+        "tools/aisle-validation/run_rgb_transfer.py": "93eb8d8ea4b757fa39f9fda98e82e2e9eb3ea8cdce356ab7192ba97d67e957fd",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "c490755d6bf779afc397785d50b49d8fa9695b626d3447683ff944ebdce3910f",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/fleet_artifacts.py": "7ebaa221ca375acf47b3225fabcd7b7535609ad51d99b027ee4e857ac7f296af",
+        "tools/aisle_workbench/fleet_bridge.py": "66dfbd333e8ffd4fb7a4a1d28bd85e5d0c3e3ee95496ece544939a9052d206d7",
+        "tools/aisle_workbench/fleet_check.py": "d13aeb0177410a4c3fc96e554e7ad323f27d182cc9a01e6993a8c1c56fad74db",
+        "tools/aisle_workbench/fleet_client.py": "3568f4515a8e299b9e80eae9060a8a577d68cedf31e7fe0eb4447738b1017073",
+        "tools/aisle_workbench/fleet_worker.py": "c064686e22444c45ec6b41fd7ff56dc610e6fd15614c63349b87687d140d4ca9",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+        "tools/aisle_workbench/g1_stand.py": "beac87a5157b03f3bc88e5bfe959f167eff39dfc13bc397517ccff4f262cb9f1",
+        "tools/aisle_workbench/journey.py": "6f0807b84935f97830167d491fbff3a11e1f5c0da88b6a1936ca93b457b9b6b7",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observation_period_check.py": "49fda87c4f8ed2c354f7df2578771438d86690c7d431fbe012e28442495685ae",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_fleet_bridge.py": "0f2d6cc8847066b86981d779ae3c151c81737c6a17e8c7e2df331494a1768156",
+        "tools/aisle_workbench/test_fleet_worker.py": "289723fea3eb461efe878a9dffb2449b290aa964b385e602d82f471815ab343d",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "866a32ee5c348c81cc3809853e2f0b9988da0fc751ce5e5022efe3fbd84b4e54",
+        "tools/aisle_workbench/verify.py": "f747c58671706e19c0f62e137aa773ed6011d4251e882d4422c07bcf34e5ca86",
+        "tools/aisle_workbench/worker.py": "552a7ae199adf72d1f59ff1ab895350d58b723a2dcc724bc1abcb65d837da503",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 67074,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-worker-observation-cadence",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 79093,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-worker-observation-cadence",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        }
+      ],
+      "trials": [
+        "1795487024364608000-Nano-run",
+        "1795487031654296000-Nano-run"
+      ],
+      "files": {
+        "background-snapshot.png": "b43a40968015d9a608d8cdd1129afaeae39a8f77e94cb379d0854081be831031",
+        "foreground.png": "c41d4877903e0bd03a6c554a2d75f6b47fbfde327ef513a65e54f76146240bfe",
+        "imported-evidence.png": "e9cf0b1d1c3ab1113a33ad5803715298ddf443407bbf9d8a9c48c56e1b705e6c",
+        "imported-replay.png": "8111111749014e4ace7bb26f48ecedb3a81414e2a138de6150b4027517fb6fd0",
+        "journey.json": "3c454d4ad61269ce4404d8cc45966bc7352caa30489bfbc87a5d3cefb9ee55d0",
+        "overlap.png": "b43a40968015d9a608d8cdd1129afaeae39a8f77e94cb379d0854081be831031",
+        "recovery.json": "6ed83c617fdda475b39a040092aa98f2223db3549f5e5a1773e58638b8ea40a7"
+      }
+    }
+  },
+  "desktop": {
+    "journey": [
+      {
+        "check": "DeepSeek prepared a Nano transfer",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Workers page opened",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 prepare"
+      },
+      {
+        "check": "Connected to local Nexus worker",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Submitted foreground",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Received measured RGB frame",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Received a later frame",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Studio rejected a second foreground",
+        "robot": "Nano",
+        "status": "A foreground stream is already running in this Studio workspace"
+      },
+      {
+        "check": "Selected one RGB observation every two simulated seconds",
+        "robot": "Nano",
+        "status": "A foreground stream is already running in this Studio workspace"
+      },
+      {
+        "check": "Submitted a background run",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Background simulation advanced while foreground ran",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Retrieved one background head-camera snapshot",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Cancelled only the background job",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Imported the cancelled job receipt",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Stopped episode reopened",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Foreground completed independently",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Downloaded and selected the worker trial",
+        "robot": "Nano",
+        "status": "Worker trial available in Evidence"
+      },
+      {
+        "check": "Exported downloaded episode",
+        "robot": "Nano",
+        "status": "Completed \u00b7 Nano \u00b7 export"
+      },
+      {
+        "check": "Two leased simulations through native Studio",
+        "foreground_id": "e22b463f-afb8-4604-97bf-739652b64d0d",
+        "background_id": "2c07eea8-ecc0-4434-a065-640e262e6c2f",
+        "background_step": 600,
+        "observation_ticks": [
+          200,
+          400,
+          600,
+          800
+        ],
+        "snapshot": {
+          "height": 360,
+          "sha256": "e792be64db064689d51f06f1702079aedd8d2ef6a494bc41e78d811e3a2b7dad",
+          "tick": 600
+        },
+        "origin": {
+          "job": "e22b463f-afb8-4604-97bf-739652b64d0d",
+          "node": "local",
+          "state": "completed",
+          "sha256": "98bada08162f0fa4dda9a4b856e625148d28dbae09ea79f0b75d0f88b30562ae"
+        },
+        "result": {
+          "actuator_audit": {
+            "applied_rows": 6848,
+            "format": "little-endian float64, initial targets then one row per physics tick",
+            "initial_targets_valid": true,
+            "invalid_rows": 0,
+            "passed": true,
+            "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+            "unmatched_ticks": 0
+          },
+          "carry_annotations": true,
+          "controller_hash": "a9624d8b4477b571efe5700bc1b4d9c4f0a9630223379327c5a94b7e293557de",
+          "cubes": {
+            "red": {
+              "cube_center_over_table": true,
+              "detached": true,
+              "final_position_m": [
+                0.1555689126253128,
+                0.7180509567260742,
+                0.5599989891052246
+              ],
+              "min_finger_clearance_tail_m": 0.29385481821736925,
+              "nearest_table_edge_m": 0.11805095672607424,
+              "opposing_finger_airborne_ticks": 3182,
+              "passed": true,
+              "required_table_inset_m": 0.035,
+              "settle_motion_m": 0.0,
+              "table_contact_tail_ticks": 100
+            }
+          },
+          "error": null,
+          "fixture": "living-room",
+          "frames": 342,
+          "grasp_checkpoint": null,
+          "kind": "table-transfer",
+          "max_joint_excursion_rad": 0,
+          "measured_room_bodies": {},
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "onboard_observations": 128,
+          "passed": true,
+          "phase": "back away",
+          "physics_ticks": 6848,
+          "recording": true,
+          "rejected_motor_writes": 0,
+          "requested": [
+            "red"
+          ],
+          "robot": "Nano",
+          "robot_furniture_contacts": {},
+          "room_obstacles": [],
+          "room_revision_sha256": null,
+          "root_pose_writes": 0,
+          "seed": 0,
+          "table_top_m": 0.54,
+          "task_success": true,
+          "training_dataset": null,
+          "unsupported_wheel_ranges": [],
+          "wheel_supported_ticks": 6848
+        }
+      }
+    ],
+    "recovery": [
+      {
+        "check": "Workers page opened",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Worker selection recovered",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      },
+      {
+        "check": "Imported worker trial and export recovered",
+        "robot": "Nano",
+        "status": "Connected to simulation worker"
+      }
+    ],
+    "mode-manifest": {
+      "backend": "offscreen",
+      "requested_size": "1440x900",
+      "provider": "octos-deepseek",
+      "native_binary_sha256": "decd9cf8476a7e752f2b1814d55f9c15218417be3941916fd1d91df2f54a39e6",
+      "studio_source_commit": "b0d3aacd4a54986d4e4fad0800279e43ba583be0",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "fca135f917d04d66ec68b624bc92511de55b14492d38f5be2cb652061564e539",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "631c0105e6c7147bff017a53a0f035b87a920cbe1a06db771c855eb767164449",
+        "plugins/aisle/src/lib.rs": "eacc2c22ecbc8cfd069451cd939c1b21266eb6b5fc88211a1bbd49d4c828fe1b",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "b5c45b90fbea0dce33a62d9cb88e3eb54bd0d267f3bd793aa2575ba2d21f4f2d",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "fa2cf6b35933bdc041d359c043053fe635f752fdcb13abc112ae9aca25d8178a",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "d4b136423aa98f90f21c46e2b67b71c38ca7b30071eb91c2ec5df70f756f757e",
+        "tools/aisle-validation/run_rgb_transfer.py": "93eb8d8ea4b757fa39f9fda98e82e2e9eb3ea8cdce356ab7192ba97d67e957fd",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "c490755d6bf779afc397785d50b49d8fa9695b626d3447683ff944ebdce3910f",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/fleet_artifacts.py": "7ebaa221ca375acf47b3225fabcd7b7535609ad51d99b027ee4e857ac7f296af",
+        "tools/aisle_workbench/fleet_bridge.py": "66dfbd333e8ffd4fb7a4a1d28bd85e5d0c3e3ee95496ece544939a9052d206d7",
+        "tools/aisle_workbench/fleet_check.py": "d13aeb0177410a4c3fc96e554e7ad323f27d182cc9a01e6993a8c1c56fad74db",
+        "tools/aisle_workbench/fleet_client.py": "3568f4515a8e299b9e80eae9060a8a577d68cedf31e7fe0eb4447738b1017073",
+        "tools/aisle_workbench/fleet_worker.py": "c064686e22444c45ec6b41fd7ff56dc610e6fd15614c63349b87687d140d4ca9",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "1b14b3cec963413d135347ed70903756f8033e16259b11f0251eabfa741d0ad9",
+        "tools/aisle_workbench/g1_stand.py": "74cb890902647813a0da4b18538e2ff650639219dd25db196bacb18a5da01525",
+        "tools/aisle_workbench/journey.py": "b3244f742adefd00a2783422fe5cf4075459890b1d160701662c8054a8f678d0",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_fleet_bridge.py": "0f2d6cc8847066b86981d779ae3c151c81737c6a17e8c7e2df331494a1768156",
+        "tools/aisle_workbench/test_fleet_worker.py": "a2c2423fd8aa2b146b530382306c809388f247b861ada66441630fad58c71bfa",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "866a32ee5c348c81cc3809853e2f0b9988da0fc751ce5e5022efe3fbd84b4e54",
+        "tools/aisle_workbench/verify.py": "b690b9138dfed22007662cf1f259ef5f36f790c025b9d768a7a78d741d87e738",
+        "tools/aisle_workbench/worker.py": "027d28c64807231b82a2b125ab7e2fc60c3b9fc424abac4e1199cc9ff5302e25",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 75709,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-worker-observation-cadence",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 90296,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-worker-observation-cadence",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        }
+      ],
+      "trials": [
+        "1795486294841643000-Nano-run",
+        "1795486303092482000-Nano-run"
+      ],
+      "files": {
+        "background-snapshot.png": "711bd41dfe7a688c11534bae2e385b3d09d254d6081663204113baf453f0d004",
+        "foreground.png": "f9bdede5826ff1e47bdf953aa961a73c5135290d0c537f72cbc6d51af4538184",
+        "imported-evidence.png": "00c59505d83897586d31ccd688ed5aebf707f33733ae16cec94ccc5e353d5442",
+        "imported-replay.png": "a58721f3e99535c154b8ca44d3344af88e824353af57c2b5204be91fd5b5df20",
+        "journey.json": "5f3cd803ff39269a66d2505f7636525774e1285fb31b83c600b98cef7ee63c3d",
+        "overlap.png": "358529e40e0fa43da0407ca744f8184148e98917087c33a0613509957b2d5dfe",
+        "recovery.json": "6ed83c617fdda475b39a040092aa98f2223db3549f5e5a1773e58638b8ea40a7"
+      }
+    }
+  }
+}

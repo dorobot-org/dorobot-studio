@@ -109,6 +109,7 @@ pub enum Action {
     NewerPlan,
     Run,
     Workers(bool),
+    CycleBackgroundPeriod,
     ConnectWorker(String),
     Worker(WorkerAction),
     Stop,
@@ -130,6 +131,7 @@ pub enum WorkerAction {
     Cancel,
     Fetch,
     Watch,
+    Sample,
 }
 impl WorkerAction {
     fn name(self) -> &'static str {
@@ -143,6 +145,7 @@ impl WorkerAction {
             Self::Cancel => "cancel",
             Self::Fetch => "fetch",
             Self::Watch => "watch",
+            Self::Sample => "sample",
         }
     }
 }
@@ -340,6 +343,8 @@ pub struct Workbench {
     pub transfer_comparison: Option<String>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
+    pub background_period_s: u8,
+    pub worker_sample: Option<PathBuf>,
     pub workers_open: bool,
     pub fleet: Value,
     pub worker_observation: Value,
@@ -394,6 +399,8 @@ impl Workbench {
             transfer_comparison: None,
             dataset: None,
             exports: Default::default(),
+            background_period_s: 1,
+            worker_sample: None,
             workers_open: false,
             fleet: read(&root, "worker-selection.json").unwrap_or_default(),
             worker_observation: Value::Null,
@@ -718,6 +725,10 @@ impl Workbench {
                 self.worker_action
             };
             cmd.args(["--fleet-action", action.name(), "--node", &self.worker_node]);
+            if matches!(action, WorkerAction::Observations) {
+                cmd.arg("--observation-period-s")
+                    .arg(self.background_period_s.to_string());
+            }
             if self.fleet["node"].as_str() == Some(&self.worker_node) {
                 if let Some(id) = self.fleet["selected"]["id"].as_str() {
                     cmd.args(["--job-id", id]);
@@ -929,6 +940,14 @@ impl Workbench {
             Action::TrainGrasp => self.launch("train-grasp", Planner::Reference, None),
             Action::TrainReach => self.launch("train-reach", Planner::Reference, None),
             Action::Export => self.launch("export", Planner::Reference, None),
+            Action::CycleBackgroundPeriod => {
+                self.background_period_s = match self.background_period_s {
+                    1 => 2,
+                    2 => 5,
+                    _ => 1,
+                };
+                Ok(())
+            }
             Action::Workers(open) => {
                 self.workers_open = open;
                 self.stop_watch();
@@ -1052,6 +1071,7 @@ impl Workbench {
             if job.op == "fleet" {
                 self.stop_watch();
                 self.fleet = read(&job.dir, artifact).unwrap_or_default();
+                self.worker_sample = self.fleet["sample"].is_object().then(|| job.dir.clone());
                 if let Err(error) = fs::copy(
                     job.dir.join(artifact),
                     self.root

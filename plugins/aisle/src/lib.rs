@@ -151,11 +151,12 @@ script_mod! {
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             viewport := Card{width:Fill height:Fill camera_label := Section{} camera := VideoPlayer{width:Fill height:Fill}}
             fleet_controls := Card{width:310 height:Fill padding:0
-                fleet_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:14 spacing:8
+                fleet_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:12 spacing:6
                     Section{text:"Worker connection"}
                     node := TextInput{width:Fill height:34 empty_text:"local or configured SSH worker"}
                     Bar{connect := mod.widgets.ux.ToolButton{text:"Connect"} refresh := mod.widgets.ux.ToolButton{text:"Refresh"}}
                     capacity := Body{}
+                    Bar{period := mod.widgets.ux.ToolButton{text:"RGB / 1 sim s"} sample_job := mod.widgets.ux.ToolButton{text:"Get snapshot"}}
                     Bar{queue_stream := mod.widgets.ux.PrimaryButton{text:"Stream run"} queue_background := mod.widgets.ux.ToolButton{text:"Background run"}}
                     Section{text:"Selected job"} job_detail := Body{}
                     Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous job"} newer_job := mod.widgets.ux.ToolButton{text:"Next job"}}
@@ -273,21 +274,37 @@ impl Panel {
             "No jobs submitted to this worker.".into()
         };
         self.label(cx, ids!(job_detail), &info);
+        self.root
+            .button(cx, ids!(period))
+            .set_text(cx, &format!("RGB / {} sim s", w.background_period_s));
+        let frame = if stream {
+            &w.worker_observation["frame"]
+        } else {
+            &w.fleet["sample"]
+        };
         self.label(
             cx,
             ids!(camera_label),
             if stream {
                 "Foreground worker camera"
+            } else if frame.is_object() {
+                "Background RGB snapshot"
             } else {
-                "Camera preview is available for a foreground job"
+                "Choose Get snapshot to view the latest background RGB image"
             },
         );
-        let frame = &w.worker_observation["frame"];
-        let current = w
-            .worker_preview
+        let directory = if stream {
+            &w.worker_preview
+        } else {
+            &w.worker_sample
+        };
+        let current = directory
             .as_ref()
             .zip(frame["tick"].as_u64())
             .map(|(dir, tick)| (dir.clone(), tick));
+        self.root
+            .widget(cx, ids!(sample_job))
+            .set_visible(cx, selected["mode"] == "observations");
         if self.frame != current {
             let camera = self.root.video_player(cx, ids!(camera));
             if let Some((dir, tick)) = &current {
@@ -312,6 +329,11 @@ impl Panel {
         for (button, enabled) in [
             (ids!(connect) as &[LiveId], true),
             (ids!(refresh), caps.is_object()),
+            (ids!(period), true),
+            (
+                ids!(sample_job),
+                selected["mode"] == "observations" && !state.is_empty(),
+            ),
             (ids!(queue_stream), compatible),
             (ids!(queue_background), compatible),
             (ids!(older_job), pos.is_some_and(|i| i > 0)),
@@ -1319,6 +1341,8 @@ impl PluginPanel for Panel {
             (ids!(default_room), Action::DefaultRoom),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
+            (ids!(period), Action::CycleBackgroundPeriod),
+            (ids!(sample_job), Action::Worker(WorkerAction::Sample)),
             (ids!(local_run), Action::Workers(false)),
             (ids!(workers), Action::Workers(true)),
             (ids!(refresh), Action::Worker(WorkerAction::Refresh)),

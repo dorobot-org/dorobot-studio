@@ -62,6 +62,31 @@ class WorkerLeaseTests(unittest.TestCase):
                 dispatch(self.root, req | {"id": str(uuid4())})["state"], "reserved"
             )
 
+    def test_background_clock_and_stream_are_distinct(self):
+        for invalid in (True, 0, 3, 10):
+            with self.assertRaisesRegex(ValueError, "observation period"):
+                dispatch(
+                    self.root,
+                    self.request
+                    | {"mode": "observations", "observation_period_s": invalid},
+                )
+        with patch("fleet_worker.subprocess.Popen"):
+            ident = dispatch(
+                self.root,
+                self.request | {"mode": "observations", "observation_period_s": 2},
+            )["id"]
+            self.assertFalse(
+                dispatch(self.root, {"op": "observation", "id": ident})["ready"]
+            )
+            with self.assertRaisesRegex(ValueError, "foreground"):
+                dispatch(self.root, {"op": "frame", "id": ident})
+            with self.assertRaisesRegex(ValueError, "different request"):
+                dispatch(
+                    self.root,
+                    self.request
+                    | {"id": ident, "mode": "observations", "observation_period_s": 5},
+                )
+
     def test_unknown_companion_file_and_controller_digest_are_rejected(self):
         for change in [
             {"files": {"../unknown": "AA=="}},

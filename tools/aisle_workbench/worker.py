@@ -33,6 +33,27 @@ def save(path, value):
     tmp.replace(path)
 
 
+def publish_background_rgb(out, tick, rgb):
+    """Keep the last operator-requestable exposure and its capture tick."""
+    data = rgb.tobytes()
+    height, width = rgb.shape[:2] if hasattr(rgb, "shape") else (rgb.height, rgb.width)
+    tmp = out / "preview.tmp"
+    tmp.write_bytes(tick.to_bytes(4, "big") + data)
+    tmp.replace(out / "preview.rgb")
+    with (out / "background-observations.jsonl").open("a") as log:
+        print(
+            json.dumps(
+                dict(
+                    tick=tick,
+                    width=width,
+                    height=height,
+                    sha256=hashlib.sha256(data).hexdigest(),
+                )
+            ),
+            file=log,
+        )
+
+
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -599,6 +620,7 @@ def simulate(args, meta):
             reach_weights=weights,
             impact_aim=getattr(args, "impact_aim", DEFAULT_IMPACT_AIM),
             observations_only=getattr(args, "observations_only", False),
+            observation_period_s=getattr(args, "observation_period_s", 1),
             parameters=json.loads(impact_recipe.read_text()) if impact_recipe else None,
         ) | dict(
             **(
@@ -641,6 +663,7 @@ def simulate(args, meta):
                 control["color_order"].split(","),
                 record=not getattr(args, "observations_only", False),
                 observation_progress=getattr(args, "observations_only", False),
+                observation_period_s=getattr(args, "observation_period_s", 1),
                 room_objects=room_objects,
                 room_settings=room_settings,
             )
@@ -662,6 +685,11 @@ def simulate(args, meta):
             plan,
             rgb_timing=getattr(args, "rgb_timing", "normal"),
             target_motion=getattr(args, "target_motion", "stationary"),
+            observation_period_s=(
+                getattr(args, "observation_period_s", 1)
+                if getattr(args, "observations_only", False)
+                else None
+            ),
             room_objects=room_objects,
             room_settings=room_settings,
         )
@@ -733,7 +761,7 @@ def simulate(args, meta):
             recording.append(
                 dict(step=index + 1, state=measured.tolist(), action=target.tolist())
             )
-        elif index % 60:
+        elif index % (100 * getattr(args, "observation_period_s", 1)):
             save(args.out / "progress.json", row)
             continue
         rgb = np.asarray(cam.render()[0], dtype=np.uint8)
@@ -743,9 +771,12 @@ def simulate(args, meta):
         if record:
             (camera / f"{len(rows) - 1:04d}.png").write_bytes(path.read_bytes())
         path.replace(args.out / "frame.png")
-        tmp = args.out / "preview.tmp"
-        tmp.write_bytes(index.to_bytes(4, "big") + image.tobytes())
-        tmp.replace(args.out / "preview.rgb")
+        if record:
+            tmp = args.out / "preview.tmp"
+            tmp.write_bytes(index.to_bytes(4, "big") + image.tobytes())
+            tmp.replace(args.out / "preview.rgb")
+        else:
+            publish_background_rgb(args.out, index, image)
         save(args.out / "progress.json", row)
     save(args.out / "trajectory.json", rows)
     if record:
@@ -846,10 +877,12 @@ def main():
             "cancel",
             "fetch",
             "watch",
+            "sample",
         ],
     )
     p.add_argument("--node", default="local")
     p.add_argument("--job-id")
+    p.add_argument("--observation-period-s", type=int, choices=(1, 2, 5), default=1)
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
     if args.seed < 0:

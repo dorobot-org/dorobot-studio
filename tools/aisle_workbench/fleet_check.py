@@ -105,6 +105,11 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         lambda w: not w["busy"] and "foreground stream" in w["status"],
         "Studio rejected a second foreground",
     )
+    run_button("period")
+    done(
+        lambda w: w["background_period_s"] == 2,
+        "Selected one RGB observation every two simulated seconds",
+    )
     run_button("queue_background")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "observations",
@@ -113,12 +118,21 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     background = selected(row)["id"]
     assert background != foreground and len(row["fleet"]["capabilities"]["active"]) == 2
     row = done(
-        lambda w: (observed(w).get("progress") or {}).get("step", 0) > 0
+        lambda w: (observed(w).get("progress") or {}).get("step", 0) >= 600
         and observed(w).get("id") == background,
         "Background simulation advanced while foreground ran",
         180,
     )
     step = observed(row)["progress"]["step"]
+    run_button("sample_job")
+    sample = done(
+        lambda w: not w["busy"]
+        and (w["fleet"].get("sample") or {}).get("tick", 0) >= 600,
+        "Retrieved one background head-camera snapshot",
+    )
+    snapshot = sample["fleet"]["sample"]
+    assert selected(sample)["observation_period_s"] == 2 and snapshot["tick"] % 200 == 0
+    grab("background-snapshot")
     grab("overlap")
     run_button("cancel_job")
     done(
@@ -132,6 +146,23 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         lambda w: not w["busy"] and (w["result"] or {}).get("outcome") == "Stopped",
         "Imported the cancelled job receipt",
     )
+    cancelled = done(
+        lambda w: (w["result"] or {}).get("outcome") == "Stopped",
+        "Stopped episode reopened",
+    )
+    path = Path(cancelled["selected"])
+    observations = [
+        json.loads(line)
+        for line in (path / "background-observations.jsonl").read_text().splitlines()
+    ]
+    assert [r["tick"] for r in observations] == list(
+        range(200, observations[-1]["tick"] + 1, 200)
+    )
+    assert any(
+        r["tick"] == snapshot["tick"] and r["sha256"] == snapshot["sha256"]
+        for r in observations
+    )
+    assert not (path / "recording.json").exists()
     run_button("older_job")
     row = done(
         lambda w: not w["busy"]
@@ -181,6 +212,8 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             foreground_id=foreground,
             background_id=background,
             background_step=step,
+            observation_ticks=[o["tick"] for o in observations],
+            snapshot=snapshot,
             origin=origin,
             result=result,
         )

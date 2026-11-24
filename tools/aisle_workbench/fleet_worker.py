@@ -140,6 +140,15 @@ def payload(request):
         or hashes["training.json"] != plan["grasp_estimator"]["training_sha256"]
     ):
         raise ValueError("The selected grasp checkpoint or its training record changed")
+    period = request.get("observation_period_s", 1)
+    if (
+        type(period) is not int
+        or period not in (1, 2, 5)
+        or (period != 1 and request["mode"] != "observations")
+    ):
+        raise ValueError(
+            "Select a background RGB observation period of 1, 2 or 5 simulated seconds"
+        )
     control = validate(plan, profile)
     if request.get("rgb_timing", "normal") not in (
         "normal",
@@ -195,6 +204,8 @@ def submit(root, request):
     for key, default in (("rgb_timing", "normal"), ("target_motion", "stationary")):
         if request.get(key, default) != default:
             config[key] = request[key]
+    if request.get("observation_period_s", 1) != 1:
+        config["observation_period_s"] = request["observation_period_s"]
     if hashes:
         config["files_sha256"] = hashes
     if request.get("room_sha256"):
@@ -336,7 +347,13 @@ def supervise(root, ident, token):
                 ]
             )
         if config["mode"] == "observations":
-            args.append("--observations-only")
+            args.extend(
+                (
+                    "--observations-only",
+                    "--observation-period-s",
+                    str(config.get("observation_period_s", 1)),
+                )
+            )
         with (trial / "worker.log").open("xb") as log:
             process = subprocess.Popen(
                 args,
@@ -406,6 +423,7 @@ def dispatch(root, request):
                 continue
         return dict(
             protocol=1,
+            background_rgb_periods_s=[1, 2, 5],
             host=platform.node(),
             system=platform.system(),
             slots=slots,
@@ -433,10 +451,12 @@ def dispatch(root, request):
                 "UPDATE jobs SET state='stopping' WHERE id=? AND state IN ('running','reserved')",
                 (ident,),
             )
-    elif op == "frame":
+    elif op in ("frame", "observation"):
         row = status(root, ident)
-        if not row["stream"]:
+        if op == "frame" and not row["stream"]:
             raise ValueError("Choose the foreground job for a live frame")
+        if op == "observation" and row["stream"]:
+            raise ValueError("Choose a background job to sample an observation")
         path = root / ident / "trial/preview.rgb"
         if not path.is_file():
             return dict(ready=False)

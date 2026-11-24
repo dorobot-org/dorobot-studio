@@ -50,6 +50,13 @@ def send(node, request):
     return result["reply"]
 
 
+def check_background_period(node, period):
+    if period not in send(node, dict(op="hello")).get("background_rgb_periods_s", []):
+        raise ValueError(
+            "This worker does not advertise the selected background RGB period. Update its Studio checkout."
+        )
+
+
 def submission(
     path, mode="observations", seed=0, fixture="standard", ident=None, room=None
 ):
@@ -66,9 +73,8 @@ def submission(
         room_hash = hashlib.sha256(room.read_bytes()).hexdigest()
         files.update(
             {
-                "room/" + name: base64.b64encode(
-                    room.with_name(name).read_bytes()
-                ).decode()
+                "room/"
+                + name: base64.b64encode(room.with_name(name).read_bytes()).decode()
                 for name in ROOM_FILES
             }
         )
@@ -99,14 +105,17 @@ def main():
     submit.add_argument(
         "--mode", choices=["stream", "observations"], default="observations"
     )
+    submit.add_argument(
+        "--observation-period-s", type=int, choices=(1, 2, 5), default=1
+    )
     submit.add_argument("--seed", type=int, default=0)
     submit.add_argument(
         "--fixture", choices=["standard", "compliant", "impact"], default="standard"
     )
-    for op in ["status", "cancel", "frame", "fetch"]:
+    for op in ["status", "cancel", "frame", "observation", "fetch"]:
         p = cmds.add_parser(op)
         p.add_argument("id")
-        if op in ("frame", "fetch"):
+        if op in ("frame", "observation", "fetch"):
             p.add_argument("output", type=Path)
     args = cli.parse_args()
     request = dict(op=args.op)
@@ -114,16 +123,19 @@ def main():
         request = submission(
             args.controller, args.mode, args.seed, args.fixture, args.id, args.room
         )
+        request["observation_period_s"] = args.observation_period_s
     elif args.op != "hello":
         request["id"] = args.id
     node = json.loads(args.nodes.read_bytes())[args.node]
+    if args.op == "submit" and args.mode == "observations":
+        check_background_period(node, args.observation_period_s)
     if args.op == "fetch":
         from fleet_artifacts import download
 
         print(json.dumps(download(send, node, args.id, args.output), indent=2))
         return
     reply = send(node, request)
-    if args.op == "frame" and reply["ready"]:
+    if args.op in ("frame", "observation") and reply["ready"]:
         args.output.write_bytes(base64.b64decode(reply.pop("data"), validate=True))
     print(json.dumps(reply, indent=2))
 

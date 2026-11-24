@@ -53,6 +53,7 @@ def simulate(
     reach_weights=None,
     impact_aim=DEFAULT_IMPACT_AIM,
     observations_only=False,
+    observation_period_s=1,
 ):
     from g1_reach_checkpoint import features
     from aisle.kinematics import load_urdf_chain
@@ -326,7 +327,7 @@ def simulate(
                 both_feet=feet.issubset(loaded),
             )
             rows.append(row)
-            if observations_only and step != 1 and step % 200:
+            if observations_only and step != 1 and step % (200 * observation_period_s):
                 save(out / "progress.json", row)
                 continue
             rgb = np.asarray(camera.render()[0], dtype=np.uint8)
@@ -335,9 +336,14 @@ def simulate(
                 samples.append(
                     dict(step=step, state=q.tolist(), action=targets.tolist())
                 )
-            tmp = out / "preview.tmp"
-            tmp.write_bytes((step - 1).to_bytes(4, "big") + rgb.tobytes())
-            tmp.replace(out / "preview.rgb")
+            if observations_only:
+                from worker import publish_background_rgb
+
+                publish_background_rgb(out, step - 1, rgb)
+            else:
+                tmp = out / "preview.tmp"
+                tmp.write_bytes((step - 1).to_bytes(4, "big") + rgb.tobytes())
+                tmp.replace(out / "preview.rgb")
             save(out / "progress.json", row)
     Image.fromarray(rgb).save(out / "frame.png")
     save(out / "trajectory.json", rows)
