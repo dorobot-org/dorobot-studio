@@ -112,6 +112,47 @@ class RoomTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "distinct"):
             fit_mount("left_wrist", row)
 
+    def test_environment_edit_preserves_parent_geometry_calibration_and_input(self):
+        parent = self.saved / "room.json"
+        sha = digest(parent)
+        edited = self.root / "environment"
+        edited.mkdir()
+        revision = import_room(
+            self.saved / "survey.json",
+            edited,
+            SCENE,
+            parent=sha,
+            environment={"floor_friction": 0.25},
+        )
+        self.assertEqual(digest(parent), sha)
+        self.assertEqual(revision["parent_sha256"], sha)
+        self.assertEqual(revision["obstacles"], self.revision["obstacles"])
+        self.assertEqual(
+            revision["settings"], {**self.revision["settings"], "floor_friction": 0.25}
+        )
+        archived = json.loads((edited / "survey.json").read_bytes())
+        self.assertEqual(archived["environment"]["floor_friction"], 0.25)
+        for invalid in (
+            {"ambient_rgb": [0.4, 0.5]},
+            {"floor_friction": float("nan")},
+            {"ambient_rgb": [0, -0.2, 1]},
+            {"floor_friction": 2.1},
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                import_room(
+                    self.saved / "survey.json",
+                    edited,
+                    SCENE,
+                    parent=sha,
+                    environment=invalid,
+                )
+        self.assertEqual(
+            load_revision(
+                edited / "room.json", digest(edited / "room.json"), SCENE, MODEL_SHA
+            ),
+            revision,
+        )
+
     def test_modified_survey_cannot_change_a_saved_revision(self):
         parent = digest(self.saved / "room.json")
         (self.saved / "survey.json").write_text("{}")

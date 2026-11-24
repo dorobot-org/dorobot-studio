@@ -1169,6 +1169,8 @@ def main():
     p.add_argument("--room-revision", type=Path)
     p.add_argument("--room-hash")
     p.add_argument("--room-edit")
+    p.add_argument("--room-ambient", help="Three space-separated Nexus ambient RGB intensities")
+    p.add_argument("--floor-friction", help="Nexus floor friction coefficient")
     p.add_argument(
         "--impact-recipe", type=Path, help="Bounded G1 simulation impact JSON"
     )
@@ -1334,6 +1336,17 @@ def main():
                 source = args.room_revision.with_name("survey.json")
             if source is None:
                 raise ValueError("Choose a room survey JSON file")
+            environment = {}
+            if args.room_ambient is not None:
+                try:
+                    environment["ambient_rgb"] = [float(v) for v in args.room_ambient.split()]
+                except ValueError as exc:
+                    raise ValueError("Use three ambient intensities from zero to one") from exc
+            if args.floor_friction is not None:
+                try:
+                    environment["floor_friction"] = float(args.floor_friction)
+                except ValueError as exc:
+                    raise ValueError("Choose a floor friction coefficient from zero to two") from exc
             import_room(
                 source.resolve(),
                 args.out,
@@ -1341,6 +1354,7 @@ def main():
                 args.room_edit,
                 parent=args.room_hash if args.room_source is None else None,
                 model_sha=describe("Nano")["model_hash"],
+                environment=environment or None,
             )
             return
         if args.operation == "train-grasp":

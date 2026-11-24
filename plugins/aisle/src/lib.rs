@@ -139,6 +139,11 @@ script_mod! {
                 room_edits := View{width:Fill height:Fit flow:Down spacing:6
                 Section{text:"Edit obstacle · metres"} geometry := TextInput{width:Fill height:38 empty_text:"name x y height"}
                 save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
+                Section{text:"Ambient light · R G B (0–1)"}
+                room_ambient := TextInput{width:Fill height:34 empty_text:"Three channel intensities"}
+                Section{text:"Floor friction (0–2)"}
+                room_friction := TextInput{width:Fill height:34 empty_text:"Coefficient"}
+                save_environment := mod.widgets.ux.ToolButton{text:"Save environment"}
                 default_room := mod.widgets.ux.ToolButton{text:"Use default room"}}
             }
             inspector := Card{width:285 height:Fill padding:0.0
@@ -875,12 +880,19 @@ impl PluginPanel for Panel {
                     self.root
                         .button(cx, ids!(import_survey))
                         .set_enabled(cx, !w.busy());
-                    for id in [ids!(save_geometry), ids!(default_room)] {
+                    for id in [ids!(save_geometry), ids!(save_environment), ids!(default_room)] {
                         self.root
                             .button(cx, id)
                             .set_enabled(cx, !w.busy() && !draft && w.room_path.is_some());
                     }
                     if self.room_preview.as_ref() != preview {
+                        let settings = &info["settings"];
+                        let ambient = settings["ambient_rgb"].as_array().map(|rgb| {
+                            rgb.iter().map(ToString::to_string).collect::<Vec<_>>().join(" ")
+                        }).unwrap_or_else(|| "0.6 0.6 0.6".to_owned());
+                        let friction = settings["floor_friction"].as_f64().unwrap_or(0.7);
+                        self.root.text_input(cx, ids!(room_ambient)).set_text(cx, &ambient);
+                        self.root.text_input(cx, ids!(room_friction)).set_text(cx, &friction.to_string());
                         let player = self.root.video_player(cx, ids!(photo));
                         player.clear(cx);
                         if let Some(raw) = preview
@@ -1921,6 +1933,12 @@ impl PluginPanel for Panel {
                 b.dispatch(Intent::Aisle(Action::DraftRoom { source, planner }));
                 return true;
             }
+        }
+        if self.root.button(cx, ids!(save_environment)).clicked(actions) {
+            let ambient = self.root.text_input(cx, ids!(room_ambient)).text();
+            let friction = self.root.text_input(cx, ids!(room_friction)).text();
+            b.dispatch(Intent::Aisle(Action::SetRoomEnvironment { ambient, friction }));
+            return true;
         }
         let importing = self.root.button(cx, ids!(import_survey)).clicked(actions);
         if importing || self.root.button(cx, ids!(save_geometry)).clicked(actions) {
