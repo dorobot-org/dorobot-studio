@@ -162,7 +162,7 @@ script_mod! {
                     node := TextInput{width:Fill height:34 empty_text:"local or configured SSH worker"}
                     Bar{connect := mod.widgets.ux.ToolButton{text:"Connect"} refresh := mod.widgets.ux.ToolButton{text:"Refresh"}}
                     capacity := Body{}
-                    Bar{clock := mod.widgets.ux.ToolButton{text:"Sim time"} period := mod.widgets.ux.ToolButton{text:"RGB / 1 s"} sample_job := mod.widgets.ux.ToolButton{text:"Get snapshot"}}
+                    Bar{clock := mod.widgets.ux.ToolButton{text:"Sim time"} period := mod.widgets.ux.ToolButton{text:"RGB / 1 s"} sample_job := mod.widgets.ux.ToolButton{text:"Snapshot"}}
                     Bar{queue_stream := mod.widgets.ux.PrimaryButton{text:"Stream run"} queue_background := mod.widgets.ux.ToolButton{text:"Background run"}}
                     Section{text:"Selected job"} job_detail := Body{}
                     Bar{older_job := mod.widgets.ux.ToolButton{text:"Previous job"} newer_job := mod.widgets.ux.ToolButton{text:"Next job"}}
@@ -335,7 +335,7 @@ impl Panel {
                 } else {
                     "sim"
                 };
-                format!("background · RGB / {period} {clock} s")
+                format!("background\nRGB every {period} s ({clock} time)")
             };
             format!(
                 "{} of {} · {} · {}\n{} · {} physics steps{}",
