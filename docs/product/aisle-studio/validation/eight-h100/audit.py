@@ -139,9 +139,9 @@ def cohort(archive, name):
         for line in read("gpu-processes.txt").decode().splitlines()
         if "C+G" in line and "python" in line
     ]
-    assert len({l[1] for l in compute}) == 8 and {int(l[0]) for l in compute} == set(
-        range(8)
-    )
+    assert len({process[1] for process in compute}) == 8 and {
+        int(process[0]) for process in compute
+    } == set(range(8))
     clocks = load("timing.json")
     latency = [a["provider"]["wall_seconds"] for a in prep["authors"]]
     assert len(rows) == 8 and clocks["native_exit"] == 0

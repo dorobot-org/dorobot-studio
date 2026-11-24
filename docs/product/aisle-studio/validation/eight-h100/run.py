@@ -16,8 +16,8 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[5]
 TOOLS = ROOT / "tools/aisle_workbench"
 sys.path.insert(0, str(TOOLS))
-from fleet_artifacts import download
-from fleet_client import send, submission
+from fleet_artifacts import download  # noqa: E402
+from fleet_client import send, submission  # noqa: E402
 
 clock = time.monotonic_ns
 

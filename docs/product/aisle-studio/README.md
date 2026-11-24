@@ -89,3 +89,5 @@ Use **Evidence → Device preflight** to replay G1 encoders and IMU over DDS, ob
 [Watch a live Nano head camera and check concurrent simulation frame rates](validation/foreground-preview/README.md)
 
 [Open both Nano revisions at the first changed action and inspect the exact decision cameras](validation/first-action-change/README.md)
+
+To run eight Nano sessions on a Linux H100 server from a Mac, register one worker per GPU, open a single foreground stream, and measure the seven background feeds alongside it. [Eight-H100 setup, measurements and verification](validation/eight-h100/README.md)
