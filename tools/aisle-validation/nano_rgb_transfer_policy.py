@@ -309,7 +309,7 @@ class Controller:
                 self.joints(dict(head_pan_joint=0.25, head_tilt_joint=0.65), 160)
             # Move once between consecutive sensor requests; each read is a fresh exposure.
             self.drive()
-            for transport_attempt in range(2):
+            for transport_attempt in range(3):
                 for attempt in range(2):
                     xy = self.align()
                     self.phase("pick", color)
@@ -345,12 +345,16 @@ class Controller:
                     ),
                     320,
                 )
+                if transport_attempt == 2:
+                    # Two wrist-confirmed drops warrant a different carry posture.
+                    # Turn the fixed finger beneath the cube before rotating the base.
+                    self.reach([0.285, 0.225, 0.21], 600, 1, supported=True)
                 edge = self.dock(color)
                 self.drive()
                 if edge is not None and self.held_in_wrist_view(color):
                     break
-                if transport_attempt:
-                    raise ValueError(f"Lost {color} during two transport attempts")
+                if transport_attempt == 2:
+                    raise ValueError(f"Lost {color} after two normal carries and a supported carry")
                 self.joints({self.grip: -0.25}, 120)
                 self.back_away(color)
                 # A dropped cube may lie beside a table leg. Fold the spare arm up
