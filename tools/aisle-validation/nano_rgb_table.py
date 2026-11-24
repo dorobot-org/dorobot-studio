@@ -126,8 +126,8 @@ def occupied_table_points(views, edge, colors):
             for (x, y, w, h, area), (u, v) in zip(components[1:], centres[1:]):
                 if area < 12 or min(w, h) < 3 or max(w, h) > 3 * min(w, h):
                     continue
-                if x == 0 or y == 0 or x + w >= rgb.shape[1] or y + h >= rgb.shape[0]:
-                    continue
+                # A previously placed cube can enter the wrist view at the image
+                # boundary. Its visible center still reserves occupied space.
                 ray = rays(np.array([[u, v]]), pose, intrinsics)[0]
                 if abs(ray[2]) < 0.035:
                     continue

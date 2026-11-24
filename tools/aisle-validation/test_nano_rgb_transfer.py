@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+import tempfile
 import unittest
 from collections import Counter, deque
 from types import SimpleNamespace
@@ -5,10 +8,26 @@ from types import SimpleNamespace
 import numpy as np
 
 from nano_rgb_transfer_policy import Controller, release_candidates, visible_in_jaws
+from nano_wrist_timing import WristTiming
 from run_rgb_transfer import Judge, finger_gap
 
 
 class TransferTests(unittest.TestCase):
+    def test_synchronized_policy_read_rejects_recent_but_misaligned_wrist_image(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            guard = WristTiming("intermittent", Path(tmp), False)
+            for tick in range(0, 40, 5):
+                image = np.full((4, 4, 3), tick, dtype=np.uint8)
+                accepted = guard.accept(tick, lambda: image, synchronized=True)
+                self.assertEqual(accepted, tick < 20)
+            np.testing.assert_array_equal(guard.accepted_rgb, np.full((4, 4, 3), 15))
+            entry = json.loads(
+                (Path(tmp) / "wrist-delivery.jsonl").read_text().splitlines()[-1]
+            )
+            self.assertEqual((entry["tick"], entry["capture_tick"]), (35, 25))
+            self.assertEqual(entry["fault"], "unsynchronized wrist packet")
+            self.assertEqual(guard.last_accepted_ns, 150_000_000)
+
     def test_forward_limit_preserves_braking_reverse_and_steering(self):
         controller = Controller.__new__(Controller)
         controller.max_forward_speed = 0.08

@@ -354,7 +354,8 @@ def operate(args):
                 req["observation_clock"] = clock
         if (
             args.rgb_timing != "normal"
-            and json.loads(args.controller.read_bytes()).get("kind") == "table-transfer"
+            and json.loads(base64.b64decode(req["controller"])).get("kind")
+            == "table-transfer"
         ):
             if args.rgb_timing not in send(node, {"op": "hello"}).get(
                 "transfer_wrist_timing", []

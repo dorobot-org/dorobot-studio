@@ -1244,7 +1244,9 @@ impl PluginPanel for Panel {
                     let mut lines = vec![];
                     let wrist = &w.evidence["wrist_timing"];
                     if let Some(fixture) = wrist["fixture"].as_str() {
-                        let outcome = if wrist["timed_out"] == true {
+                        let outcome = if wrist["received"] == 0 {
+                            "no pick samples"
+                        } else if wrist["timed_out"] == true {
                             "stopped on timeout"
                         } else if wrist["recoveries"].as_u64().unwrap_or(0) > 0 {
                             "resumed on fresh RGB"

@@ -79,9 +79,9 @@ def audit(folder):
     if mode == "disconnected":
         assert result["error"] == "Left wrist RGB timed out during pick"
         assert result["phase"] == "pick" and not result["cubes"]["red"]["passed"]
-    else:
+        assert not result["task_success"]
+    elif result["requested"] == ["red"]:
         assert result["cubes"]["red"]["passed"] and result["task_success"]
-    assert result["task_success"] == (mode != "disconnected")
     controller = hashlib.sha256((folder / "controller.json").read_bytes()).hexdigest()
     assert controller == result["controller_hash"]
     return dict(

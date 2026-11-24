@@ -252,9 +252,9 @@ class Controller:
         self.joints({self.grip: 0.70}, 55 if self.track_grasp else 200)
         self.reach(np.r_[xy, 0.085], 320, 8, True)
 
-    def table_views(self, data):
+    def table_views(self, data, cameras=("head", "right_wrist")):
         views = []
-        for name in ("head", "right_wrist"):
+        for name in cameras:
             chain, indices, mount, k, _ = self.servo.cameras[name]
             p, r = chain.forward(data["encoders"][indices])
             pose = np.eye(4)
@@ -432,7 +432,7 @@ class Controller:
             occupied = []
             if index:
                 self.drive()
-                views = self.table_views(self.sense())
+                views = self.table_views(self.sense(), CAMERAS)
                 occupied = occupied_table_points(views, edge, self.colors[:index])
             z = edge["height"]
             for along, inset, search in release_candidates(side, edge["span"]):
