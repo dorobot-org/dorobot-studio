@@ -33,6 +33,21 @@ To repeat the complete UI check, configure a reachable worker in `DOROBOT_AISLE_
 The worker used a Python 3.12 environment with Nexus 0.2.1, an NVIDIA Vulkan ICD and OpenCV 5.1.0.95 with SciPy 1.18.1. For a multi-GPU host, choose the intended Vulkan device and verify placement with the driver during the run. On this host the Mesa device-select layer accepted a PCI-qualified `DRI_PRIME` setting. The remote account and spool are operator-owned. The app streams the foreground and polls the selected background observation over the registered SSH connection.
 
 
+## Recover a foreground after closing Studio
+
+A registered worker keeps running its submitted lease when the viewer disconnects. Reopen the same Studio workspace, go to **Run → Workers**, select the original foreground and fetch its trial into **Evidence**. Export the episode if needed, then choose **Open in Replay**.
+
+For an interrupted verifier run, keep its output directory and use the same worker alias and credentials. This command copies the earlier client state into a new directory, checks the submitted controller digest, waits for the original lease and opens its recording across two Studio launches. It recovers the controller author from the saved submission. If the original workspace used the dark theme, pass `--dark`.
+
+```sh
+.venv-aisle/bin/python tools/aisle_workbench/verify.py \
+  --studio target/debug/dorobot-flex --backend offscreen --size 1440x900 \
+  --fleet --fleet-node h100 --resume-fleet /tmp/aisle-remote-nano \
+  --out /tmp/aisle-remote-nano-recovered
+```
+
+On a one-slot Metal worker, Studio closed while its last displayed Nano RGB frame was at tick 156. The worker completed the Codex-authored transfer with wheel support at all 6,848 ticks. The original and recovered journals contained the same single lease. Its controller, result, 17-channel recording and motor file matched the worker archive byte for byte. All three exported videos decoded to 342 frames each. Two earlier two-job workspaces also reopened in headless Studio. The first preserved the cancelled observer’s frame at tick 601. The older one had no saved observer image. [Lease IDs, archive digests, camera checks and native restart receipts](foreground-recovery.json)
+
 ## Exercise both physical hosts
 
 While the Linux foreground is running and selected in the native verifier, the following command uses the same authored controller for a second Nano on the Mac. It starts a separate local worker with one slot, samples progress on both machines against the Mac's monotonic clock and verifies the downloaded local motor journal. It only cancels the local job it created if that test is interrupted.
