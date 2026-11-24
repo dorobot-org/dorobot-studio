@@ -22,6 +22,7 @@ from fleet_artifacts import download
 from fleet_client import (
     check_background_period,
     decode_rgb,
+    decode_plane,
     poll_observation,
     send,
     submission,
@@ -301,25 +302,27 @@ def foreground_packets(pipe, silence_s=10):
         packet = json.loads(buf[:boundary])
         del buf[: boundary + 1]
         size = packet["bytes"]
-        if type(size) is not int or size not in (
-            0,
-            4 + 480 * 320 * 3,
-            4 + 480 * 360 * 3,
+        encoding = packet.get("encoding", "raw")
+        plane_sizes = (4 + 480 * 320 * 3, 4 + 480 * 360 * 3)
+        expanded = packet.get("raw_bytes", size)
+        if type(size) is not int or type(expanded) is not int or not (
+            (encoding == "raw" and expanded == size and size in (0, *plane_sizes))
+            or (encoding == "zlib" and expanded in plane_sizes and 0 < size < expanded)
         ):
-            raise ValueError("Invalid foreground frame size")
+            raise ValueError("Invalid foreground frame size or encoding")
         while len(buf) < size:
             if not read_more():
                 raise ValueError("Incomplete foreground RGB frame")
         raw = bytes(buf[:size])
         del buf[:size]
-        yield packet, raw
+        yield packet, decode_plane(raw, encoding, expanded)
 
 
-def watch_foreground(node, ident, out, root):
+def watch_foreground(node, ident, out, root, *, compress=False):
     job, frame = None, None
-    proc = subprocess.Popen(
-        worker_command(node, "watch-rgb", ident), stdout=subprocess.PIPE
-    )
+    options = ("--encoding", "zlib") if compress else ()
+    transport = dict(frames=0, compressed_frames=0, wire_bytes=0, raw_bytes=0)
+    proc = subprocess.Popen(worker_command(node, "watch-rgb", ident, *options), stdout=subprocess.PIPE)
     try:
         for packet, raw in foreground_packets(proc.stdout):
             if "job" in packet:
@@ -332,6 +335,10 @@ def watch_foreground(node, ident, out, root):
             if not job:
                 raise ValueError("Missing foreground job identity")
             if raw:
+                transport["frames"] += 1
+                transport["compressed_frames"] += int(packet.get("encoding") == "zlib")
+                transport["wire_bytes"] += packet["bytes"]
+                transport["raw_bytes"] += len(raw)
                 tmp = out / "preview.tmp"
                 tmp.write_bytes(raw)
                 tmp.replace(out / "preview.rgb")
@@ -340,7 +347,7 @@ def watch_foreground(node, ident, out, root):
                     height=(len(raw) - 4) // 1440,
                     sha256=hashlib.sha256(memoryview(raw)[4:]).hexdigest(),
                 )
-            save(out / "watch.json", dict(job=job, frame=frame))
+            save(out / "watch.json", dict(job=job, frame=frame, transport=transport))
         if proc.wait(timeout=5) or not job or job["state"] in ACTIVE:
             raise ValueError(
                 "Foreground RGB stream disconnected. Refresh the worker to reconnect."
@@ -371,11 +378,11 @@ def operate(args):
         row = record(root, ident)
         if row["node"] != alias:
             raise ValueError("This job belongs to another node")
-        if (
-            row["mode"] == "stream"
-            and send(node, dict(op="hello")).get("foreground_rgb_protocol") == 1
-        ):
-            return watch_foreground(node, ident, args.out, root)
+        if row["mode"] == "stream":
+            capabilities = send(node, dict(op="hello"))
+            if capabilities.get("foreground_rgb_protocol") == 1:
+                compress = bool(node.get("ssh")) and "zlib" in capabilities.get("foreground_rgb_encodings", [])
+                return watch_foreground(node, ident, args.out, root, compress=compress)
         while True:
             info = reconcile(root, row, node)
             frame = None

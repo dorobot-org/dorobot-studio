@@ -222,6 +222,16 @@ class WorkerLeaseTests(unittest.TestCase):
         out.seek(0)
         self.assertEqual(json.loads(out.readline()), dict(job=final, bytes=len(raw)))
         self.assertEqual(out.read(), raw)
+        encoded = io.BytesIO()
+        with patch("fleet_worker.status", return_value=final):
+            stream_rgb(self.root, ident, encoded, encoding="zlib")
+        encoded.seek(0)
+        compressed_header = json.loads(encoded.readline())
+        compressed = encoded.read()
+        self.assertEqual(compressed_header["encoding"], "zlib")
+        self.assertEqual(compressed_header["raw_bytes"], len(raw))
+        self.assertEqual(compressed_header["bytes"], len(compressed))
+        self.assertEqual(zlib.decompress(compressed), raw)
         with patch("fleet_worker.status", return_value=final | {"stream": False}):
             with self.assertRaisesRegex(ValueError, "foreground"):
                 stream_rgb(self.root, ident, io.BytesIO())

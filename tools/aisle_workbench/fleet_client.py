@@ -69,7 +69,10 @@ def decode_rgb(reply):
     if len(reply["data"]) > 4 * ((size + 2) // 3):
         raise ValueError("Invalid worker camera payload length")
     pixels = base64.b64decode(reply["data"], validate=True)
-    encoding = reply.get("encoding", "raw")
+    return decode_plane(pixels, reply.get("encoding", "raw"), size)
+
+
+def decode_plane(pixels, encoding, size):
     if encoding == "zlib":
         decoder = zlib.decompressobj()
         try:

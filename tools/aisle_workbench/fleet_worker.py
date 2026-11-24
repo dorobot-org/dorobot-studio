@@ -448,6 +448,7 @@ def dispatch(root, request):
         return dict(
             protocol=1,
             foreground_rgb_protocol=1,
+            foreground_rgb_encodings=["raw", "zlib"],
             background_rgb_periods_s=[1, 2, 5],
             background_rgb_clocks=["simulation", "wall"],
             transfer_wrist_timing=["normal", "intermittent", "disconnected"],
@@ -521,7 +522,7 @@ def dispatch(root, request):
     return status(root, ident)
 
 
-def stream_rgb(root, ident, output):
+def stream_rgb(root, ident, output, *, encoding="raw"):
     """Write a bounded JSON header and optional tick-prefixed RGB plane per update."""
     ident = job_id(ident)
     path = root / ident / "trial/preview.rgb"
@@ -551,6 +552,11 @@ def stream_rgb(root, ident, output):
             pass
         if info or frame:
             packet = dict(bytes=len(frame))
+            if frame and encoding == "zlib":
+                compressed = zlib.compress(frame, level=1)
+                if len(compressed) < len(frame):
+                    packet.update(encoding="zlib", raw_bytes=len(frame), bytes=len(compressed))
+                    frame = compressed
             if info:
                 packet["job"] = info
             output.write(json.dumps(packet, allow_nan=False).encode() + b"\n")
@@ -569,7 +575,9 @@ def main():
     init = cmd.add_parser("init")
     init.add_argument("--slots", type=int, required=True)
     cmd.add_parser("rpc")
-    cmd.add_parser("watch-rgb").add_argument("id")
+    watch = cmd.add_parser("watch-rgb")
+    watch.add_argument("id")
+    watch.add_argument("--encoding", choices=("raw", "zlib"), default="raw")
     supervise_cmd = cmd.add_parser("_supervise")
     supervise_cmd.add_argument("id")
     supervise_cmd.add_argument("token")
@@ -579,7 +587,7 @@ def main():
         initialize(root, args.slots)
     elif args.command == "watch-rgb":
         try:
-            stream_rgb(root, args.id, sys.stdout.buffer)
+            stream_rgb(root, args.id, sys.stdout.buffer, encoding=args.encoding)
         except BrokenPipeError:
             return
     elif args.command == "rpc":
