@@ -223,6 +223,7 @@ fn compare_transfer(history: &[PathBuf], path: &Path, current: &Value) -> Option
             continue;
         };
         if source["room_revision_sha256"] != old["room_revision_sha256"]
+            || source["grasp_motion"] != old["grasp_motion"]
             || !["recipe", "nexus", "adapter_hash", "backend"]
                 .iter()
                 .all(|k| !source[*k].is_null() && source[*k] == old[*k])
@@ -764,6 +765,8 @@ impl Workbench {
         if op == "run" || submitting {
             if self.plan["kind"] == "visual-approach" {
                 cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
+            }
+            if mobile {
                 cmd.arg("--target-motion").arg(self.target_motion.name());
             }
             cmd.arg("--seed").arg(self.layout_seed.to_string());

@@ -46,7 +46,7 @@ def finger_gap(point, position, rotation, bounds, cube_radius):
 
 
 class Judge:
-    def __init__(self, sim, colors, record_labels=False):
+    def __init__(self, sim, colors, record_labels=False, trace_fingers=False):
         self.colors = colors
         self.airborne_in_jaw = {n: False for n in colors} if record_labels else None
         objects = {s["name"]: b for s, b in zip(sim.specs, sim.bodies)}
@@ -82,6 +82,7 @@ class Judge:
         self.excursions = Counter()
         self.tail = {n: deque(maxlen=100) for n in colors}
         self.phase = "start"
+        self.pick_contacts = {} if trace_fingers else None
         xml = ET.parse(MODEL)
         self.bounds = {
             j: (float(x.get("lower")), float(x.get("upper")))
@@ -94,6 +95,9 @@ class Judge:
         ground = False
         fingers = {c: set() for c in self.colors}
         touching_gripper = set()
+        finger_impulses = (
+            {c: {} for c in self.colors} if self.pick_contacts is not None else None
+        )
         table_support = set()
         other_support = set()
         impact = set()
@@ -121,6 +125,10 @@ class Judge:
                 ground = True
             elif obj in fingers and link in ("left_finger_a", "left_finger_b"):
                 fingers[obj].add(link)
+                if finger_impulses is not None:
+                    finger_impulses[obj][link] = finger_impulses[obj].get(
+                        link, 0.0
+                    ) + float(row["impulse"])
                 touching_gripper.add(obj)
             elif obj in fingers:
                 other_support.add(obj)
@@ -166,6 +174,8 @@ class Judge:
             if not np.isfinite(pos).all():
                 raise ValueError("Nonfinite cube state")
             elevated = pos[2] - self.initial[n][2] > 0.05
+            if self.pick_contacts is not None:
+                self.pick_contacts[n] = (finger_impulses[n], n in other_support)
             if self.airborne_in_jaw is not None:
                 self.airborne_in_jaw[n] = bool(
                     elevated and fingers[n] and n not in other_support
@@ -237,6 +247,7 @@ def execute(
     room_settings=None,
     observation_progress=False,
     observation_period_s=1,
+    target_motion="stationary",
 ):
     from nano_grasp_estimator import parameters
 
@@ -282,6 +293,9 @@ def execute(
                 "model_hash",
             )
         }
+    if plan.get("track_grasp"):
+        config["track_grasp"] = True
+    slides = {}
     metadata = worker.describe("Nano")
     xml = ET.parse(MODEL)
     speeds = {
@@ -289,7 +303,12 @@ def execute(
         for j in metadata["limits"]
     }
     guard = WheelGuard()
-    judge = Judge(sim, colors, record_labels=record or detector is not None)
+    judge = Judge(
+        sim,
+        colors,
+        record_labels=record or detector is not None,
+        trace_fingers=target_motion != "stationary",
+    )
     envelope = MotorEnvelope(MODEL, sim.names, sim.scene.dt)
     journal = out / "motor-targets.f64"
     policy = HERE / "nano_rgb_transfer_policy.py"
@@ -300,6 +319,9 @@ def execute(
         source
         | dict(
             recipe=RECIPE,
+            **(
+                {"grasp_motion": target_motion} if target_motion != "stationary" else {}
+            ),
             seed=seed,
             model_sha256=worker.digest(MODEL),
             policy_sha256=worker.digest(policy),
@@ -307,6 +329,11 @@ def execute(
                 f.name: worker.digest(f)
                 for f in (
                     HERE / "nano_grasp_estimator.py",
+                    *(
+                        (HERE / "nano_moving_grasp.py",)
+                        if target_motion != "stationary"
+                        else ()
+                    ),
                     HERE / "nano_rgb_table.py",
                     HERE / "nano_actuator_audit.py",
                     HERE / "nano_visuals.py",
@@ -371,10 +398,14 @@ def execute(
     def step():
         if sim.tick >= 60000:
             raise ValueError("episode step budget exhausted")
+        slide = slides.get(active_color)
+        applied = slide.before_step() if slide else False
         motors.apply(sim.robot, sim.dofs, sim.targets)
         sim.scene.step()
         sim.tick += 1
         judge.tick(sim)
+        if slide:
+            slide.after_step(*judge.pick_contacts[active_color], applied)
         if record and sim.tick % 20 == 0:
             publish(sample=True)
         elif observation_progress and sim.tick % 100 == 0:
@@ -515,6 +546,20 @@ def execute(
                             out / f"jaw-{sim.tick:05}-{active_color}.png"
                         )
                         child.stdin.write(b'{"ok":true}\n')
+                    elif op == "grasp observation" and command["color"] == active_color:
+                        if (
+                            command["stamp_ns"] != int(packet["stamp_ns"])
+                            or command["stamp_ns"] != sim.tick * 10_000_000
+                        ):
+                            raise ValueError(
+                                "Grasp observation refers to a different exposure"
+                            )
+                        folder = out / "grasp-observations"
+                        folder.mkdir(exist_ok=True)
+                        np.savez_compressed(folder / f"{sim.tick:06}.npz", **packet)
+                        if active_color in slides:
+                            slides[active_color].observe(command)
+                        child.stdin.write(b'{"ok":true}\n')
                     elif op == "table observation":
                         child.stdin.write(b'{"ok":true}\n')
                     elif op in ("wheel", "joint"):
@@ -531,8 +576,27 @@ def execute(
                                 json.dumps(dict(next=command, **judge.result(sim))),
                                 file=private,
                             )
+                        if judge.phase == "pick" and active_color in slides:
+                            slides[active_color].finish_pick(
+                                judge.grasped[active_color]
+                            )
                         active_color = command["color"]
                         judge.phase = command["name"]
+                        if (
+                            target_motion != "stationary"
+                            and judge.phase == "pick"
+                            and active_color not in slides
+                        ):
+                            from nano_moving_grasp import FloorSlide
+
+                            slides[active_color] = FloorSlide(
+                                sim,
+                                judge.cubes[active_color],
+                                target_motion,
+                                out / f"motion-{active_color}.jsonl",
+                                float(judge.initial[active_color][2]),
+                                judge.grasped[active_color],
+                            )
                         phases.append(dict(tick=sim.tick, **command))
                         for name in CAMERAS:
                             frame = sim.rig[name].render(
@@ -592,7 +656,19 @@ def execute(
         and audit["passed"]
         and not motors.rejected
     )
+    motion = {color: slide.result() for color, slide in slides.items()}
+    if target_motion != "stationary":
+        passed = (
+            passed
+            and set(motion) == set(colors)
+            and all(v["passed"] for v in motion.values())
+        )
     return result | dict(
+        **(
+            {"moving_grasp": dict(fixture=target_motion, cubes=motion)}
+            if target_motion != "stationary"
+            else {}
+        ),
         passed=bool(passed),
         error=error,
         requested=colors,

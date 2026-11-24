@@ -60,6 +60,7 @@ class Controller:
             raise ValueError("Joint order differs from the URDF")
         self.colors = config["colors"]
         self.servo = VisualServo(config | {"color": self.colors[0], "standoff_m": 0.45})
+        self.track_grasp = bool(config.get("track_grasp"))
         self.targets = None
         self.last_stamp = -1
         self.grip = "left_j6_gripper"
@@ -196,10 +197,48 @@ class Controller:
         )
         return inbound, outbound
 
+    def tracked_descent(self, xy):
+        previous = None
+        velocity = np.zeros(2)
+        heights = np.linspace(0.115, CUBE_CENTRE_Z + 0.004, 9)[1:]
+        for index, height in enumerate(heights):
+            packet = self.sense()
+            reading = self.servo.command(packet, preferred_camera="left_wrist")
+            point = reading["xy"]
+            stamp_ns = int(packet["stamp_ns"])
+            stamp = stamp_ns * 1e-9
+            if point is not None:
+                point = np.array(point)
+                if previous is not None:
+                    measured = (point - previous[1]) / (stamp - previous[0])
+                    velocity = np.clip(0.35 * velocity + 0.65 * measured, -0.06, 0.06)
+                previous = (stamp, point)
+            if previous is None or stamp - previous[0] > 1.6:
+                raise ValueError("Lost the pickup point in the onboard cameras")
+            # Each descent segment takes 30 interpolation ticks and 20 settling
+            # ticks. The final intercept also allows for finger closure.
+            horizon = 0.8 if index == len(heights) - 1 else 0.5
+            xy = previous[1] + velocity * (stamp - previous[0] + horizon)
+            self.act(
+                "grasp observation",
+                color=self.servo.target,
+                xy=reading["xy"],
+                cameras=reading["cameras"],
+                stamp_ns=stamp_ns,
+                velocity_xy_m_s=velocity.tolist(),
+                intercept_xy_m=xy.tolist(),
+                height_m=float(height),
+            )
+            self.reach(np.r_[xy, height], 30, 1, True)
+        return xy
+
     def pick(self, xy):
         self.reach(np.r_[xy, 0.115], 250, 1, True)
-        self.reach(np.r_[xy, CUBE_CENTRE_Z + 0.004], 250, 8, True)
-        self.joints({self.grip: 0.70}, 200)
+        if self.track_grasp:
+            xy = self.tracked_descent(xy)
+        else:
+            self.reach(np.r_[xy, CUBE_CENTRE_Z + 0.004], 250, 8, True)
+        self.joints({self.grip: 0.70}, 55 if self.track_grasp else 200)
         self.reach(np.r_[xy, 0.085], 320, 8, True)
 
     def table_views(self, data):
@@ -354,7 +393,9 @@ class Controller:
                 if edge is not None and self.held_in_wrist_view(color):
                     break
                 if transport_attempt == 2:
-                    raise ValueError(f"Lost {color} after two normal carries and a supported carry")
+                    raise ValueError(
+                        f"Lost {color} after two normal carries and a supported carry"
+                    )
                 self.joints({self.grip: -0.25}, 120)
                 self.back_away(color)
                 # A dropped cube may lie beside a table leg. Fold the spare arm up

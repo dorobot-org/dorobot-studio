@@ -80,6 +80,14 @@ class InspectionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 worker.validate(task | override, meta)
 
+    def test_tracking_is_opt_in_and_bound_to_a_transfer(self):
+        plan = dict(kind="table-transfer", color_order="red", track_grasp=True)
+        self.assertEqual(worker.validate(plan, self.profile), plan)
+        with self.assertRaisesRegex(ValueError, "tracking"):
+            worker.validate(plan | {"kind": "visual-approach"}, self.profile)
+        with self.assertRaisesRegex(ValueError, "tracking"):
+            worker.validate(plan | {"track_grasp": "true"}, self.profile)
+
     def test_transfer_requires_nano_and_a_distinct_color_order(self):
         for order in ["blue", "green,blue,red"]:
             p = dict(kind="table-transfer", color_order=order)
