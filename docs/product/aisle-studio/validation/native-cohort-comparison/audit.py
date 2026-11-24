@@ -73,6 +73,21 @@ def main():
         "g1-repeat": "repeat",
         "incomplete": "missing",
     }
+    reject_inputs = {
+        "nano-desktop": (
+            VALIDATION / "nano-holdout-d/evidence.zip",
+            "same set of distinct layout seeds",
+        ),
+        "small-rendered": (
+            VALIDATION / "nano-holdout-d/evidence.zip",
+            "same set of distinct layout seeds",
+        ),
+        "nano-compact": (source["g1"][1], "same robot"),
+        "g1-desktop": (source["nano"][0], "same robot"),
+        "g1-compact": (source["repeat"][0], "same set of impact recipes"),
+        "g1-repeat": (source["g1"][1], "same set of impact recipes"),
+        "incomplete": (source["nano"][1], "same set of distinct layout seeds"),
+    }
     binaries = set()
     with ZipFile(GUIDE / "native.zip") as z:
         for name, study in runs.items():
@@ -87,10 +102,17 @@ def main():
             binaries.add(build["native_binary_sha256"])
             labels = [r["check"] for r in first]
             assert labels[-3:] == [
-                "Incompatible comparison rejected",
                 "Single evaluation reopened",
                 "Comparison reopened",
+                "Incompatible comparison rejected",
             ]
+            reject_file, reason = reject_inputs[name]
+            with reject_file.open("rb") as f:
+                assert (
+                    first[-1]["rejected_archive_sha256"]
+                    == hashlib.file_digest(f, "sha256").hexdigest()
+                )
+            assert reason in first[-1]["status"]
             assert labels.count("Next changed case") == max(
                 0, len(result["changes"]) - 1
             )
@@ -100,6 +122,30 @@ def main():
                 assert result["counts"] == dict(
                     both_passed=1, both_failed=0, improved=0, regressed=0, unverified=1
                 )
+                original = report(source["nano"][1])["rows"]
+                for side, fixture in (
+                    ("baseline", "complete"),
+                    ("candidate", "incomplete"),
+                ):
+                    study_rows = json.loads(z.read(f"fixture-{fixture}/report.json"))
+                    committed = z.read(f"fixture-{fixture}/suite.json")
+                    assert (
+                        result[side]["manifest_sha256"]
+                        == hashlib.sha256(committed).hexdigest()
+                        == study_rows["manifest_sha256"]
+                    )
+                    for row in study_rows["rows"]:
+                        orig = next(r for r in original if r["seed"] == row["seed"])
+                        if row["verified"]:
+                            assert (
+                                orig["motor_sha256"] == row["motor_sha256"]
+                                and orig["passed"] == row["passed"]
+                            )
+                        else:
+                            assert (
+                                side == "candidate"
+                                and row["issue"] == "Missing complete physics result"
+                            )
                 (change,) = result["changes"]
                 assert (change["baseline_index"], change["candidate_index"]) == (0, 1)
                 assert change["candidate_reasons"] == [

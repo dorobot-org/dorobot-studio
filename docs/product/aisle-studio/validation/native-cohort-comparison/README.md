@@ -14,7 +14,7 @@ Studio rechecks each archive against its public commitment and replays its saved
 
 [Compact Nano comparison](nano-compact.png) · [Desktop G1 comparison](g1-desktop.png)
 
-Seven native Makepad journeys opened comparisons and restored them after a process restart. Tests covered 1024 × 768 headless, 1024 × 768 offscreen and 1440 × 900 offscreen. The instruments rejected unrelated Nano seeds, different G1 recipes and cross-robot selections. Each reopened a single evaluation and then the comparison. A separate diagnostic fixture reversed two known Nano layouts and omitted one completed physics result. Studio matched the reordered seeds and showed one verified pass and one unverified pair. [Native journeys, source manifests and restart records](native.zip)
+Seven native Makepad journeys opened comparisons and restored them after a process restart. Tests covered 1024 × 768 headless, 1024 × 768 offscreen and 1440 × 900 offscreen. The instruments rejected unrelated Nano seeds, different G1 recipes and cross-robot selections. Each reopened a single evaluation, restored the comparison, then restarted immediately after rejecting the incompatible archive. The previous verified comparison survived in all seven journeys. A separate diagnostic fixture reversed two known Nano layouts and omitted one completed physics result. Studio matched the reordered seeds and showed one verified pass and one unverified pair. [Native journeys, source manifests and restart records](native.zip)
 
 ## Reproduce a comparison
 
