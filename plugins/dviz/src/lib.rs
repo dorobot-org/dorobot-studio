@@ -7,6 +7,7 @@ mod map2d;
 mod map_view;
 mod nav_panel;
 mod nav_scene;
+mod nav_tools;
 #[cfg(feature = "rerun")]
 mod rerun_sink;
 #[cfg(feature = "rerun")]
