@@ -177,10 +177,11 @@ impl Bridge {
 
     /// The bridge on an open `session`, publishing through `publisher` (tests inject
     /// one). In order: reads the command token (only with `cmd.goal_enabled`) and prints
-    /// one line about goals / initial poses; starts the worker; starts the command lanes;
-    /// declares the queryable on `dviz/<robot_id>/cmd`. A `cmd.forward` other than
-    /// `127.0.0.1:<port>` is one ERROR line and no command channel at all (no queryable,
-    /// `cmd_goal_enabled` false), but data is still published.
+    /// one line about goals / initial poses, plus one WARNING line on stderr for an odd
+    /// `reply_timeout_ms` or `max_goal_per_s` ([`CmdConfig::warning`]); starts the worker;
+    /// starts the command lanes; declares the queryable on `dviz/<robot_id>/cmd`. A
+    /// `cmd.forward` other than `127.0.0.1:<port>` is one ERROR line and no command
+    /// channel at all (no queryable, `cmd_goal_enabled` false), but data is still published.
     pub fn start_with(
         cfg: BridgeConfig,
         sources: LogSources,
@@ -192,6 +193,9 @@ impl Bridge {
                 let home = std::env::var_os("HOME").map(PathBuf::from);
                 let (policy, line) = command_policy(&cfg.cmd, home.as_deref());
                 println!("{line}");
+                if let Some(warning) = cfg.cmd.warning() {
+                    eprintln!("{warning}");
+                }
                 Some((target, policy))
             }
             Err(e) => {

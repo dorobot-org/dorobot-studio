@@ -32,5 +32,5 @@
   "radii": { "plan": 0.025, "trail": 0.02, "goal": 0.04, "footprint": 0.01 },
   "robot_model": "tracer_mini",
   "log_forward_per_node_hz": 5,
-  "cmd": { "goal_enabled": true, "token_file": "@WORK@/cmd_token", "forward": "127.0.0.1:19998", "reply_timeout_ms": 1000, "max_goal_per_s": 2 }
+  "cmd": { "goal_enabled": true, "token_file": "@TOKEN_FILE@", "forward": "127.0.0.1:19998", "reply_timeout_ms": 1000, "max_goal_per_s": 2 }
 }

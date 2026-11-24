@@ -3,7 +3,7 @@
 //! the reply goes through [`Replier`]. Nothing here logs or returns the token.
 
 use crate::command::{decide, gate_view, nav_command_payload, CmdPolicy, Decision, GateView};
-use dviz_protocol::{CmdAck, CmdKind, CmdRequest, CmdResult};
+use dviz_protocol::{CmdAck, CmdKind, CmdRequest, CmdResult, CMD_ID_MAX};
 use std::io::Write;
 use std::net::{SocketAddr, UdpSocket};
 use std::panic::AssertUnwindSafe;
@@ -14,6 +14,9 @@ use std::time::{Duration, Instant};
 
 /// Jobs waiting per lane (one more may be in progress).
 const LANE_CAPACITY: usize = 16;
+/// Longest command name logged or echoed in an ack, in characters: the real ones are at
+/// most 11, and this bounds what a junk name adds to the ack and the log line.
+const CMD_SHOWN_MAX: usize = 32;
 
 /// The latest `cmd_gate/state` message and when it arrived.
 pub struct GateSlot {
@@ -109,16 +112,23 @@ fn code(r: CmdResult) -> String {
     serde_json::to_value(r).ok().and_then(|v| v.as_str().map(String::from)).unwrap_or_default()
 }
 
-/// Printable, short, one line: the command name comes from the network.
-fn clean(s: &str) -> String {
-    s.chars().take(32).map(|c| if c.is_control() { '?' } else { c }).collect()
+/// Printable, at most `max` characters, one line: the command name and id come from the
+/// network.
+fn clean(s: &str, max: usize) -> String {
+    s.chars().take(max).map(|c| if c.is_control() { '?' } else { c }).collect()
+}
+
+/// The request's command name and id for a log line: ids are up to 64 characters.
+fn shown(req: &CmdRequest) -> (String, String) {
+    (clean(&req.cmd, CMD_SHOWN_MAX), clean(&req.id, CMD_ID_MAX))
 }
 
 fn log_line(log: &SharedLog, req: Option<&CmdRequest>, result: CmdResult) {
     let mut line = String::from("nav-bridge: cmd");
     match req {
         Some(r) => {
-            line.push_str(&format!(" {} {}", clean(&r.cmd), clean(&r.id)));
+            let (cmd, id) = shown(r);
+            line.push_str(&format!(" {cmd} {id}"));
             for (k, v) in [("x", r.x), ("y", r.y), ("yaw", r.yaw)] {
                 if let Some(v) = v {
                     line.push_str(&format!(" {k}={v:.2}"));
@@ -137,7 +147,7 @@ fn answer(log: &SharedLog, job: Job, req: Option<&CmdRequest>, result: CmdResult
     log_line(log, req, result);
     let ack = CmdAck {
         id: req.map(|r| r.id.clone()).unwrap_or_default(),
-        cmd: req.map(|r| r.cmd.clone()).unwrap_or_default(),
+        cmd: req.map(|r| r.cmd.chars().take(CMD_SHOWN_MAX).collect()).unwrap_or_default(),
         result,
         reason: reason.to_string(),
     };
@@ -160,7 +170,7 @@ fn forward_and_answer(
 
 fn answer_forwarded(log: &SharedLog, job: Job, req: &CmdRequest, outcome: Forwarded) {
     let (result, reason) = match outcome {
-        Forwarded::Ok => (CmdResult::Ok, ""),
+        Forwarded::Ok => (CmdResult::Ok, "sent to nav_command"),
         Forwarded::Rejected => (CmdResult::NavRejected, "nav_command rejected the command"),
         Forwarded::NoReply => (CmdResult::NoReply, "no reply from nav_command"),
     };
@@ -249,11 +259,8 @@ impl CommandLanes {
                     // Sent, but nobody can take the answer: the ack is dropped (the asker times out).
                     let Pending { sock, job, req, .. } = p;
                     drop(sock);
-                    let line = format!(
-                        "nav-bridge: cmd {} {} sent, ack lost (reply thread busy or gone)\n",
-                        clean(&req.cmd),
-                        clean(&req.id)
-                    );
+                    let (cmd, id) = shown(&req);
+                    let line = format!("nav-bridge: cmd {cmd} {id} sent, ack lost (reply thread busy or gone)\n");
                     let _ = discard_tx.send((job, Some(line)));
                 }
             }
@@ -415,11 +422,45 @@ mod tests {
         let l = lanes(f.addr, LONG, &gate, &SharedBuf::default());
         let (j, rx) = job(&goal_json("s1-aaaa", TOKEN));
         assert!(l.submit(j));
-        assert_eq!(rx.recv_timeout(LONG).unwrap().result, CmdResult::Ok);
+        let ack = rx.recv_timeout(LONG).unwrap();
+        assert_eq!(ack.result, CmdResult::Ok);
+        // an `ok` carries a reason too, so Studio never shows "ok: " with nothing after it
+        assert_eq!(ack.reason, "sent to nav_command");
         let (_, v) = f.rx.recv_timeout(LONG).unwrap();
         assert_eq!(v["cmd"], "goal");
         assert!(v.get("token").is_none());
         l.stop();
+    }
+
+    /// Ids are up to 64 characters and logged in full; a command name is logged and echoed
+    /// in the ack cut to 32 characters, so junk names cannot blow up the ack or the log.
+    #[test]
+    fn long_ids_logged_in_full_and_junk_cmd_cut() {
+        let f = fake(|_| Some(true));
+        let gate = Arc::new(GateSlot::new());
+        let log = SharedBuf::default();
+        let l = lanes(f.addr, LONG, &gate, &log);
+        let id = "i".repeat(64);
+        let (e, erx) = job(&format!(r#"{{"cmd":"estop","id":"{id}"}}"#));
+        assert!(l.submit(e));
+        let ack = erx.recv_timeout(LONG).unwrap();
+        assert_eq!((ack.result, ack.id.as_str(), ack.cmd.as_str()), (CmdResult::Ok, id.as_str(), "estop"));
+        let junk = format!("{}{}", "x".repeat(40), "é".repeat(400));
+        let (j, jrx) = job(&format!(r#"{{"cmd":"{junk}","id":"s2-bbbb"}}"#));
+        assert!(l.submit(j));
+        let ack = jrx.recv_timeout(LONG).unwrap();
+        assert_eq!(ack.result, CmdResult::NotAllowed);
+        assert_eq!(ack.id, "s2-bbbb");
+        assert_eq!(ack.cmd, "x".repeat(32));
+        let (j, jrx) = job(&format!(r#"{{"cmd":"{}","id":"s3-cccc"}}"#, "é".repeat(100)));
+        assert!(l.submit(j));
+        assert_eq!(jrx.recv_timeout(LONG).unwrap().cmd, "é".repeat(32));
+        l.stop();
+        let text = String::from_utf8(log.0.lock().unwrap().clone()).unwrap();
+        assert!(text.contains(&format!("nav-bridge: cmd estop {id} -> ok\n")), "{text}");
+        assert!(text.contains(&format!("nav-bridge: cmd {} s2-bbbb -> not_allowed\n", "x".repeat(32))), "{text}");
+        assert!(text.contains(&format!("nav-bridge: cmd {} s3-cccc -> not_allowed\n", "é".repeat(32))), "{text}");
+        assert_eq!(text.lines().count(), 3, "{text}");
     }
 
     #[test]

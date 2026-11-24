@@ -219,25 +219,37 @@ waits for its `{"ok":...}` and replies with `{"id","cmd","result","reason"}`
 | `reply_timeout_ms` | 1000 | how long to wait for nav_command's answer |
 | `max_goal_per_s` | 2 | `goal` + `initialpose` rate (one token bucket, burst 2) |
 
+A `reply_timeout_ms` outside 100-2500 (nav_command answers on its 100 ms tick; Studio stops
+waiting after 3 s) or a `max_goal_per_s` not above 0 (only the first 2 goals ever pass) is
+one `nav-bridge: WARNING: ...` line on stderr at start; the values are used as they are.
+
 ### Token file
 
 The robot and the Studio machine hold the same token in `~/.config/dviz/cmd_token`:
 
 ```bash
-umask 077; mkdir -p ~/.config/dviz; head -c 24 /dev/urandom | base64 > ~/.config/dviz/cmd_token
+( umask 077; mkdir -p ~/.config/dviz; head -c 24 /dev/urandom | base64 > ~/.config/dviz/cmd_token ); chmod 600 ~/.config/dviz/cmd_token
 # copy it to the same path on the Studio machine, mode 600
 ```
 
+The subshell keeps the `umask` out of your shell; the `chmod` tightens a file that was
+already there (a `umask` only applies to new files).
+
 The bridge reads it once at start (a new token needs a bridge restart). Surrounding
 whitespace is removed on both sides (a trailing newline or CRLF is fine). It is usable only
-if it exists, is not empty and is not readable or writable by group or others (mode 600
-or 400). The comparison takes constant time. The token never appears in a log line, a
-reply or the datagram to nav_command.
+if it exists, is not empty and has no group or other permission bits at all
+(`mode & 0o077 == 0`, e.g. 600 or 400; group-readable or even group-executable is too
+open). The comparison takes constant time. The token never appears in a log line, a reply
+or the datagram to nav_command.
 
 ### Turning goals and initial poses on
 
-Put the token file in place, set `"cmd": {"goal_enabled": true}` in the installed
-`tracer.json` and restart dora-nav. The bridge prints one line at start:
+Put the token file in place, set `goal_enabled` to `true` in the existing `cmd` entry of
+the installed `tracer.json` (it already has one: adding a second `"cmd"` key is a duplicate
+key, so the config fails to load and the bridge runs disabled, publishing nothing and
+answering no command), and restart dora-nav. `install.sh` overwrites the installed
+`tracer.json` with the repository's (`goal_enabled: false`), so do this again after every
+install. The bridge prints one line at start:
 
 - `nav-bridge: goal/initialpose commands enabled`, or
 - `nav-bridge: goal/initialpose commands closed: <reason>` (the switch is off; the token
@@ -245,6 +257,11 @@ Put the token file in place, set `"cmd": {"goal_enabled": true}` in the installe
 
 `nav/status` carries `cmd_goal_enabled`: the switch is on and the token is usable. Studio
 greys out its pose and goal tools otherwise; E-STOP and Disarm work either way.
+
+**Upgrade order:** install this bridge before the Studio that sends commands. A delivery-③
+bridge has no command channel: the new Studio greys its pose and goal tools (`goal / pose
+commands not enabled on the robot`) and E-STOP and Disarm get `no reply (robot not
+reachable)`, so the robot is not stopped from Studio.
 
 ### Rules
 
@@ -256,13 +273,15 @@ greys out its pose and goal tools otherwise; E-STOP and Disarm work either way.
 | `arm`, `release`, anything else | `not_allowed`: arming and releasing the e-stop stay with the people at the robot | never |
 | a malformed request (bad JSON, bad `id`, over 1024 bytes, a goal without finite `x`, `y`) | `bad_request` | never |
 
-A forwarded command's result is nav_command's answer: `{"ok":true}` is `ok`, `{"ok":false}`
-(or anything else) is `nav_rejected`, nothing within `reply_timeout_ms` is `no_reply`.
-The gate state is the latest Dora input of format `gate_state` (`cmd_gate/state`), stored
-straight from the Dora event loop, so it is current even when the worker is behind or
-dead. Each lane queues at most 16 commands; a query that finds its lane full gets no reply
-(Studio shows `timeout`). Every command is one stdout line (in the bridge's Dora log):
-`nav-bridge: cmd <cmd> <id> [x=.. y=.. yaw=..] -> <result>`.
+A forwarded command's result is nav_command's answer: `{"ok":true}` is `ok` (reason
+`sent to nav_command`), `{"ok":false}` (or anything else) is `nav_rejected`, nothing within
+`reply_timeout_ms` is `no_reply`. The ack echoes the request's `id` and its `cmd` cut to 32
+characters. The gate state is the latest Dora input of format `gate_state`
+(`cmd_gate/state`), stored straight from the Dora event loop, so it is current even when the
+worker is behind or dead. Each lane queues at most 16 commands; a query that finds its lane
+full gets no reply (Studio shows `no reply (robot not reachable)`). Every command is one
+stdout line (in the bridge's Dora log): `nav-bridge: cmd <cmd> <id> [x=.. y=.. yaw=..] ->
+<result>` (`cmd` cut to 32 characters, the id in full, control characters as `?`).
 
 ### `dviz_cmd`
 

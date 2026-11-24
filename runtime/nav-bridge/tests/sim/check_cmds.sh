@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Command-channel check against the running nav-sim-cmd dataflow (run_sim.sh first). Prints PASS/FAIL per step, exits 1
 # on any FAIL. `tracer_ctl.py` stands in for the person on the robot (arm / disarm / release over UDP 19998).
+# The token is TOKEN_FILE (default $WORK/cmd_token): give it the same WORK / TOKEN_FILE as run_sim.sh.
 set -u
 DORA_NAV=${DORA_NAV:-$HOME/nvme/DORA_NAV}
 BRIDGE_DIR=${BRIDGE_DIR:-$HOME/nvme/dora-lab/tmp/nav-bridge-target/release}
 WORK=${WORK:-$HOME/nvme/dora-lab/tmp/nav-sim-cmd}
 CMD=$BRIDGE_DIR/examples/dviz_cmd
-TOKEN=$WORK/cmd_token
+TOKEN=${TOKEN_FILE:-$WORK/cmd_token}
+case $TOKEN in /*) ;; *) TOKEN=$PWD/$TOKEN ;; esac
 [ -x "$CMD" ] || { echo "check_cmds: missing $CMD" >&2; exit 2; }
-[ -r "$TOKEN" ] || { echo "check_cmds: missing $TOKEN (run run_sim.sh)" >&2; exit 2; }
+[ -r "$TOKEN" ] || { echo "check_cmds: missing $TOKEN (run run_sim.sh with the same WORK / TOKEN_FILE)" >&2; exit 2; }
 FAILS=0
 dc() { "$CMD" --connect tcp/127.0.0.1:7451 --robot tracer_sim "$@"; }
 ctl() { python3 "$DORA_NAV/tools/tracer_ctl.py" --port 19998 "$@"; }

@@ -123,7 +123,34 @@ impl CmdConfig {
         }
         Ok(addr)
     }
+
+    /// One `nav-bridge: WARNING: ...` line when `reply_timeout_ms` is outside
+    /// [`REPLY_TIMEOUT_SANE_MS`] (Studio's command query gives up after 3 s, and nav_command
+    /// answers on its 100 ms tick) or `max_goal_per_s` is not above 0 (only the bucket's
+    /// burst ever passes); `None` otherwise. The values are used as they are either way.
+    pub fn warning(&self) -> Option<String> {
+        let mut parts = Vec::new();
+        if !REPLY_TIMEOUT_SANE_MS.contains(&self.reply_timeout_ms) {
+            parts.push(format!(
+                "cmd.reply_timeout_ms {} is outside {}-{} (nav_command answers within about 100 ms; \
+                 Studio stops waiting after 3 s)",
+                self.reply_timeout_ms,
+                REPLY_TIMEOUT_SANE_MS.start(),
+                REPLY_TIMEOUT_SANE_MS.end()
+            ));
+        }
+        if !(self.max_goal_per_s.is_finite() && self.max_goal_per_s > 0.0) {
+            parts.push(format!(
+                "cmd.max_goal_per_s {} is not above 0 (every goal and initialpose after the first 2 is rate_limited)",
+                self.max_goal_per_s
+            ));
+        }
+        (!parts.is_empty()).then(|| format!("nav-bridge: WARNING: {}", parts.join("; ")))
+    }
 }
+
+/// `reply_timeout_ms` values that work with Studio, which waits 3 s for an ack.
+pub const REPLY_TIMEOUT_SANE_MS: std::ops::RangeInclusive<u64> = 100..=2500;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
@@ -253,6 +280,35 @@ mod tests {
         let c: BridgeConfig = serde_json::from_str(r#"{"cmd":{"goal_enabled":true}}"#).unwrap();
         assert!(c.cmd.goal_enabled);
         assert_eq!(c.cmd.forward, "127.0.0.1:9998");
+    }
+
+    /// One warning line for values that work against Studio, none for sane ones.
+    #[test]
+    fn cmd_config_warning() {
+        let w = |reply_timeout_ms: u64, max_goal_per_s: f32| {
+            CmdConfig { reply_timeout_ms, max_goal_per_s, ..CmdConfig::default() }.warning()
+        };
+        assert_eq!(CmdConfig::default().warning(), None);
+        for (ms, rate) in [(100, 2.0), (2500, 2.0), (1000, 0.1), (1000, 50.0)] {
+            assert_eq!(w(ms, rate), None, "{ms} ms, {rate}/s");
+        }
+        let timeout = |ms: &str| {
+            format!(
+                "cmd.reply_timeout_ms {ms} is outside 100-2500 (nav_command answers within about 100 ms; \
+                 Studio stops waiting after 3 s)"
+            )
+        };
+        let rate = |r: &str| {
+            format!(
+                "cmd.max_goal_per_s {r} is not above 0 (every goal and initialpose after the first 2 is rate_limited)"
+            )
+        };
+        assert_eq!(w(3000, 2.0), Some(format!("nav-bridge: WARNING: {}", timeout("3000"))));
+        assert_eq!(w(1000, 0.0), Some(format!("nav-bridge: WARNING: {}", rate("0"))));
+        assert_eq!(w(99, -1.0), Some(format!("nav-bridge: WARNING: {}; {}", timeout("99"), rate("-1"))));
+        assert!(w(0, 2.0).is_some());
+        assert!(w(1000, f32::NAN).is_some());
+        assert!(w(u64::MAX, 2.0).is_some_and(|line| !line.contains('\n')));
     }
 
     /// Ruling R7: nav_command listens on 127.0.0.1 only, so anything else is refused.
