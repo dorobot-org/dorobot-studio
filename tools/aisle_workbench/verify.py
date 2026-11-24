@@ -85,6 +85,9 @@ def main():
         action="store_true",
         help="Train a Nano wrist detector and run it on a different layout",
     )
+    parser.add_argument(
+        "--heading", action="store_true", help="Test the 20-degree left waist turn"
+    )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
@@ -103,6 +106,8 @@ def main():
         parser.error("--train-grasp requires --transfer")
     if args.train_reach and not args.standing:
         parser.error("--train-reach requires --standing")
+    if args.heading and (not args.standing or args.upright):
+        parser.error("--heading requires --standing with neutral pitch")
     if args.upright and not args.standing:
         parser.error("--upright requires --standing")
     if args.impact and not args.standing:
@@ -234,6 +239,8 @@ def main():
                     check.append("--train-reach")
                 if args.standing:
                     check.append("--standing")
+                    if args.heading:
+                        check.append("--heading")
                     if args.upright:
                         check.append("--upright")
                     if args.impact:
