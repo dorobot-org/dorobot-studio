@@ -30,6 +30,56 @@
 use crate::data::video_decoder::PlaceholderDecoder;
 use makepad_app_shell::theme::get_global_dark_mode;
 use makepad_widgets::*;
+use std::collections::VecDeque;
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
+
+fn draw_time() -> Duration {
+    static START: OnceLock<Instant> = OnceLock::new();
+    START.get_or_init(Instant::now).elapsed()
+}
+
+#[derive(Default)]
+struct ViewportCadence {
+    times: VecDeque<Duration>,
+    last_tick: Option<u64>,
+}
+
+impl ViewportCadence {
+    const WINDOW: Duration = Duration::from_secs(2);
+
+    fn record(&mut self, tick: u64, now: Duration) {
+        if self.last_tick == Some(tick) {
+            return;
+        }
+        if self.last_tick.is_some_and(|last| tick < last) {
+            self.times.clear();
+        }
+        self.last_tick = Some(tick);
+        while self
+            .times
+            .front()
+            .is_some_and(|first| now - *first >= Self::WINDOW)
+        {
+            self.times.pop_front();
+        }
+        self.times.push_back(now);
+    }
+
+    fn display(&self, now: Duration) -> String {
+        if let (Some(first), Some(last)) = (self.times.front(), self.times.back()) {
+            if now - *last >= Self::WINDOW {
+                return "Stream stalled".into();
+            }
+            let span = *last - *first;
+            if span >= Duration::from_millis(500) {
+                let fps = (self.times.len() - 1) as f64 / span.as_secs_f64();
+                return format!("{fps:.1} FPS");
+            }
+        }
+        "Waiting for frames".into()
+    }
+}
 
 #[cfg(feature = "video")]
 use crate::data::video_decoder::VideoDecoder;
@@ -154,6 +204,8 @@ pub struct VideoPlayer {
     measured_draw: Option<(std::path::PathBuf, u64)>,
     #[rust]
     draw_trace: Option<std::fs::File>,
+    #[rust]
+    viewport_cadence: ViewportCadence,
 }
 
 // Simple 5x7 bitmap font for digits, colon, space, slash, period, 'f', 'p', 's', 'F', 'r', 'a', 'm', 'e'
@@ -252,18 +304,14 @@ impl Widget for VideoPlayer {
 
         let step = self.view.draw_walk(cx, scope, walk);
         if step.is_done() {
-            if let (Some((source, tick)), Some(file)) =
-                (self.measured_draw.take(), &mut self.draw_trace)
-            {
-                use std::io::Write;
-                static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-                let elapsed = START
-                    .get_or_init(std::time::Instant::now)
-                    .elapsed()
-                    .as_nanos() as u64;
-                let row =
-                    serde_json::json!({"source": source, "tick": tick, "elapsed_ns": elapsed});
-                let _ = writeln!(file, "{row}");
+            if let Some((source, tick)) = self.measured_draw.take() {
+                let now = draw_time();
+                self.viewport_cadence.record(tick, now);
+                if let Some(file) = &mut self.draw_trace {
+                    use std::io::Write;
+                    let row = serde_json::json!({"source": source, "tick": tick, "elapsed_ns": now.as_nanos() as u64});
+                    let _ = writeln!(file, "{row}");
+                }
             }
         }
         step
@@ -300,6 +348,7 @@ impl VideoPlayer {
     /// Clear video display
     pub fn clear(&mut self, cx: &mut Cx) {
         self.measured_draw = None;
+        self.viewport_cadence = ViewportCadence::default();
         self.has_video = false;
         self.placeholder_decoder = None;
         #[cfg(feature = "video")]
@@ -350,9 +399,7 @@ impl VideoPlayer {
                     .ok();
             }
         }
-        if self.draw_trace.is_some() {
-            self.measured_draw = Some((source.to_owned(), tick));
-        }
+        self.measured_draw = Some((source.to_owned(), tick));
     }
     pub fn set_frame(&mut self, cx: &mut Cx, width: usize, height: usize, data: &[u8]) {
         // Track video dimensions for overlay positioning
@@ -662,6 +709,13 @@ macro_rules! delegate_ref_method {
 }
 
 impl VideoPlayerRef {
+    pub fn live_cadence(&self) -> String {
+        self.borrow().map_or_else(
+            || "Waiting for frames".into(),
+            |v| v.viewport_cadence.display(draw_time()),
+        )
+    }
+
     delegate_ref_method!(set_frame_info, cx, current: u64, total: u64);
     delegate_ref_method!(set_fps_display, cx, fps: f64);
     delegate_ref_method!(set_placeholder_text, cx, text: &str);
@@ -680,5 +734,30 @@ impl VideoPlayerRef {
         } else {
             Err("Failed to borrow VideoPlayer".to_string())
         }
+    }
+}
+
+#[cfg(test)]
+mod cadence_tests {
+    use super::{Duration, ViewportCadence};
+
+    #[test]
+    fn measures_distinct_draws_and_recovers_after_stalls_and_restarts() {
+        let ms = Duration::from_millis;
+        let mut cadence = ViewportCadence::default();
+        assert_eq!(cadence.display(ms(0)), "Waiting for frames");
+        for tick in 0..=60 {
+            cadence.record(tick, ms(40 * tick));
+            cadence.record(tick, ms(40 * tick + 10));
+        }
+        assert_eq!(cadence.times.len(), 50);
+        assert_eq!(cadence.display(ms(2500)), "25.0 FPS");
+        assert_eq!(cadence.display(ms(4400)), "Stream stalled");
+        cadence.record(61, ms(4800));
+        assert_eq!(cadence.display(ms(4800)), "Waiting for frames");
+        cadence.record(62, ms(5300));
+        assert_eq!(cadence.display(ms(5300)), "2.0 FPS");
+        cadence.record(0, ms(5400));
+        assert_eq!(cadence.display(ms(5400)), "Waiting for frames");
     }
 }

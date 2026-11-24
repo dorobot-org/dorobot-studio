@@ -1,0 +1,74 @@
+[
+  {
+    "setting": "reference",
+    "nexus": "0.2.1",
+    "mean_step_ms": 47.073,
+    "median_head_ms": 32.174,
+    "identical_images": 24,
+    "changed_pixels": 0,
+    "total_pixels": 4147200,
+    "changed_percent": 0.0,
+    "encoder_exact": true,
+    "max_qpos_difference": 0.0
+  },
+  {
+    "setting": "repeat",
+    "nexus": "0.2.1",
+    "mean_step_ms": 46.544,
+    "median_head_ms": 32.251,
+    "identical_images": 24,
+    "changed_pixels": 0,
+    "total_pixels": 4147200,
+    "changed_percent": 0.0,
+    "encoder_exact": true,
+    "max_qpos_difference": 0.0
+  },
+  {
+    "setting": "floor",
+    "nexus": "0.2.1",
+    "mean_step_ms": 40.641,
+    "median_head_ms": 26.554,
+    "identical_images": 0,
+    "changed_pixels": 221,
+    "total_pixels": 4147200,
+    "changed_percent": 0.00533,
+    "encoder_exact": true,
+    "max_qpos_difference": 0.0
+  },
+  {
+    "setting": "2048",
+    "nexus": "0.2.1",
+    "mean_step_ms": 36.461,
+    "median_head_ms": 22.811,
+    "identical_images": 0,
+    "changed_pixels": 99265,
+    "total_pixels": 4147200,
+    "changed_percent": 2.39354,
+    "encoder_exact": true,
+    "max_qpos_difference": 0.0
+  },
+  {
+    "setting": "1024",
+    "nexus": "0.2.1",
+    "mean_step_ms": 34.181,
+    "median_head_ms": 20.516,
+    "identical_images": 0,
+    "changed_pixels": 177082,
+    "total_pixels": 4147200,
+    "changed_percent": 4.26992,
+    "encoder_exact": true,
+    "max_qpos_difference": 0.0
+  },
+  {
+    "setting": "nexus-0.3.0",
+    "nexus": "0.3.0",
+    "mean_step_ms": 46.437,
+    "median_head_ms": 32.041,
+    "identical_images": 0,
+    "changed_pixels": 256389,
+    "total_pixels": 4147200,
+    "changed_percent": 6.18222,
+    "encoder_exact": false,
+    "max_qpos_difference": 0.024202793836593628
+  }
+]

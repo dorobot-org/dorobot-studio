@@ -1,0 +1,100 @@
+[
+  {
+    "seconds": 0.001,
+    "label": "Foreground worker camera \u00b7 17.1 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 0.212,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 0.422,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 0.633,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 0.844,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 1.053,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 1.255,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 1.466,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 1.677,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 1.883,
+    "label": "Foreground worker camera \u00b7 17.7 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 2.094,
+    "label": "Foreground worker camera \u00b7 Stream stalled",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 2.305,
+    "label": "Foreground worker camera \u00b7 Waiting for frames",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2921
+  },
+  {
+    "seconds": 2.516,
+    "label": "Foreground worker camera \u00b7 Waiting for frames",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2961
+  },
+  {
+    "seconds": 2.726,
+    "label": "Foreground worker camera \u00b7 21.6 FPS",
+    "job": "79eb2cb3-c1f4-4548-b072-7cd933f2068f",
+    "state": "running",
+    "step": 2961
+  }
+]

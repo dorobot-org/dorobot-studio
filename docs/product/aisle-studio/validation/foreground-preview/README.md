@@ -2,7 +2,7 @@
 
 Prepare a Nano floor-to-table transfer on **Task** and start it on **Run** to see the simulated head camera. To watch one session in a fleet, open **Run → Workers**, connect to a worker and select **Stream run**. For the other sessions, choose a background RGB period and select **Background run**. The default one-second period requests one frame per second of simulated time. Select **Wall time** to schedule observations using elapsed time on the worker. The measured delivery rate depends on how quickly the simulation advances.
 
-The selected foreground produces fresh 480×360 head-camera images on a 30 Hz wall-clock schedule when new physics ticks are available. A slow viewer can skip old images. The recorded episode still contains aligned head, left-wrist and right-wrist RGB at five frames per simulated second, joint states and commands. In Evidence, choose **Export episode** and **Open in Replay**. [Worker configuration](../worker-leases/README.md) · [Native foreground viewport](foreground.png)
+The selected foreground produces fresh 480×360 head-camera images on a 30 Hz wall-clock schedule when new physics ticks are available. A slow viewer can skip old images. The recorded episode still contains aligned head, left-wrist and right-wrist RGB at five frames per simulated second, joint states and commands. In Evidence, choose **Export episode** and **Open in Replay**. [Worker configuration](../worker-leases/README.md) · [Native foreground viewport](foreground.png) The camera heading in Run shows the measured native draw rate and flags a stalled live stream. [Read the display and reproduce the renderer comparisons](../viewport-cadence/README.md)
 
 ## Single-host capacity
 
