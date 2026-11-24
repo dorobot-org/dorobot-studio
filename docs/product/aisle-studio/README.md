@@ -68,4 +68,6 @@ For a recorded Nano transfer, Evidence can train a wrist detector from the expor
 
 To draft room geometry from a reference image and operator description, use **Draft from reference photo** on Scene. [Input format, review flow and measured native trials](validation/photo-room/README.md)
 
+[Reproduce the 30° G1 standing reach and its bounded frontal impact qualification](validation/g1-thirty-degree-reach/README.md)
+
 Run concurrent simulations from **Run → Workers**. Fetch the selected job into Evidence and Replay. [Configure local or SSH workers and reproduce the native trials](validation/worker-leases/README.md)
