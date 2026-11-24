@@ -46,6 +46,29 @@ def finger_gap(point, position, rotation, bounds, cube_radius):
     )
 
 
+class LiveCameraFrames:
+    """Share exact Nexus RGB exposures across consumers until physics advances."""
+
+    def __init__(self, rig):
+        self.rig = rig
+        self.tick = None
+        self.images = {}
+        self.requests = Counter()
+        self.renders = Counter()
+
+    def rgb(self, tick, camera):
+        if tick != self.tick:
+            self.images.clear()
+            self.tick = tick
+        self.requests[camera] += 1
+        if camera not in self.images:
+            self.images[camera] = self.rig[camera].render(
+                rgb=True, depth=False, segmentation=False
+            )[0]
+            self.renders[camera] += 1
+        return self.images[camera]
+
+
 class Judge:
     def __init__(self, sim, colors, record_labels=False, trace_fingers=False):
         self.colors = colors
@@ -382,8 +405,24 @@ def execute(
     next_preview_ns = time.monotonic_ns()
     cadence = worker.BackgroundCadence(observation_clock, observation_period_s, 100)
 
-    def head_rgb():
-        return sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
+    frames = LiveCameraFrames(sim.rig) if live_preview else None
+
+    def read_camera(name):
+        if frames is not None:
+            return frames.rgb(sim.tick, name)
+        return sim.rig[name].render(rgb=True, depth=False, segmentation=False)[0]
+
+    def preview_due():
+        nonlocal next_preview_ns
+        now = time.monotonic_ns()
+        if now < next_preview_ns or (
+            preview_times and preview_times[-1][0] == sim.tick
+        ):
+            return False
+        next_preview_ns += (
+            1 + (now - next_preview_ns) // preview_period_ns
+        ) * preview_period_ns
+        return True
 
     def show_preview(rgb):
         # Final progress publication can revisit the last streamed physics step.
@@ -397,16 +436,10 @@ def execute(
 
     def publish(sample=False, rgb=None):
         if rgb is None:
-            rgb = head_rgb()
+            rgb = read_camera("head")
         if sample:
             for name in CAMERAS:
-                frame = (
-                    rgb
-                    if name == "head"
-                    else sim.rig[name].render(
-                        rgb=True, depth=False, segmentation=False
-                    )[0]
-                )
+                frame = rgb if name == "head" else read_camera(name)
                 Image.fromarray(frame).save(
                     out / "camera" / name / f"{len(samples):04d}.png", compress_level=1
                 )
@@ -418,7 +451,7 @@ def execute(
                     airborne_in_jaw=[judge.airborne_in_jaw[n] for n in colors],
                 )
             )
-        if not live_preview or not sample:
+        if not live_preview or not sample or preview_due():
             show_preview(rgb)
         row = dict(
             kind="table-transfer",
@@ -434,7 +467,6 @@ def execute(
         return rgb
 
     def step():
-        nonlocal next_preview_ns
         if sim.tick >= 60000:
             raise ValueError("episode step budget exhausted")
         slide = slides.get(active_color)
@@ -446,19 +478,14 @@ def execute(
         if slide:
             slide.after_step(*judge.pick_contacts[active_color], applied)
         rgb = None
-        if live_preview:
-            now = time.monotonic_ns()
-            if now >= next_preview_ns:
-                next_preview_ns += (
-                    1 + (now - next_preview_ns) // preview_period_ns
-                ) * preview_period_ns
-                rgb = head_rgb()
-                show_preview(rgb)
+        if live_preview and preview_due():
+            rgb = read_camera("head")
+            show_preview(rgb)
         if record and sim.tick % 20 == 0:
             publish(sample=True, rgb=rgb)
         elif observation_progress:
             if cadence.due(sim.tick):
-                worker.publish_background_rgb(out, sim.tick, head_rgb())
+                worker.publish_background_rgb(out, sim.tick, read_camera("head"))
             if sim.tick % 100:
                 return
             worker.save(
@@ -482,9 +509,7 @@ def execute(
         ):
 
             def read_rgb():
-                return sim.rig["left_wrist"].render(
-                    rgb=True, depth=False, segmentation=False
-                )[0]
+                return read_camera("left_wrist")
 
             while not wrist.accept(sim.tick, read_rgb, synchronized=for_policy):
                 # Physics and recording advance with the last complete motor target.
@@ -583,9 +608,7 @@ def execute(
                             if judge.phase == "pick" and n == "left_wrist":
                                 packet[n] = wrist.accepted_rgb
                                 continue
-                            packet[n] = sim.rig[n].render(
-                                rgb=True, depth=False, segmentation=False
-                            )[0]
+                            packet[n] = read_camera(n)
                         data = io.BytesIO()
                         np.savez(data, **packet)
                         payload = data.getvalue()
@@ -639,11 +662,15 @@ def execute(
                         child.stdin.write(b'{"ok":true}\n')
                     elif op == "release observation":
                         if (
-                            judge.phase != "place" or command["color"] != active_color
-                            or packet is None or command["stamp_ns"] != int(packet["stamp_ns"])
+                            judge.phase != "place"
+                            or command["color"] != active_color
+                            or packet is None
+                            or command["stamp_ns"] != int(packet["stamp_ns"])
                             or command["stamp_ns"] != sim.tick * 10_000_000
                         ):
-                            raise ValueError("Release observation requires the current placement exposure")
+                            raise ValueError(
+                                "Release observation requires the current placement exposure"
+                            )
                         folder = out / "release-observations"
                         folder.mkdir(exist_ok=True)
                         np.savez_compressed(folder / f"{sim.tick:06}.npz", **packet)
@@ -687,9 +714,7 @@ def execute(
                             )
                         phases.append(dict(tick=sim.tick, **command))
                         for name in CAMERAS:
-                            frame = sim.rig[name].render(
-                                rgb=True, depth=False, segmentation=False
-                            )[0]
+                            frame = read_camera(name)
                             Image.fromarray(frame).save(
                                 out
                                 / f"{len(phases):02}-{command['color']}-{judge.phase.replace(' ', '-')}-{name}.png"
@@ -721,7 +746,13 @@ def execute(
         if live_preview:
             worker.save(
                 out / "preview-timing.json",
-                dict(target_fps=30, clock="monotonic_ns", tick_time=preview_times),
+                dict(
+                    target_fps=30,
+                    clock="monotonic_ns",
+                    tick_time=preview_times,
+                    camera_requests=frames.requests,
+                    camera_renders=frames.renders,
+                ),
             )
         worker.save(out / "trajectory.json", rows)
         worker.save(
