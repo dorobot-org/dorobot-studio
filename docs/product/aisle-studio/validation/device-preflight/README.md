@@ -1,6 +1,6 @@
 # Run a G1 controller against measured joint and IMU inputs
 
-Open **AISLE Studio → Evidence → Device preflight** after completing a G1 standing-reach trial. Studio binds the controller, model and simulation result to that trial. It can replay the recorded Nexus sensors over Unitree DDS or subscribe to an existing telemetry publisher. After capture, the same standing controller computes its 29 joint targets at 200 Hz from encoders and IMU orientation. The preflight sends zero actuator commands. Hardware identity, calibration, monitored stopping and the physical task outcome require a separate test with a robot and its operator.
+Open **AISLE Studio → Evidence → Device preflight** after completing a G1 standing-reach trial. Studio binds the controller, model and simulation result to that trial. It can replay the recorded Nexus sensors over Unitree DDS or subscribe to an existing telemetry publisher. After capture, the same standing controller computes its 29 joint targets at 200 Hz from encoders and IMU orientation. The preflight sends zero actuator commands. The panel shows source and receiver gaps separately and reports the largest difference between a proposed target and the measured joint. These offline measurements establish neither live control latency nor physical tracking performance. Hardware identity, calibration, monitored stopping and the physical task outcome require a separate test with a robot and its operator.
 
 ## Configure telemetry
 
@@ -31,7 +31,7 @@ For a Nano transfer trial, **Check adapter** reads the installed Feetech capabil
 
 ## Transport measurements
 
-The reference episode contains 200 warmup and 2,000 scored samples. Each path used two separate processes on this Mac. The external subscription test used a separately launched publisher of the same recorded Nexus measurements. Both produced the same saved joint-target array, with zero measured joint-limit and velocity-limit excess. Physical G1 testing is still open.
+The reference episode contains 200 warmup and 2,000 scored samples. Each path used two separate processes on this Mac. The external subscription test used a separately launched publisher of the same recorded Nexus measurements. Both produced the same saved joint-target array, with zero measured joint-limit and velocity-limit excess. All 29 motor slot names were independently compared with the pinned SDK example. The physical encoder offsets, body IMU orientation, board identity and stop remain unmeasured. Peak target-to-joint separation in both recordings was 0.504 rad. [SDK slot comparison](sdk-order.json)
 
 | Capture path | Messages × joints | Largest source gap | Largest receive gap | Largest target difference vs. originating simulation |
 | --- | ---: | ---: | ---: | ---: |
@@ -40,7 +40,7 @@ The reference episode contains 200 warmup and 2,000 scored samples. Each path us
 
 [Loopback receipt](loopback.json) · [External subscription receipt](external-subscriber.json) · [Raw telemetry, shadow targets and originating episode](g1-telemetry.zip)
 
-To reproduce the comparison, unpack the evidence into a new directory. From the Studio checkout, run the verifier with the configured AISLE Python. The verifier checks stored hashes and recomputes every target and the input sample selected at every controller step.
+To reproduce the comparison, unpack the evidence into a new directory. The [tested source revision](https://github.com/dorobot-org/dorobot-studio/tree/25b90ae76a7f5c874009ac119f7214ac7929db36) pins the controller and model for this recording. From that checkout, run the verifier with the configured AISLE Python. The verifier checks stored hashes and recomputes every target and the input sample selected at every controller step.
 
 ```sh
 proof_dir=$(mktemp -d)
@@ -65,4 +65,6 @@ Run `g1_reach_suite.py verify <archive> <manifest-sha256>` with the AISLE Python
 
 ## Native Studio verification
 
-Codex authored the G1 trial in the light 1440 × 900 offscreen app. DeepSeek through Octos authored it in the dark 1024 × 768 headless app. Each captured a stopped result for a missing external publisher, replayed the originating Nexus recording over DDS, exported the simulation episode to Replay, restarted Studio and recovered the receipt for the selected trial. The two captures each reproduced all 63,800 motor targets exactly. [Rendered G1 preflight](g1-preflight.png) · [Native journeys and retained receipts](native.json)
+Codex authored the G1 trial in the light 1440 × 900 offscreen app. DeepSeek through Octos authored it in the dark 1024 × 768 headless app. Each captured a stopped result for a missing external publisher, cancelled a running DDS capture, verified the publisher and subscriber process group had exited, replayed the originating Nexus recording over DDS, exported the simulation episode to Replay, restarted Studio and recovered the receipt for the selected trial. The two captures each reproduced all 63,800 motor targets exactly. [Rendered G1 preflight](g1-preflight.png) · [Native journeys and retained receipts](native.json)
+
+The dark desktop also completed a Codex red-only transfer and a DeepSeek three-cube transfer in Nexus. Each opened the Feetech capability report, exported the episode, then restored the report with its trial after a restart. [Nano adapter view](nano-adapter.png)
