@@ -34,6 +34,7 @@ def main():
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     p.add_argument("--upright", action="store_true")
     p.add_argument("--impact", action="store_true")
+    p.add_argument("--train-grasp", action="store_true")
     p.add_argument("--train-reach", action="store_true")
     p.add_argument("--survey", type=Path)
     p.add_argument("--evaluation", type=Path)
@@ -288,7 +289,7 @@ def main():
                 lambda w: w["result"] and w["result"].get("kind") == kind,
                 label + " evidence restored",
             )
-            assert row["result"]["task_success"] and (
+            assert (row["result"]["task_success"] or a.train_grasp) and (
                 a.standing or row["result"]["requested"] == wanted
             )
             assert (
@@ -302,6 +303,11 @@ def main():
                 fixture=row["result"]["fixture"],
                 outcome=row["result"]["task_success"],
             )
+            if a.train_grasp:
+                ck = row["controller"]["grasp_checkpoint"]
+                assert ck and row["result"]["grasp_checkpoint"] == ck
+                assert row["result"]["seed"] == (a.layout + 1) % 3
+                checks[-1]["grasp_checkpoint"] = ck
             if a.train_reach:
                 assert (
                     row["result"]["reach_checkpoint"]
@@ -602,6 +608,16 @@ def main():
                     stream["width"],
                     stream["height"],
                 ) == (count, 480, 360)
+            if a.train_grasp:
+                from nano_grasp_check import native_journey
+
+                np.testing.assert_array_equal(
+                    signals["annotation.gripper_carry"],
+                    [r["airborne_in_jaw"] for r in record["samples"]],
+                )
+                native_journey(
+                    a, Path(row["selected"]), result, checks, page, click, done, grab
+                )
             click("aisle_evidence.replay")
             wait(
                 lambda j: j["state"]["screen"] == "Replay"

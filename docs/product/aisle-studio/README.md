@@ -61,3 +61,5 @@ cargo build --locked -p dorobot-flex --bin dorobot-flex
 Use `--remote /path/to/makepad-remote` for a locally built client. Omit `--codex` to use reference controllers throughout. The driver sends pointer and keyboard events to the running application, restarts it with the same state directory and reads the saved trial files. The offscreen run also captures pixels. Both modes still use real Nexus physics and sensor rendering.
 
 Use `--octos-deepseek` in place of `--codex` in the native verification command to run the Nano approach and both G1 authoring turns through Octos. See the [measured provider comparison](validation/provider-comparison.md).
+
+For a recorded Nano transfer, Evidence can train a wrist detector from the exported dataset and evaluate the resulting revision on another layout. [Reproduce the three-cube training and comparison](validation/nano-grasp-checkpoint/README.md)

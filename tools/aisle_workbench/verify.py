@@ -70,6 +70,11 @@ def main():
     parser.add_argument(
         "--upright", action="store_true", help="Request an upright G1 trunk posture"
     )
+    parser.add_argument(
+        "--train-grasp",
+        action="store_true",
+        help="Train a Nano wrist detector and run it on a different layout",
+    )
     parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
@@ -82,6 +87,8 @@ def main():
     args = parser.parse_args()
     if args.survey and not args.transfer:
         parser.error("--survey requires --transfer")
+    if args.train_grasp and not args.transfer:
+        parser.error("--train-grasp requires --transfer")
     if args.train_reach and not args.standing:
         parser.error("--train-reach requires --standing")
     if args.upright and not args.standing:
@@ -207,6 +214,8 @@ def main():
                     check.append("--handoff")
                 if args.evaluation:
                     check.extend(["--evaluation", str(args.evaluation.resolve())])
+                if args.train_grasp:
+                    check.append("--train-grasp")
                 if args.train_reach:
                     check.append("--train-reach")
                 if args.standing:
@@ -228,7 +237,8 @@ def main():
                         check.append("--" + args.provider)
                     if args.backend == "offscreen":
                         check.append("--screenshots")
-                subprocess.run(check, check=True, timeout=900 if args.transfer else 330)
+                timeout = 1800 if args.train_grasp else 900 if args.transfer else 330
+                subprocess.run(check, check=True, timeout=timeout)
                 status = subprocess.check_output(
                     [args.remote, "app", str(process.pid), "status"], text=True
                 )
