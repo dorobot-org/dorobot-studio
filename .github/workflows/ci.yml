@@ -47,6 +47,9 @@ jobs:
           "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: numpy==2.5.5 pyarrow==26.0.1
           "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/single-cube-intent/check_stationary.py --datasets
           "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit.py" "$guide/measurements.zip" --datasets --output "$RUNNER_TEMP/wrist-timing.json"
+          h100=docs/product/aisle-studio/validation/eight-h100/wall-clock
+          "$RUNNER_TEMP/wrist-python/bin/python" "$h100/compare.py" --datasets > "$RUNNER_TEMP/eight-h100-wall.json"
+          cmp "$h100/comparison.json" "$RUNNER_TEMP/eight-h100-wall.json"
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
           /usr/bin/python3 "$guide/capacity.py" "$guide/capacity.zip" > "$RUNNER_TEMP/wrist-capacity.json"
           cmp "$guide/capacity.json" "$RUNNER_TEMP/wrist-capacity.json"
