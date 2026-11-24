@@ -22,8 +22,12 @@ def main():
     parser.add_argument("--dark", action="store_true")
     parser.add_argument(
         "--foreground-cadence",
-        action="store_true",
-        help="Measure visible foreground RGB with three concurrent background Nano workers",
+        nargs="?",
+        type=int,
+        const=4,
+        choices=range(2, 65),
+        metavar="SESSIONS",
+        help="Measure native foreground RGB with this many concurrent Nano sessions (default four)",
     )
     parser.add_argument(
         "--device-preflight",
@@ -148,6 +152,8 @@ def main():
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     if args.foreground_cadence and (not args.fleet or not args.provider):
         parser.error("--foreground-cadence requires --fleet and an author")
+    if args.fleet and not args.provider:
+        args.provider = "octos-deepseek"
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
@@ -163,7 +169,9 @@ def main():
     if args.foreground_cadence:
         from fleet_cadence import registry
 
-        env["DOROBOT_AISLE_WORKERS"] = str(registry(output, studio_root))
+        env["DOROBOT_AISLE_WORKERS"] = str(
+            registry(output, studio_root, args.foreground_cadence)
+        )
     with args.studio.open("rb") as binary:
         binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
     revision = subprocess.check_output(
@@ -259,7 +267,9 @@ def main():
                 if args.fleet:
                     check.append("--fleet")
                     if args.foreground_cadence:
-                        check.append("--foreground-cadence")
+                        check.extend(
+                            ["--foreground-cadence", str(args.foreground_cadence)]
+                        )
                 if args.observed_author:
                     check.append("--observed-author")
                 if args.moving_target:
@@ -354,6 +364,13 @@ def main():
         },
     )
     (directory / "mode-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    if args.foreground_cadence:
+        cadence = json.loads((directory / "preview-cadence.json").read_bytes())
+        if not cadence["meets_cadence"]:
+            raise SystemExit(
+                "Cadence target missed. Measured rates and all robot verdicts are retained in "
+                + str(directory)
+            )
 
 
 if __name__ == "__main__":

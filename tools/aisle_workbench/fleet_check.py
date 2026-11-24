@@ -145,7 +145,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         cadence = verify_viewport(args.out, trial, backgrounds)
         checks.append(
             dict(
-                check="Four simultaneous simulations with measured viewport cadence",
+                check=f"{args.foreground_cadence} simultaneous simulations with measured viewport cadence",
                 foreground_id=foreground,
                 origin=origin,
                 result=result,

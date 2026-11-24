@@ -19,9 +19,9 @@ ALIAS = "preview-benchmark"
 TASK = "Move the red floor cube onto the coffee table."
 
 
-def registry(root, checkout):
+def registry(root, checkout, slots):
     spool = root / "benchmark-worker"
-    initialize(spool, 4)
+    initialize(spool, slots)
     node = dict(python=sys.executable, checkout=str(checkout), spool=str(spool))
     if os.environ.get("DOROBOT_AISLE_ROOT"):
         node["aisle_root"] = os.environ["DOROBOT_AISLE_ROOT"]
@@ -108,9 +108,11 @@ def background(index, node, folder, provider):
 def while_streaming(args, foreground, done, grab):
     folder = args.out.parent
     node = json.loads((folder / "benchmark-nodes.json").read_bytes())[ALIAS]
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    observers = args.foreground_cadence - 1
+    with ThreadPoolExecutor(max_workers=observers) as pool:
         jobs = [
-            pool.submit(background, i, node, folder, args.provider) for i in range(3)
+            pool.submit(background, i, node, folder, args.provider)
+            for i in range(observers)
         ]
         grab("foreground")
         row = done(
@@ -146,7 +148,18 @@ def verify_viewport(out, trial, backgrounds):
     assert len(gaps) > 1
     phase_seconds = sum(gaps)
     fps = len(gaps) / phase_seconds
+    background_rates = []
+    for job in backgrounds:
+        stamps = [stamp for _, stamp, _ in job["samples"] if begin <= stamp <= end]
+        background_rates.append(
+            1e9 * (len(stamps) - 1) / (stamps[-1] - stamps[0])
+            if len(stamps) > 1
+            else 0.0
+        )
     report = dict(
+        sessions=1 + len(backgrounds),
+        background_wall_fps=background_rates,
+        meets_cadence=phase_seconds >= 30 and fps >= 25 and min(background_rates) >= 1,
         common_physics_window_s=(end - begin) / 1e9,
         draw_window_s=phase_seconds,
         viewport_draws=len(observed),
@@ -165,5 +178,4 @@ def verify_viewport(out, trial, backgrounds):
     )
     save(out / "preview-cadence.json", report)
     save(out / "background-verdicts.json", backgrounds)
-    assert phase_seconds >= 30 and fps >= 25, report
     return report
