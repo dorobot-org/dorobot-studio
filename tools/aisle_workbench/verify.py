@@ -479,18 +479,15 @@ def main():
                         check.append("--" + args.provider)
                     if args.backend == "offscreen":
                         check.append("--screenshots")
-                timeout = (
-                    1800
-                    if args.train_grasp or args.wrist_faults == "three"
-                    else (
-                        900
-                        if args.transfer
-                        or args.fleet
-                        or args.wrist_faults
-                        or prior_trial
-                        else 330
-                    )
-                )
+                if args.wrist_faults == "three":
+                    # Allow authoring, three full trials and the UI transitions.
+                    timeout = 2400
+                elif args.train_grasp:
+                    timeout = 1800
+                elif args.transfer or args.fleet or args.wrist_faults or prior_trial:
+                    timeout = 900
+                else:
+                    timeout = 330
                 try:
                     subprocess.run(check, check=True, timeout=timeout)
                 except (subprocess.SubprocessError, KeyboardInterrupt):
