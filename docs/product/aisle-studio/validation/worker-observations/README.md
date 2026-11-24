@@ -17,3 +17,5 @@ Reproduce the G1 comparison from the Studio checkout using an installed AISLE en
 ```
 
 With the worker client, pass `--observation-period-s 2` on background submission and use `observation JOB_ID output.rgb` to fetch one image. Physical multi-host throughput remains an open benchmark.
+
+On a 128 GiB M3 Max, one foreground and three background Nano sessions completed through real inference, RGB delivery, evidence download and dataset export in 77.51 wall seconds. [Single-host throughput and raw timestamps](local-capacity/README.md)
