@@ -568,6 +568,7 @@ def simulate(args, meta):
             impact=impact,
             reach_weights=weights,
             impact_aim=getattr(args, "impact_aim", DEFAULT_IMPACT_AIM),
+            observations_only=getattr(args, "observations_only", False),
             parameters=json.loads(impact_recipe.read_text()) if impact_recipe else None,
         ) | dict(
             **(
@@ -608,7 +609,8 @@ def simulate(args, meta):
                 args.out,
                 getattr(args, "seed", 0),
                 control["color_order"].split(","),
-                record=True,
+                record=not getattr(args, "observations_only", False),
+                observation_progress=getattr(args, "observations_only", False),
                 room_objects=room_objects,
                 room_settings=room_settings,
             )
@@ -677,7 +679,9 @@ def simulate(args, meta):
         raise ValueError("Inspection requires one named joint per measured coordinate")
     recording = []
     camera = args.out / "camera"
-    camera.mkdir()
+    record = not getattr(args, "observations_only", False)
+    if record:
+        camera.mkdir()
     in_bounds = True
     for index in range(121):
         target[dof] = initial[dof] + control["delta_rad"] * min(index / 60, 1)
@@ -695,27 +699,33 @@ def simulate(args, meta):
             measured_rad=float(measured[dof]),
         )
         rows.append(row)
-        recording.append(
-            dict(step=index + 1, state=measured.tolist(), action=target.tolist())
-        )
+        if record:
+            recording.append(
+                dict(step=index + 1, state=measured.tolist(), action=target.tolist())
+            )
+        elif index % 60:
+            save(args.out / "progress.json", row)
+            continue
         rgb = np.asarray(cam.render()[0], dtype=np.uint8)
         image = Image.fromarray(rgb).convert("RGB")
         path = args.out / "frame.tmp"
         image.save(path, "PNG")
-        (camera / f"{len(rows) - 1:04d}.png").write_bytes(path.read_bytes())
+        if record:
+            (camera / f"{len(rows) - 1:04d}.png").write_bytes(path.read_bytes())
         path.replace(args.out / "frame.png")
         tmp = args.out / "preview.tmp"
         tmp.write_bytes(index.to_bytes(4, "big") + image.tobytes())
         tmp.replace(args.out / "preview.rgb")
         save(args.out / "progress.json", row)
     save(args.out / "trajectory.json", rows)
-    save(args.out / "recording.json", dict(joints=names, samples=recording))
+    if record:
+        save(args.out / "recording.json", dict(joints=names, samples=recording))
     actual = rows[-1]["measured_rad"] - float(initial[dof])
     tolerance = min(0.025, 0.15 * abs(control["delta_rad"]))
     passed = abs(actual - control["delta_rad"]) < tolerance and in_bounds
     return dict(
         robot=args.robot,
-        recording=True,
+        recording=record,
         task_success=passed,
         tolerance_rad=tolerance,
         frames=len(rows),
@@ -785,6 +795,11 @@ def main():
     p.add_argument("--seed", type=int, default=0, help="Living-room layout seed")
     p.add_argument(
         "--fixture", choices=["standard", "compliant", "impact"], default="standard"
+    )
+    p.add_argument(
+        "--observations-only",
+        action="store_true",
+        help="Run live control without recording a camera dataset",
     )
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()

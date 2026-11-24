@@ -52,6 +52,7 @@ def simulate(
     parameters=None,
     reach_weights=None,
     impact_aim=DEFAULT_IMPACT_AIM,
+    observations_only=False,
 ):
     from g1_reach_checkpoint import features
     from aisle.kinematics import load_urdf_chain
@@ -79,7 +80,7 @@ def simulate(
     )
     # Batch archives retain the full-rate numerical traces, while operator trials
     # additionally save the camera and joint/action samples for native Replay.
-    record_episode = parameters is None
+    record_episode = parameters is None and not observations_only
     samples = []
     if record_episode:
         (out / "camera").mkdir()
@@ -317,6 +318,9 @@ def simulate(
                 both_feet=feet.issubset(loaded),
             )
             rows.append(row)
+            if observations_only and step != 1 and step % 200:
+                save(out / "progress.json", row)
+                continue
             rgb = np.asarray(camera.render()[0], dtype=np.uint8)
             if record_episode and step % 20 == 0:
                 Image.fromarray(rgb).save(out / "camera" / f"{len(samples):04d}.png")
