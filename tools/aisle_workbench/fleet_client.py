@@ -10,13 +10,13 @@ import subprocess
 from uuid import uuid4
 
 
-def send(node, request):
+def worker_command(node, *operation):
     args = [
         node["python"],
         str(Path(node["checkout"]) / "tools/aisle_workbench/fleet_worker.py"),
         "--root",
         node["spool"],
-        "rpc",
+        *operation,
     ]
     if node.get("aisle_root"):
         args = [
@@ -37,8 +37,16 @@ def send(node, request):
             node["ssh"],
             shlex.join(args),
         ]
+    return args
+
+
+def send(node, request):
     reply = subprocess.run(
-        args, input=json.dumps(request), capture_output=True, text=True, timeout=60
+        worker_command(node, "rpc"),
+        input=json.dumps(request),
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if reply.returncode:
         raise RuntimeError(
@@ -73,8 +81,9 @@ def submission(
         room_hash = hashlib.sha256(room.read_bytes()).hexdigest()
         files.update(
             {
-                "room/"
-                + name: base64.b64encode(room.with_name(name).read_bytes()).decode()
+                "room/" + name: base64.b64encode(
+                    room.with_name(name).read_bytes()
+                ).decode()
                 for name in ROOM_FILES
             }
         )

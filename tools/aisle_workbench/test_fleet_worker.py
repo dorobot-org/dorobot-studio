@@ -1,3 +1,5 @@
+import io
+import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import tempfile
@@ -6,7 +8,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from fleet_client import submission
-from fleet_worker import dispatch, initialize, transaction
+from fleet_worker import dispatch, initialize, stream_rgb, transaction
 
 
 class WorkerLeaseTests(unittest.TestCase):
@@ -86,6 +88,27 @@ class WorkerLeaseTests(unittest.TestCase):
                     self.request
                     | {"id": ident, "mode": "observations", "observation_period_s": 5},
                 )
+
+    def test_rgb_stream_finishes_with_the_last_full_frame_and_rejects_backgrounds(self):
+        ident = self.request["id"]
+        trial = self.root / ident / "trial"
+        trial.mkdir(parents=True)
+        raw = (40).to_bytes(4, "big") + bytes(480 * 360 * 3)
+        (trial / "preview.rgb").write_bytes(raw)
+        final = dict(id=ident, stream=True, state="completed")
+        out = io.BytesIO()
+        with patch("fleet_worker.status", return_value=final):
+            stream_rgb(self.root, ident, out)
+        out.seek(0)
+        self.assertEqual(json.loads(out.readline()), dict(job=final, bytes=len(raw)))
+        self.assertEqual(out.read(), raw)
+        with patch("fleet_worker.status", return_value=final | {"stream": False}):
+            with self.assertRaisesRegex(ValueError, "foreground"):
+                stream_rgb(self.root, ident, io.BytesIO())
+        (trial / "preview.rgb").write_bytes(raw[:15])
+        with patch("fleet_worker.status", return_value=final):
+            with self.assertRaisesRegex(ValueError, "RGB plane"):
+                stream_rgb(self.root, ident, io.BytesIO())
 
     def test_unknown_companion_file_and_controller_digest_are_rejected(self):
         for change in [

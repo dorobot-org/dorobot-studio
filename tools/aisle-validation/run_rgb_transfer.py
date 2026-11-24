@@ -11,6 +11,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -246,6 +247,7 @@ def execute(
     room_objects=(),
     room_settings=None,
     observation_progress=False,
+    live_preview=False,
     observation_period_s=1,
     target_motion="stationary",
 ):
@@ -359,8 +361,26 @@ def execute(
             (out / "camera" / name).mkdir(parents=True)
     active_color = colors[0]
 
-    def publish(sample=False):
-        rgb = sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
+    preview_times = []
+    preview_period_ns = 1_000_000_000 // 30
+    next_preview_ns = time.monotonic_ns()
+
+    def head_rgb():
+        return sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
+
+    def show_preview(rgb):
+        # Final progress publication can revisit the last streamed physics step.
+        if live_preview and preview_times and preview_times[-1][0] == sim.tick:
+            return
+        tmp = out / "preview.tmp"
+        tmp.write_bytes(struct.pack(">I", sim.tick) + rgb.tobytes())
+        tmp.replace(out / "preview.rgb")
+        if live_preview:
+            preview_times.append((sim.tick, time.monotonic_ns()))
+
+    def publish(sample=False, rgb=None):
+        if rgb is None:
+            rgb = head_rgb()
         if sample:
             for name in CAMERAS:
                 frame = (
@@ -381,9 +401,8 @@ def execute(
                     airborne_in_jaw=[judge.airborne_in_jaw[n] for n in colors],
                 )
             )
-        tmp = out / "preview.tmp"
-        tmp.write_bytes(struct.pack(">I", sim.tick) + rgb.tobytes())
-        tmp.replace(out / "preview.rgb")
+        if not live_preview or not sample:
+            show_preview(rgb)
         row = dict(
             kind="table-transfer",
             step=sim.tick + 1,
@@ -398,6 +417,7 @@ def execute(
         return rgb
 
     def step():
+        nonlocal next_preview_ns
         if sim.tick >= 60000:
             raise ValueError("episode step budget exhausted")
         slide = slides.get(active_color)
@@ -408,8 +428,17 @@ def execute(
         judge.tick(sim)
         if slide:
             slide.after_step(*judge.pick_contacts[active_color], applied)
+        rgb = None
+        if live_preview:
+            now = time.monotonic_ns()
+            if now >= next_preview_ns:
+                next_preview_ns += (
+                    1 + (now - next_preview_ns) // preview_period_ns
+                ) * preview_period_ns
+                rgb = head_rgb()
+                show_preview(rgb)
         if record and sim.tick % 20 == 0:
-            publish(sample=True)
+            publish(sample=True, rgb=rgb)
         elif observation_progress and sim.tick % 100 == 0:
             if sim.tick % (100 * observation_period_s) == 0:
                 rgb = sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[
@@ -633,6 +662,11 @@ def execute(
     if record:
         frame = publish()
         Image.fromarray(frame).save(out / "frame.png")
+        if live_preview:
+            worker.save(
+                out / "preview-timing.json",
+                dict(target_fps=30, clock="monotonic_ns", tick_time=preview_times),
+            )
         worker.save(out / "trajectory.json", rows)
         worker.save(
             out / "recording.json",

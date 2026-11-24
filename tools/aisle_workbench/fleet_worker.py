@@ -346,6 +346,8 @@ def supervise(root, ident, token):
                     config["room_sha256"],
                 ]
             )
+        if config["mode"] == "stream":
+            args.append("--live-preview")
         if config["mode"] == "observations":
             args.extend(
                 (
@@ -423,6 +425,7 @@ def dispatch(root, request):
                 continue
         return dict(
             protocol=1,
+            foreground_rgb_protocol=1,
             background_rgb_periods_s=[1, 2, 5],
             host=platform.node(),
             system=platform.system(),
@@ -476,6 +479,47 @@ def dispatch(root, request):
     return status(root, ident)
 
 
+def stream_rgb(root, ident, output):
+    """Write a bounded JSON header and optional tick-prefixed RGB plane per update."""
+    ident = job_id(ident)
+    path = root / ident / "trial/preview.rgb"
+    last_tick = None
+    next_status = 0
+    while True:
+        now = time.monotonic()
+        info = None
+        if now >= next_status:
+            info = status(root, ident)
+            if not info["stream"]:
+                raise ValueError("Choose the foreground job for a live stream")
+            next_status = now + 0.25
+        frame = b""
+        try:
+            with path.open("rb") as f:
+                header = f.read(4)
+                if len(header) != 4:
+                    raise ValueError("Incomplete foreground RGB tick")
+                tick = int.from_bytes(header, "big")
+                if tick != last_tick:
+                    frame = header + f.read(480 * 360 * 3 + 1)
+                    if len(frame) not in (4 + 480 * 320 * 3, 4 + 480 * 360 * 3):
+                        raise ValueError("Invalid foreground RGB plane")
+                    last_tick = tick
+        except FileNotFoundError:
+            pass
+        if info or frame:
+            packet = dict(bytes=len(frame))
+            if info:
+                packet["job"] = info
+            output.write(json.dumps(packet, allow_nan=False).encode() + b"\n")
+            if frame:
+                output.write(frame)
+            output.flush()
+        if info and info["state"] not in ACTIVE:
+            return
+        time.sleep(0.004)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
@@ -483,6 +527,7 @@ def main():
     init = cmd.add_parser("init")
     init.add_argument("--slots", type=int, required=True)
     cmd.add_parser("rpc")
+    cmd.add_parser("watch-rgb").add_argument("id")
     supervise_cmd = cmd.add_parser("_supervise")
     supervise_cmd.add_argument("id")
     supervise_cmd.add_argument("token")
@@ -490,6 +535,11 @@ def main():
     root = args.root.resolve()
     if args.command == "init":
         initialize(root, args.slots)
+    elif args.command == "watch-rgb":
+        try:
+            stream_rgb(root, args.id, sys.stdout.buffer)
+        except BrokenPipeError:
+            return
     elif args.command == "rpc":
         try:
             raw = sys.stdin.buffer.read(MAX_REQUEST + 1)

@@ -21,6 +21,15 @@ def main():
     parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
     parser.add_argument("--dark", action="store_true")
     parser.add_argument(
+        "--foreground-cadence",
+        nargs="?",
+        type=int,
+        const=4,
+        choices=range(2, 65),
+        metavar="SESSIONS",
+        help="Measure native foreground RGB with this many concurrent Nano sessions (default four)",
+    )
+    parser.add_argument(
         "--device-preflight",
         action="store_true",
         help="Exercise the selected trial’s device preflight and retained report",
@@ -141,6 +150,10 @@ def main():
         or args.observed_author
     ) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
+    if args.foreground_cadence and (not args.fleet or not args.provider):
+        parser.error("--foreground-cadence requires --fleet and an author")
+    if args.fleet and not args.provider:
+        args.provider = "octos-deepseek"
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
@@ -153,6 +166,12 @@ def main():
     }
     # The binary can come from another build directory. Its digest identifies the
     # executable, while these fields identify the workspace observed at launch.
+    if args.foreground_cadence:
+        from fleet_cadence import registry
+
+        env["DOROBOT_AISLE_WORKERS"] = str(
+            registry(output, studio_root, args.foreground_cadence)
+        )
     with args.studio.open("rb") as binary:
         binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
     revision = subprocess.check_output(
@@ -175,6 +194,7 @@ def main():
                     for f in (
                         "Cargo.lock",
                         "crates/dorobot-studio-core/src/runtime.rs",
+                        "crates/dorobot-studio-core/src/widgets/video_player.rs",
                         "plugins/aisle/src/lib.rs",
                         "crates/dorobot-studio-core/src/api/aisle.rs",
                         "dorobot-flex/src/bin/dorobot-flex.rs",
@@ -206,6 +226,10 @@ def main():
         command = [str(args.studio.resolve()), "--remote", "--screen", "aisle-task"]
         if args.dark:
             command.append("--dark")
+        if args.fleet or args.transfer:
+            env["DOROBOT_AISLE_DRAW_TRACE"] = str(
+                output / "verified" / f"{stage}-draws.jsonl"
+            )
         with (output / f"{stage}.log").open("w") as log:
             process = subprocess.Popen(
                 command, env=env, stdout=log, stderr=subprocess.STDOUT
@@ -242,6 +266,10 @@ def main():
                 ]
                 if args.fleet:
                     check.append("--fleet")
+                    if args.foreground_cadence:
+                        check.extend(
+                            ["--foreground-cadence", str(args.foreground_cadence)]
+                        )
                 if args.observed_author:
                     check.append("--observed-author")
                 if args.moving_target:
@@ -290,7 +318,14 @@ def main():
                     if args.transfer or args.fleet
                     else 330
                 )
-                subprocess.run(check, check=True, timeout=timeout)
+                try:
+                    subprocess.run(check, check=True, timeout=timeout)
+                except (subprocess.SubprocessError, KeyboardInterrupt):
+                    if args.foreground_cadence:
+                        from fleet_cadence import cancel_benchmark_jobs
+
+                        cancel_benchmark_jobs(output)
+                    raise
                 status = subprocess.check_output(
                     [args.remote, "app", str(process.pid), "status"], text=True
                 )
@@ -336,6 +371,13 @@ def main():
         },
     )
     (directory / "mode-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    if args.foreground_cadence:
+        cadence = json.loads((directory / "preview-cadence.json").read_bytes())
+        if not cadence["meets_cadence"]:
+            raise SystemExit(
+                "Cadence target missed. Measured rates and all robot verdicts are retained in "
+                + str(directory)
+            )
 
 
 if __name__ == "__main__":

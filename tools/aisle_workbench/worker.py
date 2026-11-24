@@ -708,6 +708,7 @@ def simulate(args, meta):
                 getattr(args, "seed", 0),
                 control["color_order"].split(","),
                 record=not getattr(args, "observations_only", False),
+                live_preview=getattr(args, "live_preview", False),
                 observation_progress=getattr(args, "observations_only", False),
                 target_motion=getattr(args, "target_motion", "stationary"),
                 observation_period_s=getattr(args, "observation_period_s", 1),
@@ -936,6 +937,11 @@ def main():
     p.add_argument("--node", default="local")
     p.add_argument("--job-id")
     p.add_argument("--observation-period-s", type=int, choices=(1, 2, 5), default=1)
+    p.add_argument(
+        "--live-preview",
+        action="store_true",
+        help="Stream fresh Nano transfer RGB at up to 30 wall-clock FPS",
+    )
     p.add_argument("--reserved", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
     if args.seed < 0:

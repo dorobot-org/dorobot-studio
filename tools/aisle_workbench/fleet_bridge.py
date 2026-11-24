@@ -6,9 +6,11 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import select
 import shutil
 import sqlite3
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -16,7 +18,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 from fleet_artifacts import download
-from fleet_client import check_background_period, send, submission
+from fleet_client import check_background_period, send, submission, worker_command
 from fleet_worker import ACTIVE, initialize, job_id
 from worker import ROOT, save
 
@@ -218,6 +220,90 @@ def receive_frame(node, ident, operation, out):
     )
 
 
+def foreground_packets(pipe, silence_s=10):
+    """Decode bounded packets and time out even if a peer stops halfway through one."""
+    buf = bytearray()
+    header_limit = 128 * 1024
+
+    def read_more():
+        if not select.select([pipe], [], [], silence_s)[0]:
+            raise TimeoutError(
+                "Foreground RGB stream stalled. Refresh the worker to reconnect."
+            )
+        chunk = os.read(pipe.fileno(), 65536)
+        buf.extend(chunk)
+        return bool(chunk)
+
+    while True:
+        boundary = buf.find(b"\n")
+        while boundary < 0:
+            if len(buf) >= header_limit:
+                raise ValueError("Invalid foreground stream header")
+            if not read_more():
+                if buf:
+                    raise ValueError("Incomplete foreground stream header")
+                return
+            boundary = buf.find(b"\n")
+        if boundary >= header_limit:
+            raise ValueError("Invalid foreground stream header")
+        packet = json.loads(buf[:boundary])
+        del buf[: boundary + 1]
+        size = packet["bytes"]
+        if type(size) is not int or size not in (
+            0,
+            4 + 480 * 320 * 3,
+            4 + 480 * 360 * 3,
+        ):
+            raise ValueError("Invalid foreground frame size")
+        while len(buf) < size:
+            if not read_more():
+                raise ValueError("Incomplete foreground RGB frame")
+        raw = bytes(buf[:size])
+        del buf[:size]
+        yield packet, raw
+
+
+def watch_foreground(node, ident, out, root):
+    job, frame = None, None
+    proc = subprocess.Popen(
+        worker_command(node, "watch-rgb", ident), stdout=subprocess.PIPE
+    )
+    try:
+        for packet, raw in foreground_packets(proc.stdout):
+            if "job" in packet:
+                new_job = packet["job"]
+                if new_job.get("id") != ident:
+                    raise ValueError("Foreground stream returned a different job")
+                if not job or new_job["state"] != job["state"]:
+                    update(root, ident, new_job["state"])
+                job = new_job
+            if not job:
+                raise ValueError("Missing foreground job identity")
+            if raw:
+                tmp = out / "preview.tmp"
+                tmp.write_bytes(raw)
+                tmp.replace(out / "preview.rgb")
+                frame = dict(
+                    tick=int.from_bytes(raw[:4], "big"),
+                    height=(len(raw) - 4) // 1440,
+                    sha256=hashlib.sha256(memoryview(raw)[4:]).hexdigest(),
+                )
+            save(out / "watch.json", dict(job=job, frame=frame))
+        if proc.wait(timeout=5) or not job or job["state"] in ACTIVE:
+            raise ValueError(
+                "Foreground RGB stream disconnected. Refresh the worker to reconnect."
+            )
+    finally:
+        proc.stdout.close()
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+
 def operate(args):
     root = args.out.parent
     registry = nodes(root)
@@ -233,6 +319,11 @@ def operate(args):
         row = record(root, ident)
         if row["node"] != alias:
             raise ValueError("This job belongs to another node")
+        if (
+            row["mode"] == "stream"
+            and send(node, dict(op="hello")).get("foreground_rgb_protocol") == 1
+        ):
+            return watch_foreground(node, ident, args.out, root)
         while True:
             info = reconcile(root, row, node)
             frame = None
