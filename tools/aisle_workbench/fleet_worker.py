@@ -40,6 +40,8 @@ def companion_names(plan):
         ):
             raise ValueError("Unknown onboard scene files")
         names.update(files)
+    if "pickup_revision" in plan:
+        names.add("revision-observation.npz")
     if "reach_checkpoint" in plan:
         names.update(("training.json", "reach-checkpoint.json"))
     if "grasp_checkpoint" in plan:

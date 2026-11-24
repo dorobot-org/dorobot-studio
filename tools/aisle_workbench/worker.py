@@ -97,6 +97,9 @@ def named_cube_transfer(task):
     return match.group(1) if match else None
 
 
+GRASP_ASSOCIATIONS = ("all-views-unique-v1", "wrist-agreement-v1")
+
+
 def validate(plan, meta):
     if meta["robot"] == "Nano" and isinstance(plan.get("task"), str):
         named = named_cube_transfer(plan["task"])
@@ -113,6 +116,12 @@ def validate(plan, meta):
         raise ValueError(
             "Visual grasp tracking requires a Nano floor-to-table transfer"
         )
+    if "grasp_association" in plan and (
+        not tracking or plan["grasp_association"] not in GRASP_ASSOCIATIONS
+    ):
+        raise ValueError(
+            "Choose a supported RGB association method for the tracked Nano grasp"
+        )
     if plan.get("kind") == "table-transfer":
         if meta["robot"] != "Nano" or plan.get("color_order") not in CUBE_ORDERS:
             raise ValueError(
@@ -127,6 +136,11 @@ def validate(plan, meta):
             kind="table-transfer",
             color_order=plan["color_order"],
             **({"track_grasp": True} if tracking else {}),
+            **(
+                {"grasp_association": plan["grasp_association"]}
+                if "grasp_association" in plan
+                else {}
+            ),
         )
     if plan.get("kind") == "visual-approach":
         if (
@@ -217,7 +231,7 @@ def onboard_transfer_feedback(log, requested):
     return observations
 
 
-def measured_feedback(path, meta):
+def measured_feedback(path, meta, output=None):
     previous = json.loads((path / "result.json").read_text())
     parent = path / "controller.json"
     if (
@@ -234,6 +248,15 @@ def measured_feedback(path, meta):
             color: previous["cubes"].get(color, {}).get("passed", False)
             for color in previous["requested"]
         }
+        pickup = {}
+        failure = previous.get("last_pickup_observation")
+        if failure and failure.get("color") in previous["requested"]:
+            if failure.get("stopped_tick") != previous["physics_ticks"]:
+                raise ValueError("Stopped pickup packet is from another trial tick")
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from decision_observations import pickup_feedback
+
+            pickup["stopped_pickup"] = pickup_feedback(path, meta, failure, output)
         return {
             k: previous[k]
             for k in (
@@ -245,6 +268,7 @@ def measured_feedback(path, meta):
                 "controller_hash",
             )
         } | {
+            **pickup,
             "settled": verdicts,
             "onboard_observations": onboard_transfer_feedback(
                 path / "actions.jsonl", previous["requested"]
@@ -436,7 +460,9 @@ def room_for_mobile(args, meta):
 
 def prepare(args, meta):
     observation = None
-    feedback = measured_feedback(args.feedback, meta) if args.feedback else None
+    feedback = (
+        measured_feedback(args.feedback, meta, args.out) if args.feedback else None
+    )
     model_name = None
     if args.provider == "reference":
         if args.task.strip() != REFERENCE:
@@ -546,12 +572,58 @@ def prepare(args, meta):
             )
         elif args.robot == "Nano":
             prompt += "\nIf selecting the target requires comparing its current position with others and no onboard measurements are provided, reject the request."
+        if feedback and "stopped_pickup" in feedback:
+            schema["properties"].update(
+                association_choice=dict(
+                    type="string", enum=["inherit", *GRASP_ASSOCIATIONS]
+                ),
+                observation_rationale=dict(
+                    type="string",
+                    description="One short sentence explaining the choice using the captured observations.",
+                ),
+            )
+            schema["required"] += ["association_choice", "observation_rationale"]
+            prompt += (
+                "\nFor a revised tracked pickup, choose the runtime association rule using the stopped exposure. "
+                "all-views-unique-v1 stops if any camera has multiple projected candidates. "
+                "wrist-agreement-v1 permits multiple candidates in another camera only when exactly one "
+                "is within 0.035 m of the unique left-wrist candidate. Both modes keep the other geometry "
+                "and actuator checks. Choose inherit to retain the measured rule, or for a different capability. "
+                "Explain your choice from the listed base-frame positions."
+            )
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
         plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
+    revision = None
+    if feedback and "stopped_pickup" in feedback and args.provider != "reference":
+        choice = plan.get("association_choice")
+        rationale = plan.get("observation_rationale")
+        if (
+            choice not in ("inherit", *GRASP_ASSOCIATIONS)
+            or not isinstance(rationale, str)
+            or not rationale.strip()
+        ):
+            raise ValueError(
+                "A pickup revision requires an association choice and its observation-based rationale"
+            )
+        before = feedback["stopped_pickup"]["association"]
+        if plan.get("kind") == "table-transfer" and plan.get("track_grasp") is True:
+            after = before if choice == "inherit" else choice
+            plan["grasp_association"] = after
+            revision = dict(
+                previous_association=before,
+                grasp_association=after,
+                rationale=rationale.strip(),
+                packet_sha256=feedback["stopped_pickup"]["packet_sha256"],
+                parent_controller_sha256=feedback["controller_hash"],
+            )
+        elif choice != "inherit":
+            raise ValueError(
+                "Only a tracked Nano pickup can change its RGB association method"
+            )
     validated = validate(plan | {"task": args.task}, meta)
     if observation and validated.get("kind") in ("visual-approach", "table-transfer"):
         selected = (
@@ -565,6 +637,7 @@ def prepare(args, meta):
         **validated,
         **({"scene_observation": observation} if observation else {}),
         **({"previous_trial": feedback} if feedback else {}),
+        **({"pickup_revision": revision} if revision else {}),
         robot=args.robot,
         task=args.task,
         provider=args.provider,
@@ -588,6 +661,19 @@ def simulate(args, meta):
     if plan["model_hash"] != meta["model_hash"] or plan["robot"] != args.robot:
         raise ValueError("Controller and robot model differ")
     control = validate(plan, meta)
+    if "pickup_revision" in plan:
+        revision = plan["pickup_revision"]
+        parent = plan.get("previous_trial") or {}
+        packet = args.controller.with_name("revision-observation.npz").read_bytes()
+        if (
+            revision["packet_sha256"] != hashlib.sha256(packet).hexdigest()
+            or revision["packet_sha256"]
+            != parent.get("stopped_pickup", {}).get("packet_sha256")
+            or revision["parent_controller_sha256"] != parent.get("controller_hash")
+            or revision["grasp_association"] != control.get("grasp_association")
+        ):
+            raise ValueError("Pickup revision and retained observation differ")
+        (args.out / "revision-observation.npz").write_bytes(packet)
     if "scene_observation" in plan:
         from onboard_scene import bind
 

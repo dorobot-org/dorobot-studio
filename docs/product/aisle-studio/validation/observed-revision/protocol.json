@@ -1,0 +1,19 @@
+{
+  "task": "Revise the failed Nano pickup using the recorded onboard observations. Preserve the three moving cubes, their order and the coffee table destination. Keep the robot stopped whenever the visible evidence cannot identify a single target.",
+  "development_seed": 0,
+  "fixture": "slide-negative",
+  "order": [
+    "red",
+    "green",
+    "blue"
+  ],
+  "held_out_layouts": 3,
+  "disclosure_sha256": "5371a1dfe25f22451c887ca96df8c310b8bed714c29b35d9544fedcc459236b4",
+  "authors": [
+    "codex",
+    "octos-deepseek"
+  ],
+  "baseline": "The earlier all-views-unique-v1 tracked controller on the shared evaluator.",
+  "criterion": "Score the existing task_success verdict on the same three seeds for all three programs. Include stopped and missed moving grasps. Report development and held-out outcomes separately.",
+  "freeze": "Freeze each initial accepted provider reply and its resulting controller before disclosing the layouts. Use one trial per program and layout. No retries of completed trajectories."
+}

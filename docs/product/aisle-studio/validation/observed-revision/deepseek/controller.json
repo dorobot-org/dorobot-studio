@@ -1,0 +1,89 @@
+{
+  "kind": "table-transfer",
+  "color_order": "red,green,blue",
+  "track_grasp": true,
+  "grasp_association": "wrist-agreement-v1",
+  "previous_trial": {
+    "robot": "Nano",
+    "kind": "table-transfer",
+    "requested": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "phase": "pick",
+    "task_success": false,
+    "controller_hash": "fd9dcab6ee4c76bb7a25252a0006c67ab81fd4ac838641d033f1373bbaed42b2",
+    "stopped_pickup": {
+      "color": "blue",
+      "stamp_ns": 178140000000,
+      "stopped_tick": 17814,
+      "packet_sha256": "996576a5f4c681dcdaf396f3f402968e2f1dbe1750d11e6ae0b70c21842a34f8",
+      "association": "all-views-unique-v1",
+      "candidate_xy_m": {
+        "head": [
+          [
+            0.3793040497264909,
+            0.4221948118175721
+          ],
+          [
+            0.2671728547411369,
+            0.21094029603128878
+          ]
+        ],
+        "left_wrist": [
+          [
+            0.26386652389658505,
+            0.2084773152754107
+          ]
+        ],
+        "right_wrist": []
+      },
+      "coordinate_frame": "base_link",
+      "unit": "metres"
+    },
+    "settled": {
+      "red": true,
+      "green": true,
+      "blue": false
+    },
+    "onboard_observations": {
+      "red": {
+        "last_wrist_jaw": {
+          "tick": 5892,
+          "cube_visible": false
+        },
+        "last_rgb_table_rim": {
+          "tick": 4442,
+          "distance_m": 0.3091127734639152,
+          "height_m": 0.5376237498776213,
+          "angle_rad": 0.0013232418286253814
+        }
+      },
+      "green": {
+        "last_wrist_jaw": {
+          "tick": 14504,
+          "cube_visible": false
+        },
+        "last_rgb_table_rim": {
+          "tick": 13034,
+          "distance_m": 0.30539555067444557,
+          "height_m": 0.5364015039654282,
+          "angle_rad": -0.015298870732659502
+        }
+      }
+    }
+  },
+  "pickup_revision": {
+    "previous_association": "all-views-unique-v1",
+    "grasp_association": "wrist-agreement-v1",
+    "rationale": "In the stopped exposure the head camera sees two candidates at (0.379,0.422) and (0.267,0.211) while the left wrist has a single candidate at (0.264,0.208), so only the (0.267,0.211) head candidate lies within 0.035 m (~0.004 m) of the wrist one; all-views-unique-v1 would abort on the second, distant head candidate, whereas wrist-agreement-v1 resolves to that single agreeing target for the blue pickup.",
+    "packet_sha256": "996576a5f4c681dcdaf396f3f402968e2f1dbe1750d11e6ae0b70c21842a34f8",
+    "parent_controller_sha256": "fd9dcab6ee4c76bb7a25252a0006c67ab81fd4ac838641d033f1373bbaed42b2"
+  },
+  "robot": "Nano",
+  "task": "Revise the failed Nano pickup using the recorded onboard observations. Preserve the three moving cubes, their order and the coffee table destination. Keep the robot stopped whenever the visible evidence cannot identify a single target.",
+  "provider": "octos-deepseek",
+  "policy_model": "deepseek-v4-flash",
+  "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+}

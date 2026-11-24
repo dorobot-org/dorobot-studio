@@ -1,0 +1,89 @@
+{
+  "provider": "octos-deepseek",
+  "instruction": "For a table transfer, set track_grasp=true when asked to grasp a moving or sliding cube or to update the pickup from RGB while the arm descends. For other tasks set track_grasp=false. Select one Nano capability. For joint-inspection use a fixed-base shoulder displacement of 0.03\u20130.15 rad in magnitude, within limits {\"left_j2_pitch\": [-2.61799387799, 2.61799387799], \"right_j2_pitch\": [-2.61799387799, 2.61799387799]}. For visual-approach use the floating base to approach one named red, green or blue floor cube and stop 0.40\u20130.55 metres from it (default 0.45 m). Use only onboard RGB and encoders. For table-transfer use the left arm to pick floor cubes and place them on the coffee table. Select named colors in their requested order, or red,green,blue for all three. This is a development simulation. Other destinations, unspecified objects, excessive displacements and other motions are unsupported. Set supported=false for these. Fill unused fields with legal defaults. Operator instruction: Revise the failed Nano pickup using the recorded onboard observations. Preserve the three moving cubes, their order and the coffee table destination. Keep the robot stopped whenever the visible evidence cannot identify a single target.\nIf selecting the target requires comparing its current position with others and no onboard measurements are provided, reject the request.\nFor a revised tracked pickup, choose the runtime association rule using the stopped exposure. all-views-unique-v1 stops if any camera has multiple projected candidates. wrist-agreement-v1 permits multiple candidates in another camera only when exactly one is within 0.035 m of the unique left-wrist candidate. Both modes keep the other geometry and actuator checks. Choose inherit to retain the measured rule, or for a different capability. Explain your choice from the listed base-frame positions.\nPrevious measured trial to revise: {\"robot\": \"Nano\", \"kind\": \"table-transfer\", \"requested\": [\"red\", \"green\", \"blue\"], \"phase\": \"pick\", \"task_success\": false, \"controller_hash\": \"fd9dcab6ee4c76bb7a25252a0006c67ab81fd4ac838641d033f1373bbaed42b2\", \"stopped_pickup\": {\"color\": \"blue\", \"stamp_ns\": 178140000000, \"stopped_tick\": 17814, \"packet_sha256\": \"996576a5f4c681dcdaf396f3f402968e2f1dbe1750d11e6ae0b70c21842a34f8\", \"association\": \"all-views-unique-v1\", \"candidate_xy_m\": {\"head\": [[0.3793040497264909, 0.4221948118175721], [0.2671728547411369, 0.21094029603128878]], \"left_wrist\": [[0.26386652389658505, 0.2084773152754107]], \"right_wrist\": []}, \"coordinate_frame\": \"base_link\", \"unit\": \"metres\"}, \"settled\": {\"red\": true, \"green\": true, \"blue\": false}, \"onboard_observations\": {\"red\": {\"last_wrist_jaw\": {\"tick\": 5892, \"cube_visible\": false}, \"last_rgb_table_rim\": {\"tick\": 4442, \"distance_m\": 0.3091127734639152, \"height_m\": 0.5376237498776213, \"angle_rad\": 0.0013232418286253814}}, \"green\": {\"last_wrist_jaw\": {\"tick\": 14504, \"cube_visible\": false}, \"last_rgb_table_rim\": {\"tick\": 13034, \"distance_m\": 0.30539555067444557, \"height_m\": 0.5364015039654282, \"angle_rad\": -0.015298870732659502}}}}",
+  "output_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "joint",
+      "delta_rad",
+      "supported",
+      "kind",
+      "color",
+      "standoff_m",
+      "color_order",
+      "track_grasp",
+      "association_choice",
+      "observation_rationale"
+    ],
+    "properties": {
+      "joint": {
+        "type": "string",
+        "enum": [
+          "left_j2_pitch",
+          "right_j2_pitch"
+        ]
+      },
+      "delta_rad": {
+        "type": "number"
+      },
+      "supported": {
+        "type": "boolean"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "joint-inspection",
+          "visual-approach",
+          "table-transfer"
+        ]
+      },
+      "color": {
+        "type": "string",
+        "enum": [
+          "red",
+          "green",
+          "blue"
+        ]
+      },
+      "color_order": {
+        "type": "string",
+        "enum": [
+          "red",
+          "green",
+          "blue",
+          "red,green",
+          "red,blue",
+          "green,red",
+          "green,blue",
+          "blue,red",
+          "blue,green",
+          "red,green,blue",
+          "red,blue,green",
+          "green,red,blue",
+          "green,blue,red",
+          "blue,red,green",
+          "blue,green,red"
+        ]
+      },
+      "track_grasp": {
+        "type": "boolean"
+      },
+      "standoff_m": {
+        "type": "number"
+      },
+      "association_choice": {
+        "type": "string",
+        "enum": [
+          "inherit",
+          "all-views-unique-v1",
+          "wrist-agreement-v1"
+        ]
+      },
+      "observation_rationale": {
+        "type": "string",
+        "description": "One short sentence explaining the choice using the captured observations."
+      }
+    }
+  }
+}

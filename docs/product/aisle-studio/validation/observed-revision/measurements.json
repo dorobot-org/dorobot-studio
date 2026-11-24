@@ -1,0 +1,257 @@
+{
+  "archive_sha256": "b99aa93ca4d79f09b8ac44c1ec255853afa2db6ae9260c22f587fe0b47fc7825",
+  "trials": {
+    "development-baseline": {
+      "program": "baseline",
+      "seed": 0,
+      "task_success": false,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": false
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": true,
+        "blue": false
+      },
+      "motor_sha256": "e683eae72f8358589322ecdb6941f26f647877f628040ccea6ce7983bfd00a36",
+      "physics_ticks": 17814,
+      "wheel_supported_ticks": 17814,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": "ValueError: Lost the pickup point in the onboard cameras"
+    },
+    "development-codex": {
+      "program": "codex",
+      "seed": 0,
+      "task_success": true,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "d194d277dc6371f05c0247b5eb48e813bc7304aa950b281631ca7be26121d656",
+      "physics_ticks": 23596,
+      "wheel_supported_ticks": 23596,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "development-deepseek": {
+      "program": "deepseek",
+      "seed": 0,
+      "task_success": true,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "d194d277dc6371f05c0247b5eb48e813bc7304aa950b281631ca7be26121d656",
+      "physics_ticks": 23596,
+      "wheel_supported_ticks": 23596,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "baseline-519984327": {
+      "program": "baseline",
+      "seed": 519984327,
+      "task_success": true,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "f60687a800459180eba158d015d77f5d6a2b603586a7d93fb22250baee494fd6",
+      "physics_ticks": 23636,
+      "wheel_supported_ticks": 23636,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "codex-519984327": {
+      "program": "codex",
+      "seed": 519984327,
+      "task_success": true,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "f60687a800459180eba158d015d77f5d6a2b603586a7d93fb22250baee494fd6",
+      "physics_ticks": 23636,
+      "wheel_supported_ticks": 23636,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "deepseek-519984327": {
+      "program": "deepseek",
+      "seed": 519984327,
+      "task_success": true,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "f60687a800459180eba158d015d77f5d6a2b603586a7d93fb22250baee494fd6",
+      "physics_ticks": 23636,
+      "wheel_supported_ticks": 23636,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "baseline-792835454": {
+      "program": "baseline",
+      "seed": 792835454,
+      "task_success": false,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": false,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "5d0d59c45a9000f4de3e6744b7e92567af3e6c5b41f272ef614c12f7d452a0e1",
+      "physics_ticks": 25318,
+      "wheel_supported_ticks": 25318,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "codex-792835454": {
+      "program": "codex",
+      "seed": 792835454,
+      "task_success": false,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": false,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "5d0d59c45a9000f4de3e6744b7e92567af3e6c5b41f272ef614c12f7d452a0e1",
+      "physics_ticks": 25318,
+      "wheel_supported_ticks": 25318,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "deepseek-792835454": {
+      "program": "deepseek",
+      "seed": 792835454,
+      "task_success": false,
+      "placements": {
+        "red": true,
+        "green": true,
+        "blue": true
+      },
+      "moving_grasp": {
+        "red": false,
+        "green": true,
+        "blue": true
+      },
+      "motor_sha256": "5d0d59c45a9000f4de3e6744b7e92567af3e6c5b41f272ef614c12f7d452a0e1",
+      "physics_ticks": 25318,
+      "wheel_supported_ticks": 25318,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": null
+    },
+    "baseline-1048767817": {
+      "program": "baseline",
+      "seed": 1048767817,
+      "task_success": false,
+      "placements": {
+        "red": true,
+        "green": false,
+        "blue": false
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": false,
+        "blue": false
+      },
+      "motor_sha256": "f27a2d41f02c481d047d4b6cc763d2dc3486d45b69ce5bd7af76f72071956ee1",
+      "physics_ticks": 12556,
+      "wheel_supported_ticks": 12556,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": "ValueError: Could not confirm green in the wrist camera after two grasps"
+    },
+    "codex-1048767817": {
+      "program": "codex",
+      "seed": 1048767817,
+      "task_success": false,
+      "placements": {
+        "red": true,
+        "green": false,
+        "blue": false
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": false,
+        "blue": false
+      },
+      "motor_sha256": "f27a2d41f02c481d047d4b6cc763d2dc3486d45b69ce5bd7af76f72071956ee1",
+      "physics_ticks": 12556,
+      "wheel_supported_ticks": 12556,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": "ValueError: Could not confirm green in the wrist camera after two grasps"
+    },
+    "deepseek-1048767817": {
+      "program": "deepseek",
+      "seed": 1048767817,
+      "task_success": false,
+      "placements": {
+        "red": true,
+        "green": false,
+        "blue": false
+      },
+      "moving_grasp": {
+        "red": true,
+        "green": false,
+        "blue": false
+      },
+      "motor_sha256": "f27a2d41f02c481d047d4b6cc763d2dc3486d45b69ce5bd7af76f72071956ee1",
+      "physics_ticks": 12556,
+      "wheel_supported_ticks": 12556,
+      "max_joint_excursion_rad": 0,
+      "actuator_audit": true,
+      "stop_reason": "ValueError: Could not confirm green in the wrist camera after two grasps"
+    }
+  }
+}

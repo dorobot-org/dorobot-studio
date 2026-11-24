@@ -48,6 +48,8 @@ def main():
     p.add_argument("--camera-faults", action="store_true")
     p.add_argument("--moving-target", action="store_true")
     p.add_argument("--observed-author", action="store_true")
+    p.add_argument("--prepared-pickup", action="store_true")
+    p.add_argument("--revise-pickup", action="store_true")
     p.add_argument("--compare-runs", action="store_true")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -122,6 +124,11 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.revise_pickup:
+        from revision_check import native_journey
+
+        native_journey(a, page, click, remote, done, grab)
+        return
     if a.compare_runs:
         from divergence_check import native_journey
 
