@@ -43,6 +43,7 @@ def main():
         metavar=("PREVIOUS", "CURRENT"),
         help="Verify replay of the first changed action using two recorded Nano trials",
     )
+    parser.add_argument("--room-baseline", action="store_true", help="Pin and compare surveyed rooms in the selected two-run journey")
     parser.add_argument(
         "--foreground-cadence",
         nargs="?",
@@ -208,6 +209,8 @@ def main():
         help="Run one previously authored Nano red-cube transfer on the selected worker",
     )
     args = parser.parse_args()
+    if args.room_baseline and not args.compare_runs:
+        parser.error("--room-baseline requires --compare-runs BASELINE CANDIDATE")
     if args.background_period_s is not None and (
         not args.fleet or args.fleet_controller or args.resume_fleet
     ):
@@ -381,6 +384,7 @@ def main():
                         "plugins/aisle/src/joint_inspector.rs",
                         "vendor/makepad-urdf-player/src/robot_view.rs",
                         "crates/dorobot-studio-core/src/api/aisle.rs",
+                        "crates/dorobot-studio-core/src/api/aisle/room_pair.rs",
                         "dorobot-flex/src/bin/dorobot-flex.rs",
                     )
                 ),
@@ -457,6 +461,8 @@ def main():
                     check.append("--revise-pickup")
                 if args.compare_runs:
                     check.append("--compare-runs")
+                    if args.room_baseline:
+                        check.append("--room-baseline")
                 if args.fleet:
                     check.extend(
                         ["--fleet", "--background-clock", args.background_clock]

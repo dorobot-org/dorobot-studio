@@ -198,7 +198,7 @@ script_mod! {
     }
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
-        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"} device_mode := mod.widgets.ux.ToolButton{text:"Device preflight"}}
+        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"} device_mode := mod.widgets.ux.ToolButton{text:"Device preflight"} room_baseline := mod.widgets.ux.ToolButton{text:"Use as room baseline"}}
         device := Card{width:Fill height:Fill
             device_title := Title{}
             device_info := Body{}
@@ -1029,6 +1029,15 @@ impl PluginPanel for Panel {
             "aisle_run" => self.run(cx, w),
             _ => {
                 let decision = w.decision.is_some();
+                let can_pin = w.evidence["kind"] == "table-transfer"
+                    && w.evidence["room_revision_sha256"].is_string()
+                    && w.evidence["task_success"].is_boolean();
+                let pinned = w.room_baseline.is_some();
+                let show_baseline = !decision && !w.show_evaluation && !w.show_device && (can_pin || pinned);
+                self.root.widget(cx, ids!(room_baseline)).set_visible(cx, show_baseline);
+                let button = self.root.button(cx, ids!(room_baseline));
+                button.set_enabled(cx, !w.busy() && (can_pin || pinned));
+                button.set_text(cx, if pinned { "Clear room baseline" } else { "Use as room baseline" });
                 let has_packets = w
                     .transfer_comparison
                     .as_ref()
@@ -1654,7 +1663,7 @@ impl PluginPanel for Panel {
                         (
                             ids!(previous_change) as &[LiveId],
                             RevisionSide::Previous,
-                            "previous",
+                            if pinned { "baseline" } else { "previous" },
                         ),
                         (ids!(current_change), RevisionSide::Current, "current"),
                     ] {
@@ -1674,6 +1683,8 @@ impl PluginPanel for Panel {
                         }
                     }
                     comparison.summary.clone()
+                } else if let Some(note) = &w.room_pair_note {
+                    note.clone()
                 } else if let Some(diff) = w.comparison {
                     format!(
                         "Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png."
@@ -1847,6 +1858,7 @@ impl PluginPanel for Panel {
             (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
             (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),
             (ids!(device_mode), Action::ShowDevice),
+            (ids!(room_baseline), Action::ToggleRoomBaseline),
             (ids!(device_replay), Action::DevicePreflight(None)),
             (ids!(device_stop), Action::Stop),
             (ids!(device_folder), Action::OpenPreflight),

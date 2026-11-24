@@ -1,4 +1,5 @@
 //! Local simulation jobs shared by the four AISLE Studio panels.
+mod room_pair;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
@@ -106,6 +107,7 @@ pub enum Action {
     ApplyRoomDraft,
     DiscardRoomDraft,
     DefaultRoom,
+    ToggleRoomBaseline,
     ShowEvaluation(bool),
     ShowDevice,
     DevicePreflight(Option<String>),
@@ -212,6 +214,12 @@ pub struct ChangeFrame {
     pub sample_tick: u64,
     pub index: usize,
     pub time_s: f64,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct RoomBaseline {
+    pub trial: String,
+    result_sha256: String,
 }
 
 #[derive(serde::Serialize)]
@@ -337,6 +345,7 @@ fn compare_transfer(
     history: &[PathBuf],
     path: &Path,
     current: &Value,
+    room_delta: Option<&str>,
 ) -> Option<TransferComparison> {
     if current["kind"] != "table-transfer" || !current["task_success"].is_boolean() {
         return None;
@@ -348,7 +357,9 @@ fn compare_transfer(
             .as_object()
             .map(|c| c.values().filter(|r| r["passed"] == true).count())
     };
-    for previous in history.iter().rev().filter(|p| p.as_path() < path) {
+    for previous in history.iter().rev().filter(|p| {
+        p.as_path() != path && (room_delta.is_some() || p.as_path() < path)
+    }) {
         let Some(prior) = read(previous, "result.json") else {
             continue;
         };
@@ -372,7 +383,7 @@ fn compare_transfer(
         let Some(old_cal) = read(previous, "calibration.json") else {
             continue;
         };
-        if source["room_revision_sha256"] != old["room_revision_sha256"]
+        if (room_delta.is_none() && source["room_revision_sha256"] != old["room_revision_sha256"])
             || source["wrist_rgb_timing"].as_str().unwrap_or("normal")
                 != old["wrist_rgb_timing"].as_str().unwrap_or("normal")
             || source["support_code_hashes"]["nano_wrist_timing.py"]
@@ -470,14 +481,19 @@ fn compare_transfer(
                 "failed"
             }
         };
-        return Some(TransferComparison {frames,packets, summary:format!(
-            "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {}",
-            current["seed"],
-            outcome(&prior),
-            previous_count,
-            outcome(current),
-            settled(current)?,trace.summary
-        )});
+        let count = settled(current)?;
+        let summary = if let Some(delta) = room_delta {
+            format!(
+                "Room comparison · layout {} · baseline {label}\n{delta}\nBaseline {} ({previous_count} settled, {} ticks) · current {} ({count} settled, {} ticks). {}",
+                current["seed"], outcome(&prior), prior["physics_ticks"], outcome(current), current["physics_ticks"], trace.summary
+            )
+        } else {
+            format!(
+                "Matched layout {} · previous {label}\nPrevious {} ({previous_count} settled) · current {} ({count} settled). {code} {}",
+                current["seed"], outcome(&prior), outcome(current), trace.summary
+            )
+        };
+        return Some(TransferComparison { frames, packets, summary });
     }
     None
 }
@@ -561,6 +577,8 @@ pub struct Workbench {
     pub layout_seed: u32,
     pub comparison: Option<f64>,
     pub transfer_comparison: Option<TransferComparison>,
+    pub room_baseline: Option<RoomBaseline>,
+    pub room_pair_note: Option<String>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     pub background_period_s: f32,
@@ -634,6 +652,8 @@ impl Workbench {
             layout_seed: layout_seed.unwrap_or_default(),
             comparison: None,
             transfer_comparison: None,
+            room_baseline: read(&root, "room-baseline.json").and_then(|v| serde_json::from_value(v).ok()),
+            room_pair_note: None,
             dataset: None,
             exports: Default::default(),
             background_period_s: 1.0,
@@ -942,11 +962,56 @@ impl Workbench {
     pub fn change_frame(&self, side: RevisionSide) -> Option<&ChangeFrame> {
         self.transfer_comparison.as_ref()?.frames[side.index()].as_ref()
     }
+    fn toggle_room_baseline(&mut self) -> io::Result<()> {
+        let path = self.selected.clone().ok_or_else(|| io::Error::other("Select a Nano trial"))?;
+        let baseline = if self.room_baseline.is_some() {
+            None
+        } else {
+            if self.evidence["kind"] != "table-transfer" || !self.evidence["room_revision_sha256"].is_string()
+                || !self.evidence["task_success"].is_boolean() {
+                return Err(io::Error::other("Select a completed Nano transfer in a surveyed room"));
+            }
+            Some(RoomBaseline {
+                trial: path.file_name().and_then(|n| n.to_str()).ok_or_else(|| io::Error::other("Missing trial name"))?.into(),
+                result_sha256: format!("{:x}", Sha256::digest(fs::read(path.join("result.json"))?)),
+            })
+        };
+        save_selection(&self.root, "room-baseline.json", &serde_json::to_value(&baseline)?)?;
+        self.room_baseline = baseline;
+        self.select_run(path);
+        Ok(())
+    }
+
+    fn pinned_room_pair(&self, baseline: &RoomBaseline, path: &Path) -> Result<TransferComparison, String> {
+        let prior = self.history.iter().find(|p| p.file_name().and_then(|n| n.to_str()) == Some(baseline.trial.as_str()))
+            .ok_or("The pinned baseline is missing from run history")?;
+        let raw = fs::read(prior.join("result.json")).map_err(|_| "Missing baseline verdict")?;
+        if format!("{:x}", Sha256::digest(raw)) != baseline.result_sha256 {
+            return Err("The pinned baseline verdict changed".into());
+        }
+        if prior == path { return Err("Select another Nano transfer to compare".into()); }
+        let delta = room_pair::summary(prior, path, &self.evidence)?;
+        compare_transfer(std::slice::from_ref(prior), path, &self.evidence, Some(&delta))
+            .ok_or_else(|| "Run records lack matching physics, calibration or scoring evidence".into())
+    }
+
     fn select_run(&mut self, path: PathBuf) {
         self.decision = None;
         self.dataset = self.dataset_for(&path);
         self.evidence = Self::receipt(&path);
-        self.transfer_comparison = compare_transfer(&self.history, &path, &self.evidence);
+        self.room_pair_note = None;
+        self.transfer_comparison = if let Some(baseline) = self.room_baseline.as_ref()
+            .filter(|_| self.evidence["robot"] == "Nano") {
+            match self.pinned_room_pair(baseline, &path) {
+                Ok(pair) => Some(pair),
+                Err(reason) => {
+                    self.room_pair_note = Some(format!("Room baseline {} · {reason}", baseline.trial));
+                    None
+                }
+            }
+        } else {
+            compare_transfer(&self.history, &path, &self.evidence, None)
+        };
         self.comparison = self
             .history
             .iter()
@@ -1506,6 +1571,7 @@ impl Workbench {
             Action::Inspect => self.launch("scene", Planner::Reference, None)
                 .map(|()| self.scene = Value::Null),
             Action::Run => self.launch("run", Planner::Reference, None),
+            Action::ToggleRoomBaseline => self.toggle_room_baseline(),
             Action::Previous | Action::Next => {
                 if let Some(i) = self
                     .history
@@ -1915,7 +1981,7 @@ mod tests {
             fs::write(run.join("actions.jsonl"), "{\"op\":\"sense\",\"tick\":0}\n").unwrap();
             runs.push(run);
         }
-        let comparison = || compare_transfer(&runs, &runs[1], &result);
+        let comparison = || compare_transfer(&runs, &runs[1], &result, None);
         assert!(comparison()
             .unwrap()
             .summary
@@ -1927,7 +1993,7 @@ mod tests {
             .contains("First change at action 1"));
         let mut changed = result.clone();
         changed["seed"] = serde_json::json!(2);
-        assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
+        assert!(compare_transfer(&runs, &runs[1], &changed, None).is_none());
         let mut wrist = source.clone();
         wrist["wrist_rgb_timing"] = serde_json::json!("intermittent");
         wrist["support_code_hashes"]["nano_wrist_timing.py"] = serde_json::json!("guard-v1");
