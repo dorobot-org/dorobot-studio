@@ -37,6 +37,7 @@ def pack(directory, output):
             case = directory / stem
             files.extend(case / name for name in EVIDENCE)
             if case.is_dir():
+                files.extend(sorted((case / "release-observations").glob("*.npz")))
                 for camera in ("head", "left_wrist", "right_wrist"):
                     frames = sorted(case.glob(f"[0-9][0-9]-*-{camera}.png"))
                     if frames:
