@@ -277,6 +277,16 @@ def main():
                         assert hashes[prefix + name] == digest
                 result[tag]["source_commit"] = manifest["studio_source_commit"]
                 result[tag]["binary_sha256"] = manifest["native_binary_sha256"]
+        previous_archive = (
+            Path(__file__).resolve().parent.parent / "wall-clock-rgb/measurements.zip"
+        )
+        with ZipFile(previous_archive) as previous:
+            old_motor = previous.read("10-half-codex/foreground/motor-targets.f64")
+            assert (
+                old_motor
+                == z.read("codex/normal/motor-targets.f64")
+                == z.read("deepseek/normal/motor-targets.f64")
+            )
         original = result["three"]["trials"][1]
         revised = result["revised"]["trials"][1]
         assert original["controller"] == revised["controller"]
