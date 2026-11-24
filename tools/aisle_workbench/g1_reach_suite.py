@@ -15,7 +15,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import numpy as np
 
-from g1_stand import impact_parameters
+from g1_stand import impact_parameters, launch_position
 from worker import describe, digest, save, validate
 
 HERE = Path(__file__).resolve().parent
@@ -131,6 +131,7 @@ def prepare(directory, controller, match=None):
         directory / "suite.json",
         dict(
             profile="g1-standing-reach-v1",
+            impact_aim=old.get("impact_aim", "pelvis-v1") if match else "torso-v2",
             **({"matched_manifest_sha256": referenced} if match else {}),
             cases=20,
             required=20,
@@ -222,7 +223,10 @@ def score(case, m, opening):
         or src["nexus"] != m["inputs"]["nexus"]
         or disturbance["mass_kg"] != recipe["mass_kg"]
         or disturbance["initial_velocity_m_s"] != [-recipe["speed_m_s"], 0, 0]
-        or disturbance["initial_position_m"] != [0.29, recipe["lateral_m"], 0.16]
+        or disturbance.get("calibration", "pelvis-v1")
+        != m.get("impact_aim", "pelvis-v1")
+        or disturbance["initial_position_m"]
+        != launch_position(recipe, m.get("impact_aim", "pelvis-v1"))
         or disturbance["launch_step"] != 601
         or result["wrist_reach"]["trace_sha256"] != digest(case / "wrist-trace.npz")
         or result["motor_work_sha256"] != digest(case / "motor-work.npz")
@@ -364,6 +368,10 @@ def score(case, m, opening):
         <= 0.005,
         "Actuator target exceeded position or rate limit": bypasses == 0,
     }
+    if m.get("impact_aim") == "torso-v2":
+        conditions["Calibrated impact missed the torso link"] = any(
+            c["link"] == "torso_link" for c in contacts
+        )
     reasons = [name for name, ok in conditions.items() if not ok]
     if bool(result["task_success"]) != (not reasons):
         raise ValueError("Stored G1 verdict differs from the trace")
@@ -437,6 +445,8 @@ def run(directory, expected, jobs):
                         "impact",
                         "--controller",
                         str(directory / "controller.json"),
+                        "--impact-aim",
+                        m.get("impact_aim", "pelvis-v1"),
                         "--impact-recipe",
                         str(recipe),
                         "--out",
