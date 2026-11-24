@@ -2,8 +2,8 @@
   {
     "backend": "headless",
     "size": "1440x900",
-    "studio_commit": "dfe68790b85ac2b16affb6f44aa8a619add0358c",
-    "binary_sha256": "a79fe1239a3c5cb3c5e29777f88e9d88ef76b2fcff795acc7f999dbf837e4599",
+    "studio_commit": "6dedb664cf86796909d958ea94c44835c5ba3839",
+    "binary_sha256": "749ea1a1c1d8f7abcace6f520d04cf3831fc2d100ee430596ec801551030f9e2",
     "mode": "pinned room comparison",
     "action_number": 7,
     "first_different_actions": [
@@ -59,13 +59,17 @@
     "room_sha256": [
       "b4e922a72fd7c095a4e01ba59100aff2ab319bb50ac5a6e1ed362b65223f4978",
       "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
-    ]
+    ],
+    "verification_sha256": {
+      "journey.json": "7de021f09cd33e0dd1070774a188dd1a394113b74f5f9aac6316ed8886c94390",
+      "recovery.json": "7203b6a3ce33597a35eecf77700dde997b9e46e63b94fef805e434c9c71e6106"
+    }
   },
   {
     "backend": "offscreen",
     "size": "1024x768",
-    "studio_commit": "dfe68790b85ac2b16affb6f44aa8a619add0358c",
-    "binary_sha256": "a79fe1239a3c5cb3c5e29777f88e9d88ef76b2fcff795acc7f999dbf837e4599",
+    "studio_commit": "6dedb664cf86796909d958ea94c44835c5ba3839",
+    "binary_sha256": "749ea1a1c1d8f7abcace6f520d04cf3831fc2d100ee430596ec801551030f9e2",
     "mode": "pinned room comparison",
     "action_number": 7,
     "first_different_actions": [
@@ -121,13 +125,17 @@
     "room_sha256": [
       "b4e922a72fd7c095a4e01ba59100aff2ab319bb50ac5a6e1ed362b65223f4978",
       "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
-    ]
+    ],
+    "verification_sha256": {
+      "journey.json": "8bd5c99d1c5bc30c2935764a6a9c2773c8117877c8727574939710a94bd8ee8b",
+      "recovery.json": "25c3cde8dc36c3b25321ff8a00b319b3bdefc75d673ee1e5b7377759ef5a6d93"
+    }
   },
   {
     "backend": "headless",
     "size": "1024x768",
-    "studio_commit": "dfe68790b85ac2b16affb6f44aa8a619add0358c",
-    "binary_sha256": "a79fe1239a3c5cb3c5e29777f88e9d88ef76b2fcff795acc7f999dbf837e4599",
+    "studio_commit": "6dedb664cf86796909d958ea94c44835c5ba3839",
+    "binary_sha256": "749ea1a1c1d8f7abcace6f520d04cf3831fc2d100ee430596ec801551030f9e2",
     "mode": "legacy same-room comparison",
     "action_number": 1148,
     "first_different_actions": [
@@ -182,6 +190,10 @@
       "time_s": 177.8,
       "frames": 1179
     },
-    "comparison": "Matched layout 0 \u00b7 previous 0001-Nano-run\nPrevious failed (2 settled) \u00b7 current passed (3 settled). Local policy or support code changed. First change at action 1148 \u00b7 previous trace ended, current grasp observation at tick 17814."
+    "comparison": "Matched layout 0 \u00b7 previous 0001-Nano-run\nPrevious failed (2 settled) \u00b7 current passed (3 settled). Local policy or support code changed. First change at action 1148 \u00b7 previous trace ended, current grasp observation at tick 17814.",
+    "verification_sha256": {
+      "journey.json": "205407c4a70e3e3158b86993b8c110d46552cb6c623d53f457acdd53450f3a17",
+      "recovery.json": "a2bb6997918f0b83d181f907ad16827d73cab1c708fdf94a1ad169b49e972044"
+    }
   }
 ]

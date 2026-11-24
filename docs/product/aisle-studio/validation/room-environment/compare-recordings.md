@@ -9,7 +9,7 @@
 
 ## What Studio checks
 
-The pin identifies a run and its verdict hash. Before opening a room comparison, Studio verifies both archived controllers, room revisions, surveys and reference photos. It checks that the target, seed, URDF, geometry, camera calibration, policy and execution settings match. Lighting and floor friction may differ together or individually. With both changed, the task outcome describes their combined effect. If a check fails, Evidence names the mismatch and keeps the pin for another selection. The chosen baseline survives a Studio restart.
+The pin identifies a run and its verdict hash. Before opening a room comparison, Studio verifies both archived controllers, room revisions, surveys and reference photos. It checks that the target, seed, URDF, geometry, camera calibration, policy and execution settings match. Lighting and floor friction may differ together or individually. With both changed, the task outcome describes their combined effect. If a check fails, Evidence names the mismatch and keeps the pin for another selection. The chosen baseline survives a Studio restart. Joint inspections and other task types keep their own comparison while a room is pinned.
 
 ## Measured pair
 
