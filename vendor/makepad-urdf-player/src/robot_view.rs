@@ -281,6 +281,8 @@ pub struct RobotView {
     color_texture: Texture,
     #[new]
     depth_texture: Texture,
+    #[new]
+    surface_depth_texture: Texture,
     #[rust]
     area: Area,
     #[rust(false)]
@@ -394,9 +396,21 @@ impl RobotView {
                 initial: true,
             },
         );
+        self.surface_depth_texture = Texture::new_with_format(
+            cx,
+            TextureFormat::RenderBGRAu8 {
+                size: TextureSize::Auto,
+                initial: true,
+            },
+        );
         self.pass.set_color_texture(
             cx,
             &self.color_texture,
+            DrawPassClearColor::ClearWith(vec4(0.0, 0.0, 0.0, 0.0)),
+        );
+        self.pass.add_color_texture(
+            cx,
+            &self.surface_depth_texture,
             DrawPassClearColor::ClearWith(vec4(0.0, 0.0, 0.0, 0.0)),
         );
         self.pass
@@ -1414,6 +1428,7 @@ impl RobotView {
         cx.begin_scene_3d(scene_state);
         let previous_world = cx.set_scene_world_transform_3d(m4(glam::Mat4::IDENTITY));
         let world = z_up_to_y_up();
+        self.draw_mesh.camera_near = self.camera.near.max(0.001);
         let mut dbg_drawn = 0usize;
         let mut dbg_can = 0usize;
 
@@ -1991,6 +2006,7 @@ impl Widget for RobotView {
 
         cx.make_child_pass(&self.pass);
         cx.begin_pass(&self.pass, None);
+        let dpi = cx.current_dpi_factor();
         if let Some(scene_state) = self.camera.desktop_scene_state(rect, cx.time()) {
             set_pass_camera(cx.cx, &self.pass, &scene_state, self.pan_offset);
             let cx3d = &mut Cx3d::new(cx.cx);
@@ -1998,22 +2014,25 @@ impl Widget for RobotView {
         }
         cx.end_pass(&self.pass);
 
-        self.draw_bg.set_scene_texture(&self.color_texture);
-        self.draw_bg.draw_vars.set_texture(1, &self.depth_texture);
-        // One texel of the SUPERSAMPLED target, which is what the depth
-        // buffer is: sampling at composite resolution would step over a
-        // whole SSAA block and read the wrong neighbour.
-        let dw = (rect.size.x * SSAA_SCALE).max(1.0) as f32;
-        let dh = (rect.size.y * SSAA_SCALE).max(1.0) as f32;
+        // The extra color target is sampled; DepthD32 handles depth testing.
+        self.draw_bg.set_scene_textures(&self.color_texture, &self.surface_depth_texture);
+        let (width, height) = Cx::pass_pixel_size(rect.size, dpi);
         let ao = std::env::var("URDF_AO")
             .ok()
-            .and_then(|v| v.parse::<f32>().ok())
+            .and_then(|value| value.parse::<f32>().ok())
+            .filter(|value| value.is_finite() && *value >= 0.0)
             .unwrap_or(0.35);
         let edge = std::env::var("URDF_EDGE")
             .ok()
-            .and_then(|v| v.parse::<f32>().ok())
+            .and_then(|value| value.parse::<f32>().ok())
+            .filter(|value| value.is_finite() && *value >= 0.0)
             .unwrap_or(0.30);
-        self.draw_bg.edge_ao = vec4(1.0 / dw, 1.0 / dh, ao, edge);
+        self.draw_bg.edge_ao = vec4(
+            1.0 / width.max(1) as f32,
+            1.0 / height.max(1) as f32,
+            ao,
+            edge,
+        );
         // camera basis for the directional sky dome in the composite shader
         if let Some(scene_state) = self.camera.desktop_scene_state(rect, cx.time()) {
             let inv = scene_state.view.invert();
