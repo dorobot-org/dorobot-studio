@@ -2,7 +2,7 @@
 
 The simulator varies the initial locations of three colored floor cubes across the reference living room. The local controller receives the head and two wrist RGB streams, the Nano joint encoders and the robot and camera calibration. The evaluator measures cube positions, release, opposing finger contacts under load, the final 100 steps of tabletop contact and wheel support. Every requested cube must settle at least 35 mm inside the table boundary. A run also fails on robot–furniture contact, an actuator guard violation, an incomplete trace or an unverified result.
 
-The preregistered simulation qualification requires 45 whole-task successes in 50 cases, 50 verified receipts and zero measured guard bypasses. The three cohorts use independent random layouts. Their aggregate scores describe performance in this living-room distribution. A paired comparison of controller revisions requires reusing the same layouts.
+The preregistered simulation qualification requires 45 whole-task successes in 50 cases, 50 verified receipts and zero measured guard bypasses. The hidden qualification cohorts use independent random layouts. Their aggregate scores describe performance in this living-room distribution. A paired comparison of controller revisions requires reusing the same layouts.
 
 ## Examine a completed evaluation
 

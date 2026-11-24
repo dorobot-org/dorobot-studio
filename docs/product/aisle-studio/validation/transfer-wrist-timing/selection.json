@@ -1,0 +1,108 @@
+{
+  "default": {
+    "normal": {
+      "placed": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "success": true,
+      "physics_ticks": 23744,
+      "motor_sha256": "f52906850b459559cf4f5bd86460bc81c4b3ed492b695e1a0a6ef40d2de474bb",
+      "controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a"
+    },
+    "intermittent": {
+      "placed": [
+        "red",
+        "green"
+      ],
+      "success": false,
+      "physics_ticks": 26482,
+      "motor_sha256": "80226b592351f0b68022b345dcf65e21b367b5bafbe9d6a40259159ba8de28ef",
+      "controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a"
+    },
+    "disconnected": {
+      "placed": [],
+      "success": false,
+      "physics_ticks": 1180,
+      "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+      "controller_sha256": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a"
+    }
+  },
+  "opt-in-codex": {
+    "normal": {
+      "placed": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "success": true,
+      "physics_ticks": 23724,
+      "motor_sha256": "9b12a9330ce859a35db67a0137d6d4c26ddfc6c85b31dbb4d30d04b30ab146f9",
+      "controller_sha256": "4bf8180214a6c0a67e8016afb588f628b2990ce441617e4127d638bab323f72d"
+    },
+    "intermittent": {
+      "placed": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "success": true,
+      "physics_ticks": 26462,
+      "motor_sha256": "3b3ffaf2f69f3c0cbc7144ac8009ee37f3e28ab1fb0492d9a29ac2582e9788e0",
+      "controller_sha256": "4bf8180214a6c0a67e8016afb588f628b2990ce441617e4127d638bab323f72d"
+    },
+    "disconnected": {
+      "placed": [],
+      "success": false,
+      "physics_ticks": 1180,
+      "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+      "controller_sha256": "4bf8180214a6c0a67e8016afb588f628b2990ce441617e4127d638bab323f72d"
+    },
+    "author": {
+      "provider": "codex",
+      "model": "gpt-6.2-astra",
+      "wall_seconds": 6.109612375032157
+    },
+    "source_commit": "c9af986fbc0f143a6f0c9f79dc1b5de0625875be"
+  },
+  "opt-in-deepseek": {
+    "normal": {
+      "placed": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "success": true,
+      "physics_ticks": 23724,
+      "motor_sha256": "9b12a9330ce859a35db67a0137d6d4c26ddfc6c85b31dbb4d30d04b30ab146f9",
+      "controller_sha256": "d8726047d999ffb8c37e9d52a84f926fe868be35193a53cc157534ca6a45c63b"
+    },
+    "intermittent": {
+      "placed": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "success": true,
+      "physics_ticks": 26462,
+      "motor_sha256": "3b3ffaf2f69f3c0cbc7144ac8009ee37f3e28ab1fb0492d9a29ac2582e9788e0",
+      "controller_sha256": "d8726047d999ffb8c37e9d52a84f926fe868be35193a53cc157534ca6a45c63b"
+    },
+    "disconnected": {
+      "placed": [],
+      "success": false,
+      "physics_ticks": 1180,
+      "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+      "controller_sha256": "d8726047d999ffb8c37e9d52a84f926fe868be35193a53cc157534ca6a45c63b"
+    },
+    "author": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 2.091438916977495,
+      "input_tokens": 6451,
+      "output_tokens": 169
+    },
+    "source_commit": "c9af986fbc0f143a6f0c9f79dc1b5de0625875be"
+  }
+}

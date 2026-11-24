@@ -47,6 +47,8 @@ jobs:
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
           /usr/bin/python3 "$guide/capacity.py" "$guide/capacity.zip" > "$RUNNER_TEMP/wrist-capacity.json"
           cmp "$guide/capacity.json" "$RUNNER_TEMP/wrist-capacity.json"
+          /usr/bin/python3 "$guide/selection.py" "$guide/selection.zip" > "$RUNNER_TEMP/wrist-selection.json"
+          cmp "$guide/selection.json" "$RUNNER_TEMP/wrist-selection.json"
       - name: Install Rust
         run: |
           rustup toolchain install 1.95.0 --profile minimal

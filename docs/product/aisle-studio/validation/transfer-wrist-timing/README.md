@@ -50,6 +50,10 @@ On the 128 GiB M3 Max, one native 480 × 360 viewport and nine background Nano t
 
 Both repeats met the preregistered mean throughput gate. [Measurements](capacity.json) · [Original draws, worker samples and motor journals](capacity.zip)
 
+## Verify the operator selection
+
+Both native authors bound the explicit request to `wrist_clearance: true` in the saved controller. The nine post-selection trials covered the default worker, Codex headless and DeepSeek offscreen under each delivery fixture. For the three default runs the 17-target motor journals and all wrist deliveries matched the original two-view runs byte for byte. For each author’s three opt-in runs they matched the corresponding three-view trials. The default placed all three on time and two after the delay on layout 0. The opt-in mode placed all three in both conditions. Both modes stopped on the permanent freeze. [Structured outcomes and author receipts](selection.json) · [Original selection records](selection.zip) · [Current native Evidence page](three-cube-recovery.png)
+
 ## Dataset export and worker compatibility
 
 **Evidence → Export episode** preserves the raw camera videos, 17 encoder values and 17 commanded positions. The LeRobot field `annotation.wrist_rgb_hold` marks frames in which the controller is waiting for a fresh wrist exposure. The capture and delivery timestamps and their pixel digests are in `meta/wrist-delivery.jsonl`. The metadata names the video source and binds the log digest to the episode. The revised delay dataset contains 1,323 frames per camera, including eight hold frames. The timed-out dataset has 59 frames per camera, including ten hold frames.
@@ -75,6 +79,7 @@ The measurement archive contains the original failure, paired three-cube repeats
 guide=docs/product/aisle-studio/validation/transfer-wrist-timing
 "$DOROBOT_AISLE_PYTHON" "$guide/audit.py" "$guide/measurements.zip" --datasets
 "$DOROBOT_AISLE_PYTHON" "$guide/release_check.py" "$guide/measurements.zip"
+"$DOROBOT_AISLE_PYTHON" "$guide/selection.py" "$guide/selection.zip"
 "$DOROBOT_AISLE_PYTHON" "$guide/qualification_check.py" "$guide/qualification.zip"
 "$DOROBOT_AISLE_PYTHON" "$guide/capacity.py" "$guide/capacity.zip" --git-sources
 ~~~
