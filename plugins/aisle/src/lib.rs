@@ -500,6 +500,7 @@ impl PluginPanel for Panel {
                     (ids!(fleet_controls), Themed::Bg),
                     (ids!(photo_card), Themed::Bg),
                     (ids!(cohort), Themed::Bg),
+                    (ids!(device), Themed::Bg),
                     (ids!(survey_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
@@ -916,7 +917,7 @@ impl PluginPanel for Panel {
                         },
                     );
                     self.label(cx,ids!(device_info), if standing {
-                        "Replay the recorded encoders and IMU through loopback DDS, or observe an external publisher on the selected interface. The standing controller computes targets locally. No motor commands are transmitted."
+                        "Replay encoders and IMU from the selected simulation or observe an external DDS publisher. The standing controller computes targets locally with motor output disabled."
                     } else if g1 { "Select a standing-reach trial to run the G1 telemetry preflight." }
                     else if selected { "Check which measurements the installed Feetech adapter provides for this controller." } else {""});
                     self.root

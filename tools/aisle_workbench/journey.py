@@ -535,6 +535,25 @@ def main():
                 assert pre["capabilities"]["arms"] is False and len(pre["wheels"]) == 3
             checks[-1]["receipt"] = pre
             grab("device-preflight")
+            if a.screenshots:
+                from PIL import Image
+
+                controls = report()["controls"]
+                x, y, _, h = controls["aisle_evidence.device_replay"]["rect"]
+                bottom = controls["aisle_evidence.device_folder"]["rect"][1]
+                with Image.open(a.out / "device-preflight.png") as shot:
+                    region = shot.convert("L").crop(
+                        (int(x), int(y + h + 4), shot.width - 50, int(bottom - 4))
+                    )
+                    histogram = region.histogram()
+                background = max(range(256), key=histogram.__getitem__)
+                legible_pixels = sum(
+                    n for i, n in enumerate(histogram) if abs(i - background) > 100
+                )
+                assert legible_pixels >= 150, (
+                    "Preflight measurements lack visible text contrast"
+                )
+                checks[-1]["contrasting_result_pixels"] = legible_pixels
             click("aisle_evidence.trial_mode")
             done(
                 lambda w: not w["show_device"] and not w["show_evaluation"],

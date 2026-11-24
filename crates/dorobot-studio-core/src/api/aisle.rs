@@ -690,6 +690,7 @@ impl Workbench {
         } else {
             self.robot.name()
         };
+        let running_status = format!("Running · {robot_name} · {op}");
         let dir = self.root.join(format!("{now}-{robot_name}-{op}"));
         let studio = crate::runtime::root();
         let worker = studio.join("tools/aisle_workbench/worker.py");
@@ -902,7 +903,7 @@ impl Workbench {
             self.worker_preview = Some(job.dir.clone());
             self.watcher = Some(job);
         } else {
-            self.status = format!("Running · {} · {op}", self.robot.name());
+            self.status = running_status;
             self.job = Some(job);
         }
         Ok(())
@@ -1256,6 +1257,14 @@ impl Workbench {
                     "Nano"
                 };
                 format!("Evaluation verified · {profile}")
+            } else if job.op == "device-preflight" {
+                format!(
+                    "{} · {}",
+                    self.preflight["robot"].as_str().unwrap_or("Device"),
+                    self.preflight["state"]
+                        .as_str()
+                        .unwrap_or("Preflight finished")
+                )
             } else {
                 format!("Completed · {} · {}", self.robot.name(), job.op)
             };
