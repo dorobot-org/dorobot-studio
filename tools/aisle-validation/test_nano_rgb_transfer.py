@@ -111,6 +111,10 @@ class TransferTests(unittest.TestCase):
                 for call in controller.act.call_args_list
             )
         )
+        commands = [
+            call.kwargs.get("turn", 0) for call in controller.drive.call_args_list
+        ]
+        np.testing.assert_allclose(commands, [-0.16, -0.15, 0])
         controller.release_observation.assert_called_once()
         controller.held_in_wrist_view.assert_called_once_with("green", end)
 

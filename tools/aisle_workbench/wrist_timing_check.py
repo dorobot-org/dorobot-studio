@@ -174,7 +174,8 @@ def native_journey(args, checks, page, click, remote, done, grab):
             and w["selected"] != previous
             and (w.get("result") or {}).get("wrist_timing", {}).get("fixture") == mode,
             mode + " wrist transfer measured",
-            900 if three else 360,
+            180 if three else 360,
+            advancing=three,
         )
         outcome = audit(Path(state["selected"]))
         assert state["result"]["seed"] == 0

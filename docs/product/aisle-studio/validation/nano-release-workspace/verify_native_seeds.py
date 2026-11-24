@@ -7,6 +7,15 @@ from zipfile import ZipFile
 
 
 def audit(path):
+    with path.open("rb") as stream:
+        assert (
+            hashlib.file_digest(stream, "sha256").hexdigest()
+            == path.with_suffix(".zip.sha256").read_text().strip()
+        )
+    with ZipFile(path.parent / "tracked/evidence.zip") as measured:
+        cohort = {
+            row["seed"]: row for row in json.loads(measured.read("report.json"))["rows"]
+        }
     with ZipFile(path) as archive:
 
         def read(name):
@@ -23,7 +32,7 @@ def audit(path):
             assert plan["provider"] == author and result["task_success"]
             seed = item("layout-seed.json")
             assert seed == result["seed"] == item("source.json")["seed"]
-            assert seed == item("dataset.json")["simulation_source"]["seed"]
+            assert seed == item("dataset/meta/aisle.json")["simulation_source"]["seed"]
             assert any(
                 x["check"] == "Out-of-range layout rejected"
                 for x in item("journey.json")
@@ -37,6 +46,14 @@ def audit(path):
             assert len(motor) == (result["physics_ticks"] + 1) * 17 * 8
             motor_hash = hashlib.sha256(motor).hexdigest()
             assert motor_hash == result["actuator_audit"]["sha256"]
+            if author == "octos-deepseek":
+                assert (
+                    result["requested"] == ["red", "green", "blue"]
+                    and plan["wrist_clearance"] is True
+                )
+                assert motor_hash == cohort[seed]["motor_sha256"]
+            else:
+                assert result["requested"] == ["red"]
             assert result["wheel_supported_ticks"] == result["physics_ticks"]
             rows.append(
                 dict(

@@ -10,7 +10,7 @@ from shutil import copyfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aisle_workbench"))
 
-from nano_suite_evidence import EVIDENCE, pack, verify
+from nano_suite_evidence import EVIDENCE, pack, verify, verify_release_packet
 from nano_transfer_suite import summarize, worker
 from cohort_comparison import compare
 
@@ -60,13 +60,32 @@ class CohortComparison(unittest.TestCase):
                         data = data[:-1] + bytes([data[-1] ^ 1])
                     changed.writestr(entry, data)
             manifest = worker.digest(source.with_name("suite.json"))
-            with self.assertRaisesRegex(ValueError, "trusted archive"):
+            with self.assertRaisesRegex(ValueError, "output receipt"):
                 verify(archive, manifest)
             with self.assertRaisesRegex(ValueError, "output receipt"):
                 verify(archive, manifest, expected_archive=expected)
-            archive.with_suffix(".zip.sha256").write_text(expected + "\n")
+            archive.with_suffix(".zip.sha256").write_text(worker.digest(archive) + "\n")
             with self.assertRaisesRegex(ValueError, "output receipt"):
                 verify(archive, manifest)
+
+    def test_raw_packet_timestamp_matches_the_scored_action(self):
+        source = GUIDE.parent / "nano-release-workspace/original/evidence.zip"
+        with ZipFile(source) as archive:
+            packet = next(
+                name for name in archive.namelist() if "/release-observations/" in name
+            )
+            case = packet.split("/")[0]
+            calibration = json.loads(archive.read(case + "/calibration.json"))
+            tick = int(Path(packet).stem)
+            verify_release_packet(
+                archive.read(packet),
+                calibration,
+                {"tick": tick, "stamp_ns": tick * 10_000_000},
+            )
+            with self.assertRaisesRegex(ValueError, "timestamp"):
+                verify_release_packet(
+                    archive.read(packet), calibration, {"tick": tick, "stamp_ns": 0}
+                )
 
     def test_reordered_layout_with_missing_result(self):
         with TemporaryDirectory() as root:

@@ -120,6 +120,11 @@ def compare(baseline, candidate):
         return {
             "file": path.name,
             **{
+                k: summary[k]
+                for k in ("archive_integrity", "release_exposures")
+                if k in summary
+            },
+            **{
                 key: summary[key]
                 for key in (
                     "archive_sha256",

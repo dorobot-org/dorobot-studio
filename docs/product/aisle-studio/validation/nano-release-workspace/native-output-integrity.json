@@ -5,5 +5,7 @@
     "status": "Archive SHA-256 differs from the published output receipt",
     "rejected_archive_sha256": "a44be1038fa5351c4637776cf5d51d2244657bc40c0e6382e2e91a74a29c2028"
   },
+  "substituted_sidecar_sha256": "a44be1038fa5351c4637776cf5d51d2244657bc40c0e6382e2e91a74a29c2028",
+  "published_sha256": "404bb099badd50407f34e62e61764a307bbad6e747f6a37bc24e7599c421682a",
   "recovery": "Cohort comparison restored"
 }
