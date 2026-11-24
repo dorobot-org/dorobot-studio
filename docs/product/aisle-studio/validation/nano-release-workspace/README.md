@@ -24,3 +24,20 @@ python "$DIR/inspect_release.py" "$DIR/before.zip"
 python tools/aisle-validation/nano_suite_evidence.py verify "$DIR/before.zip" \
   --manifest-sha256 0eac7bcc33733163c1f6e6ea86abebe7b245906a5be2634e3000f8258fb8d8cd
 ```
+
+## Reproduce a disclosed layout in Studio
+
+In **Task**, select **Nano** and enter “Move all three floor cubes onto the coffee table in red, green, blue order. Use experimental wrist clearance.” Choose **Ask Codex** or **DeepSeek via Octos**. In **Scene**, enter the numeric layout seed and click **Set seed**. The label shows the active layout. Seeds from 0 to 4294967295 are supported. Invalid input preserves the previous layout. **Run → Start simulation** executes that layout. **Evidence** shows the independent result and can export the episode. The selected seed survives a Studio restart. [Scene with seed 3856023877 selected](custom-layout.png)
+
+The agent authors the task and chooses the requested placement mode. The local controller watches the table, plans the arm movements and sends each bounded motor command. A release decision uses the onboard images, camera calibration and robot encoders. The judge records contacts and settled cube positions separately.
+
+## Development experiments
+
+| Method | Complete transfers on the five original refusals | Outcome |
+| --- | ---: | --- |
+| Original stationary placement | 0/5 | No slot passed both reachability and camera clearance. |
+| Straight 8 cm wheel sidestep | 0/5 | The measured table heading changed too far during sideways wheel motion. All five trials stopped. All four control layouts passed. |
+| Slower sidestep with steering feedback | 3/5 | Recovered layouts 9, 15 and 19. On 16 and 36, no target passed the final camera and arm checks. |
+| Turn in place with landmark matches between the first and last images | 2/5 | Recovered layouts 9 and 36. On 15 and 19, the visible wrist camera changed. On 16, all three cubes settled, but the robot had already lost loaded wheel contact for one simulation tick. |
+
+The archived development attempts include the full motor and camera evidence and a source patch for each alternative against commit `93d67f4`. The selected turn uses the robot’s existing steering control. It registers complete silhouettes between consecutive camera exposures so that an earlier cube can pass from one wrist’s view to the other. It retains earlier detections when they become occluded. An interrupted observation chain stops the turn. [All three exploratory attempts and control layouts](development-attempts.zip)
