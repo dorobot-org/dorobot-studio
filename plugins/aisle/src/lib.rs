@@ -106,16 +106,18 @@ script_mod! {
         scene_modes := Bar{robot_mode := mod.widgets.ux.ToolButton{text:"Robot model"} room_mode := mod.widgets.ux.ToolButton{text:"Room survey"}}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
             model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
-            photo_card := Card{width:Fill height:Fill Section{text:"Surveyed floor footprint"} photo := VideoPlayer{width:Fill height:Fill}}
+            photo_card := Card{width:Fill height:Fill photo_label := Section{text:"Floor footprint"} photo := VideoPlayer{width:Fill height:Fill}}
             survey_card := ScrollYView{width:295 height:Fill flow:Down spacing:8 padding:10
                 Section{text:"Room input file"} survey_path := TextInput{width:Fill height:38 empty_text:"Path to a survey or photo input"}
                 import_survey := mod.widgets.ux.PrimaryButton{text:"Import survey"}
-                Bar{photo_octos := mod.widgets.ux.ToolButton{text:"Draft with DeepSeek"} photo_codex := mod.widgets.ux.ToolButton{text:"Draft with Codex"}}
+                Section{text:"Draft from reference photo"}
+                Bar{photo_octos := mod.widgets.ux.ToolButton{text:"DeepSeek"} photo_codex := mod.widgets.ux.ToolButton{text:"Codex"}}
                 room_detail := Body{}
                 draft_actions := Bar{apply_draft := mod.widgets.ux.PrimaryButton{text:"Use this room"} discard_draft := mod.widgets.ux.ToolButton{text:"Discard draft"}}
+                room_edits := View{width:Fill height:Fit flow:Down spacing:6
                 Section{text:"Edit obstacle · metres"} geometry := TextInput{width:Fill height:38 empty_text:"name x y height"}
                 save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
-                default_room := mod.widgets.ux.ToolButton{text:"Use default room"}
+                default_room := mod.widgets.ux.ToolButton{text:"Use default room"}}
             }
             inspector := Card{width:285 height:Fill padding:0.0
                 fixture_scroll := ScrollYView{width:Fill height:Fill flow:Down padding:16.0 spacing:10.0
@@ -504,6 +506,18 @@ impl PluginPanel for Panel {
                 }
                 if editing {
                     let draft = w.room_draft_path.is_some();
+                    self.label(
+                        cx,
+                        ids!(photo_label),
+                        if draft {
+                            "Proposed floor footprint"
+                        } else {
+                            "Selected floor footprint"
+                        },
+                    );
+                    self.root
+                        .widget(cx, ids!(room_edits))
+                        .set_visible(cx, !draft && w.room_path.is_some());
                     let info = if draft {
                         &w.room_draft_info
                     } else {
@@ -531,9 +545,11 @@ impl PluginPanel for Panel {
                     for b in info["obstacles"].as_array().into_iter().flatten() {
                         let name = b["name"].as_str().unwrap_or("").trim_start_matches("room_");
                         text.push(format!(
-                            "{name} · x {:.2}, y {:.2}, height {:.2}",
+                            "{name} · x {:.2}, y {:.2} m\n{:.2} × {:.2} m · height {:.2} m",
                             b["position"][0].as_f64().unwrap_or_default(),
                             b["position"][1].as_f64().unwrap_or_default(),
+                            b["size"][0].as_f64().unwrap_or_default(),
+                            b["size"][1].as_f64().unwrap_or_default(),
                             b["size"][2].as_f64().unwrap_or_default()
                         ));
                     }
