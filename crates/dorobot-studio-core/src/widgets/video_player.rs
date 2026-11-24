@@ -150,6 +150,10 @@ pub struct VideoPlayer {
     /// Cached overlay text to render onto video frames
     #[rust]
     overlay_text: String,
+    #[rust]
+    measured_draw: Option<(std::path::PathBuf, u64)>,
+    #[rust]
+    draw_trace: Option<std::fs::File>,
 }
 
 // Simple 5x7 bitmap font for digits, colon, space, slash, period, 'f', 'p', 's', 'F', 'r', 'a', 'm', 'e'
@@ -246,7 +250,23 @@ impl Widget for VideoPlayer {
             draw_text +: { dark_mode: #(dm) }
         });
 
-        self.view.draw_walk(cx, scope, walk)
+        let step = self.view.draw_walk(cx, scope, walk);
+        if step.is_done() {
+            if let (Some((source, tick)), Some(file)) =
+                (self.measured_draw.take(), &mut self.draw_trace)
+            {
+                use std::io::Write;
+                static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+                let elapsed = START
+                    .get_or_init(std::time::Instant::now)
+                    .elapsed()
+                    .as_nanos() as u64;
+                let row =
+                    serde_json::json!({"source": source, "tick": tick, "elapsed_ns": elapsed});
+                let _ = writeln!(file, "{row}");
+            }
+        }
+        step
     }
 }
 
@@ -279,6 +299,7 @@ impl VideoPlayer {
 
     /// Clear video display
     pub fn clear(&mut self, cx: &mut Cx) {
+        self.measured_draw = None;
         self.has_video = false;
         self.placeholder_decoder = None;
         #[cfg(feature = "video")]
@@ -311,6 +332,28 @@ impl VideoPlayer {
     }
 
     /// Set frame from RGB24 data
+    pub fn set_measured_frame(
+        &mut self,
+        cx: &mut Cx,
+        size: (usize, usize),
+        data: &[u8],
+        tick: u64,
+        source: &std::path::Path,
+    ) {
+        self.set_frame(cx, size.0, size.1, data);
+        if self.draw_trace.is_none() {
+            if let Some(path) = std::env::var_os("DOROBOT_AISLE_DRAW_TRACE") {
+                self.draw_trace = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(path)
+                    .ok();
+            }
+        }
+        if self.draw_trace.is_some() {
+            self.measured_draw = Some((source.to_owned(), tick));
+        }
+    }
     pub fn set_frame(&mut self, cx: &mut Cx, width: usize, height: usize, data: &[u8]) {
         // Track video dimensions for overlay positioning
         self.video_width = width;

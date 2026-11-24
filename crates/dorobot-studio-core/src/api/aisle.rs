@@ -852,6 +852,9 @@ impl Workbench {
         if op == "prepare" {
             cmd.args(["--provider", planner.name(), "--task", &self.task]);
         }
+        if op == "run" && self.plan["kind"] == "table-transfer" {
+            cmd.arg("--live-preview");
+        }
         if op == "run" || submitting {
             if self.plan["kind"] == "visual-approach" {
                 cmd.arg("--rgb-timing").arg(self.rgb_timing.name());

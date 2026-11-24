@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 import shutil
 import sqlite3
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -16,7 +17,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 from fleet_artifacts import download
-from fleet_client import check_background_period, send, submission
+from fleet_client import check_background_period, send, submission, worker_command
 from fleet_worker import ACTIVE, initialize, job_id
 from worker import ROOT, save
 
@@ -218,6 +219,60 @@ def receive_frame(node, ident, operation, out):
     )
 
 
+def watch_foreground(node, ident, out, root):
+    job, frame = None, None
+    proc = subprocess.Popen(
+        worker_command(node, "watch-rgb", ident), stdout=subprocess.PIPE
+    )
+    try:
+        while True:
+            header = proc.stdout.readline(128 * 1024)
+            if not header:
+                if proc.wait(timeout=5) or not job or job["state"] in ACTIVE:
+                    raise ValueError(
+                        "Foreground RGB stream disconnected. Refresh the worker to reconnect."
+                    )
+                return
+            if not header.endswith(b"\n"):
+                raise ValueError("Invalid foreground stream header")
+            packet = json.loads(header)
+            if "job" in packet:
+                job = packet["job"]
+                if job.get("id") != ident:
+                    raise ValueError("Foreground stream returned a different job")
+            size = packet["bytes"]
+            if (
+                type(size) is not int
+                or size not in (0, 4 + 480 * 320 * 3, 4 + 480 * 360 * 3)
+                or not job
+            ):
+                raise ValueError("Invalid foreground frame size or job")
+            if size:
+                raw = proc.stdout.read(size)
+                if len(raw) != size:
+                    raise ValueError("Incomplete foreground RGB frame")
+                tmp = out / "preview.tmp"
+                tmp.write_bytes(raw)
+                tmp.replace(out / "preview.rgb")
+                frame = dict(
+                    tick=int.from_bytes(raw[:4], "big"),
+                    height=(size - 4) // 1440,
+                    sha256=hashlib.sha256(memoryview(raw)[4:]).hexdigest(),
+                )
+            save(out / "watch.json", dict(job=job, frame=frame))
+            if job["state"] not in ACTIVE:
+                update(root, ident, job["state"])
+    finally:
+        proc.stdout.close()
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+
 def operate(args):
     root = args.out.parent
     registry = nodes(root)
@@ -233,6 +288,11 @@ def operate(args):
         row = record(root, ident)
         if row["node"] != alias:
             raise ValueError("This job belongs to another node")
+        if (
+            row["mode"] == "stream"
+            and send(node, dict(op="hello")).get("foreground_rgb_protocol") == 1
+        ):
+            return watch_foreground(node, ident, args.out, root)
         while True:
             info = reconcile(root, row, node)
             frame = None

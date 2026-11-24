@@ -208,6 +208,46 @@ impl Panel {
     fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
         self.root.label(cx, id).set_text(cx, s);
     }
+    fn show_camera(&mut self, cx: &mut Cx, dir: Option<&PathBuf>) {
+        use std::io::Read;
+        let camera = self.root.video_player(cx, ids!(camera));
+        if self.frame.as_ref().is_some_and(|(old, _)| Some(old) != dir) {
+            camera.clear(cx);
+            self.frame = None;
+        }
+        let Some(dir) = dir else { return };
+        let Ok(mut file) = std::fs::File::open(dir.join("preview.rgb")) else {
+            return;
+        };
+        let mut stamp = [0; 4];
+        if file.read_exact(&mut stamp).is_err() {
+            return;
+        }
+        let tick = u32::from_be_bytes(stamp) as u64;
+        if self
+            .frame
+            .as_ref()
+            .is_some_and(|(_, previous)| *previous == tick)
+        {
+            return;
+        }
+        // The producer atomically replaces this file. Its header and pixels belong to the same exposure.
+        let Ok(meta) = file.metadata() else { return };
+        const SMALL: u64 = 4 + 480 * 320 * 3;
+        const LARGE: u64 = 4 + 480 * 360 * 3;
+        let height = match meta.len() {
+            SMALL => 320,
+            LARGE => 360,
+            _ => return,
+        };
+        let mut rgb = vec![0; 480 * height * 3];
+        if file.read_exact(&mut rgb).is_ok() {
+            if let Some(mut view) = camera.borrow_mut() {
+                view.set_measured_frame(cx, (480, height), &rgb, tick, dir);
+                self.frame = Some((dir.clone(), tick));
+            }
+        }
+    }
     fn model(&mut self, cx: &mut Cx, w: &Workbench) {
         let p = w.robot.model();
         let viewer = self.root.robot_view(cx, ids!(robot));
@@ -307,31 +347,10 @@ impl Panel {
         } else {
             &w.worker_sample
         };
-        let current = directory
-            .as_ref()
-            .zip(frame["tick"].as_u64())
-            .map(|(dir, tick)| (dir.clone(), tick));
         self.root
             .widget(cx, ids!(sample_job))
             .set_visible(cx, selected["mode"] == "observations");
-        if self.frame != current {
-            let camera = self.root.video_player(cx, ids!(camera));
-            if let Some((dir, tick)) = &current {
-                let height = frame["height"].as_u64().unwrap_or(0) as usize;
-                if let Ok(raw) = std::fs::read(dir.join("preview.rgb")) {
-                    if matches!(height, 320 | 360)
-                        && raw.len() == 4 + 480 * height * 3
-                        && u32::from_be_bytes(raw[..4].try_into().unwrap()) as u64 == *tick
-                    {
-                        camera.set_frame(cx, 480, height, &raw[4..]);
-                        self.frame = current;
-                    }
-                }
-            } else {
-                camera.clear(cx);
-                self.frame = None;
-            }
-        }
+        self.show_camera(cx, directory.as_ref());
         let compatible = w.prepared.is_some()
             && caps["robots"][w.robot.name()].is_string()
             && caps["robots"][w.robot.name()] == w.plan["model_hash"];
@@ -375,15 +394,9 @@ impl Panel {
             self.fleet(cx, w);
             return;
         }
-        let current = w
-            .live
-            .as_ref()
-            .zip(w.progress["step"].as_u64())
-            .map(|(p, i)| (p.clone(), i));
         let standing = w.progress["kind"] == "standing-inspection";
         let transfer = w.progress["kind"] == "table-transfer";
         let mobile = transfer || w.progress["kind"] == "visual-approach";
-        let height = if mobile { 360 } else { 320 };
         self.label(
             cx,
             ids!(camera_label),
@@ -406,22 +419,7 @@ impl Panel {
                 "Measured joint response"
             },
         );
-        if self.frame != current {
-            let camera = self.root.video_player(cx, ids!(camera));
-            if let Some((dir, step)) = &current {
-                if let Ok(raw) = std::fs::read(dir.join("preview.rgb")) {
-                    if raw.len() == 4 + 480 * height * 3
-                        && u32::from_be_bytes(raw[..4].try_into().unwrap()) as u64 + 1 == *step
-                    {
-                        camera.set_frame(cx, 480, height, &raw[4..]);
-                        self.frame = current;
-                    }
-                }
-            } else {
-                camera.clear(cx);
-                self.frame = None;
-            }
-        }
+        self.show_camera(cx, w.live.as_ref());
         let text = if transfer {
             format!(
                 "{} cube · {}\n{:.1} s simulated",

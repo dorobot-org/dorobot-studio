@@ -175,6 +175,7 @@ def main():
                     for f in (
                         "Cargo.lock",
                         "crates/dorobot-studio-core/src/runtime.rs",
+                        "crates/dorobot-studio-core/src/widgets/video_player.rs",
                         "plugins/aisle/src/lib.rs",
                         "crates/dorobot-studio-core/src/api/aisle.rs",
                         "dorobot-flex/src/bin/dorobot-flex.rs",
@@ -206,6 +207,10 @@ def main():
         command = [str(args.studio.resolve()), "--remote", "--screen", "aisle-task"]
         if args.dark:
             command.append("--dark")
+        if args.fleet or args.transfer:
+            env["DOROBOT_AISLE_DRAW_TRACE"] = str(
+                output / "verified" / f"{stage}-draws.jsonl"
+            )
         with (output / f"{stage}.log").open("w") as log:
             process = subprocess.Popen(
                 command, env=env, stdout=log, stderr=subprocess.STDOUT
