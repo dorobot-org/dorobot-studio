@@ -20,8 +20,8 @@ To inspect the original captures, use the Studio AISLE Python environment from t
 
 ```sh
 DIR=docs/product/aisle-studio/validation/nano-release-workspace
-python "$DIR/inspect_release.py" "$DIR/before.zip"
-python tools/aisle-validation/nano_suite_evidence.py verify "$DIR/before.zip" \
+python "$DIR/inspect_release.py" "$DIR/original/evidence.zip"
+python tools/aisle-validation/nano_suite_evidence.py verify "$DIR/original/evidence.zip" \
   --manifest-sha256 0eac7bcc33733163c1f6e6ea86abebe7b245906a5be2634e3000f8258fb8d8cd
 ```
 
@@ -41,3 +41,7 @@ The agent authors the task and chooses the requested placement mode. The local c
 | Turn in place with landmark matches between the first and last images | 2/5 | Recovered layouts 9 and 36. On 15 and 19, the visible wrist camera changed. On 16, all three cubes settled, but the robot had already lost loaded wheel contact for one simulation tick. |
 
 The archived development attempts include the full motor and camera evidence and a source patch for each alternative against commit `93d67f4`. The selected turn uses the robot’s existing steering control. It registers complete silhouettes between consecutive camera exposures so that an earlier cube can pass from one wrist’s view to the other. It retains earlier detections when they become occluded. An interrupted observation chain stops the turn. [All three exploratory attempts and control layouts](development-attempts.zip)
+
+The continuous landmark tracker recovered layout 36 and completed one of the five original failures. It stopped on 9 because the apparent displacement between frames was inconsistent and on 15 and 19 because consecutive views had no common complete silhouette. All three cubes settled on 16, which still failed continuous wheel support. All five motor journals verified with zero guard bypasses. All four control layouts passed. The original motor journals matched byte for byte on the three disclosed control seeds from cohort E.
+
+Open **Evidence → Evaluations**, select `tracked/evidence.zip` as the current archive and `original/evidence.zip` as the baseline, then click **Compare archives**. Keep each adjacent `suite.json` in its own directory. The native comparison counted one gain, four layouts failing both and zero regressions. It reopened the same comparison after restart. [Original capture](original/evidence.zip) · [Tracked turn](tracked/evidence.zip) · [Native comparison](matched-development.png) · [Instrument checks](native-comparison.json)
