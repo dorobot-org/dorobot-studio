@@ -53,6 +53,9 @@ class WorkspaceAdmissionTests(unittest.TestCase):
         out.write_text('{"wrist_timing":{"fixture":"normal"}}')
         with self.assertRaisesRegex(ValueError, "result.json does not confirm"):
             verify_wrist_fixture(self.root, request, "completed")
+        out.write_text('{"wrist_timing":"intermittent"}')
+        with self.assertRaisesRegex(ValueError, "result.json does not confirm"):
+            verify_wrist_fixture(self.root, request, "completed")
         out.write_text('{"wrist_timing":{"fixture":"intermittent"}}')
         verify_wrist_fixture(self.root, request, "completed")
         (self.root / "source.json").unlink()

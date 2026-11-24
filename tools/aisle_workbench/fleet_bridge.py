@@ -136,8 +136,9 @@ def verify_wrist_fixture(folder, request, state):
     ]:
         path = folder / name
         value = json.loads(path.read_bytes()).get(field) if path.is_file() else None
-        actual = value.get("fixture") if isinstance(value, dict) else value
-        if actual != fixture:
+        if field == "wrist_timing":
+            value = value.get("fixture") if isinstance(value, dict) else None
+        if value != fixture:
             raise ValueError(
                 f"Worker {name} does not confirm the requested {fixture} wrist delivery"
             )
