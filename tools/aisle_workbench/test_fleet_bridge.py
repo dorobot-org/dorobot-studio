@@ -2,6 +2,7 @@
 
 import base64
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
 from pathlib import Path
 import tempfile
 import json
@@ -23,6 +24,9 @@ from fleet_bridge import (
     watch_foreground,
     verify_wrist_fixture,
 )
+
+
+from fleet_check import retained_background, submitted_foreground
 
 
 class WorkspaceAdmissionTests(unittest.TestCase):
@@ -79,6 +83,30 @@ class WorkspaceAdmissionTests(unittest.TestCase):
 
     def request(self, mode="stream"):
         return dict(op="submit", id=str(uuid4()), robot="Nano", mode=mode)
+
+    def test_single_foreground_resume_uses_the_submitted_controller(self):
+        request = self.request()
+        source = b'{"provider":"codex"}'
+        digest = hashlib.sha256(source).hexdigest()
+        request.update(
+            controller=base64.b64encode(source).decode(), controller_sha256=digest
+        )
+        with patch("fleet_bridge.send", self.transport):
+            submit(self.root, self.nodes, "a", request)
+        ident = request["id"]
+        fleet = dict(node="a", jobs=[ident], selected=dict(id=ident, mode="stream"))
+        (self.root / "worker-selection.json").write_text(json.dumps(fleet))
+        self.assertEqual(submitted_foreground(self.root, "a"), (fleet, digest, "codex"))
+        self.assertEqual(retained_background(self.root, [ident], ident), {})
+        with self.assertRaisesRegex(ValueError, "registered worker"):
+            submitted_foreground(self.root, "b")
+        request["controller_sha256"] = "0" * 64
+        with journal(self.root) as db:
+            db.execute(
+                "UPDATE jobs SET request=? WHERE id=?", (json.dumps(request), ident)
+            )
+        with self.assertRaisesRegex(ValueError, "digest differ"):
+            submitted_foreground(self.root, "a")
 
     def test_import_checks_actual_wrist_fixture_against_the_lease(self):
         request = dict(

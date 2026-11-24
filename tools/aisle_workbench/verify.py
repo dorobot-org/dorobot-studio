@@ -198,7 +198,7 @@ def main():
         "--resume-fleet",
         type=Path,
         metavar="EARLIER_OUTPUT",
-        help="Reconnect a prior two-job fleet check and fetch its completed foreground",
+        help="Reconnect to the selected foreground of a prior fleet check and fetch its original recording",
     )
     parser.add_argument(
         "--fleet-controller",
@@ -245,7 +245,7 @@ def main():
             "--resume-fleet needs --fleet and the same registered --fleet-node"
         )
     if args.fleet_node and (not args.fleet or args.foreground_cadence):
-        parser.error("--fleet-node requires the two-job --fleet journey")
+        parser.error("--fleet-node requires a registered-worker --fleet journey")
     if args.photo_input and (args.survey or not args.transfer):
         parser.error("--photo-input requires a transfer without --survey")
     if args.survey and not args.transfer:
@@ -281,7 +281,7 @@ def main():
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     if args.foreground_cadence and (not args.fleet or not args.provider):
         parser.error("--foreground-cadence requires --fleet and an author")
-    if args.fleet and not args.provider:
+    if args.fleet and not args.provider and not args.resume_fleet:
         args.provider = "octos-deepseek"
     if args.revision_selection and not args.provider:
         parser.error("--revision-selection requires --codex or --octos-deepseek")
@@ -298,7 +298,13 @@ def main():
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
     if args.resume_fleet:
+        from fleet_check import submitted_foreground
+
         shutil.copytree(args.resume_fleet / "state", output / "state")
+        _, _, author = submitted_foreground(output / "state/aisle", args.fleet_node)
+        if args.provider and args.provider != author:
+            parser.error("Selected provider differs from the submitted controller")
+        args.provider = author
     if args.prepared_pickup and not args.revise_pickup:
         parser.error("--prepared-pickup requires --revise-pickup")
     prior_trial = args.revise_pickup or args.revise_drive
