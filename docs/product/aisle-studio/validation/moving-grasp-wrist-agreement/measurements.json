@@ -1,0 +1,494 @@
+{
+  "repeat_of_stop": {
+    "last_pickup": {
+      "color": "blue",
+      "tick": 17814,
+      "optical_state": "ambiguous",
+      "cameras": [],
+      "xy": null
+    },
+    "passed": false,
+    "seed": 0,
+    "provider": "octos-deepseek",
+    "tracked": true,
+    "fixture": "slide-negative",
+    "cubes": {
+      "red": {
+        "passed": true,
+        "first_contact": {
+          "tick": 1465,
+          "prior_velocity_y_m_s": -0.013904273509979248,
+          "displacement_y_m": -0.05338580906391144
+        },
+        "elevated_opposed_ticks": 215,
+        "replayed": 8,
+        "localized": 8,
+        "max_error_m": 0.0032031205942290074
+      },
+      "green": {
+        "passed": true,
+        "first_contact": {
+          "tick": 9457,
+          "prior_velocity_y_m_s": -0.013902783393859863,
+          "displacement_y_m": -0.0533851683139801
+        },
+        "elevated_opposed_ticks": 205,
+        "replayed": 8,
+        "localized": 8,
+        "max_error_m": 0.006969405185298959
+      },
+      "blue": {
+        "passed": false,
+        "first_contact": null,
+        "elevated_opposed_ticks": 0,
+        "replayed": 0,
+        "localized": 0,
+        "max_error_m": null
+      }
+    },
+    "placements": {
+      "red": true,
+      "green": true,
+      "blue": false
+    },
+    "audited_ticks": 17814,
+    "motor_sha256": "e683eae72f8358589322ecdb6941f26f647877f628040ccea6ce7983bfd00a36"
+  },
+  "original_matched_action_sha256": "5edf9b8f010c53ac499aee467f3236864c43fc1e64c8f0c96a2e4ff610eebc88",
+  "pairs": {
+    "red_slide-negative_0": {
+      "same_controller_sha256": "45843f673f6556902cfee4876a1f38f16b3c402f736eed6daf856cd661dbf9c5",
+      "before": {
+        "passed": true,
+        "seed": 0,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-negative",
+        "cubes": {
+          "red": {
+            "passed": true,
+            "first_contact": {
+              "tick": 1465,
+              "prior_velocity_y_m_s": -0.013904273509979248,
+              "displacement_y_m": -0.05338580906391144
+            },
+            "elevated_opposed_ticks": 215,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.0032031205942290074
+          }
+        },
+        "placements": {
+          "red": true
+        },
+        "audited_ticks": 6752,
+        "motor_sha256": "2457912c101ee8fe372c86ec82c9b1af251eda1779623ec2ae31e7170f7e96d8"
+      },
+      "after": {
+        "passed": true,
+        "seed": 0,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-negative",
+        "cubes": {
+          "red": {
+            "passed": true,
+            "first_contact": {
+              "tick": 1465,
+              "prior_velocity_y_m_s": -0.013904273509979248,
+              "displacement_y_m": -0.05338580906391144
+            },
+            "elevated_opposed_ticks": 215,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.0032031205942290074
+          }
+        },
+        "placements": {
+          "red": true
+        },
+        "audited_ticks": 6752,
+        "motor_sha256": "2457912c101ee8fe372c86ec82c9b1af251eda1779623ec2ae31e7170f7e96d8"
+      },
+      "after_error": null,
+      "same_actions": true,
+      "same_motors": true
+    },
+    "red_slide-negative_643393491": {
+      "same_controller_sha256": "45843f673f6556902cfee4876a1f38f16b3c402f736eed6daf856cd661dbf9c5",
+      "before": {
+        "passed": false,
+        "seed": 643393491,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-negative",
+        "cubes": {
+          "red": {
+            "passed": false,
+            "first_contact": {
+              "tick": 1566,
+              "prior_velocity_y_m_s": -0.013902783393859863,
+              "displacement_y_m": -0.05352485179901123
+            },
+            "elevated_opposed_ticks": 0,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.0030087083301773166
+          }
+        },
+        "placements": {
+          "red": true
+        },
+        "audited_ticks": 8994,
+        "motor_sha256": "d113a2d0a02ec7e3346c3e53dc091dbe85803d7ab9575e91ef7b2bac067d3850"
+      },
+      "after": {
+        "passed": false,
+        "seed": 643393491,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-negative",
+        "cubes": {
+          "red": {
+            "passed": false,
+            "first_contact": {
+              "tick": 1566,
+              "prior_velocity_y_m_s": -0.013902783393859863,
+              "displacement_y_m": -0.05352485179901123
+            },
+            "elevated_opposed_ticks": 0,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.0030087083301773166
+          }
+        },
+        "placements": {
+          "red": true
+        },
+        "audited_ticks": 8994,
+        "motor_sha256": "d113a2d0a02ec7e3346c3e53dc091dbe85803d7ab9575e91ef7b2bac067d3850"
+      },
+      "after_error": null,
+      "same_actions": true,
+      "same_motors": true
+    },
+    "three_slide-negative_0": {
+      "same_controller_sha256": "5cb7901f81f99d5717faa022741446ee3bfa7e69f1ee48977d1b592c6924e8b6",
+      "before": {
+        "passed": false,
+        "seed": 0,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-negative",
+        "cubes": {
+          "red": {
+            "passed": true,
+            "first_contact": {
+              "tick": 1465,
+              "prior_velocity_y_m_s": -0.013904273509979248,
+              "displacement_y_m": -0.05338580906391144
+            },
+            "elevated_opposed_ticks": 215,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.0032031205942290074
+          },
+          "green": {
+            "passed": true,
+            "first_contact": {
+              "tick": 9457,
+              "prior_velocity_y_m_s": -0.013902783393859863,
+              "displacement_y_m": -0.0533851683139801
+            },
+            "elevated_opposed_ticks": 205,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.006969405185298959
+          },
+          "blue": {
+            "passed": false,
+            "first_contact": null,
+            "elevated_opposed_ticks": 0,
+            "replayed": 0,
+            "localized": 0,
+            "max_error_m": null
+          }
+        },
+        "placements": {
+          "red": true,
+          "green": true,
+          "blue": false
+        },
+        "audited_ticks": 17814,
+        "motor_sha256": "e683eae72f8358589322ecdb6941f26f647877f628040ccea6ce7983bfd00a36"
+      },
+      "after": {
+        "passed": true,
+        "seed": 0,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-negative",
+        "cubes": {
+          "red": {
+            "passed": true,
+            "first_contact": {
+              "tick": 1465,
+              "prior_velocity_y_m_s": -0.013904273509979248,
+              "displacement_y_m": -0.05338580906391144
+            },
+            "elevated_opposed_ticks": 215,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.0032031205942290074
+          },
+          "green": {
+            "passed": true,
+            "first_contact": {
+              "tick": 9457,
+              "prior_velocity_y_m_s": -0.013902783393859863,
+              "displacement_y_m": -0.0533851683139801
+            },
+            "elevated_opposed_ticks": 205,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.006969405185298959
+          },
+          "blue": {
+            "passed": true,
+            "first_contact": {
+              "tick": 18090,
+              "prior_velocity_y_m_s": -0.013122335076332092,
+              "displacement_y_m": -0.05175635777413845
+            },
+            "elevated_opposed_ticks": 210,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.006033002375194107
+          }
+        },
+        "placements": {
+          "red": true,
+          "green": true,
+          "blue": true
+        },
+        "audited_ticks": 23596,
+        "motor_sha256": "d194d277dc6371f05c0247b5eb48e813bc7304aa950b281631ca7be26121d656"
+      },
+      "after_error": null,
+      "same_actions": false,
+      "same_motors": false
+    },
+    "three_slide-positive_0": {
+      "same_controller_sha256": "5cb7901f81f99d5717faa022741446ee3bfa7e69f1ee48977d1b592c6924e8b6",
+      "before": {
+        "passed": true,
+        "seed": 0,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-positive",
+        "cubes": {
+          "red": {
+            "passed": true,
+            "first_contact": {
+              "tick": 1466,
+              "prior_velocity_y_m_s": 0.013899803161621094,
+              "displacement_y_m": 0.053521111607551575
+            },
+            "elevated_opposed_ticks": 203,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.006799912444754903
+          },
+          "green": {
+            "passed": true,
+            "first_contact": {
+              "tick": 9299,
+              "prior_velocity_y_m_s": 0.013899803161621094,
+              "displacement_y_m": 0.05365726351737976
+            },
+            "elevated_opposed_ticks": 194,
+            "replayed": 8,
+            "localized": 7,
+            "max_error_m": 0.004185338846480835
+          },
+          "blue": {
+            "passed": true,
+            "first_contact": {
+              "tick": 22853,
+              "prior_velocity_y_m_s": 0.012948364019393921,
+              "displacement_y_m": 0.051388662308454514
+            },
+            "elevated_opposed_ticks": 208,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.004876853155280223
+          }
+        },
+        "placements": {
+          "red": true,
+          "green": true,
+          "blue": true
+        },
+        "audited_ticks": 32480,
+        "motor_sha256": "ee9486f8fef30189f435d26d2766698313379162442b5ab5dff512f954c41089"
+      },
+      "after": {
+        "passed": true,
+        "seed": 0,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-positive",
+        "cubes": {
+          "red": {
+            "passed": true,
+            "first_contact": {
+              "tick": 1466,
+              "prior_velocity_y_m_s": 0.013899803161621094,
+              "displacement_y_m": 0.053521111607551575
+            },
+            "elevated_opposed_ticks": 203,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.006799912444754903
+          },
+          "green": {
+            "passed": true,
+            "first_contact": {
+              "tick": 9299,
+              "prior_velocity_y_m_s": 0.013899803161621094,
+              "displacement_y_m": 0.05365726351737976
+            },
+            "elevated_opposed_ticks": 194,
+            "replayed": 8,
+            "localized": 7,
+            "max_error_m": 0.004185338846480835
+          },
+          "blue": {
+            "passed": true,
+            "first_contact": {
+              "tick": 22853,
+              "prior_velocity_y_m_s": 0.012948364019393921,
+              "displacement_y_m": 0.051388662308454514
+            },
+            "elevated_opposed_ticks": 208,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.004876853155280223
+          }
+        },
+        "placements": {
+          "red": true,
+          "green": true,
+          "blue": true
+        },
+        "audited_ticks": 32480,
+        "motor_sha256": "ee9486f8fef30189f435d26d2766698313379162442b5ab5dff512f954c41089"
+      },
+      "after_error": null,
+      "same_actions": true,
+      "same_motors": true
+    }
+  },
+  "exposure": {
+    "packet_sha256": "996576a5f4c681dcdaf396f3f402968e2f1dbe1750d11e6ae0b70c21842a34f8",
+    "calibrated_candidates_m": {
+      "head": [
+        [
+          0.3793040497264909,
+          0.4221948118175721
+        ],
+        [
+          0.2671728547411369,
+          0.21094029603128878
+        ]
+      ],
+      "left_wrist": [
+        [
+          0.26386652389658505,
+          0.2084773152754107
+        ]
+      ],
+      "right_wrist": []
+    },
+    "original": {
+      "state": "ambiguous",
+      "xy": null,
+      "cameras": [],
+      "speed": 0.0,
+      "yaw_rate": 0.0
+    },
+    "revised": {
+      "state": "approaching",
+      "xy": [
+        0.26386652389658505,
+        0.2084773152754107
+      ],
+      "cameras": [
+        "head",
+        "left_wrist"
+      ],
+      "speed": 0.0,
+      "yaw_rate": 0.5
+    },
+    "wrist_removed": {
+      "state": "ambiguous",
+      "xy": null,
+      "cameras": [],
+      "speed": 0.0,
+      "yaw_rate": 0.0
+    }
+  },
+  "native_trial": {
+    "passed": true,
+    "seed": 0,
+    "provider": "octos-deepseek",
+    "tracked": true,
+    "fixture": "slide-negative",
+    "cubes": {
+      "red": {
+        "passed": true,
+        "first_contact": {
+          "tick": 1465,
+          "prior_velocity_y_m_s": -0.013904273509979248,
+          "displacement_y_m": -0.05338580906391144
+        },
+        "elevated_opposed_ticks": 215,
+        "replayed": 8,
+        "localized": 8,
+        "max_error_m": 0.0032031205942290074
+      },
+      "green": {
+        "passed": true,
+        "first_contact": {
+          "tick": 9457,
+          "prior_velocity_y_m_s": -0.013902783393859863,
+          "displacement_y_m": -0.0533851683139801
+        },
+        "elevated_opposed_ticks": 205,
+        "replayed": 8,
+        "localized": 8,
+        "max_error_m": 0.006969405185298959
+      },
+      "blue": {
+        "passed": true,
+        "first_contact": {
+          "tick": 18090,
+          "prior_velocity_y_m_s": -0.013122335076332092,
+          "displacement_y_m": -0.05175635777413845
+        },
+        "elevated_opposed_ticks": 210,
+        "replayed": 8,
+        "localized": 8,
+        "max_error_m": 0.006033002375194107
+      }
+    },
+    "placements": {
+      "red": true,
+      "green": true,
+      "blue": true
+    },
+    "audited_ticks": 23596,
+    "motor_sha256": "d194d277dc6371f05c0247b5eb48e813bc7304aa950b281631ca7be26121d656"
+  },
+  "archive_sha256": "40abda7d4a56c91adfa9441e1965026bc71a37ebdbfce5f2e6dbdcc65f961c67"
+}

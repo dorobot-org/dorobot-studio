@@ -1,0 +1,1178 @@
+{
+  "manifest": {
+    "backend": "offscreen",
+    "requested_size": "1440x900",
+    "provider": "octos-deepseek",
+    "native_binary_sha256": "421a2b7cc5c843da63e27f3a7ffd3f715717f53e61ac366b7bea1becf29f0068",
+    "studio_source_commit": "1bf3450740b62f2dd9eb899d2c6fe3a8014f3c28",
+    "source_files_sha256": {
+      "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+      "crates/dorobot-studio-core/src/api/aisle.rs": "e766cb7d01fa2b10339648f482914646f97ff1ab89cf3d578f6379610aa6d78b",
+      "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+      "dorobot-flex/src/bin/dorobot-flex.rs": "631c0105e6c7147bff017a53a0f035b87a920cbe1a06db771c855eb767164449",
+      "plugins/aisle/src/lib.rs": "ec86012fb3185854676baa9bc52d1e35efe7451c9f93617c7487add904a0aa74",
+      "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+      "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+      "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+      "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+      "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+      "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+      "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+      "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+      "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+      "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+      "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+      "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+      "tools/aisle-validation/nano_moving_grasp.py": "8ad258b9b13133b20acba181b8a0a404c4df7f6bb10288a76547b0a1886e9c72",
+      "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+      "tools/aisle-validation/nano_rgb_policy.py": "93cea7d462f30c61d35d2b7d4b093d65d9d4482d13545c2f8bd7a1a224312d50",
+      "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+      "tools/aisle-validation/nano_rgb_transfer_policy.py": "8717a1d035061f2e6e57bfdfefd08f5d6bb3708c9d10421f310d5021e4d04159",
+      "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+      "tools/aisle-validation/nano_suite_evidence.py": "b0c501931851073154f0511fe235fecfb48216a15c58566d594dd6c3e7d5d4e0",
+      "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+      "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+      "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+      "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+      "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+      "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+      "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+      "tools/aisle-validation/run_rgb_approach.py": "d4b136423aa98f90f21c46e2b67b71c38ca7b30071eb91c2ec5df70f756f757e",
+      "tools/aisle-validation/run_rgb_transfer.py": "689fc5d21cd5b4761b47d189858b61ea21ec3a8aee7dc70399b9d690febc0e5f",
+      "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+      "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+      "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+      "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+      "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+      "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+      "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+      "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+      "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+      "tools/aisle-validation/test_nano_rgb_transfer.py": "7728693b8cf0a5b1ba987e8bb4fac5e94f19db882444e488ac31e4cc01eb0c94",
+      "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+      "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+      "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+      "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+      "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+      "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+      "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+      "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+      "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+      "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+      "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+      "tools/aisle_workbench/fleet_artifacts.py": "7ebaa221ca375acf47b3225fabcd7b7535609ad51d99b027ee4e857ac7f296af",
+      "tools/aisle_workbench/fleet_bridge.py": "66dfbd333e8ffd4fb7a4a1d28bd85e5d0c3e3ee95496ece544939a9052d206d7",
+      "tools/aisle_workbench/fleet_check.py": "d13aeb0177410a4c3fc96e554e7ad323f27d182cc9a01e6993a8c1c56fad74db",
+      "tools/aisle_workbench/fleet_client.py": "3568f4515a8e299b9e80eae9060a8a577d68cedf31e7fe0eb4447738b1017073",
+      "tools/aisle_workbench/fleet_worker.py": "c064686e22444c45ec6b41fd7ff56dc610e6fd15614c63349b87687d140d4ca9",
+      "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+      "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+      "tools/aisle_workbench/g1_stand.py": "beac87a5157b03f3bc88e5bfe959f167eff39dfc13bc397517ccff4f262cb9f1",
+      "tools/aisle_workbench/journey.py": "b10e165a2e7e96ab5722172d4d851b4821134d54fd02357947875d87d543e382",
+      "tools/aisle_workbench/moving_grasp_check.py": "8d315144d9b487edad4ce81140a5916e05fb2a9347c1900295bcd9c7e796e0ef",
+      "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+      "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+      "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+      "tools/aisle_workbench/observation_period_check.py": "49fda87c4f8ed2c354f7df2578771438d86690c7d431fbe012e28442495685ae",
+      "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+      "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+      "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+      "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+      "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+      "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+      "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+      "tools/aisle_workbench/test_fleet_bridge.py": "0f2d6cc8847066b86981d779ae3c151c81737c6a17e8c7e2df331494a1768156",
+      "tools/aisle_workbench/test_fleet_worker.py": "289723fea3eb461efe878a9dffb2449b290aa964b385e602d82f471815ab343d",
+      "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+      "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+      "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+      "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+      "tools/aisle_workbench/test_worker.py": "cae922520510c2e239dc92a849c2ead60e55c93d3e2b209b63fb8022004aba54",
+      "tools/aisle_workbench/verify.py": "7cc469374fa6ad4920c14d53eb59439b774b30b05cc2824fc4fea92b51f06763",
+      "tools/aisle_workbench/worker.py": "27884be72ff1f9d5a876c0c13faa894dc47c8f1e9f78a39891488e3641fe49be",
+      "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+      "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+      "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+      "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+      "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+    },
+    "workspace_changes_at_launch": [],
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 87955,
+        "observed_dark": true,
+        "observed_source_root": "/Users/yuechen/home/aisle-nano-moving-recovery",
+        "windows": [
+          [
+            1440,
+            900
+          ]
+        ]
+      },
+      {
+        "stage": "recovery",
+        "pid": 21417,
+        "observed_dark": true,
+        "observed_source_root": "/Users/yuechen/home/aisle-nano-moving-recovery",
+        "windows": [
+          [
+            1440,
+            900
+          ]
+        ]
+      }
+    ],
+    "trials": [
+      "1795489355976972000-Nano-run"
+    ],
+    "files": {
+      "journey.json": "d9941460b1512a155ecdb57a9b77532e426e5db7d7f0bf9240988e977abc9b35",
+      "recovery.json": "b372d565859ac0beb3d4f2034a46d938d2ae7a7e4f7c0a3f6fd98850ace8742e",
+      "transfer-evidence.png": "d7e852d8c43978fed789440b0c3db3168106a98554284c43ec6228e3d9a9308d",
+      "transfer-replay.png": "6f2e7e101457b7dbe666f0f8ff883ba4824caded72c63af2e7b778a61d3b2ab4",
+      "transfer-run.png": "6ec7a86e050c98d5227b80e59b5102e6c49de343f2995da578e48c548b8e5509",
+      "transfer-scene.png": "5db4fa113ef1ed755fd773328928a56a25619c55d9010a13a84f95520eb8e15c",
+      "transfer-task.png": "dbf9f9fa4a40d07f6715f547e7b365dfe0aac0e0f1357110b8dbf79ae9dafc82"
+    }
+  },
+  "journey": [
+    {
+      "check": "transfer controller authored",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 prepare"
+    },
+    {
+      "check": "Selected moving floor cube",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 prepare"
+    },
+    {
+      "check": "Living-room layout 1 selected",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 prepare"
+    },
+    {
+      "check": "Living-room layout 0 selected",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 prepare"
+    },
+    {
+      "check": "nano scene checked",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 prepare"
+    },
+    {
+      "check": "transfer stream active",
+      "robot": "Nano",
+      "status": "Running \u00b7 Nano \u00b7 run"
+    },
+    {
+      "check": "transfer fresh frame",
+      "robot": "Nano",
+      "status": "Running \u00b7 Nano \u00b7 run"
+    },
+    {
+      "check": "transfer adjudicated",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 run"
+    },
+    {
+      "check": "Onboard descent and physical moving grasp",
+      "audit": {
+        "passed": true,
+        "seed": 0,
+        "provider": "octos-deepseek",
+        "tracked": true,
+        "fixture": "slide-negative",
+        "cubes": {
+          "red": {
+            "passed": true,
+            "first_contact": {
+              "tick": 1465,
+              "prior_velocity_y_m_s": -0.013904273509979248,
+              "displacement_y_m": -0.05338580906391144
+            },
+            "elevated_opposed_ticks": 215,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.0032031205942290074
+          },
+          "green": {
+            "passed": true,
+            "first_contact": {
+              "tick": 9457,
+              "prior_velocity_y_m_s": -0.013902783393859863,
+              "displacement_y_m": -0.0533851683139801
+            },
+            "elevated_opposed_ticks": 205,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.006969405185298959
+          },
+          "blue": {
+            "passed": true,
+            "first_contact": {
+              "tick": 18090,
+              "prior_velocity_y_m_s": -0.013122335076332092,
+              "displacement_y_m": -0.05175635777413845
+            },
+            "elevated_opposed_ticks": 210,
+            "replayed": 8,
+            "localized": 8,
+            "max_error_m": 0.006033002375194107
+          }
+        },
+        "placements": {
+          "red": true,
+          "green": true,
+          "blue": true
+        },
+        "audited_ticks": 23596,
+        "motor_sha256": "d194d277dc6371f05c0247b5eb48e813bc7304aa950b281631ca7be26121d656"
+      }
+    },
+    {
+      "check": "transfer physical verdict",
+      "actuator_audit": {
+        "applied_rows": 23596,
+        "format": "little-endian float64, initial targets then one row per physics tick",
+        "initial_targets_valid": true,
+        "invalid_rows": 0,
+        "passed": true,
+        "sha256": "d194d277dc6371f05c0247b5eb48e813bc7304aa950b281631ca7be26121d656",
+        "unmatched_ticks": 0
+      },
+      "carry_annotations": true,
+      "controller_hash": "5a676fe2832e5e7752a4f311af559200e161b873bdb240c2fe9a25090d8b52a7",
+      "cubes": {
+        "blue": {
+          "cube_center_over_table": true,
+          "detached": true,
+          "final_position_m": [
+            0.3585793972015381,
+            0.6746739745140076,
+            0.5599992871284485
+          ],
+          "min_finger_clearance_tail_m": 0.25406420042518174,
+          "nearest_table_edge_m": 0.07467397451400759,
+          "opposing_finger_airborne_ticks": 3459,
+          "passed": true,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0,
+          "table_contact_tail_ticks": 100
+        },
+        "green": {
+          "cube_center_over_table": true,
+          "detached": true,
+          "final_position_m": [
+            0.3926551640033722,
+            0.7130575180053711,
+            0.5599988698959351
+          ],
+          "min_finger_clearance_tail_m": 0.28190095603771365,
+          "nearest_table_edge_m": 0.11305751800537112,
+          "opposing_finger_airborne_ticks": 3835,
+          "passed": true,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0,
+          "table_contact_tail_ticks": 100
+        },
+        "red": {
+          "cube_center_over_table": true,
+          "detached": true,
+          "final_position_m": [
+            0.2279875725507736,
+            0.692798376083374,
+            0.5599989891052246
+          ],
+          "min_finger_clearance_tail_m": 0.3023795874675564,
+          "nearest_table_edge_m": 0.09279837608337405,
+          "opposing_finger_airborne_ticks": 3219,
+          "passed": true,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0,
+          "table_contact_tail_ticks": 100
+        }
+      },
+      "error": null,
+      "fixture": "living-room",
+      "frames": 1179,
+      "grasp_checkpoint": null,
+      "kind": "table-transfer",
+      "max_joint_excursion_rad": 0,
+      "measured_room_bodies": {},
+      "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "moving_grasp": {
+        "cubes": {
+          "blue": {
+            "commands": 386,
+            "first_attempt_lift_ticks": 210,
+            "first_contact": {
+              "displacement_y_m": -0.0517563596367836,
+              "prior_velocity_y_m_s": -0.013122335076332092,
+              "tick": 18090
+            },
+            "floor_cube_center_z": -0.014301074668765068,
+            "initial_world_m": [
+              0.8688000440597534,
+              0.07629513740539551,
+              -0.014301073737442492
+            ],
+            "passed": true,
+            "samples": [
+              {
+                "base_m": [
+                  0.5396891236305237,
+                  -0.011890381574630736,
+                  -9.156969463219866e-05
+                ],
+                "base_quat_wxyz": [
+                  0.9749754667282104,
+                  -2.3990174668142572e-05,
+                  -0.00018409253971185535,
+                  -0.22231267392635343
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.00033715697334379014,
+                "intercept_xy_m": [
+                  0.26386652389658505,
+                  0.2084773152754107
+                ],
+                "tick": 17814,
+                "truth_xy_m": [
+                  0.264121814213206,
+                  0.20825708430821055
+                ],
+                "velocity_y_m_s": -0.013579800724983215,
+                "xy": [
+                  0.26386652389658505,
+                  0.2084773152754107
+                ]
+              },
+              {
+                "base_m": [
+                  0.5396777987480164,
+                  -0.011891025118529797,
+                  -9.17685028980486e-05
+                ],
+                "base_quat_wxyz": [
+                  0.9749728441238404,
+                  -2.4810964532662183e-05,
+                  -0.00018322763207834217,
+                  -0.2223241627216339
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 7.733338366540053e-05,
+                "intercept_xy_m": [
+                  0.26841412259628267,
+                  0.197650863875848
+                ],
+                "tick": 17864,
+                "truth_xy_m": [
+                  0.266670344335876,
+                  0.2019766996105446
+                ],
+                "velocity_y_m_s": -0.01351088285446167,
+                "xy": [
+                  0.2666226443206442,
+                  0.20191582957870605
+                ]
+              },
+              {
+                "base_m": [
+                  0.5396602153778076,
+                  -0.011892424896359444,
+                  -9.205273090628908e-05
+                ],
+                "base_quat_wxyz": [
+                  0.9749708771705629,
+                  -2.5602299501770176e-05,
+                  -0.0001818391028791666,
+                  -0.2223324179649353
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0008497609234033724,
+                "intercept_xy_m": [
+                  0.2726872068374337,
+                  0.1909437400404808
+                ],
+                "tick": 17914,
+                "truth_xy_m": [
+                  0.26919510167379745,
+                  0.1957243051117656
+                ],
+                "velocity_y_m_s": -0.01343265175819397,
+                "xy": [
+                  0.2699181262117448,
+                  0.19617076803796368
+                ]
+              },
+              {
+                "base_m": [
+                  0.539664626121521,
+                  -0.01188759319484234,
+                  -9.769861935637893e-05
+                ],
+                "base_quat_wxyz": [
+                  0.9749583005905152,
+                  -4.677382094087079e-05,
+                  -0.00015882212028373033,
+                  -0.22238780558109283
+                ],
+                "cameras": [
+                  "left_wrist"
+                ],
+                "error_m": 0.001241610518607531,
+                "intercept_xy_m": [
+                  0.27543983306514386,
+                  0.18453597417314663
+                ],
+                "tick": 17964,
+                "truth_xy_m": [
+                  0.2716593573230991,
+                  0.18951714007725504
+                ],
+                "velocity_y_m_s": -0.013346970081329346,
+                "xy": [
+                  0.27267723447502235,
+                  0.19022814133148003
+                ]
+              },
+              {
+                "base_m": [
+                  0.5396631360054016,
+                  -0.011887281201779842,
+                  -9.747024887474254e-05
+                ],
+                "base_quat_wxyz": [
+                  0.9749538898468018,
+                  -4.677863034885377e-05,
+                  -0.00016071803111117333,
+                  -0.22240717709064484
+                ],
+                "cameras": [
+                  "left_wrist"
+                ],
+                "error_m": 0.001872915373903741,
+                "intercept_xy_m": [
+                  0.2784173463002302,
+                  0.1788311904828873
+                ],
+                "tick": 18014,
+                "truth_xy_m": [
+                  0.27412470024424107,
+                  0.18333724561797127
+                ],
+                "velocity_y_m_s": -0.01325644552707672,
+                "xy": [
+                  0.27557008436512254,
+                  0.1845283277901612
+                ]
+              },
+              {
+                "base_m": [
+                  0.5396528840065002,
+                  -0.011891714297235012,
+                  -9.23928018892184e-05
+                ],
+                "base_quat_wxyz": [
+                  0.9749444723129272,
+                  -2.927086825366132e-05,
+                  -0.00017295721045229584,
+                  -0.2224486917257309
+                ],
+                "cameras": [
+                  "left_wrist"
+                ],
+                "error_m": 0.00252756034646825,
+                "intercept_xy_m": [
+                  0.2811988966091732,
+                  0.17341335893482038
+                ],
+                "tick": 18064,
+                "truth_xy_m": [
+                  0.27657962756801213,
+                  0.1772239137876551
+                ],
+                "velocity_y_m_s": -0.013165734708309174,
+                "xy": [
+                  0.2783775210722516,
+                  0.1790004667005885
+                ]
+              },
+              {
+                "base_m": [
+                  0.5398544073104858,
+                  -0.011991777457296848,
+                  -5.705843250325415e-06
+                ],
+                "base_quat_wxyz": [
+                  0.9749829173088074,
+                  7.414822175633162e-05,
+                  0.0004114863695576787,
+                  -0.22227956354618073
+                ],
+                "cameras": [
+                  "left_wrist"
+                ],
+                "error_m": 0.004009861106613682,
+                "intercept_xy_m": [
+                  0.28309549114939253,
+                  0.1764158919985826
+                ],
+                "tick": 18114,
+                "truth_xy_m": [
+                  0.2786805689265772,
+                  0.17511980299434846
+                ],
+                "velocity_y_m_s": 0.005823932588100433,
+                "xy": [
+                  0.2806384232778385,
+                  0.17861920186180846
+                ]
+              },
+              {
+                "base_m": [
+                  0.5396819114685059,
+                  -0.011917521245777609,
+                  -9.25818967516534e-05
+                ],
+                "base_quat_wxyz": [
+                  0.9749680757522584,
+                  -3.3621232432778925e-05,
+                  -0.00015744507254566997,
+                  -0.22234496474266052
+                ],
+                "cameras": [
+                  "left_wrist"
+                ],
+                "error_m": 0.006033001762452303,
+                "intercept_xy_m": [
+                  0.287382288194455,
+                  0.1874782559893602
+                ],
+                "tick": 18164,
+                "truth_xy_m": [
+                  0.2808965894370988,
+                  0.1780200653419306
+                ],
+                "velocity_y_m_s": 0.0006491318345069885,
+                "xy": [
+                  0.2832697501937925,
+                  0.18356670561227817
+                ]
+              }
+            ],
+            "start_tick": 17544
+          },
+          "green": {
+            "commands": 385,
+            "first_attempt_lift_ticks": 205,
+            "first_contact": {
+              "displacement_y_m": -0.0533851683139801,
+              "prior_velocity_y_m_s": -0.013902783393859863,
+              "tick": 9457
+            },
+            "floor_cube_center_z": -0.014301075600087644,
+            "initial_world_m": [
+              0.8489195704460144,
+              -0.28697943687438965,
+              -0.01430107094347477
+            ],
+            "passed": true,
+            "samples": [
+              {
+                "base_m": [
+                  0.5635837912559509,
+                  -0.084567129611969,
+                  -0.0001057811386999674
+                ],
+                "base_quat_wxyz": [
+                  -0.7875286936759949,
+                  0.00015200280176941303,
+                  0.00031690322794020176,
+                  0.6162779331207275
+                ],
+                "cameras": [
+                  "head"
+                ],
+                "error_m": 0.002594051594147232,
+                "intercept_xy_m": [
+                  0.2811773853510634,
+                  0.22644432355156535
+                ],
+                "tick": 9182,
+                "truth_xy_m": [
+                  0.2797977081076473,
+                  0.22424759999656405
+                ],
+                "velocity_y_m_s": -0.013908743858337402,
+                "xy": [
+                  0.2811773853510634,
+                  0.22644432355156535
+                ]
+              },
+              {
+                "base_m": [
+                  0.5635833144187927,
+                  -0.08456724137067795,
+                  -0.0001057930858223699
+                ],
+                "base_quat_wxyz": [
+                  -0.787530243396759,
+                  0.0001520823425380513,
+                  0.00031694810604676604,
+                  0.6162760257720947
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.002612431593791329,
+                "intercept_xy_m": [
+                  0.2923368750731497,
+                  0.2235568492373887
+                ],
+                "tick": 9232,
+                "truth_xy_m": [
+                  0.28652963143374477,
+                  0.2224957829600938
+                ],
+                "velocity_y_m_s": -0.013908743858337402,
+                "xy": [
+                  0.2879407124553581,
+                  0.22469433911873105
+                ]
+              },
+              {
+                "base_m": [
+                  0.5635836124420166,
+                  -0.08456730842590332,
+                  -0.00010583549010334536
+                ],
+                "base_quat_wxyz": [
+                  -0.7875315546989441,
+                  0.00015199242625385523,
+                  0.0003168784605804831,
+                  0.6162742972373962
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0029019326150798988,
+                "intercept_xy_m": [
+                  0.30061141987407797,
+                  0.2219371878822464
+                ],
+                "tick": 9282,
+                "truth_xy_m": [
+                  0.293259997941047,
+                  0.22073802391803207
+                ],
+                "velocity_y_m_s": -0.013908743858337402,
+                "xy": [
+                  0.2946874097295962,
+                  0.22326462410175235
+                ]
+              },
+              {
+                "base_m": [
+                  0.5635831356048584,
+                  -0.08456713706254959,
+                  -0.00010583465336821972
+                ],
+                "base_quat_wxyz": [
+                  -0.7875339388847351,
+                  0.0001520762889413163,
+                  0.0003169759002048522,
+                  0.6162711977958679
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.003159482553207412,
+                "intercept_xy_m": [
+                  0.3079328629340826,
+                  0.2203356717672438
+                ],
+                "tick": 9332,
+                "truth_xy_m": [
+                  0.29998995955888647,
+                  0.21897355089119644
+                ],
+                "velocity_y_m_s": -0.013908743858337402,
+                "xy": [
+                  0.3014583489137888,
+                  0.22177107885467268
+                ]
+              },
+              {
+                "base_m": [
+                  0.5635826587677002,
+                  -0.08456692099571228,
+                  -0.00010584481788100676
+                ],
+                "base_quat_wxyz": [
+                  -0.7875357866287231,
+                  0.00015195447485893965,
+                  0.00031699592364020646,
+                  0.6162688136100769
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0035483985223493707,
+                "intercept_xy_m": [
+                  0.3149026332595921,
+                  0.21902236880975548
+                ],
+                "tick": 9382,
+                "truth_xy_m": [
+                  0.30671643399141085,
+                  0.21720169917719304
+                ],
+                "velocity_y_m_s": -0.013905763626098633,
+                "xy": [
+                  0.308233018270577,
+                  0.22040967427023808
+                ]
+              },
+              {
+                "base_m": [
+                  0.5635818839073181,
+                  -0.08456657081842422,
+                  -0.00010586467396933584
+                ],
+                "base_quat_wxyz": [
+                  -0.7875373363494873,
+                  0.00015191266720648855,
+                  0.00031699801911599934,
+                  0.6162669658660889
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.004203075548878786,
+                "intercept_xy_m": [
+                  0.32207758031913325,
+                  0.2179858672489605
+                ],
+                "tick": 9432,
+                "truth_xy_m": [
+                  0.3134403926172935,
+                  0.21542207244012765
+                ],
+                "velocity_y_m_s": -0.013905763626098633,
+                "xy": [
+                  0.315208895120517,
+                  0.21923497723380855
+                ]
+              },
+              {
+                "base_m": [
+                  0.5638579726219177,
+                  -0.08500783890485764,
+                  0.0002946188615169376
+                ],
+                "base_quat_wxyz": [
+                  -0.7877599596977234,
+                  -0.0003382232098374516,
+                  -0.0011881152167916298,
+                  0.6159812211990356
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.005753966267119686,
+                "intercept_xy_m": [
+                  0.3231109229184962,
+                  0.22464135284432205
+                ],
+                "tick": 9482,
+                "truth_xy_m": [
+                  0.31780010426613664,
+                  0.21707046534976743
+                ],
+                "velocity_y_m_s": 0.0014066696166992188,
+                "xy": [
+                  0.3185410090468585,
+                  0.2227765312369663
+                ]
+              },
+              {
+                "base_m": [
+                  0.5635385513305664,
+                  -0.08460627496242523,
+                  -0.00010674187797121704
+                ],
+                "base_quat_wxyz": [
+                  -0.7879374027252197,
+                  0.00015074812108650804,
+                  0.0003227009729016572,
+                  0.6157554388046265
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.006969408157145871,
+                "intercept_xy_m": [
+                  0.3248740267805343,
+                  0.2398753967123844
+                ],
+                "tick": 9532,
+                "truth_xy_m": [
+                  0.32008908446199613,
+                  0.22368354818959924
+                ],
+                "velocity_y_m_s": 0.00033974647521972656,
+                "xy": [
+                  0.320390943343701,
+                  0.23064641622485793
+                ]
+              }
+            ],
+            "start_tick": 8912
+          },
+          "red": {
+            "commands": 385,
+            "first_attempt_lift_ticks": 215,
+            "first_contact": {
+              "displacement_y_m": -0.05338580906391144,
+              "prior_velocity_y_m_s": -0.013904273509979248,
+              "tick": 1465
+            },
+            "floor_cube_center_z": -0.014301073737442492,
+            "initial_world_m": [
+              0.679014265537262,
+              0.1813223510980606,
+              -0.014301073737442492
+            ],
+            "passed": true,
+            "samples": [
+              {
+                "base_m": [
+                  0.33579203486442566,
+                  0.10993604362010956,
+                  -0.00014642011956311762
+                ],
+                "base_quat_wxyz": [
+                  0.9687232971191406,
+                  2.5247187295462936e-05,
+                  -0.0001895740570034832,
+                  -0.2481436133384705
+                ],
+                "cameras": [
+                  "head"
+                ],
+                "error_m": 0.002513824581712401,
+                "intercept_xy_m": [
+                  0.27437181891360085,
+                  0.21641477158972017
+                ],
+                "tick": 1190,
+                "truth_xy_m": [
+                  0.2736274066318029,
+                  0.21401369591779104
+                ],
+                "velocity_y_m_s": -0.013910233974456789,
+                "xy": [
+                  0.27437181891360085,
+                  0.21641477158972017
+                ]
+              },
+              {
+                "base_m": [
+                  0.33578839898109436,
+                  0.109936460852623,
+                  -0.00014644599286839366
+                ],
+                "base_quat_wxyz": [
+                  0.968721091747284,
+                  2.389119254075922e-05,
+                  -0.0001906621182570234,
+                  -0.24815218150615692
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0008838890440241913,
+                "intercept_xy_m": [
+                  0.2783391035383804,
+                  0.20378090831857865
+                ],
+                "tick": 1240,
+                "truth_xy_m": [
+                  0.27689909077784375,
+                  0.20788257566223028
+                ],
+                "velocity_y_m_s": -0.013908743858337402,
+                "xy": [
+                  0.27677623383770966,
+                  0.20875788475872528
+                ]
+              },
+              {
+                "base_m": [
+                  0.33578550815582275,
+                  0.1099369451403618,
+                  -0.00014660660235676914
+                ],
+                "base_quat_wxyz": [
+                  0.9687193632125854,
+                  2.2627371436101384e-05,
+                  -0.0001922721421578899,
+                  -0.2481589913368225
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0008070951443303045,
+                "intercept_xy_m": [
+                  0.2825249585603017,
+                  0.19672189377774327
+                ],
+                "tick": 1290,
+                "truth_xy_m": [
+                  0.2801657192518497,
+                  0.20174753100258624
+                ],
+                "velocity_y_m_s": -0.013908743858337402,
+                "xy": [
+                  0.27992879161186557,
+                  0.20251906704543396
+                ]
+              },
+              {
+                "base_m": [
+                  0.3357854187488556,
+                  0.10993696004152298,
+                  -0.00014658799045719206
+                ],
+                "base_quat_wxyz": [
+                  0.9687193036079408,
+                  2.251928526675329e-05,
+                  -0.0001919190399348736,
+                  -0.2481592744588852
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0008378044856975879,
+                "intercept_xy_m": [
+                  0.2859936656646906,
+                  0.19031978731550148
+                ],
+                "tick": 1340,
+                "truth_xy_m": [
+                  0.2834269221311263,
+                  0.19560515132661013
+                ],
+                "velocity_y_m_s": -0.013907253742218018,
+                "xy": [
+                  0.28305377077603067,
+                  0.19635526759922745
+                ]
+              },
+              {
+                "base_m": [
+                  0.33578452467918396,
+                  0.10993710160255432,
+                  -0.00014665338676422834
+                ],
+                "base_quat_wxyz": [
+                  0.9687187075614928,
+                  2.209815284004435e-05,
+                  -0.0001924192620208487,
+                  -0.24816125631332395
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.000989777793595139,
+                "intercept_xy_m": [
+                  0.28904930783890087,
+                  0.18414358041424295
+                ],
+                "tick": 1390,
+                "truth_xy_m": [
+                  0.2866809486845179,
+                  0.18946067240609532
+                ],
+                "velocity_y_m_s": -0.013905763626098633,
+                "xy": [
+                  0.2860638155347211,
+                  0.19023449845639084
+                ]
+              },
+              {
+                "base_m": [
+                  0.3357808291912079,
+                  0.1099376380443573,
+                  -0.00014681863831356168
+                ],
+                "base_quat_wxyz": [
+                  0.9687166810035706,
+                  2.0510055037448183e-05,
+                  -0.00019405578495934608,
+                  -0.2481691688299179
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0012815258994354915,
+                "intercept_xy_m": [
+                  0.2919285414693016,
+                  0.17812231184021202
+                ],
+                "tick": 1440,
+                "truth_xy_m": [
+                  0.2899272118978328,
+                  0.18331724560742324
+                ],
+                "velocity_y_m_s": -0.013904273509979248,
+                "xy": [
+                  0.2889849086426711,
+                  0.18418579221310172
+                ]
+              },
+              {
+                "base_m": [
+                  0.33503276109695435,
+                  0.10948508977890016,
+                  0.0003118606109637767
+                ],
+                "base_quat_wxyz": [
+                  0.9687390327453612,
+                  0.002004068810492754,
+                  -0.0020989300683140755,
+                  -0.24806517362594604
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.0005794184904563141,
+                "intercept_xy_m": [
+                  0.29548305190845653,
+                  0.17667189205252606
+                ],
+                "tick": 1490,
+                "truth_xy_m": [
+                  0.29228230253500515,
+                  0.18033892170858395
+                ],
+                "velocity_y_m_s": -0.002944469451904297,
+                "xy": [
+                  0.29229877032537704,
+                  0.1809181061342749
+                ]
+              },
+              {
+                "base_m": [
+                  0.33586037158966064,
+                  0.10940129309892654,
+                  -0.00015052880917210132
+                ],
+                "base_quat_wxyz": [
+                  0.9692366719245912,
+                  -5.064242714070133e-07,
+                  -0.0002310996496817097,
+                  -0.2461308389902115
+                ],
+                "cameras": [
+                  "head",
+                  "left_wrist"
+                ],
+                "error_m": 0.003203120594215068,
+                "intercept_xy_m": [
+                  0.29168109208085197,
+                  0.1921556437269324
+                ],
+                "tick": 1540,
+                "truth_xy_m": [
+                  0.293119936126305,
+                  0.18508878994909017
+                ],
+                "velocity_y_m_s": -0.0003814697265625,
+                "xy": [
+                  0.29112187035917625,
+                  0.1875923303884106
+                ]
+              }
+            ],
+            "start_tick": 920
+          }
+        },
+        "fixture": "slide-negative"
+      },
+      "onboard_observations": 561,
+      "passed": true,
+      "phase": "back away",
+      "physics_ticks": 23596,
+      "recording": true,
+      "rejected_motor_writes": 0,
+      "requested": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "robot": "Nano",
+      "robot_furniture_contacts": {},
+      "room_obstacles": [],
+      "room_revision_sha256": null,
+      "root_pose_writes": 0,
+      "seed": 0,
+      "table_top_m": 0.54,
+      "task_success": true,
+      "training_dataset": null,
+      "unsupported_wheel_ranges": [],
+      "wheel_supported_ticks": 23596
+    },
+    {
+      "check": "Onboard episode exported",
+      "robot": "Nano",
+      "status": "Completed \u00b7 Nano \u00b7 export"
+    },
+    {
+      "check": "Native Replay and synchronized encoder/action columns",
+      "cameras": [
+        "head",
+        "left_wrist",
+        "right_wrist"
+      ],
+      "frames_per_camera": 1179
+    }
+  ],
+  "recovery": [
+    {
+      "check": "transfer evidence restored",
+      "robot": "Nano",
+      "status": "Ready",
+      "restored_robot": "Nano",
+      "controller_hash": "5a676fe2832e5e7752a4f311af559200e161b873bdb240c2fe9a25090d8b52a7",
+      "fixture": "living-room",
+      "outcome": true
+    }
+  ]
+}
