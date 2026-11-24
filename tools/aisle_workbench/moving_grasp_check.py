@@ -260,7 +260,45 @@ def verify_trial(folder):
     require(
         result["task_success"] is passed and result["passed"] is passed, "Task verdict"
     )
+    failure = result.get("last_pickup_observation")
+    diagnostic = {}
+    if failure is not None:
+        require(
+            result["error"] and failure["stopped_tick"] == ticks, "Failed pickup stop"
+        )
+        require(
+            failure["color"] in requested
+            and failure["file"] == "last-pickup-observation.npz",
+            "Failed pickup snapshot identity",
+        )
+        snapshot = folder / "last-pickup-observation.npz"
+        require(
+            hashlib.sha256(snapshot.read_bytes()).hexdigest() == failure["sha256"],
+            "Failed pickup observation hash",
+        )
+        captures = [a["tick"] for a in actions if a["op"] == "sense"]
+        require(
+            captures and captures[-1] * 10_000_000 == failure["stamp_ns"],
+            "Last observed pickup tick",
+        )
+        servo = VisualServo(
+            calibration | {"color": failure["color"], "standoff_m": 0.45}
+        )
+        with np.load(snapshot, allow_pickle=False) as packet:
+            require(
+                int(packet["stamp_ns"]) == failure["stamp_ns"],
+                "Failed pickup capture time",
+            )
+            reading = servo.command(packet, preferred_camera="left_wrist")
+        diagnostic["last_pickup"] = {
+            "color": failure["color"],
+            "tick": captures[-1],
+            "optical_state": reading["state"],
+            "cameras": reading["cameras"],
+            "xy": reading["xy"],
+        }
     return dict(
+        **diagnostic,
         passed=passed,
         seed=result["seed"],
         provider=plan["provider"],

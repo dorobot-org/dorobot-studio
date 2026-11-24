@@ -474,6 +474,7 @@ def execute(
     error = None
     finished = False
     frame_count = 0
+    packet = None
     with (
         journal.open("wb") as motor_log,
         (out / "actions.jsonl").open("w") as log,
@@ -643,6 +644,22 @@ def execute(
         )
     if error and (out / "policy.log").stat().st_size:
         error = (out / "policy.log").read_text().strip().splitlines()[-1][-350:]
+    failed_observation = None
+    if (
+        error
+        and judge.phase == "pick"
+        and plan.get("track_grasp")
+        and packet is not None
+    ):
+        snapshot = out / "last-pickup-observation.npz"
+        np.savez_compressed(snapshot, **packet)
+        failed_observation = dict(
+            file=snapshot.name,
+            sha256=worker.digest(snapshot),
+            stamp_ns=int(packet["stamp_ns"]),
+            stopped_tick=sim.tick,
+            color=active_color,
+        )
     audit = replay(journal, envelope, sim.tick)
     result = judge.result(sim)
     passed = (
@@ -667,6 +684,11 @@ def execute(
         **(
             {"moving_grasp": dict(fixture=target_motion, cubes=motion)}
             if target_motion != "stationary"
+            else {}
+        ),
+        **(
+            {"last_pickup_observation": failed_observation}
+            if failed_observation
             else {}
         ),
         passed=bool(passed),
