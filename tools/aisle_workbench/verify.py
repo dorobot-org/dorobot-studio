@@ -118,6 +118,18 @@ def main():
         help="Revise a measured Codex trial using DeepSeek via Octos",
     )
     scenario.add_argument(
+        "--compare-cohorts",
+        type=Path,
+        nargs=2,
+        metavar=("BASELINE", "CANDIDATE"),
+        help="Compare two archived Nano layouts or G1 impact cohorts and reopen the result",
+    )
+    parser.add_argument(
+        "--reject-cohort",
+        type=Path,
+        help="Also try an incompatible archive in the comparison journey",
+    )
+    scenario.add_argument(
         "--evaluation",
         type=Path,
         help="Verify a batch archive in Evidence and reopen it after restart",
@@ -258,6 +270,8 @@ def main():
         parser.error("--foreground-cadence requires --fleet and an author")
     if args.fleet and not args.provider:
         args.provider = "octos-deepseek"
+    if args.reject_cohort and not args.compare_cohorts:
+        parser.error("--reject-cohort requires --compare-cohorts")
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
@@ -444,6 +458,17 @@ def main():
                     check.append("--camera-faults")
                 if args.handoff:
                     check.append("--handoff")
+                if args.compare_cohorts:
+                    check.extend(
+                        [
+                            "--compare-cohorts",
+                            *(str(p.resolve()) for p in args.compare_cohorts),
+                        ]
+                    )
+                    if args.reject_cohort:
+                        check.extend(
+                            ["--reject-cohort", str(args.reject_cohort.resolve())]
+                        )
                 if args.evaluation:
                     check.extend(["--evaluation", str(args.evaluation.resolve())])
                 if args.train_grasp:

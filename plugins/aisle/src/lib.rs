@@ -187,8 +187,9 @@ script_mod! {
             device_folder := mod.widgets.ux.ToolButton{text:"Open preflight folder"}
         }
         cohort := Card{width:Fill height:Fill
-            Section{text:"Evaluation archive"} archive_path := TextInput{width:Fill height:38 empty_text:"Path to the ZIP beside its preregistered suite.json"}
-            verify_archive := mod.widgets.ux.PrimaryButton{text:"Verify evaluation"}
+            Section{text:"Evaluation or candidate archive"} archive_path := TextInput{width:Fill height:38 empty_text:"Path to the ZIP beside its preregistered suite.json"}
+            baseline_path := TextInput{width:Fill height:38 empty_text:"Baseline archive for comparison (optional)"}
+            Bar{verify_archive := mod.widgets.ux.PrimaryButton{text:"Verify evaluation"} compare_archives := mod.widgets.ux.ToolButton{text:"Compare with baseline"}}
             cohort_verdict := Title{} cohort_detail := Body{} failure_detail := Body{}
             failure_bar := Bar{earlier_failure := mod.widgets.ux.ToolButton{text:"Previous failure"} later_failure := mod.widgets.ux.ToolButton{text:"Next failure"}}
         }
@@ -614,7 +615,11 @@ impl PluginPanel for Panel {
                 } else if transfer {
                     format!(
                         "Move floor cubes to the coffee table{}\n{} · {} · revision {}/{}",
-                        if w.plan["wrist_clearance"] == true { " · Experimental wrist clearance" } else { "" },
+                        if w.plan["wrist_clearance"] == true {
+                            " · Experimental wrist clearance"
+                        } else {
+                            ""
+                        },
                         w.plan["color_order"]
                             .as_str()
                             .unwrap_or("")
@@ -1138,7 +1143,8 @@ impl PluginPanel for Panel {
                 }
                 if w.show_evaluation {
                     let result = &w.evaluation;
-                    let g1 = result["profile"] == "g1-standing-reach-v1";
+                    let comparing = result["comparison"] == true;
+                    let g1 = result["profile"] == "g1-standing-reach-v1" || result["robot"] == "G1";
                     self.label(
                         cx,
                         ids!(context_label),
@@ -1153,7 +1159,27 @@ impl PluginPanel for Panel {
                     self.root
                         .button(cx, ids!(verify_archive))
                         .set_enabled(cx, !w.busy());
-                    let failures = result["failures"].as_array();
+                    self.root
+                        .button(cx, ids!(compare_archives))
+                        .set_enabled(cx, !w.busy());
+                    let failures =
+                        result[if comparing { "changes" } else { "failures" }].as_array();
+                    self.root.button(cx, ids!(earlier_failure)).set_text(
+                        cx,
+                        if comparing {
+                            "Previous case"
+                        } else {
+                            "Previous failure"
+                        },
+                    );
+                    self.root.button(cx, ids!(later_failure)).set_text(
+                        cx,
+                        if comparing {
+                            "Next case"
+                        } else {
+                            "Next failure"
+                        },
+                    );
                     let count = failures.map_or(0, Vec::len);
                     self.root
                         .widget(cx, ids!(failure_bar))
@@ -1164,6 +1190,46 @@ impl PluginPanel for Panel {
                     self.root
                         .button(cx, ids!(later_failure))
                         .set_enabled(cx, w.failure_index + 1 < count);
+                    if comparing {
+                        let counts = &result["counts"];
+                        let archive_id = |side: &str| {
+                            result[side]["archive_sha256"].as_str().and_then(|s| s.get(..8)).unwrap_or("?")
+                        };
+                        let detail = format!(
+                            "Baseline {} · {} of {} passed\nCandidate {} · {} of {} passed\nBoth passed {} · gained {} · lost {} · both failed {} · unverified {}",
+                            archive_id("baseline"), result["baseline"]["successes"], result["cases"],
+                            archive_id("candidate"), result["candidate"]["successes"], result["cases"],
+                            counts["both_passed"], counts["improved"], counts["regressed"], counts["both_failed"], counts["unverified"]
+                        );
+                        self.label(cx, ids!(cohort_verdict), "Matched cohort comparison");
+                        self.label(cx, ids!(cohort_detail), &detail);
+                        let selected = failures.and_then(|v| v.get(w.failure_index));
+                        let detail = selected.map(|row| {
+                            let identity = if g1 {
+                                let recipe = &row["recipe"];
+                                format!("impact {} kg at {} m/s · offset {} m", recipe["mass_kg"], recipe["speed_m_s"], recipe["lateral_m"])
+                            } else {
+                                format!("seed {}", row["seed"])
+                            };
+                            let verdict = match row["outcome"].as_str() {
+                                Some("improved") => "Candidate gained this case",
+                                Some("regressed") => "Candidate lost this case",
+                                _ => "Incomplete evidence",
+                            };
+                            let mut lines = vec![format!("{verdict} · {} of {count}\nBaseline case {} · candidate case {} · {identity}",
+                                w.failure_index + 1, row["baseline_index"], row["candidate_index"])];
+                            for (key, label) in [("baseline_reasons", "Baseline"), ("candidate_reasons", "Candidate")] {
+                                if let Some(reasons) = row[key].as_array() {
+                                    for reason in reasons.iter().filter_map(|v| v.as_str()) {
+                                        lines.push(format!("{label} · {reason}"));
+                                    }
+                                }
+                            }
+                            lines.join("\n")
+                        }).unwrap_or_else(|| "All paired cases have matching verified outcomes.".into());
+                        self.label(cx, ids!(failure_detail), &detail);
+                        return;
+                    }
                     let (title, detail) = if result["cases"].is_number() {
                         let title = if result["split"] == "development" {
                             "Development results"
@@ -1740,9 +1806,25 @@ impl PluginPanel for Panel {
             b.dispatch(Intent::Aisle(Action::DevicePreflight(Some(endpoint))));
             return true;
         }
-        if self.root.button(cx, ids!(verify_archive)).clicked(actions) {
-            let path = self.root.text_input(cx, ids!(archive_path)).text();
-            b.dispatch(Intent::Aisle(Action::Evaluate(path.trim().to_owned())));
+        let compare = self
+            .root
+            .button(cx, ids!(compare_archives))
+            .clicked(actions);
+        if compare || self.root.button(cx, ids!(verify_archive)).clicked(actions) {
+            let archive = self
+                .root
+                .text_input(cx, ids!(archive_path))
+                .text()
+                .trim()
+                .to_owned();
+            let baseline = compare.then(|| {
+                self.root
+                    .text_input(cx, ids!(baseline_path))
+                    .text()
+                    .trim()
+                    .to_owned()
+            });
+            b.dispatch(Intent::Aisle(Action::Evaluate { archive, baseline }));
             return true;
         }
         for (id, planner) in [

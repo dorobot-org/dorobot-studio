@@ -498,7 +498,7 @@ def pack(directory, archive):
                     z.write(p, str(p.relative_to(directory)))
 
 
-def verify(archive, expected):
+def verify(archive, expected, *, include_rows=False):
     with TemporaryDirectory() as scratch, ZipFile(archive) as z:
         directory = Path(scratch)
         names = z.namelist()
@@ -528,6 +528,7 @@ def verify(archive, expected):
         requirement=20,
         archive_sha256=digest(archive),
         failures=[r for r in rows if not r["passed"]],
+        **({"rows": rows} if include_rows else {}),
     )
 
 

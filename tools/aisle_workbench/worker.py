@@ -1083,6 +1083,7 @@ def main():
     p.add_argument("--current-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--trial", type=Path)
     p.add_argument("--archive", type=Path)
+    p.add_argument("--baseline", type=Path)
     p.add_argument(
         "--device-mode", choices=["loopback", "subscribe"], default="loopback"
     )
@@ -1205,6 +1206,11 @@ def main():
                     "Choose an evaluation archive beside its preregistered suite.json"
                 )
             sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            if args.baseline is not None:
+                from cohort_comparison import compare
+
+                save(args.out / "evaluation.json", compare(args.baseline, args.archive))
+                return
             public = args.archive.with_name("suite.json")
             if json.loads(public.read_text()).get("profile") == "g1-standing-reach-v1":
                 from g1_reach_suite import verify as verify_g1

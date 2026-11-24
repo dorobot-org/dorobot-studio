@@ -55,6 +55,8 @@ def main():
     p.add_argument("--photo-input", type=Path)
     p.add_argument("--survey", type=Path)
     p.add_argument("--evaluation", type=Path)
+    p.add_argument("--compare-cohorts", nargs=2, type=Path)
+    p.add_argument("--reject-cohort", type=Path)
     p.add_argument("--handoff", action="store_true")
     p.add_argument("--wrist-faults", nargs="?", const="red", choices=["red", "three"])
     p.add_argument("--camera-faults", action="store_true")
@@ -263,6 +265,11 @@ def main():
             )
         )
         (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
+        return
+    if a.compare_cohorts:
+        from cohort_journey import run
+
+        run(a, page, click, remote, done, grab, checks)
         return
     if a.evaluation:
         import hashlib
