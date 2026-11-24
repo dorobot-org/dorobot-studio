@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import select
 import shutil
 import sqlite3
 import stat
@@ -219,49 +220,79 @@ def receive_frame(node, ident, operation, out):
     )
 
 
+def foreground_packets(pipe, silence_s=10):
+    """Decode bounded packets and time out even if a peer stops halfway through one."""
+    buf = bytearray()
+    header_limit = 128 * 1024
+
+    def read_more():
+        if not select.select([pipe], [], [], silence_s)[0]:
+            raise TimeoutError(
+                "Foreground RGB stream stalled. Refresh the worker to reconnect."
+            )
+        chunk = os.read(pipe.fileno(), 65536)
+        buf.extend(chunk)
+        return bool(chunk)
+
+    while True:
+        boundary = buf.find(b"\n")
+        while boundary < 0:
+            if len(buf) >= header_limit:
+                raise ValueError("Invalid foreground stream header")
+            if not read_more():
+                if buf:
+                    raise ValueError("Incomplete foreground stream header")
+                return
+            boundary = buf.find(b"\n")
+        if boundary >= header_limit:
+            raise ValueError("Invalid foreground stream header")
+        packet = json.loads(buf[:boundary])
+        del buf[: boundary + 1]
+        size = packet["bytes"]
+        if type(size) is not int or size not in (
+            0,
+            4 + 480 * 320 * 3,
+            4 + 480 * 360 * 3,
+        ):
+            raise ValueError("Invalid foreground frame size")
+        while len(buf) < size:
+            if not read_more():
+                raise ValueError("Incomplete foreground RGB frame")
+        raw = bytes(buf[:size])
+        del buf[:size]
+        yield packet, raw
+
+
 def watch_foreground(node, ident, out, root):
     job, frame = None, None
     proc = subprocess.Popen(
         worker_command(node, "watch-rgb", ident), stdout=subprocess.PIPE
     )
     try:
-        while True:
-            header = proc.stdout.readline(128 * 1024)
-            if not header:
-                if proc.wait(timeout=5) or not job or job["state"] in ACTIVE:
-                    raise ValueError(
-                        "Foreground RGB stream disconnected. Refresh the worker to reconnect."
-                    )
-                return
-            if not header.endswith(b"\n"):
-                raise ValueError("Invalid foreground stream header")
-            packet = json.loads(header)
+        for packet, raw in foreground_packets(proc.stdout):
             if "job" in packet:
-                job = packet["job"]
-                if job.get("id") != ident:
+                new_job = packet["job"]
+                if new_job.get("id") != ident:
                     raise ValueError("Foreground stream returned a different job")
-            size = packet["bytes"]
-            if (
-                type(size) is not int
-                or size not in (0, 4 + 480 * 320 * 3, 4 + 480 * 360 * 3)
-                or not job
-            ):
-                raise ValueError("Invalid foreground frame size or job")
-            if size:
-                raw = proc.stdout.read(size)
-                if len(raw) != size:
-                    raise ValueError("Incomplete foreground RGB frame")
+                if not job or new_job["state"] != job["state"]:
+                    update(root, ident, new_job["state"])
+                job = new_job
+            if not job:
+                raise ValueError("Missing foreground job identity")
+            if raw:
                 tmp = out / "preview.tmp"
                 tmp.write_bytes(raw)
                 tmp.replace(out / "preview.rgb")
                 frame = dict(
                     tick=int.from_bytes(raw[:4], "big"),
-                    height=(size - 4) // 1440,
+                    height=(len(raw) - 4) // 1440,
                     sha256=hashlib.sha256(memoryview(raw)[4:]).hexdigest(),
                 )
             save(out / "watch.json", dict(job=job, frame=frame))
-            if job["state"] not in ACTIVE:
-                update(root, ident, job["state"])
+        if proc.wait(timeout=5) or not job or job["state"] in ACTIVE:
+            raise ValueError(
+                "Foreground RGB stream disconnected. Refresh the worker to reconnect."
+            )
     finally:
         proc.stdout.close()
         if proc.poll() is None:

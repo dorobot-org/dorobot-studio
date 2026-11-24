@@ -30,6 +30,13 @@ def registry(root, checkout, slots):
     return path
 
 
+def cancel_benchmark_jobs(root):
+    # This registry was created exclusively for this invocation under a new output directory.
+    node = json.loads((root / "benchmark-nodes.json").read_bytes())[ALIAS]
+    for job in send(node, dict(op="hello"))["active"]:
+        send(node, dict(op="cancel", id=job["id"]))
+
+
 def background(index, node, folder, provider):
     author = folder / f"background-author-{index}"
     subprocess.run(

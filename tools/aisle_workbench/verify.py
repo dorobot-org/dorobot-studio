@@ -318,7 +318,14 @@ def main():
                     if args.transfer or args.fleet
                     else 330
                 )
-                subprocess.run(check, check=True, timeout=timeout)
+                try:
+                    subprocess.run(check, check=True, timeout=timeout)
+                except (subprocess.SubprocessError, KeyboardInterrupt):
+                    if args.foreground_cadence:
+                        from fleet_cadence import cancel_benchmark_jobs
+
+                        cancel_benchmark_jobs(output)
+                    raise
                 status = subprocess.check_output(
                     [args.remote, "app", str(process.pid), "status"], text=True
                 )
