@@ -10,7 +10,7 @@ from shutil import copyfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aisle_workbench"))
 
-from nano_suite_evidence import EVIDENCE, pack
+from nano_suite_evidence import EVIDENCE, pack, verify
 from nano_transfer_suite import summarize, worker
 from cohort_comparison import compare
 
@@ -48,6 +48,26 @@ def two_cases(directory, order, missing=None):
 
 
 class CohortComparison(unittest.TestCase):
+    def test_release_camera_payload_requires_matching_output_receipt(self):
+        source = GUIDE.parent / "nano-release-workspace/original/evidence.zip"
+        expected = worker.digest(source)
+        with TemporaryDirectory() as tmp:
+            archive = Path(tmp) / "evidence.zip"
+            with ZipFile(source) as original, ZipFile(archive, "w") as changed:
+                for entry in original.infolist():
+                    data = original.read(entry)
+                    if "/release-observations/" in entry.filename:
+                        data = data[:-1] + bytes([data[-1] ^ 1])
+                    changed.writestr(entry, data)
+            manifest = worker.digest(source.with_name("suite.json"))
+            with self.assertRaisesRegex(ValueError, "trusted archive"):
+                verify(archive, manifest)
+            with self.assertRaisesRegex(ValueError, "output receipt"):
+                verify(archive, manifest, expected_archive=expected)
+            archive.with_suffix(".zip.sha256").write_text(expected + "\n")
+            with self.assertRaisesRegex(ValueError, "output receipt"):
+                verify(archive, manifest)
+
     def test_reordered_layout_with_missing_result(self):
         with TemporaryDirectory() as root:
             base = two_cases(Path(root) / "base", [0, 1])
@@ -124,7 +144,9 @@ class CohortComparison(unittest.TestCase):
                                 self.assertNotEqual(r["rows"][0][field], changed)
                             r["rows"][0][field] = changed
                             content = json.dumps(r).encode()
-                        dest.writestr(entry.filename, content, compress_type=entry.compress_type)
+                        dest.writestr(
+                            entry.filename, content, compress_type=entry.compress_type
+                        )
                 if accepted:
                     self.assertEqual(verify(path, expected)["successes"], 17)
                 else:

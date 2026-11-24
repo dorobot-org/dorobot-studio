@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 from shutil import copyfileobj
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from nano_transfer_suite import MODEL, read, signature, summarize, worker
@@ -45,15 +45,42 @@ def pack(directory, output):
             for path in files:
                 if path.is_file():
                     archive.write(path, str(path.relative_to(directory)))
-    return worker.digest(output)
+    digest = worker.digest(output)
+    with NamedTemporaryFile(mode="w", dir=output.parent, delete=False) as receipt:
+        receipt.write(digest + "\n")
+    Path(receipt.name).replace(output.with_suffix(output.suffix + ".sha256"))
+    return digest
 
 
-def verify(archive_path, expected_manifest, include_trials=False, *, comparison=False):
+def verify(
+    archive_path,
+    expected_manifest,
+    include_trials=False,
+    *,
+    comparison=False,
+    expected_archive=None,
+):
     with ZipFile(archive_path) as archive, TemporaryDirectory() as name:
         tmp = Path(name)
         names = set(archive.namelist())
         if len(names) != len(archive.infolist()):
             raise ValueError("Evaluation archive has duplicate file names")
+        captures = {key for key in names if "/release-observations/" in key}
+        receipt = archive_path.with_suffix(archive_path.suffix + ".sha256")
+        if expected_archive is None and receipt.is_file():
+            expected_archive = receipt.read_text().strip()
+        if captures and not expected_archive:
+            raise ValueError(
+                "A trusted archive SHA-256 is required for the recorded release exposures"
+            )
+        archive_digest = None
+        if expected_archive is not None:
+            archive_digest = worker.digest(archive_path)
+            if archive_digest != expected_archive:
+                raise ValueError(
+                    "Archive SHA-256 differs from the published output receipt"
+                )
+        marked_captures = set()
         expanded = 0
 
         def copy_member(key, output, limit):
@@ -94,6 +121,20 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
                 key = f"{case.name}/{file}"
                 if key in names:
                     copy_member(key, case / file, 16 * 1024**2)
+            journal = case / "actions.jsonl"
+            if journal.is_file():
+                with journal.open("rb") as actions:
+                    for line in actions:
+                        if b'"release observation"' in line:
+                            action = json.loads(line)
+                            if action.get("op") == "release observation":
+                                marked_captures.add(
+                                    f"{case.name}/release-observations/{action['tick']:06}.npz"
+                                )
+        if captures != marked_captures:
+            raise ValueError(
+                "Release exposure files differ from the marked action timestamps"
+            )
         summary = summarize(tmp, expected_manifest, manifest, members)
         replayed = read(tmp / "report.json")
         if manifest["split"] == "development":
@@ -176,7 +217,7 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
             summary.update(
                 interval_95=[max(0.0, center - radius), min(1.0, center + radius)],
                 failures=failures,
-                archive_sha256=worker.digest(archive_path),
+                archive_sha256=archive_digest or worker.digest(archive_path),
                 requirement=manifest["success_requirement"],
             )
         if comparison:
@@ -185,7 +226,7 @@ def verify(archive_path, expected_manifest, include_trials=False, *, comparison=
                 color_order=manifest["color_order"],
                 inputs=manifest["inputs"],
                 rows=replayed["rows"],
-                archive_sha256=worker.digest(archive_path),
+                archive_sha256=archive_digest or worker.digest(archive_path),
             )
         return summary
 
@@ -275,6 +316,10 @@ def main():
     audit = commands.add_parser("verify")
     audit.add_argument("archive", type=Path)
     audit.add_argument("--manifest-sha256", required=True)
+    audit.add_argument(
+        "--archive-sha256",
+        help="Trusted digest of the completed archive including camera captures",
+    )
     pair = commands.add_parser(
         "compare", help="Independently replay and pair two Nano archives by seed"
     )
@@ -298,7 +343,16 @@ def main():
             )
         )
     else:
-        print(json.dumps(verify(args.archive, args.manifest_sha256), indent=2))
+        print(
+            json.dumps(
+                verify(
+                    args.archive,
+                    args.manifest_sha256,
+                    expected_archive=args.archive_sha256,
+                ),
+                indent=2,
+            )
+        )
 
 
 if __name__ == "__main__":

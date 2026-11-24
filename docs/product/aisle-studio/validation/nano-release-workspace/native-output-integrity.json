@@ -1,0 +1,9 @@
+{
+  "rejection": {
+    "check": "Incompatible comparison rejected",
+    "robot": "Nano",
+    "status": "Archive SHA-256 differs from the published output receipt",
+    "rejected_archive_sha256": "a44be1038fa5351c4637776cf5d51d2244657bc40c0e6382e2e91a74a29c2028"
+  },
+  "recovery": "Cohort comparison restored"
+}

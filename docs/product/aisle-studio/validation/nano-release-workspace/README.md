@@ -16,7 +16,7 @@ At the blocked decision the Nano had three synchronized 480 × 360 RGB images, m
 
 In all five stationary poses, the search returned zero acceptable slots. The last column is a geometric prediction from the failed decision's saved sensor inputs. A new pose must be reached in the simulation and measured again before the gripper can open. The independent judge observes loaded finger and table contact, continuous wheel support, joint limits and final cube motion.
 
-To inspect the original captures, use the Studio AISLE Python environment from the repository root. The archive contains each action, the three RGB inputs and measured joint encoders at each marked release decision, the calibrated cameras, motor targets and the final scoring records.
+To reproduce the geometric predictions, use Studio revision `7ef0206` or the same release-candidate search, URDF and calibrated projection code. The values in the table were computed offline from the original packets with that revision. Use the Studio AISLE Python environment from the repository root. The archive contains each action, the three RGB inputs and measured joint encoders at each marked release decision, the calibrated cameras, motor targets and the final scoring records.
 
 ```sh
 DIR=docs/product/aisle-studio/validation/nano-release-workspace
@@ -27,7 +27,7 @@ python tools/aisle-validation/nano_suite_evidence.py verify "$DIR/original/evide
 
 ## Reproduce a disclosed layout in Studio
 
-In **Task**, select **Nano** and enter “Move all three floor cubes onto the coffee table in red, green, blue order. Use experimental wrist clearance.” Choose **Ask Codex** or **DeepSeek via Octos**. In **Scene**, enter the numeric layout seed and click **Set seed**. The label shows the active layout. Seeds from 0 to 4294967295 are supported. Invalid input preserves the previous layout. **Run → Start simulation** executes that layout. **Evidence** shows the independent result and can export the episode. The selected seed survives a Studio restart. [Scene with seed 3856023877 selected](custom-layout.png)
+Each trial below uses the simulated Nano. In **Task**, select **Nano** and enter “Move all three floor cubes onto the coffee table in red, green, blue order. Use experimental wrist clearance.” Choose **Ask Codex** or **DeepSeek via Octos**. In **Scene**, enter the numeric layout seed and click **Set seed**. The label shows the active layout. Seeds from 0 to 4294967295 are supported. Invalid input preserves the previous layout. **Run → Start simulation** executes that layout. **Evidence** shows the independent result and can export the episode. The selected seed survives a Studio restart. If the saved value is unreadable, Scene returns to layout 0 and reports the fallback. [Scene with seed 3856023877 selected](custom-layout.png)
 
 The agent authors the task and chooses the requested placement mode. The local controller watches the table, plans the arm movements and sends each bounded motor command. A release decision uses the onboard images, camera calibration and robot encoders. The judge records contacts and settled cube positions separately.
 
@@ -54,3 +54,15 @@ In layout 36, the Nano was holding blue with red and green already on the table.
 | --- | --- | --- | --- |
 | 264.12 s | ![Head before turning](26412-head.png) | ![Left wrist before turning](26412-left_wrist.png) | ![Right wrist before turning](26412-right_wrist.png) |
 | 265.92 s | ![Head after braking](26592-head.png) | ![Left wrist after braking](26592-left_wrist.png) | ![Right wrist after braking](26592-right_wrist.png) |
+
+
+## Input commitments and recorded output
+
+Cohort F was registered in commit `e1e8046` before dispatch. The manifest commits the executable inputs, controller and 50 concealed layouts. Independent scoring requires 45 complete transfers, 50 verified motor journals and zero guard bypasses. [Cohort F input manifest](cohort-f/suite.json)
+
+The adjacent `evidence.zip.sha256` receipt covers the entire completed archive, including its RGB and encoder packets. Keep the published receipt beside its archive for command-line or native verification. A trusted hash can also be supplied with `--archive-sha256`. The verifier checks the marked exposure timestamps against the files in the archive. Download the input manifest and completed-output receipt from the published revision. [Baseline output receipt](original/evidence.zip.sha256) · [Tracked-turn output receipt](tracked/evidence.zip.sha256)
+
+
+The native Codex run placed red on layout 3006510755 in 11,286 ticks. A separate local fleet worker accepted the same seed and reproduced that motor journal. DeepSeek through Octos placed all three cubes on layout 3856023877 in 28,802 ticks. Its journal matched the Codex-authored cohort run on that layout. Both native processes reopened their result after restart, and both exported LeRobot episodes retained the exact seed in `meta/aisle.json` under `simulation_source.seed`. The archive includes both controllers, measured motor commands, output metadata, native instrument receipts and the fleet lease. [Native and fleet evidence](native-seeds.zip) · [Independent seed and motor check](verify_native_seeds.py)
+
+The native Evidence instrument also rejected a copy with a changed camera packet and restored the preceding verified comparison after restart. [Tampered-capture test](native-output-integrity.json)
