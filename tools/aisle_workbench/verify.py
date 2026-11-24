@@ -114,6 +114,11 @@ def main():
         help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
     )
     scenario.add_argument(
+        "--revision-selection",
+        action="store_true",
+        help="Run the selected Nano and G1 revisions after switching robots and restarting Studio",
+    )
+    scenario.add_argument(
         "--handoff",
         action="store_true",
         help="Revise a measured Codex trial using DeepSeek via Octos",
@@ -278,6 +283,8 @@ def main():
         parser.error("--foreground-cadence requires --fleet and an author")
     if args.fleet and not args.provider:
         args.provider = "octos-deepseek"
+    if args.revision_selection and not args.provider:
+        parser.error("--revision-selection requires --codex or --octos-deepseek")
     if args.reject_cohort and not args.compare_cohorts:
         parser.error("--reject-cohort requires --compare-cohorts")
     output = args.out.resolve()
@@ -397,6 +404,7 @@ def main():
                 output / "verified" / f"{stage}-draws.jsonl"
             )
         with (output / f"{stage}.log").open("w") as log:
+            started_ns = time.time_ns()
             process = subprocess.Popen(
                 command, env=env, stdout=log, stderr=subprocess.STDOUT
             )
@@ -464,6 +472,8 @@ def main():
                     check.extend(["--wrist-faults", args.wrist_faults])
                 if args.camera_faults:
                     check.append("--camera-faults")
+                if args.revision_selection:
+                    check.append("--revision-selection")
                 if args.handoff:
                     check.append("--handoff")
                 if args.compare_cohorts:
@@ -546,6 +556,8 @@ def main():
                     dict(
                         stage=stage,
                         pid=process.pid,
+                        started_unix_ns=started_ns,
+                        observed_unix_ns=time.time_ns(),
                         observed_dark=state["dark"],
                         observed_source_root=state["aisle_source_root"],
                         windows=[w.get("sz") for w in windows],

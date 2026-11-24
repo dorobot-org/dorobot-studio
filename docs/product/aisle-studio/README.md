@@ -14,6 +14,8 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 ## Operator guides
 
+[Choose an earlier controller revision and run it after restarting Studio](validation/controller-selection/README.md)
+
 [Revise a Nano controller after a measured loss of wheel support](validation/nano-forward-speed/README.md)
 
 [Stream a Linux H100 Nano worker, reconnect and replay its measured outcome](validation/remote-nano/README.md)

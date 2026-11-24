@@ -722,12 +722,15 @@ impl PluginPanel for Panel {
                     },
                 );
                 let index = w.revision_index();
-                self.root
-                    .button(cx, ids!(older))
-                    .set_enabled(cx, !w.busy() && index.is_some_and(|i| i > 0));
+                self.root.button(cx, ids!(older)).set_enabled(
+                    cx,
+                    !w.busy() && !w.revisions.is_empty() && index.is_none_or(|i| i > 0),
+                );
                 self.root.button(cx, ids!(newer)).set_enabled(
                     cx,
-                    !w.busy() && index.is_some_and(|i| i + 1 < w.revisions.len()),
+                    !w.busy()
+                        && !w.revisions.is_empty()
+                        && index.is_none_or(|i| i + 1 < w.revisions.len()),
                 );
                 self.root.widget(cx, ids!(revision_actions)).set_visible(
                     cx,
