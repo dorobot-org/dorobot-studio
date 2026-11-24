@@ -23,7 +23,7 @@ DOROBOT_STUDIO_STATE_DIR="$demo_dir" cargo run --locked -p dorobot-flex --bin do
 | Recorded frames per onboard camera | 890 | 1,179 |
 | Maximum measured joint-limit excursion | 0 rad | 0 rad |
 
-The archived motor command values were identical from the initial targets through the entire earlier run. The experiment reused the same prepared task, URDF, evaluator, camera calibration, negative slide and layout seed. The retained policy revisions changed the target association. These are two executions on one disclosed layout. [Controller](controller.json) · [Native headless and offscreen results, restart receipts and source hashes](native.json)
+The archived motor command values were identical from the initial targets through the entire earlier run. The experiment reused the same prepared task, URDF, evaluator, camera calibration, negative slide and layout seed. The calibration receipt records each revision’s association method for offline reconstruction. The Nexus judge applies the same physical scoring in both runs. Run `python3 docs/product/aisle-studio/validation/first-action-change/audit.py` to verify the archive checksum and independently compare the recorded actions and motor commands. These are two executions on one disclosed layout. [Controller](controller.json) · [Native headless and offscreen results, restart receipts and source hashes](native.json)
 
 ## Record and verify a fresh pair
 

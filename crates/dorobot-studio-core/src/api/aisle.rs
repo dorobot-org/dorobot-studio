@@ -187,6 +187,26 @@ pub struct TransferComparison {
     pub packets: [Option<(PathBuf, u64)>; 2],
 }
 
+impl TransferComparison {
+    fn matches_observations(&self, receipt: &Value) -> bool {
+        self.packets.iter().any(Option::is_some)
+            && ["previous", "current"]
+                .iter()
+                .zip(&self.packets)
+                .all(|(name, packet)| {
+                    let view = &receipt["views"][*name];
+                    match packet {
+                        Some((path, tick)) => {
+                            view["tick"].as_u64() == Some(*tick)
+                                && view["trial"]
+                                    .as_str()
+                                    .is_some_and(|id| path.file_name().is_some_and(|n| n == id))
+                        }
+                        None => view.is_null(),
+                    }
+                })
+    }
+}
 fn change_frame(trial: &Path, action_tick: u64, result: &Value) -> Option<ChangeFrame> {
     let recording = read(trial, "recording.json")?;
     let fps = recording["fps"]
@@ -378,9 +398,16 @@ fn compare_transfer(
                 ]
             })
             .unwrap_or_default();
-        let packet = |trial: &Path, result: &Value, tick| {
+        let packet = |trial: &Path, result: &Value, cal: &Value, tick| {
             let stopped = &result["last_pickup_observation"];
-            let path = if stopped["stopped_tick"].as_u64() == Some(tick) {
+            let stop_stamp = cal["physics_dt_s"]
+                .as_f64()
+                .filter(|dt| dt.is_finite() && *dt > 0.)
+                .map(|dt| (tick as f64 * dt * 1e9).round() as u64);
+            let path = if stopped["stopped_tick"].as_u64() == Some(tick)
+                && stop_stamp.is_some()
+                && stopped["stamp_ns"].as_u64() == stop_stamp
+            {
                 trial.join("last-pickup-observation.npz")
             } else {
                 trial
@@ -391,7 +418,12 @@ fn compare_transfer(
         };
         let packets = trace
             .ticks
-            .map(|[a, b]| [packet(previous, &prior, a), packet(path, current, b)])
+            .map(|[a, b]| {
+                [
+                    packet(previous, &prior, &old_cal, a),
+                    packet(path, current, &calibration, b),
+                ]
+            })
             .unwrap_or_default();
         let outcome = |v: &Value| {
             if v["task_success"] == true {
@@ -1429,7 +1461,13 @@ impl Workbench {
                 self.room_draft_receipt = Value::Null;
             }
             if job.op == "compare-observations" {
-                self.decision = read(&job.dir, artifact).map(|receipt| (job.dir.clone(), receipt));
+                self.decision = read(&job.dir, artifact)
+                    .filter(|r| {
+                        self.transfer_comparison
+                            .as_ref()
+                            .is_some_and(|pair| pair.matches_observations(r))
+                    })
+                    .map(|receipt| (job.dir.clone(), receipt));
             }
             if job.op == "export" {
                 let dataset = job.dir.join("dataset");
