@@ -1,0 +1,763 @@
+{
+  "headless-deepseek": {
+    "mode-manifest": {
+      "backend": "headless",
+      "requested_size": "1024x768",
+      "provider": "octos-deepseek",
+      "native_binary_sha256": "62951f99232950ba6472310c12679bc269d3e9f2d738b644bc9ee6a690ea6ca9",
+      "studio_source_commit": "8a1c2053820b98d53b16d2266fd02ed097911b4f",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "b95839ee53bf462cd10e90c790ea91fd4898f2719d209938efb7dcce02746803",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "caf5d1b89efaee57fc95676c923bddb073e00d3da063150e81d57fba0f9fb0a1",
+        "plugins/aisle/src/lib.rs": "cdc603f0d61ddc02db0b661fb78d63e658caf626997ebc5717c2d14c3f025554",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_moving_grasp.py": "8ad258b9b13133b20acba181b8a0a404c4df7f6bb10288a76547b0a1886e9c72",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "93cea7d462f30c61d35d2b7d4b093d65d9d4482d13545c2f8bd7a1a224312d50",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "8717a1d035061f2e6e57bfdfefd08f5d6bb3708c9d10421f310d5021e4d04159",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "b0c501931851073154f0511fe235fecfb48216a15c58566d594dd6c3e7d5d4e0",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "d4b136423aa98f90f21c46e2b67b71c38ca7b30071eb91c2ec5df70f756f757e",
+        "tools/aisle-validation/run_rgb_transfer.py": "689fc5d21cd5b4761b47d189858b61ea21ec3a8aee7dc70399b9d690febc0e5f",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "cebcecaf2d207ad32eb9387cc25dead2e69eee6324535b1385737a79ee4b8f35",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "7728693b8cf0a5b1ba987e8bb4fac5e94f19db882444e488ac31e4cc01eb0c94",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/device_preflight.py": "9a07b3186b7fcdc10061a827a66f4ae0f0f342543dc8df5a2b24e2ef1f48231e",
+        "tools/aisle_workbench/fleet_artifacts.py": "7ebaa221ca375acf47b3225fabcd7b7535609ad51d99b027ee4e857ac7f296af",
+        "tools/aisle_workbench/fleet_bridge.py": "66dfbd333e8ffd4fb7a4a1d28bd85e5d0c3e3ee95496ece544939a9052d206d7",
+        "tools/aisle_workbench/fleet_check.py": "d13aeb0177410a4c3fc96e554e7ad323f27d182cc9a01e6993a8c1c56fad74db",
+        "tools/aisle_workbench/fleet_client.py": "3568f4515a8e299b9e80eae9060a8a577d68cedf31e7fe0eb4447738b1017073",
+        "tools/aisle_workbench/fleet_worker.py": "c064686e22444c45ec6b41fd7ff56dc610e6fd15614c63349b87687d140d4ca9",
+        "tools/aisle_workbench/g1_dds_fixture.py": "232daf6cb4842581c84f30a39af585821c6b7556a9fb03214c8e3813594230a8",
+        "tools/aisle_workbench/g1_dds_state.py": "aca52468734199e11b36912fa9d1953ca308e4912f3d264b03bd87a17837aef4",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+        "tools/aisle_workbench/g1_stand.py": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+        "tools/aisle_workbench/journey.py": "5fc941ee36681531030d55896c89346b0eaea15bd44d93072c34928fc03c02da",
+        "tools/aisle_workbench/moving_grasp_check.py": "8d315144d9b487edad4ce81140a5916e05fb2a9347c1900295bcd9c7e796e0ef",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observation_period_check.py": "49fda87c4f8ed2c354f7df2578771438d86690c7d431fbe012e28442495685ae",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_device_preflight.py": "deeeb176e4677e01f49f91fe9e721f5be34344cf6aef16917c75eb66bfd750df",
+        "tools/aisle_workbench/test_fleet_bridge.py": "0f2d6cc8847066b86981d779ae3c151c81737c6a17e8c7e2df331494a1768156",
+        "tools/aisle_workbench/test_fleet_worker.py": "289723fea3eb461efe878a9dffb2449b290aa964b385e602d82f471815ab343d",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "cae922520510c2e239dc92a849c2ead60e55c93d3e2b209b63fb8022004aba54",
+        "tools/aisle_workbench/verify.py": "364cacf2ecf442a96a7cf850904dfd8c61f3419683233a919f76d71e5b35759b",
+        "tools/aisle_workbench/worker.py": "9ba8859d55dc7898b859bfd725e7b14720b433ab463089d3d2bf126ba15b820a",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [
+        " M docs/product/aisle-studio/PRD.md",
+        " M docs/product/aisle-studio/README.md",
+        "?? docs/product/aisle-studio/validation/device-preflight/"
+      ],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 49383,
+          "observed_dark": true,
+          "observed_source_root": "/Users/yuechen/home/aisle-studio-device-preflight",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 56560,
+          "observed_dark": true,
+          "observed_source_root": "/Users/yuechen/home/aisle-studio-device-preflight",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        }
+      ],
+      "trials": [
+        "1795491400478860000-G1-run"
+      ],
+      "files": {
+        "journey.json": "becef0ca92fefc198211981b24feca07b40aba60f721612cfc61055b3b3816aa",
+        "recovery.json": "808f9c93d1eb61916450e1d5e31dd0ee0f8129b40644804478929cfecc63fa6d"
+      }
+    },
+    "journey": [
+      {
+        "check": "standing controller authored",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "G1 impact selected",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "g1 scene checked",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "standing stream active",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing fresh frame",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing adjudicated",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing physical verdict",
+        "both_feet_loaded_steps": 2000,
+        "controller_hash": "ea0d0b4aa4edaaf22970af1872142742e5765db13547227872254448862e5c2f",
+        "disturbance": {
+          "contacts": 4,
+          "last_contact_step": 610,
+          "links": [
+            "torso_link"
+          ],
+          "normal_impulse_sum_ns": 0.1907751144026406,
+          "passed": true,
+          "recovered_step": 710,
+          "recovery_s": 0.5
+        },
+        "estimated_negative_joint_work_j": -0.5084498000919475,
+        "estimated_positive_joint_work_j": 0.6642761429730504,
+        "fixture": "standing-impact-development",
+        "floor_contact_links_other_than_feet": [],
+        "frames": 101,
+        "joint": "right_shoulder_pitch_joint",
+        "kind": "standing-inspection",
+        "max_joint_excursion_rad": 0.0,
+        "max_pelvis_drift_m": 0.004134376998990774,
+        "measured_delta": -0.08000022172927856,
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+        "motor_work_sha256": "8399cc860ab35ef6fdd3b8f258a23a84e443d4608730b646310060f808fe4781",
+        "peak_tilt_deg": 2.314566980197567,
+        "recorded_frames": 100,
+        "recording": true,
+        "requested_delta": -0.08,
+        "robot": "G1",
+        "root_pose_writes": 0,
+        "settled_trunk_pitch_rad": 0.11738539434969424,
+        "settled_trunk_yaw_rad": 0.5218513751029968,
+        "standing_inputs_sha256": "f6c4c2225f8bf67a2cb7d2c78af706d7d9df947db229ced65b8cae3cf975b08f",
+        "steps": 2000,
+        "task_success": true,
+        "trunk_pitch_target_rad": 0.0,
+        "trunk_yaw_target_rad": 0.52359878,
+        "within_limits": true,
+        "wrist_reach": {
+          "final_error_m": 0.0049864643355610645,
+          "final_m": [
+            0.26355618238449097,
+            -0.02390073984861374,
+            0.06360900402069092
+          ],
+          "frame": "world",
+          "link": "right_wrist_yaw_link",
+          "max_final_100_error_m": 0.0049865725996810295,
+          "passed": true,
+          "requested_travel_m": 0.02301414418421926,
+          "start_m": [
+            0.2507197856903076,
+            -0.03996167704463005,
+            0.047691311687231064
+          ],
+          "target_m": [
+            0.26512716227568045,
+            -0.02772049027739467,
+            0.06081501844214392
+          ],
+          "tolerance_m": 0.01,
+          "trace_sha256": "7b9f1c1ad5c623e6da44ca882c5dfcb296ae67aed1f5e15b24593272cd345b34"
+        }
+      },
+      {
+        "check": "Device preflight opened",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "Missing external publisher reported",
+        "robot": "G1",
+        "status": "G1 \u00b7 Dry run stopped",
+        "receipt": {
+          "adapter": "Unitree G1 HG LowState",
+          "control_sha256": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+          "controller_sha256": "ea0d0b4aa4edaaf22970af1872142742e5765db13547227872254448862e5c2f",
+          "domain": 227,
+          "interface": "lo0",
+          "kind": "standing-inspection",
+          "model_sha256": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+          "motor_commands_sent": 0,
+          "physical_qualification": false,
+          "reason": "ValueError: G1 LowState stream timed out or publisher disconnected",
+          "robot": "G1",
+          "simulation_result_sha256": "ced523d154c65ce32dea8881e774165fad00a39c08935eb25b3acfc1e69e9da4",
+          "source_kind": "External DDS telemetry",
+          "state": "Dry run stopped",
+          "trial": "1795491400478860000-G1-run"
+        }
+      },
+      {
+        "check": "Selected controller device preflight",
+        "robot": "G1",
+        "status": "G1 \u00b7 Dry run measured",
+        "receipt": {
+          "adapter": "Unitree G1 HG LowState",
+          "control_sha256": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+          "controller_sha256": "ea0d0b4aa4edaaf22970af1872142742e5765db13547227872254448862e5c2f",
+          "cyclonedds": "0.10.2",
+          "domain": 92,
+          "dry_run_steps": 2200,
+          "interface": "lo0",
+          "joints": 29,
+          "kind": "standing-inspection",
+          "max_nexus_target_difference_rad": 0.0,
+          "max_receive_gap_ms": 7.409125,
+          "max_sample_age_ms": 0.0,
+          "max_source_gap_ms": 5.0,
+          "measured_excursion_rad": 0.0,
+          "measured_speed_excess_rad_s": 0.0,
+          "mode_machine": 0,
+          "model_sha256": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+          "motor_commands_sent": 0,
+          "peak_measured_speed_rad_s": 4.437045574188232,
+          "peak_target_feedback_difference_rad": 0.503599305712967,
+          "physical_qualification": false,
+          "requested_delta_rad": -0.08,
+          "robot": "G1",
+          "samples": 2200,
+          "sdk": "1.0.1",
+          "shoulder_joint": "right_shoulder_pitch_joint",
+          "simulation_result_sha256": "ced523d154c65ce32dea8881e774165fad00a39c08935eb25b3acfc1e69e9da4",
+          "source_kind": "Nexus loopback replay",
+          "source_receive_duration_difference_ms": 1.411708,
+          "state": "Dry run measured",
+          "targets_sha256": "9ecaa82ac4633cc273752e361870aa6d8a3dfe7f9aa3a1efd2ef78441d0aa0d8",
+          "telemetry_sha256": "49f11c58534129017054cf992eca9b0d079d7ed6632228f2c3a0254f1c2a98ab",
+          "trial": "1795491400478860000-G1-run"
+        }
+      },
+      {
+        "check": "Simulation evidence reopened",
+        "robot": "G1",
+        "status": "G1 \u00b7 Dry run measured"
+      },
+      {
+        "check": "G1 standing episode exported",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 export"
+      },
+      {
+        "check": "G1 native Replay and synchronized encoder/action columns",
+        "cameras": [
+          "operator"
+        ],
+        "frames_per_camera": 100,
+        "joints": 29
+      }
+    ],
+    "recovery": [
+      {
+        "check": "standing evidence restored",
+        "robot": "G1",
+        "status": "Ready",
+        "restored_robot": "G1",
+        "controller_hash": "ea0d0b4aa4edaaf22970af1872142742e5765db13547227872254448862e5c2f",
+        "fixture": "standing-impact-development",
+        "outcome": true
+      },
+      {
+        "check": "Device report restored with the matching trial",
+        "robot": "G1",
+        "status": "Ready",
+        "preflight": {
+          "adapter": "Unitree G1 HG LowState",
+          "control_sha256": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+          "controller_sha256": "ea0d0b4aa4edaaf22970af1872142742e5765db13547227872254448862e5c2f",
+          "cyclonedds": "0.10.2",
+          "domain": 92,
+          "dry_run_steps": 2200,
+          "interface": "lo0",
+          "joints": 29,
+          "kind": "standing-inspection",
+          "max_nexus_target_difference_rad": 0.0,
+          "max_receive_gap_ms": 7.409125,
+          "max_sample_age_ms": 0.0,
+          "max_source_gap_ms": 5.0,
+          "measured_excursion_rad": 0.0,
+          "measured_speed_excess_rad_s": 0.0,
+          "mode_machine": 0,
+          "model_sha256": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+          "motor_commands_sent": 0,
+          "peak_measured_speed_rad_s": 4.437045574188232,
+          "peak_target_feedback_difference_rad": 0.503599305712967,
+          "physical_qualification": false,
+          "requested_delta_rad": -0.08,
+          "robot": "G1",
+          "samples": 2200,
+          "sdk": "1.0.1",
+          "shoulder_joint": "right_shoulder_pitch_joint",
+          "simulation_result_sha256": "ced523d154c65ce32dea8881e774165fad00a39c08935eb25b3acfc1e69e9da4",
+          "source_kind": "Nexus loopback replay",
+          "source_receive_duration_difference_ms": 1.411708,
+          "state": "Dry run measured",
+          "targets_sha256": "9ecaa82ac4633cc273752e361870aa6d8a3dfe7f9aa3a1efd2ef78441d0aa0d8",
+          "telemetry_sha256": "49f11c58534129017054cf992eca9b0d079d7ed6632228f2c3a0254f1c2a98ab",
+          "trial": "1795491400478860000-G1-run"
+        }
+      }
+    ]
+  },
+  "offscreen-codex": {
+    "mode-manifest": {
+      "backend": "offscreen",
+      "requested_size": "1440x900",
+      "provider": "codex",
+      "native_binary_sha256": "62951f99232950ba6472310c12679bc269d3e9f2d738b644bc9ee6a690ea6ca9",
+      "studio_source_commit": "8a1c2053820b98d53b16d2266fd02ed097911b4f",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "b95839ee53bf462cd10e90c790ea91fd4898f2719d209938efb7dcce02746803",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "caf5d1b89efaee57fc95676c923bddb073e00d3da063150e81d57fba0f9fb0a1",
+        "plugins/aisle/src/lib.rs": "cdc603f0d61ddc02db0b661fb78d63e658caf626997ebc5717c2d14c3f025554",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_moving_grasp.py": "8ad258b9b13133b20acba181b8a0a404c4df7f6bb10288a76547b0a1886e9c72",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "93cea7d462f30c61d35d2b7d4b093d65d9d4482d13545c2f8bd7a1a224312d50",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "8717a1d035061f2e6e57bfdfefd08f5d6bb3708c9d10421f310d5021e4d04159",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "b0c501931851073154f0511fe235fecfb48216a15c58566d594dd6c3e7d5d4e0",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "d4b136423aa98f90f21c46e2b67b71c38ca7b30071eb91c2ec5df70f756f757e",
+        "tools/aisle-validation/run_rgb_transfer.py": "689fc5d21cd5b4761b47d189858b61ea21ec3a8aee7dc70399b9d690febc0e5f",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "cebcecaf2d207ad32eb9387cc25dead2e69eee6324535b1385737a79ee4b8f35",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "7728693b8cf0a5b1ba987e8bb4fac5e94f19db882444e488ac31e4cc01eb0c94",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/device_preflight.py": "9a07b3186b7fcdc10061a827a66f4ae0f0f342543dc8df5a2b24e2ef1f48231e",
+        "tools/aisle_workbench/fleet_artifacts.py": "7ebaa221ca375acf47b3225fabcd7b7535609ad51d99b027ee4e857ac7f296af",
+        "tools/aisle_workbench/fleet_bridge.py": "66dfbd333e8ffd4fb7a4a1d28bd85e5d0c3e3ee95496ece544939a9052d206d7",
+        "tools/aisle_workbench/fleet_check.py": "d13aeb0177410a4c3fc96e554e7ad323f27d182cc9a01e6993a8c1c56fad74db",
+        "tools/aisle_workbench/fleet_client.py": "3568f4515a8e299b9e80eae9060a8a577d68cedf31e7fe0eb4447738b1017073",
+        "tools/aisle_workbench/fleet_worker.py": "c064686e22444c45ec6b41fd7ff56dc610e6fd15614c63349b87687d140d4ca9",
+        "tools/aisle_workbench/g1_dds_fixture.py": "232daf6cb4842581c84f30a39af585821c6b7556a9fb03214c8e3813594230a8",
+        "tools/aisle_workbench/g1_dds_state.py": "aca52468734199e11b36912fa9d1953ca308e4912f3d264b03bd87a17837aef4",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+        "tools/aisle_workbench/g1_stand.py": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+        "tools/aisle_workbench/journey.py": "5fc941ee36681531030d55896c89346b0eaea15bd44d93072c34928fc03c02da",
+        "tools/aisle_workbench/moving_grasp_check.py": "8d315144d9b487edad4ce81140a5916e05fb2a9347c1900295bcd9c7e796e0ef",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observation_period_check.py": "49fda87c4f8ed2c354f7df2578771438d86690c7d431fbe012e28442495685ae",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_device_preflight.py": "deeeb176e4677e01f49f91fe9e721f5be34344cf6aef16917c75eb66bfd750df",
+        "tools/aisle_workbench/test_fleet_bridge.py": "0f2d6cc8847066b86981d779ae3c151c81737c6a17e8c7e2df331494a1768156",
+        "tools/aisle_workbench/test_fleet_worker.py": "289723fea3eb461efe878a9dffb2449b290aa964b385e602d82f471815ab343d",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "cae922520510c2e239dc92a849c2ead60e55c93d3e2b209b63fb8022004aba54",
+        "tools/aisle_workbench/verify.py": "364cacf2ecf442a96a7cf850904dfd8c61f3419683233a919f76d71e5b35759b",
+        "tools/aisle_workbench/worker.py": "9ba8859d55dc7898b859bfd725e7b14720b433ab463089d3d2bf126ba15b820a",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [
+        " M docs/product/aisle-studio/PRD.md",
+        " M docs/product/aisle-studio/README.md",
+        "?? docs/product/aisle-studio/validation/device-preflight/"
+      ],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 39883,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-studio-device-preflight",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 49307,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-studio-device-preflight",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        }
+      ],
+      "trials": [
+        "1795491351721732000-G1-run"
+      ],
+      "files": {
+        "device-preflight.png": "3c341b6ed0f7d73a2de574633f82b4093ac8b9e1185fde7f5a51c5b37afc6d5a",
+        "journey.json": "d5b905f89aaa97a381687421e7a13292500ac1240b6492c4e79ae2ea19041ab7",
+        "recovery.json": "063e69c52f7ec25c6e255eeb8dbbcd846aa6105e16d1ad38e746140e4e2117f4",
+        "standing-evidence.png": "b14b048233ac36872e70ef2e689ff6ff68bb91e5c055d01bb95642b429cedd03",
+        "standing-replay.png": "aebdeccc8cb96525db7215b6d68acfb7c04abc2b62c200fa48c5c7fb9446ff5c",
+        "standing-run.png": "9ec4e0a12413c5169004210b814b79b6df235f3d16d4d659ef443f36258f81b7",
+        "standing-scene.png": "a7dd0fd1f35e58d45556398d1f6169aa6edeef86bc6848eb31c1e3de03a4ab00",
+        "standing-task.png": "184f0af8fd6130f04412aae3338e57bc698e633ea188273b4e995c3e574f1644"
+      }
+    },
+    "journey": [
+      {
+        "check": "standing controller authored",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "G1 impact selected",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "g1 scene checked",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 scene"
+      },
+      {
+        "check": "standing stream active",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing fresh frame",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing adjudicated",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing physical verdict",
+        "both_feet_loaded_steps": 2000,
+        "controller_hash": "a5d132bf1839d9d650a4389af9d77ed982f517c6df801e513753c49779d2a003",
+        "disturbance": {
+          "contacts": 4,
+          "last_contact_step": 610,
+          "links": [
+            "torso_link"
+          ],
+          "normal_impulse_sum_ns": 0.19077190925600007,
+          "passed": true,
+          "recovered_step": 710,
+          "recovery_s": 0.5
+        },
+        "estimated_negative_joint_work_j": -0.5084546277477496,
+        "estimated_positive_joint_work_j": 0.6642726052520387,
+        "fixture": "standing-impact-development",
+        "floor_contact_links_other_than_feet": [],
+        "frames": 101,
+        "joint": "right_shoulder_pitch_joint",
+        "kind": "standing-inspection",
+        "max_joint_excursion_rad": 0.0,
+        "max_pelvis_drift_m": 0.00413433276116848,
+        "measured_delta": -0.08000019192695618,
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+        "motor_work_sha256": "b0bfbbba0dd0dd37513f1be5ce434eaa4d771084bbaddc8357e2537a9792a72d",
+        "peak_tilt_deg": 2.3145673170882795,
+        "recorded_frames": 100,
+        "recording": true,
+        "requested_delta": -0.08,
+        "robot": "G1",
+        "root_pose_writes": 0,
+        "settled_trunk_pitch_rad": 0.11738556891679763,
+        "settled_trunk_yaw_rad": 0.5218513458967209,
+        "standing_inputs_sha256": "ae9517f49ce9497561a7a11e47c3f8fd426c6755e0f3778eb63b7ff434467ba6",
+        "steps": 2000,
+        "task_success": true,
+        "trunk_pitch_target_rad": 0.0,
+        "trunk_yaw_target_rad": 0.52359878,
+        "within_limits": true,
+        "wrist_reach": {
+          "final_error_m": 0.004986122245419419,
+          "final_m": [
+            0.2635563015937805,
+            -0.02390112914144993,
+            0.06360895931720734
+          ],
+          "frame": "world",
+          "link": "right_wrist_yaw_link",
+          "max_final_100_error_m": 0.004986182950770036,
+          "passed": true,
+          "requested_travel_m": 0.023014144653025714,
+          "start_m": [
+            0.2507198452949524,
+            -0.03996164351701737,
+            0.04769127815961838
+          ],
+          "target_m": [
+            0.2651272263070349,
+            -0.027720469808586057,
+            0.060814993057584074
+          ],
+          "tolerance_m": 0.01,
+          "trace_sha256": "dbb0775571bfde1e3c54ff10f86cb8ccf2465f8c16d21a734a9fa2ee9f396ce8"
+        }
+      },
+      {
+        "check": "Device preflight opened",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "Missing external publisher reported",
+        "robot": "G1",
+        "status": "G1 \u00b7 Dry run stopped",
+        "receipt": {
+          "adapter": "Unitree G1 HG LowState",
+          "control_sha256": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+          "controller_sha256": "a5d132bf1839d9d650a4389af9d77ed982f517c6df801e513753c49779d2a003",
+          "domain": 227,
+          "interface": "lo0",
+          "kind": "standing-inspection",
+          "model_sha256": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+          "motor_commands_sent": 0,
+          "physical_qualification": false,
+          "reason": "ValueError: G1 LowState stream timed out or publisher disconnected",
+          "robot": "G1",
+          "simulation_result_sha256": "e5193d4aaa15daa1c101cf348d2ef0f0f9ce35bbf8cad861218b52f100d42da1",
+          "source_kind": "External DDS telemetry",
+          "state": "Dry run stopped",
+          "trial": "1795491351721732000-G1-run"
+        }
+      },
+      {
+        "check": "Selected controller device preflight",
+        "robot": "G1",
+        "status": "G1 \u00b7 Dry run measured",
+        "receipt": {
+          "adapter": "Unitree G1 HG LowState",
+          "control_sha256": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+          "controller_sha256": "a5d132bf1839d9d650a4389af9d77ed982f517c6df801e513753c49779d2a003",
+          "cyclonedds": "0.10.2",
+          "domain": 156,
+          "dry_run_steps": 2200,
+          "interface": "lo0",
+          "joints": 29,
+          "kind": "standing-inspection",
+          "max_nexus_target_difference_rad": 0.0,
+          "max_receive_gap_ms": 7.497625,
+          "max_sample_age_ms": 0.0,
+          "max_source_gap_ms": 5.0,
+          "measured_excursion_rad": 0.0,
+          "measured_speed_excess_rad_s": 0.0,
+          "mode_machine": 0,
+          "model_sha256": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+          "motor_commands_sent": 0,
+          "peak_measured_speed_rad_s": 4.437045574188232,
+          "peak_target_feedback_difference_rad": 0.503599305712967,
+          "physical_qualification": false,
+          "requested_delta_rad": -0.08,
+          "robot": "G1",
+          "samples": 2200,
+          "sdk": "1.0.1",
+          "shoulder_joint": "right_shoulder_pitch_joint",
+          "simulation_result_sha256": "e5193d4aaa15daa1c101cf348d2ef0f0f9ce35bbf8cad861218b52f100d42da1",
+          "source_kind": "Nexus loopback replay",
+          "source_receive_duration_difference_ms": 1.558292,
+          "state": "Dry run measured",
+          "targets_sha256": "b538197dfc1e779564bf68faa99313e78f36d9bf02fefb8e16bab9ae04854e73",
+          "telemetry_sha256": "75a2a5d3823bacd5095b934ff3bba937d6e9d987d56b5b58dbaa4e190263a466",
+          "trial": "1795491351721732000-G1-run"
+        },
+        "contrasting_result_pixels": 4173
+      },
+      {
+        "check": "Simulation evidence reopened",
+        "robot": "G1",
+        "status": "G1 \u00b7 Dry run measured"
+      },
+      {
+        "check": "G1 standing episode exported",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 export"
+      },
+      {
+        "check": "G1 native Replay and synchronized encoder/action columns",
+        "cameras": [
+          "operator"
+        ],
+        "frames_per_camera": 100,
+        "joints": 29
+      }
+    ],
+    "recovery": [
+      {
+        "check": "standing evidence restored",
+        "robot": "G1",
+        "status": "Ready",
+        "restored_robot": "G1",
+        "controller_hash": "a5d132bf1839d9d650a4389af9d77ed982f517c6df801e513753c49779d2a003",
+        "fixture": "standing-impact-development",
+        "outcome": true
+      },
+      {
+        "check": "Device report restored with the matching trial",
+        "robot": "G1",
+        "status": "Ready",
+        "preflight": {
+          "adapter": "Unitree G1 HG LowState",
+          "control_sha256": "22e301df575e5a5fd8da2988fc81084dad5d04250c5c95c002536a8f980a446d",
+          "controller_sha256": "a5d132bf1839d9d650a4389af9d77ed982f517c6df801e513753c49779d2a003",
+          "cyclonedds": "0.10.2",
+          "domain": 156,
+          "dry_run_steps": 2200,
+          "interface": "lo0",
+          "joints": 29,
+          "kind": "standing-inspection",
+          "max_nexus_target_difference_rad": 0.0,
+          "max_receive_gap_ms": 7.497625,
+          "max_sample_age_ms": 0.0,
+          "max_source_gap_ms": 5.0,
+          "measured_excursion_rad": 0.0,
+          "measured_speed_excess_rad_s": 0.0,
+          "mode_machine": 0,
+          "model_sha256": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+          "motor_commands_sent": 0,
+          "peak_measured_speed_rad_s": 4.437045574188232,
+          "peak_target_feedback_difference_rad": 0.503599305712967,
+          "physical_qualification": false,
+          "requested_delta_rad": -0.08,
+          "robot": "G1",
+          "samples": 2200,
+          "sdk": "1.0.1",
+          "shoulder_joint": "right_shoulder_pitch_joint",
+          "simulation_result_sha256": "e5193d4aaa15daa1c101cf348d2ef0f0f9ce35bbf8cad861218b52f100d42da1",
+          "source_kind": "Nexus loopback replay",
+          "source_receive_duration_difference_ms": 1.558292,
+          "state": "Dry run measured",
+          "targets_sha256": "b538197dfc1e779564bf68faa99313e78f36d9bf02fefb8e16bab9ae04854e73",
+          "telemetry_sha256": "75a2a5d3823bacd5095b934ff3bba937d6e9d987d56b5b58dbaa4e190263a466",
+          "trial": "1795491351721732000-G1-run"
+        }
+      }
+    ]
+  }
+}
