@@ -1,4 +1,4 @@
-"""Check the two native Nano trials and the Linux observer against the same saved rig."""
+"""Replay the native Nano trials and the Linux observer against the same saved rig."""
 
 import base64
 import hashlib
@@ -28,6 +28,8 @@ def read(path):
 
 
 def main():
+    if not __debug__:
+        raise RuntimeError("Run this verification with Python assertions enabled")
     model = ROOT / "data/adora_nano/adora_nano.urdf"
     with ZipFile(HERE / "camera-mount-trials.zip") as archive:
         data = ZipPath(archive)
@@ -41,7 +43,17 @@ def main():
         for name, camera in rig["cameras"].items():
             pose, check = fit_mount(name, camera)
             saved = room["settings"]["cameras"][name]
-            np.testing.assert_allclose(saved["link_from_camera_gl"], pose, atol=1e-8)
+            # OpenCV's solver differs slightly across CPU builds. Compare the
+            # recovered mount in physical units. Archived runtime optics below
+            # must still agree exactly with the selected revision.
+            actual = np.asarray(pose)
+            reference = np.asarray(saved["link_from_camera_gl"])
+            translation_m = np.linalg.norm(actual[:3, 3] - reference[:3, 3])
+            relative = actual[:3, :3].T @ reference[:3, :3]
+            rotation_deg = np.degrees(
+                np.arccos(np.clip((np.trace(relative) - 1) / 2, -1, 1))
+            )
+            assert translation_m <= 1e-6 and rotation_deg <= 0.001
             assert check["check_points"] == 5 and check["fit_points"] == 9
             assert check["max_check_px"] < 1.0
             image_refs.update(p["image"] for p in camera["landmarks"])
@@ -49,7 +61,18 @@ def main():
         for key, encoded in images.items():
             assert digest(base64.b64decode(encoded, validate=True)) == key
 
-        for name in ("mac-deepseek", "mac-codex", "h100-deepseek"):
+        # Published counts and center-to-edge margins, rounded to millimetres.
+        expected = {
+            "mac-deepseek": (6968, 348, {"red": 120}),
+            "mac-codex": (6968, 348, {"red": 120}),
+            "mac-deepseek-three": (
+                28302,
+                1415,
+                {"red": 120, "green": 123, "blue": 138},
+            ),
+            "h100-deepseek": (7048, 0, {"red": 125}),
+        }
+        for name, (expected_ticks, frames, margins_mm) in expected.items():
             trial = data / name
             result = read(trial / "result.json")
             source = read(trial / "source.json")
@@ -75,7 +98,18 @@ def main():
                 ticks,
             )
             assert motor == result["actuator_audit"] and motor["passed"]
-            assert result["task_success"] and result["cubes"]["red"]["passed"]
+            assert ticks == expected_ticks and result["frames"] == frames
+            assert result["task_success"] and set(result["requested"]) == set(
+                margins_mm
+            )
+            for color, margin in margins_mm.items():
+                cube = result["cubes"][color]
+                assert (
+                    cube["passed"]
+                    and cube["detached"]
+                    and cube["table_contact_tail_ticks"] == 100
+                )
+                assert round(1000 * cube["nearest_table_edge_m"]) == margin
             assert (
                 result["wheel_supported_ticks"] == ticks
                 and result["max_joint_excursion_rad"] == 0
@@ -109,6 +143,8 @@ def main():
                     and source["observation_period_s"] == 0.5
                 )
                 rate = (len(stamps) - 1) * 1e9 / (stamps[-1] - stamps[0])
+                assert len(stamps) == 222 and round(rate, 2) == 2
+                assert read(trial / "controller.json")["max_forward_speed_m_s"] == 0.08
                 print(
                     f"{name}: {ticks} supported ticks, {len(stamps)} RGB publications at {rate:.3f} Hz"
                 )
