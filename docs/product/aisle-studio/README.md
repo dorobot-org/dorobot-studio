@@ -81,3 +81,5 @@ Use **Evidence → Device preflight** to replay G1 encoders and IMU over DDS, ob
 [Check the original overbroad Nano draft and both red-only runs](validation/single-cube-intent/README.md)
 
 [Watch a live Nano head camera and check concurrent simulation frame rates](validation/foreground-preview/README.md)
+
+[Open both Nano revisions at the first changed action and inspect the exact decision cameras](validation/first-action-change/README.md)

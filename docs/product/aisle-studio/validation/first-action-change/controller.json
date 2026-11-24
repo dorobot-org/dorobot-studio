@@ -1,0 +1,37 @@
+{
+  "kind": "table-transfer",
+  "color_order": "red,green,blue",
+  "track_grasp": true,
+  "previous_trial": {
+    "robot": "Nano",
+    "kind": "table-transfer",
+    "requested": [
+      "red"
+    ],
+    "phase": "back away",
+    "task_success": false,
+    "controller_hash": "a9624d8b4477b571efe5700bc1b4d9c4f0a9630223379327c5a94b7e293557de",
+    "settled": {
+      "red": true
+    },
+    "onboard_observations": {
+      "red": {
+        "last_wrist_jaw": {
+          "tick": 8366,
+          "cube_visible": false
+        },
+        "last_rgb_table_rim": {
+          "tick": 6916,
+          "distance_m": 0.30794868735122183,
+          "height_m": 0.5372926067468858,
+          "angle_rad": -0.0028306959328293396
+        }
+      }
+    }
+  },
+  "robot": "Nano",
+  "task": "Revise the failed moving pickup. Use our onboard RGB observations to track the cubes as the arm descends and place all three moving floor cubes on the coffee table in red, green, blue order.",
+  "provider": "octos-deepseek",
+  "policy_model": "deepseek-v4-flash",
+  "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+}
