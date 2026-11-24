@@ -1,0 +1,26 @@
+{
+  "headless": {
+    "verifier_timeout_s": 330,
+    "task_requested": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "last_published_tick": 18201,
+    "phase": "pick",
+    "color": "blue",
+    "task_scored": false
+  },
+  "offscreen": {
+    "verifier_timeout_s": 330,
+    "task_requested": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "last_published_tick": 18661,
+    "phase": "pick",
+    "color": "blue",
+    "task_scored": false
+  }
+}
