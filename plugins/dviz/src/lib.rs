@@ -17,7 +17,10 @@ pub use graph::{
     hit_test, layout, DvizGraph, DvizGraphAction, DvizGraphRef, DvizGraphWidgetRefExt, GraphLayout,
     Point,
 };
-pub use map2d::{DvizMap2D, DvizMap2DRef, DvizMap2DWidgetRefExt};
+pub use map2d::{
+    draw_plan, footprint_color, goal_ring, pose_arrow, DvizMap2D, DvizMap2DRef,
+    DvizMap2DWidgetRefExt, MapDraw,
+};
 pub use map_view::{
     costmap_rgba, grid_lines, grid_rgba, layer_color, nav2_to_rviz, rviz_costmap_color,
     rviz_map_color, scene_bounds, MapView, NavLayers,

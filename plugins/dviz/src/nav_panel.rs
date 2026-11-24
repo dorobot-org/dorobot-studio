@@ -42,8 +42,8 @@ script_mod! {
 
 /// Every part of the panel that draws text or a ground, by path from its
 /// root, and which of its draws carry `light`. The Follow button is themed
-/// with its selection (`sync_follow_button`), the map through its own
-/// `set_light`.
+/// with its selection (`sync_follow_button`). The map is not themed: its
+/// canvas is the same dark grey in both themes, as RViz's.
 const THEMED: &[(&[LiveId], Themed)] = &[
     (ids!(heading), Themed::Text),
     (ids!(fit), Themed::Both),
@@ -51,6 +51,7 @@ const THEMED: &[(&[LiveId], Themed)] = &[
     (ids!(legend), Themed::Bg),
     (ids!(legend_label), Themed::Text),
     (ids!(layer_map), Themed::Text),
+    (ids!(layer_costmap), Themed::Text),
     (ids!(layer_footprint), Themed::Text),
     (ids!(layer_plan), Themed::Text),
     (ids!(layer_trail), Themed::Text),
@@ -63,6 +64,7 @@ const THEMED: &[(&[LiveId], Themed)] = &[
 type LayerSwitch = fn(&mut NavLayers) -> &mut bool;
 const LAYER_CHECKS: &[(&[LiveId], LayerSwitch)] = &[
     (ids!(layer_map), |layers| &mut layers.map),
+    (ids!(layer_costmap), |layers| &mut layers.costmap),
     (ids!(layer_footprint), |layers| &mut layers.footprint),
     (ids!(layer_plan), |layers| &mut layers.plan),
     (ids!(layer_trail), |layers| &mut layers.trail),
@@ -70,7 +72,9 @@ const LAYER_CHECKS: &[(&[LiveId], LayerSwitch)] = &[
     (ids!(layer_scan), |layers| &mut layers.scan),
 ];
 
-/// Each legend swatch and the entity whose colour it shows.
+/// Each legend swatch and the entity whose colour it shows. The Costmap
+/// swatch is not one: it shows the costmap palette's lethal magenta, which
+/// is Studio's own and never sent by the bridge.
 const SWATCHES: &[(&[LiveId], &str)] = &[
     (ids!(swatch_map), nav_entities::MAP_GRID),
     (ids!(swatch_footprint), nav_entities::ROBOT_FOOTPRINT),
@@ -264,23 +268,27 @@ impl DvizNavPanel {
                         legend_label := mod.widgets.DvizLabel{text: "Layers"}
                         View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                             layer_map := mod.widgets.DvizCheckBox{text: "Map" active: true}
-                            swatch_map := mod.widgets.DvizSwatch{draw_bg +: {color: #xCDCDCD}}
+                            swatch_map := mod.widgets.DvizSwatch{draw_bg +: {color: #x708986}}
+                        }
+                        View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
+                            layer_costmap := mod.widgets.DvizCheckBox{text: "Costmap" active: true}
+                            swatch_costmap := mod.widgets.DvizSwatch{draw_bg +: {color: #xFF00FF}}
                         }
                         View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                             layer_footprint := mod.widgets.DvizCheckBox{text: "Robot" active: true}
-                            swatch_footprint := mod.widgets.DvizSwatch{draw_bg +: {color: #x00C800}}
+                            swatch_footprint := mod.widgets.DvizSwatch{draw_bg +: {color: #xDCDCDC}}
                         }
                         View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                             layer_plan := mod.widgets.DvizCheckBox{text: "Plan" active: true}
-                            swatch_plan := mod.widgets.DvizSwatch{draw_bg +: {color: #x00FF00}}
+                            swatch_plan := mod.widgets.DvizSwatch{draw_bg +: {color: #x00B4FF}}
                         }
                         View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                             layer_trail := mod.widgets.DvizCheckBox{text: "Trail" active: true}
-                            swatch_trail := mod.widgets.DvizSwatch{draw_bg +: {color: #xFF8C00}}
+                            swatch_trail := mod.widgets.DvizSwatch{draw_bg +: {color: #x00DC00}}
                         }
                         View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                             layer_goal := mod.widgets.DvizCheckBox{text: "Goal" active: true}
-                            swatch_goal := mod.widgets.DvizSwatch{draw_bg +: {color: #xFF00FF}}
+                            swatch_goal := mod.widgets.DvizSwatch{draw_bg +: {color: #xFFAA00}}
                         }
                         View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                             layer_scan := mod.widgets.DvizCheckBox{text: "Scan" active: true}
@@ -314,9 +322,6 @@ impl DvizNavPanel {
     /// their source, so those are set again too.
     fn apply_theme(&mut self, cx: &mut Cx, light: f64) {
         frame::apply_light(cx, &self.root, THEMED, light);
-        self.root
-            .dviz_map2_d(cx, ids!(map))
-            .set_light(cx, light as f32);
         self.follow_button = None;
         self.stale = None;
         self.swatches = None;

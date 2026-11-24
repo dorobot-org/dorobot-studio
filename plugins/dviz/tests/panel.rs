@@ -4,8 +4,8 @@
 
 use dorobot_plugin_dviz::{
     scene_bounds, DvizGraphAction, DvizGraphWidgetRefExt, DvizMap2DRef, DvizMap2DWidgetRefExt,
-    DvizNavPanel, DvizPlugin, DvizSession, DvizViewPanel, GridLayer, MapView, NavLayers, NavScene,
-    Pose2D, SessionOptions, ViewerState,
+    DvizNavPanel, DvizPlugin, DvizSession, DvizViewPanel, GridLayer, MapDraw, MapView, NavLayers,
+    NavScene, Pose2D, SessionOptions, ViewerState,
 };
 use dorobot_studio_core::api::mock::MockBackend;
 use dorobot_studio_plugin::*;
@@ -801,9 +801,12 @@ fn nav_panel_layer_toggles_reach_the_map() {
     );
     assert_eq!(status_grey(&mut cx, &panel), 0.0, "the connection line is not grey");
     // Each swatch in its layer's (default) colour.
+    let light_grey = 220.0 / 255.0;
     for (path, rgb) in [
-        (ids!(swatch_plan), [0.0, 1.0, 0.0]),
-        (ids!(swatch_trail), [1.0, 140.0 / 255.0, 0.0]),
+        (ids!(swatch_plan), [0.0, 180.0 / 255.0, 1.0]),
+        (ids!(swatch_trail), [0.0, 220.0 / 255.0, 0.0]),
+        (ids!(swatch_footprint), [light_grey; 3]),
+        (ids!(swatch_goal), [1.0, 170.0 / 255.0, 0.0]),
         (ids!(swatch_scan), [1.0, 0.0, 0.0]),
     ] {
         let swatch = panel.root().widget(&cx, path);
@@ -811,6 +814,49 @@ fn nav_panel_layer_toggles_reach_the_map() {
         let color = instance::<4>(&mut cx, &view.draw_bg, live_id!(color));
         assert_eq!(color, [rgb[0], rgb[1], rgb[2], 1.0], "{path:?}");
     }
+    assert_no_script_errors(&mut cx);
+}
+
+/// The legend's Costmap row: on by default, a magenta swatch (the costmap
+/// palette's lethal colour, not a colour the bridge sends), and switching it
+/// off reaches the map, whose frame then leaves the costmap out.
+#[test]
+fn nav_panel_legend_has_costmap() {
+    let (mut cx, session) = setup();
+    let mut panel = new_nav_panel(&mut cx, session);
+    sync(&mut cx, &mut panel);
+    assert_eq!(text(&mut cx, &panel, ids!(layer_costmap)), "Costmap");
+    let check = panel.root().check_box(&cx, ids!(layer_costmap));
+    assert!(check.active(&cx), "the Costmap layer starts on");
+    {
+        let swatch = panel.root().widget(&cx, ids!(swatch_costmap));
+        let view = swatch.borrow::<View>().expect("costmap swatch");
+        let color = instance::<4>(&mut cx, &view.draw_bg, live_id!(color));
+        assert_eq!(color, [1.0, 0.0, 1.0, 1.0]);
+    }
+    let map = panel.root().dviz_map2_d(&cx, ids!(map));
+    let set = |cx: &mut Cx, panel: &mut DvizNavPanel, on: bool| {
+        let uid = panel.root().widget(cx, ids!(layer_costmap)).widget_uid();
+        let actions = cx.capture_actions(|cx| cx.widget_action(uid, CheckBoxAction::Change(on)));
+        assert!(panel.handle_actions(cx, &actions, &mut MockBackend::new()));
+    };
+    set(&mut cx, &mut panel, false);
+    assert_eq!(
+        map.layers(),
+        NavLayers {
+            costmap: false,
+            ..NavLayers::default()
+        }
+    );
+    let scene = costmap_scene(vec![254; 8], 1);
+    map.set_scene(&mut cx, &scene);
+    let frame = map.draw_plan();
+    assert!(!frame.contains(&MapDraw::Costmap), "{frame:?}");
+    assert!(frame.contains(&MapDraw::Map), "{frame:?}");
+    set(&mut cx, &mut panel, true);
+    assert!(map.layers().costmap);
+    map.set_scene(&mut cx, &scene);
+    assert!(map.draw_plan().contains(&MapDraw::Costmap));
     assert_no_script_errors(&mut cx);
 }
 
@@ -885,6 +931,63 @@ fn map_texture_is_rebuilt_only_when_the_grid_changes() {
     // No grid: the texture goes.
     map.set_scene(&mut cx, &NavScene::default());
     assert!(!map.has_texture());
+    assert_no_script_errors(&mut cx);
+}
+
+/// A map with a 4 x 2 costmap over it; the costmap's cells and generation
+/// as given, the map's fixed.
+fn costmap_scene(cells: Vec<u8>, generation: u64) -> NavScene {
+    let mut scene = grid_scene(vec![0; 8], 1);
+    let header = Grid2DHeader {
+        kind: GridKind::Costmap,
+        ..scene.grid.as_ref().unwrap().header.clone()
+    };
+    scene.costmap = Some(GridLayer {
+        header,
+        cells: Arc::new(cells),
+        generation,
+    });
+    scene.updated = 100 + generation;
+    scene
+}
+
+/// The costmap texture follows the map texture's rules: built again only
+/// when its cells change, not for a resend or a newer scene, rebuilt after a
+/// reconnect that restarts the generation, dropped without a costmap; and
+/// never rebuilds the map texture.
+#[test]
+fn costmap_texture_is_rebuilt_only_when_it_changes() {
+    let (mut cx, _) = setup();
+    let map = new_map(&mut cx);
+    let first = costmap_scene(vec![0, 1, 252, 253, 254, 255, 0, 0], 1);
+    map.set_scene(&mut cx, &first);
+    assert_eq!((map.texture_builds(), map.costmap_texture_builds()), (1, 1));
+    assert!(map.has_costmap_texture());
+    // The same scene again, and a newer scene with the same costmap.
+    map.set_scene(&mut cx, &first);
+    let mut moved = first.clone();
+    moved.pose = Some(Pose2D {
+        x: 2.0,
+        y: 0.5,
+        yaw: 1.0,
+    });
+    moved.updated += 1;
+    map.set_scene(&mut cx, &moved);
+    assert_eq!(map.costmap_texture_builds(), 1);
+    // The bridge resends it every 5 s: a new generation, same cells.
+    let resent = costmap_scene(first.costmap.as_ref().unwrap().cells.to_vec(), 2);
+    map.set_scene(&mut cx, &resent);
+    assert_eq!(map.costmap_texture_builds(), 1);
+    // An obstacle moved: rebuilt, the map's texture kept.
+    map.set_scene(&mut cx, &costmap_scene(vec![254; 8], 3));
+    assert_eq!((map.texture_builds(), map.costmap_texture_builds()), (1, 2));
+    // A reconnect restarts the generation at 1 with other cells: rebuilt.
+    map.set_scene(&mut cx, &costmap_scene(vec![0; 8], 1));
+    assert_eq!(map.costmap_texture_builds(), 3);
+    // Without a costmap the texture goes; the map's stays.
+    map.set_scene(&mut cx, &grid_scene(vec![0; 8], 1));
+    assert!(!map.has_costmap_texture() && map.has_texture());
+    assert_eq!(map.texture_builds(), 1);
     assert_no_script_errors(&mut cx);
 }
 

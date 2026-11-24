@@ -446,9 +446,9 @@ fn nav_panel_registered_and_independent() {
 }
 
 /// Where the theme reached the nav panel: the legend card and its label, the
-/// heading, the status line, the disclaimer, the two buttons and the map.
+/// heading, the status line, the disclaimer and the two buttons. The map is
+/// not themed: its canvas is the same dark grey in both themes, as RViz's.
 fn nav_theme(cx: &mut Cx, root: &WidgetRef) -> Vec<(&'static str, f32)> {
-    use dorobot_plugin_dviz::DvizMap2DWidgetRefExt;
     let mut seen = Vec::new();
     let legend = root.widget(cx, ids!(legend));
     seen.push((
@@ -473,8 +473,6 @@ fn nav_theme(cx: &mut Cx, root: &WidgetRef) -> Vec<(&'static str, f32)> {
         seen.push((part, light_of(cx, &button.draw_bg)));
         seen.push((part, light_of(cx, &button.draw_text)));
     }
-    let map = root.dviz_map2_d(cx, ids!(map));
-    seen.push(("map", map.light()));
     seen
 }
 

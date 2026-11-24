@@ -170,8 +170,9 @@ impl Default for NavLayers {
 }
 
 /// The colour of a navigation entity (`nav_entities` name): the one the
-/// bridge last sent with it, else the default. The map's default stands for
-/// its unknown cells, which is what its legend swatch shows.
+/// bridge last sent with it, else the bridge's own default (RViz look). The
+/// map's default stands for its unknown cells, which is what its legend
+/// swatch shows.
 pub fn layer_color(scene: &NavScene, entity: &str) -> [u8; 4] {
     if let Some(color) = scene.colors.get(entity) {
         return *color;
@@ -179,10 +180,10 @@ pub fn layer_color(scene: &NavScene, entity: &str) -> [u8; 4] {
     match entity {
         nav_entities::MAP_GRID => [0x70, 0x89, 0x86, 255],
         nav_entities::MAP_CLOUD => [180, 180, 180, 255],
-        nav_entities::ROBOT_FOOTPRINT => [0, 200, 0, 255],
-        nav_entities::NAV_PLAN => [0, 255, 0, 255],
-        nav_entities::NAV_TRAIL => [255, 140, 0, 255],
-        nav_entities::NAV_GOAL => [255, 0, 255, 255],
+        nav_entities::ROBOT_FOOTPRINT => [220, 220, 220, 255],
+        nav_entities::NAV_PLAN => [0, 180, 255, 255],
+        nav_entities::NAV_TRAIL => [0, 220, 0, 255],
+        nav_entities::NAV_GOAL => [255, 170, 0, 255],
         nav_entities::SENSORS_SCAN => [255, 0, 0, 255],
         _ => [255, 255, 255, 255],
     }
@@ -588,11 +589,13 @@ mod tests {
 
     #[test]
     fn layer_colors_default_until_the_bridge_sends_one() {
+        // The bridge's own defaults (RViz look), so a scene without colours
+        // looks the same as one with them.
         let mut scene = NavScene::default();
-        assert_eq!(layer_color(&scene, NAV_PLAN), [0, 255, 0, 255]);
-        assert_eq!(layer_color(&scene, NAV_TRAIL), [255, 140, 0, 255]);
-        assert_eq!(layer_color(&scene, ROBOT_FOOTPRINT), [0, 200, 0, 255]);
-        assert_eq!(layer_color(&scene, NAV_GOAL), [255, 0, 255, 255]);
+        assert_eq!(layer_color(&scene, NAV_PLAN), [0, 180, 255, 255]);
+        assert_eq!(layer_color(&scene, NAV_TRAIL), [0, 220, 0, 255]);
+        assert_eq!(layer_color(&scene, ROBOT_FOOTPRINT), [220, 220, 220, 255]);
+        assert_eq!(layer_color(&scene, NAV_GOAL), [255, 170, 0, 255]);
         assert_eq!(layer_color(&scene, SENSORS_SCAN), [255, 0, 0, 255]);
         scene.colors.insert(NAV_PLAN, [1, 2, 3, 4]);
         assert_eq!(layer_color(&scene, NAV_PLAN), [1, 2, 3, 4]);
