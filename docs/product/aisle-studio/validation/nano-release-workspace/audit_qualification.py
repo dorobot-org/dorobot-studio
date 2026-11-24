@@ -66,6 +66,15 @@ def main():
     )
     if args.check and json.loads((cohort / "verification.json").read_text()) != result:
         raise ValueError("Replayed results differ from the published measurements")
+    if args.check:
+        native = json.loads((cohort / "native.json").read_text())
+        if not all(
+            native[stage][0]["evaluation"] == result
+            for stage in ("journey", "recovery")
+        ):
+            raise ValueError(
+                "Native Evidence or its restart differs from the independent replay"
+            )
     print(json.dumps(result, indent=2))
 
 

@@ -1,8 +1,10 @@
 # Nano camera-selected placement on 50 hidden layouts
 
-The candidate completed **38/50** full three-cube transfers (76%, 95% Wilson interval 62.6–85.7%). The preregistered threshold was 45. All 50 motor journals verified and the independent replay found zero guard bypasses. It inspected 95 synchronized occupied-table and turning packets. The candidate remains experimental. The integrated workbench keeps the continuous-tracking controller that qualified on cohort F.
+The candidate completed **38/50** full three-cube transfers (76%, 95% Wilson interval 62.6–85.7%). The preregistered threshold was 45. All 50 motor journals verified and the independent replay found zero guard bypasses. It inspected 95 synchronized release exposures from occupied-table and turning checks. The candidate remains experimental. The output receipt pins the completed archive. The input commitment was published before dispatch. The integrated workbench keeps the continuous-tracking controller that qualified on cohort F.
 
 In this candidate, an exhausted stationary release search could request a short turn when two earlier colors were clearly visible, or a slow steered sidestep when one was visible. On five previously disclosed failures it recovered four transfers and retained all four regression controls. G used 50 fresh layouts with commitments and source hashes published before dispatch. F and G shared no seeds. Their totals are independent qualification outcomes. [Original G commitment](https://github.com/dorobot-org/dorobot-studio/commit/d38d9b3c9fb56e7f9e63de5f622aff774e866cdf) · [Candidate commit used for the run](https://github.com/dorobot-org/dorobot-studio/commit/3bec9043281f5a331491d20cf3c918aa6639b413) · [Registered protocol](protocol.md) · [Qualified F controller](../cohort-f/README.md)
+
+The Git tag [evidence/nano-cohort-g](https://github.com/dorobot-org/dorobot-studio/tree/evidence/nano-cohort-g) retains the original executable sources and the registration commit in its ancestry. The predispatch commit contains both the [five disclosed failure records](https://github.com/dorobot-org/dorobot-studio/tree/3bec9043281f5a331491d20cf3c918aa6639b413/docs/product/aisle-studio/validation/nano-release-workspace/landmark-development) and [four regression control records](https://github.com/dorobot-org/dorobot-studio/tree/3bec9043281f5a331491d20cf3c918aa6639b413/docs/product/aisle-studio/validation/nano-release-workspace/landmark-controls). The supplementary audit replays both and checks that no seeds were shared between F and G. [Audited gate and maneuver counts](maneuvers.json)
 
 ## What happened during the 50 trials
 
@@ -40,8 +42,9 @@ To reproduce the archive audit from the Studio checkout with its AISLE Python en
 ```sh
 guide=docs/product/aisle-studio/validation/nano-release-workspace
 python "$guide/audit_qualification.py" "$guide/cohort-g" --check
+python "$guide/cohort-g/audit_maneuvers.py" --check
 ```
 
 A subsequent development revision required the cameras to confirm the sidestep against encoders and capped cumulative commanded lateral travel at 140 mm per cube. It retained all four controls but recovered two of the five earlier failures. It stopped on inconsistent turn images or missing final landmarks in two cases the G controller passed. All nine motor records verified with zero guard bypasses. [Guarded revision and the nine measured outcomes](https://github.com/dorobot-org/dorobot-studio/pull/79)
 
-The native journey opened two failure records, rejected a missing archive and restored the published result after restart. [Native Evidence](evaluation.png) · [Instrumented actions and verified counts](native.json)
+The native receipt records the later Studio verifier checkout. The simulation source revision is in the provenance record. CI compares the native result before and after restart with the independent motor replay. The native journey opened two failure records, rejected a missing archive and restored the published result after restart. [Native Evidence](evaluation.png) · [Instrumented actions and verified counts](native.json)
