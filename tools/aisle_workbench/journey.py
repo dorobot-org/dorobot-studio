@@ -317,7 +317,7 @@ def main():
                 click("aisle_evidence.device_mode")
                 pre = done(
                     lambda w: w["show_device"]
-                    and w["preflight"].get("controller_sha256")
+                    and (w["preflight"] or {}).get("controller_sha256")
                     == row["result"]["controller_hash"],
                     "Device report restored with the matching trial",
                 )
@@ -501,7 +501,7 @@ def main():
                 click("aisle_evidence.device_listen")
                 absence = done(
                     lambda w: not w["busy"]
-                    and w["preflight"].get("state") == "Dry run stopped",
+                    and (w["preflight"] or {}).get("state") == "Dry run stopped",
                     "Missing external publisher reported",
                     35,
                 )
@@ -513,7 +513,8 @@ def main():
             click("aisle_evidence.device_replay")
             expected = "Dry run measured" if a.standing else "Adapter incomplete"
             observed = done(
-                lambda w: not w["busy"] and w["preflight"].get("state") == expected,
+                lambda w: not w["busy"]
+                and (w["preflight"] or {}).get("state") == expected,
                 "Selected controller device preflight",
                 55,
             )
