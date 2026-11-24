@@ -40,6 +40,7 @@ def pack(source, target, name):
                     "controller.json",
                     "motor-targets.f64",
                     "background-observations.jsonl",
+                    "preview.rgb",
                 ):
                     target.writestr(prefix + base + filename, worker.read(filename))
         else:

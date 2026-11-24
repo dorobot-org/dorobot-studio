@@ -7,6 +7,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import signal
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -27,43 +29,54 @@ def write(path, obj):
 
 
 def gpu_sampler(stop, node, out):
+    prefix = [
+        "ssh",
+        "-F",
+        node["ssh_config"],
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "--",
+        node["ssh"],
+    ]
+    query = "nvidia-smi --query-gpu=index,pci.bus_id,memory.used,utilization.gpu --format=csv,noheader,nounits"
+    process_map = out.with_name("gpu-processes.txt")
     with out.open("w") as log:
         while not stop.is_set():
-            cmd = [
-                "ssh",
-                "-F",
-                node["ssh_config"],
-                node["ssh"],
-                "nvidia-smi --query-gpu=index,pci.bus_id,memory.used,utilization.gpu "
-                "--format=csv,noheader,nounits",
-            ]
-            result = subprocess.run(cmd, text=True, capture_output=True, timeout=25)
-            print(
-                json.dumps([clock(), result.returncode, result.stdout.splitlines()]),
-                file=log,
-                flush=True,
-            )
-            process_map = out.with_name("gpu-processes.txt")
-            rows = result.stdout.splitlines()
-            if (
-                not process_map.exists()
-                and result.returncode == 0
-                and len(rows) == 8
-                and all(int(row.split(",")[2]) > 2000 for row in rows)
-            ):
-                processes = subprocess.run(
-                    [*cmd[:-1], "nvidia-smi pmon -c 1"],
+            try:
+                result = subprocess.run(
+                    [*prefix, query],
                     text=True,
                     capture_output=True,
                     timeout=25,
+                    check=True,
                 )
-                active = {
-                    row.split()[0]
-                    for row in processes.stdout.splitlines()
-                    if "C+G" in row and "python" in row
-                }
-                if len(active) == 8:
-                    process_map.write_text(processes.stdout)
+                rows = result.stdout.splitlines()
+                devices = [row.split(",") for row in rows]
+                if len(devices) != 8 or any(len(fields) != 4 for fields in devices):
+                    raise ValueError("Incomplete device sample")
+                memory = [int(fields[2]) for fields in devices]
+                for fields in devices:
+                    int(fields[3])
+                print(json.dumps([clock(), 0, rows]), file=log, flush=True)
+                if not process_map.exists() and min(memory) > 2000:
+                    processes = subprocess.run(
+                        [*prefix, "nvidia-smi pmon -c 1"],
+                        text=True,
+                        capture_output=True,
+                        timeout=25,
+                        check=True,
+                    )
+                    active = {
+                        row.split()[0]
+                        for row in processes.stdout.splitlines()
+                        if "C+G" in row and "python" in row
+                    }
+                    if len(active) == 8:
+                        process_map.write_text(processes.stdout)
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                print(json.dumps([clock(), 1, [str(error)]]), file=log, flush=True)
             stop.wait(4)
 
 
@@ -108,7 +121,7 @@ def read_worker(node, request, errors):
             time.sleep(0.15 * (attempt + 1))
 
 
-def observer(alias, node, author, out):
+def observer(alias, node, author, out, abort):
     req = submission(author / "controller.json", mode="observations", seed=0)
     req["observation_period_s"] = 1
     ident = req["id"]
@@ -124,9 +137,13 @@ def observer(alias, node, author, out):
     )
     last_step = last_frame = None
     try:
+        if abort.is_set():
+            return
         job = send(node, req)
         deadline = time.monotonic() + 900
         while job["state"] in ("reserved", "running", "stopping"):
+            if abort.is_set():
+                raise InterruptedError("Cohort interrupted")
             if time.monotonic() > deadline:
                 raise TimeoutError(f"{alias} exceeded 900 seconds")
             job = read_worker(node, dict(op="status", id=ident), errors)
@@ -203,6 +220,22 @@ def main():
         and row["program"]["color_order"] == "red"
         for row in preparations
     )
+
+    # A fresh or completely idle single-slot spool isolates this cohort.
+    def preflight(item):
+        alias, node = item
+        info = send(node, {"op": "hello"})
+        if (
+            info.get("slots") != 1
+            or info.get("active")
+            or 1 not in info.get("background_rgb_periods_s", [])
+        ):
+            raise RuntimeError(
+                f"Worker {alias} needs an available single-slot spool with one-second RGB support"
+            )
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(preflight, nodes.items()))
     a.out.mkdir(parents=True, exist_ok=False)
     native = a.out / "native"
     ready, stop = threading.Event(), threading.Event()
@@ -242,42 +275,86 @@ def main():
         str(native),
     ]
     times = dict(start_ns=clock())
+    abort = threading.Event()
+    pool = ThreadPoolExecutor(max_workers=7)
+    proc = None
     try:
-        with (a.out / "native.log").open("w") as log, subprocess.Popen(
-            command,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            env=os.environ | {"DOROBOT_AISLE_WORKERS": str(a.nodes.resolve())},
-        ) as proc:
-            try:
-                deadline = time.monotonic() + 185
-                while not ready.wait(0.2):
-                    if proc.poll() is not None or time.monotonic() > deadline:
-                        raise RuntimeError(
-                            "Native viewport did not deliver its first frame"
-                        )
-                with ThreadPoolExecutor(max_workers=7) as pool:
-                    futures = [
-                        pool.submit(observer, alias, nodes[alias], author, a.out)
-                        for alias, author in zip(aliases[1:], authors[1:])
-                    ]
-                    times["native_exit"] = proc.wait(timeout=1050)
-                    for f in futures:
-                        f.result()
-                if times["native_exit"]:
+        with (a.out / "native.log").open("w") as log:
+            proc = subprocess.Popen(
+                command,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                env=os.environ | {"DOROBOT_AISLE_WORKERS": str(a.nodes.resolve())},
+            )
+            deadline = time.monotonic() + 185
+            while not ready.wait(0.2):
+                if proc.poll() is not None or time.monotonic() >= deadline:
                     raise RuntimeError(
-                        f"Native verification exited {times['native_exit']}"
+                        "Native viewport did not deliver its first frame"
                     )
-            finally:
-                if proc.poll() is None:
-                    proc.terminate()
+            pending = {
+                pool.submit(observer, alias, nodes[alias], author, a.out, abort)
+                for alias, author in zip(aliases[1:], authors[1:])
+            }
+            deadline = time.monotonic() + 1050
+            while pending or proc.poll() is None:
+                for future in list(pending):
+                    if future.done():
+                        future.result()
+                        pending.remove(future)
+                if proc.poll() not in (None, 0):
+                    raise RuntimeError(f"Native verification exited {proc.returncode}")
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("Cohort exceeded its time limit")
+                time.sleep(0.2)
+            times["native_exit"] = proc.wait()
+            if times["native_exit"] != 0 or not (a.out / "gpu-processes.txt").is_file():
+                raise RuntimeError(
+                    "Missing native verification or eight-device compute sample"
+                )
+    except BaseException:
+        abort.set()
+        if proc is not None:
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+                proc.wait(timeout=6)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                pass
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.wait()
+        # The native bridge journals the exact request ID before submitting it.
+        db_path = native / "state/aisle/fleet.sqlite"
+        if db_path.exists():
+            with sqlite3.connect(str(db_path)) as db:
+                claims = db.execute(
+                    "SELECT id,node FROM jobs WHERE mode='stream'"
+                ).fetchall()
+            for ident, alias in claims:
+                try:
+                    send(nodes[alias], dict(op="cancel", id=ident))
+                except Exception as error:
+                    times.setdefault("foreground_cleanup", []).append(
+                        [ident, str(error)]
+                    )
+        raise
     finally:
-        times["end_ns"] = clock()
-        write(a.out / "timing.json", times)
+        abort.set()
         stop.set()
+        pool.shutdown(wait=True, cancel_futures=True)
         for thread in threads:
             thread.join()
+        times["end_ns"] = clock()
+        write(a.out / "timing.json", times)
 
 
 if __name__ == "__main__":
+
+    def interrupt(_signal, _frame):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, interrupt)
     main()

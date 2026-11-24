@@ -2,13 +2,71 @@
 
 import argparse
 import hashlib
+import io
+import math
+import subprocess
+import tempfile
 import json
 from pathlib import Path
 from statistics import median
 from zipfile import ZipFile
 
 
-def cohort(archive, name):
+def check_dataset(read, base, features, fps, frames):
+    import pyarrow.parquet as pq
+
+    data = pq.read_table(
+        io.BytesIO(read(base + "data/chunk-000/episode_000000.parquet"))
+    )
+    assert data.num_rows == frames
+    assert data["frame_index"].to_pylist() == list(range(frames))
+    assert set(data["episode_index"].to_pylist()) == {0}
+    times = data["timestamp"].to_pylist()
+    assert all(abs(t - i / fps) < 1e-5 for i, t in enumerate(times))
+    for field in ("observation.state", "action"):
+        (width,) = features[field]["shape"]
+        assert width == 17 and len(features[field]["names"]) == width
+        assert all(
+            len(row) == width and all(math.isfinite(v) for v in row)
+            for row in data[field].to_pylist()
+        )
+    for camera in ("head", "left_wrist", "right_wrist"):
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as video:
+            video.write(
+                read(
+                    base
+                    + f"videos/chunk-000/observation.images.{camera}/episode_000000.mp4"
+                )
+            )
+            video.flush()
+            proc = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_frames",
+                    "-show_entries",
+                    "frame=width,height,best_effort_timestamp_time",
+                    "-of",
+                    "json",
+                    video.name,
+                ],
+                check=True,
+                capture_output=True,
+            )
+            assert not proc.stderr, proc.stderr
+            decoded = json.loads(proc.stdout)["frames"]
+            assert len(decoded) == frames
+            assert all(
+                (f["width"], f["height"]) == (480, 360)
+                and abs(float(f["best_effort_timestamp_time"]) - t) < 1e-5
+                for f, t in zip(decoded, times)
+            )
+
+
+def cohort(archive, name, datasets=False):
     def read(file):
         return archive.read(name + "/" + file)
 
@@ -66,6 +124,14 @@ def cohort(archive, name):
             assert list(images) == list(range(100, row["ticks"] + 1, 100))
             assert all(e["width"] == 480 and e["height"] == 360 for e in exposures)
             assert all(images[tick] == digest for tick, _, digest in samples)
+            last = read(base + "preview.rgb")
+            last_tick = int.from_bytes(last[:4], "big")
+            assert len(last) == 4 + 480 * 360 * 3 and samples[-1][0] == last_tick
+            assert (
+                hashlib.sha256(last[4:]).hexdigest()
+                == images[last_tick]
+                == samples[-1][2]
+            )
             steps = delivery["steps"]
             assert all(a[0] < b[0] and a[1] < b[1] for a, b in zip(steps, steps[1:]))
             assert all(
@@ -94,7 +160,10 @@ def cohort(archive, name):
             ):
                 assert proof["result"][field] == verdict[field]
             assert proof["result"]["cubes"]["red"]["passed"] == row["placed_red"]
-            assert "recovered" in load(base + "recovery.json")[-1]["check"].lower()
+            assert (
+                load(base + "recovery.json")[-1]["check"]
+                == "Imported worker trial and export recovered"
+            )
             info = load(base + "dataset/meta/info.json")
             assert (
                 info["total_frames"] == verdict["frames"]
@@ -104,7 +173,39 @@ def cohort(archive, name):
                 dataset_frames=info["total_frames"],
                 recorded_cameras=[k for k in info["features"] if "images." in k],
             )
-            assert len(row["recorded_cameras"]) == 3
+            cameras = {"head", "left_wrist", "right_wrist"}
+            assert set(row["recorded_cameras"]) == {
+                "observation.images." + cam for cam in cameras
+            }
+            metadata = load(base + "dataset/meta/aisle.json")
+            assert (
+                metadata["controller_hash"] == hashed
+                and metadata["model_hash"] == verdict["model_hash"]
+            )
+            assert (
+                set(metadata["onboard_cameras"])
+                == set(metadata["calibration"])
+                == cameras
+            )
+            for calibration in metadata["calibration"].values():
+                assert calibration["parent_link"] and calibration["resolution"] == [
+                    480,
+                    360,
+                ]
+                for key, size in (("intrinsics", 3), ("link_from_camera_gl", 4)):
+                    matrix = calibration[key]
+                    assert len(matrix) == size and all(
+                        len(r) == size and all(math.isfinite(v) for v in r)
+                        for r in matrix
+                    )
+            if datasets:
+                check_dataset(
+                    read,
+                    base + "dataset/",
+                    info["features"],
+                    info["fps"],
+                    info["total_frames"],
+                )
         rows.append(row)
 
     begin = max(v[0] for v in active)
@@ -176,10 +277,15 @@ def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("archive", type=Path)
     cli.add_argument("--output", type=Path)
+    cli.add_argument(
+        "--datasets",
+        action="store_true",
+        help="Decode all six videos and verify frame time alignment with the Parquet using FFprobe and PyArrow",
+    )
     args = cli.parse_args()
     with ZipFile(args.archive) as archive:
         names = sorted({p.split("/")[0] for p in archive.namelist()})
-        results = {name: cohort(archive, name) for name in names}
+        results = {name: cohort(archive, name, args.datasets) for name in names}
     raw = json.dumps(results, indent=2) + "\n"
     if args.output:
         args.output.write_text(raw)

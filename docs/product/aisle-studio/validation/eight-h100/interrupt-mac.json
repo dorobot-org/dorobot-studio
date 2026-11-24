@@ -1,0 +1,42 @@
+[
+  {
+    "worker": "gpu0",
+    "id": "06406c5b-75e6-47eb-8fd9-4af77950eb2e",
+    "state": "cancelled"
+  },
+  {
+    "worker": "gpu1",
+    "id": "aab43204-ded8-42e3-b931-fa45765b24d9",
+    "state": "cancelled"
+  },
+  {
+    "worker": "gpu2",
+    "id": "d9191cc2-da3a-4775-857d-27bc8a9fec08",
+    "state": "cancelled"
+  },
+  {
+    "worker": "gpu3",
+    "id": "ea188f6b-a51a-4e93-a3f1-5c3747cde195",
+    "state": "cancelled"
+  },
+  {
+    "worker": "gpu4",
+    "id": "6d3abda6-b26d-48a1-9433-a8fd1b12cd03",
+    "state": "cancelled"
+  },
+  {
+    "worker": "gpu5",
+    "id": "a1a651ac-1548-457c-957e-f2bff1930ecf",
+    "state": "cancelled"
+  },
+  {
+    "worker": "gpu6",
+    "id": "27a37ee7-e13e-4909-8329-57f26877aa3c",
+    "state": "cancelled"
+  },
+  {
+    "worker": "gpu7",
+    "id": "17b914af-8733-4700-b31e-f54d891bfe36",
+    "state": "cancelled"
+  }
+]
