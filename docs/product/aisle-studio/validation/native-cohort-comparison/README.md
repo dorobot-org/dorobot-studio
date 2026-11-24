@@ -18,7 +18,7 @@ Seven native Makepad journeys opened comparisons and restored them after a proce
 
 ## Reproduce a comparison
 
-Run these commands from the Studio checkout with the [AISLE Python environment and instrumented Makepad build](../../README.md). The original measurements were collected in Nexus. Opening a comparison uses CPU replay of the recorded trials.
+Run these commands from the Studio checkout with the [AISLE Python environment and instrumented Makepad build](../../README.md). The original measurements were collected in Nexus. Opening a comparison uses CPU replay of the recorded trials. Linux and macOS differed by 3.2 × 10⁻¹⁴ mm on the same G1 wrist trace. The verifier allows floating-point roundoff in the reported wrist error and positive work. It still recomputes each verdict from the original trace and requires exact agreement on the verdict, contacts, guards and cohort totals.
 
 ~~~sh
 v=docs/product/aisle-studio/validation

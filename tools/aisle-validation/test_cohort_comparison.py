@@ -99,3 +99,34 @@ class CohortComparison(unittest.TestCase):
                     for r in result["changes"]
                 )
             )
+
+    def test_g1_cross_platform_roundoff_preserves_verdict(self):
+        from g1_reach_suite import verify
+
+        root = GUIDE.parent / "g1-upright-trunk"
+        expected = worker.digest(root / "matched-suite.json")
+        with TemporaryDirectory() as tmp, ZipFile(root / "matched.zip") as source:
+            for i, (field, changed, accepted) in enumerate(
+                (
+                    ("wrist_error_mm", 1.7559951137386531, True),
+                    ("wrist_error_mm", 1.755995, False),
+                    ("positive_work_j", 0.123456, False),
+                    ("passed", False, False),
+                )
+            ):
+                path = Path(tmp) / f"case-{i}.zip"
+                with ZipFile(path, "w") as dest:
+                    for entry in source.infolist():
+                        content = source.read(entry)
+                        if entry.filename == "report.json":
+                            r = json.loads(content)
+                            if not accepted:
+                                self.assertNotEqual(r["rows"][0][field], changed)
+                            r["rows"][0][field] = changed
+                            content = json.dumps(r).encode()
+                        dest.writestr(entry.filename, content, compress_type=entry.compress_type)
+                if accepted:
+                    self.assertEqual(verify(path, expected)["successes"], 17)
+                else:
+                    with self.assertRaisesRegex(ValueError, field):
+                        verify(path, expected)

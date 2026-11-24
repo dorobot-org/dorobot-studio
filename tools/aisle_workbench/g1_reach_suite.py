@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 from itertools import product
 import json
+import math
 from pathlib import Path
 import secrets
 import subprocess
@@ -519,14 +520,29 @@ def verify(archive, expected, *, include_rows=False):
         reported = read(directory / "report.json")
         openings = [{k: r[k] for k in ("salt", "recipe")} for r in reported["rows"]]
         actual = summarize(directory, expected, openings)
+        # Recomputing norms and sums from the same traces can differ by floating-point
+        # roundoff between macOS/ARM and Linux/x86. The recorded verdict and all
+        # discrete measures must still agree with the independent physics checks.
+        for computed, stored in zip(actual["rows"], reported["rows"], strict=True):
+            for field, atol in (("wrist_error_mm", 1e-10), ("positive_work_j", 1e-12)):
+                value, recorded = computed.get(field), stored.get(field)
+                if (
+                    isinstance(value, float)
+                    and type(recorded) in (int, float)
+                    and math.isfinite(recorded)
+                    and math.isclose(value, recorded, rel_tol=1e-14, abs_tol=atol)
+                ):
+                    stored[field] = value
+            if stored != computed:
+                field = next(
+                    (k for k in computed if k not in stored or stored[k] != computed[k]),
+                    "unexpected report field",
+                )
+                raise ValueError(
+                    f"G1 case {computed['index']} differs in {field}: "
+                    f"recorded {stored.get(field)!r}, recomputed {computed.get(field)!r}"
+                )
         if reported != actual:
-            for computed, stored in zip(actual["rows"], reported["rows"]):
-                for field, value in computed.items():
-                    if stored.get(field) != value:
-                        raise ValueError(
-                            f"G1 case {computed['index']} differs in {field}: "
-                            f"recorded {stored.get(field)!r}, recomputed {value!r}"
-                        )
             raise ValueError("Recomputed G1 cohort totals or report fields differ")
     rows = actual.pop("rows")
     return dict(
