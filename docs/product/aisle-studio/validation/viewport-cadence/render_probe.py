@@ -17,19 +17,20 @@ def run(args):
     sys.path.insert(0, str(args.repo / "tools/aisle-validation"))
     import run_rgb_transfer as transfer
 
+    if args.setting in ("2048", "1024"):
+        from aisle.sim.nexus_backend import _ensure_nexus
+        _ensure_nexus().viewer.set_sensor_shadow_resolution(int(args.setting), 4)
     sim = transfer.LivingSimulation(
         transfer.MODEL,
         specs=transfer.scene_recipe(0),
         resolution=(480, 360),
         posture=transfer.POSTURE,
+        visual_profile=args.visual_profile,
     )
-    assert sim.engine.backend_name == "webgpu"
     v = sim.engine.viewer
     if args.setting == "floor":
         floor = next(b for b, s in zip(sim.bodies, sim.specs) if s["name"] == "floor")
         v.set_body_casts_shadows(0, floor.handles[0], False)
-    if args.setting in ("2048", "1024"):
-        v.set_sensor_shadow_resolution(int(args.setting), 4)
     dof = sim.robot.get_joint("left_j6_gripper").dofs_idx_local
     sim.robot.set_dofs_kp([5.0], dof)
     sim.robot.set_dofs_kv([0.25], dof)
@@ -78,6 +79,8 @@ def run(args):
     np.savez_compressed(args.out / "rgb.npz", **snapshots)
     np.save(args.out / "encoder.npy", np.stack(state))
     data = dict(
+        backend=sim.engine.backend_name,
+        visual_profile=args.visual_profile,
         setting=args.setting,
         nexus=version("dimforge-nexus3d"),
         motor_sha256=hashlib.sha256(args.journal.read_bytes()).hexdigest(),
@@ -103,4 +106,5 @@ if __name__ == "__main__":
     p.add_argument(
         "setting", choices=("reference", "floor", "2048", "1024", "camera-first")
     )
+    p.add_argument("--visual-profile", choices=("original", "compact-v1"), default="original")
     run(p.parse_args())

@@ -237,6 +237,7 @@ def main():
         choices=(0.5, 1, 2, 5),
         default=1,
     )
+    cli.add_argument("--compact-foreground", action="store_true", help="Select compact camera rendering for the foreground Nano transfer")
     a = cli.parse_args()
     if a.background_period_s == 0.5 and a.background_clock != "wall":
         cli.error("A half-second period requires --background-clock wall")
@@ -305,6 +306,8 @@ def main():
         "--out",
         str(native),
     ]
+    if a.compact_foreground:
+        command.append("--compact-visuals")
     times = dict(start_ns=clock())
     abort = threading.Event()
     pool = ThreadPoolExecutor(max_workers=7)

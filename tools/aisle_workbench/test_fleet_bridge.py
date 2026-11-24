@@ -11,6 +11,7 @@ import sys
 import sqlite3
 import subprocess
 import unittest
+import zlib
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -140,6 +141,26 @@ class WorkspaceAdmissionTests(unittest.TestCase):
             verify_wrist_fixture(self.root, request, "completed")
         out.write_text('{"wrist_timing":{"fixture":"normal"},"wrist_clearance":true}')
         verify_wrist_fixture(self.root, request, "completed")
+
+    def test_lossless_foreground_plane_has_a_bounded_exact_size(self):
+        raw = (123).to_bytes(4, "big") + bytes(480 * 360 * 3)
+        packed = zlib.compress(raw, level=1)
+        for data, size, valid in (
+            (packed, len(raw), True),
+            (packed[:-1], len(raw), False),
+            (packed + b"x", len(raw), False),
+            (packed, 4 + 480 * 320 * 3, False),
+            (packed, len(raw) + 1, False),
+        ):
+            header = dict(bytes=len(data), encoding="zlib", raw_bytes=size)
+            with tempfile.TemporaryFile() as incoming:
+                incoming.write(json.dumps(header).encode() + b"\n" + data)
+                incoming.seek(0)
+                if valid:
+                    self.assertEqual(list(foreground_packets(incoming)), [(header, raw)])
+                else:
+                    with self.assertRaises(ValueError):
+                        list(foreground_packets(incoming))
 
     def test_stalled_partial_rgb_plane_times_out(self):
         reader, writer = os.pipe()

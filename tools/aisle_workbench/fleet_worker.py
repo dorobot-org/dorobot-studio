@@ -19,6 +19,7 @@ import time
 from uuid import UUID
 import zlib
 
+from visual_profile import BUNDLE_SHA256, COMPACT, available, validate_profile
 from worker import describe, digest, validate
 
 HERE = Path(__file__).resolve().parent
@@ -160,6 +161,7 @@ def payload(request):
         raise ValueError(
             f"Choose a background observation period from {allowed} seconds for the selected clock"
         )
+    validate_profile(request.get("visual_profile", "original"), plan)
     control = validate(plan, profile)
     if request.get("rgb_timing", "normal") not in (
         "normal",
@@ -212,7 +214,11 @@ def submit(root, request):
     config = {
         k: request[k] for k in ("controller_sha256", "robot", "mode", "seed", "fixture")
     }
-    for key, default in (("rgb_timing", "normal"), ("target_motion", "stationary")):
+    for key, default in (
+        ("rgb_timing", "normal"),
+        ("target_motion", "stationary"),
+        ("visual_profile", "original"),
+    ):
         if request.get(key, default) != default:
             config[key] = request[key]
     if request.get("observation_clock", "simulation") == "wall":
@@ -348,7 +354,7 @@ def supervise(root, ident, token):
             "--out",
             str(trial),
         ]
-        for key in ("rgb_timing", "target_motion"):
+        for key in ("rgb_timing", "target_motion", "visual_profile"):
             if key in config:
                 args.extend(("--" + key.replace("_", "-"), config[key]))
         if config.get("room_sha256"):
@@ -442,9 +448,11 @@ def dispatch(root, request):
         return dict(
             protocol=1,
             foreground_rgb_protocol=1,
+            foreground_rgb_encodings=["raw", "zlib"],
             background_rgb_periods_s=[1, 2, 5],
             background_rgb_clocks=["simulation", "wall"],
             transfer_wrist_timing=["normal", "intermittent", "disconnected"],
+            nano_visual_bundles={COMPACT: BUNDLE_SHA256} if available() else {},
             experimental_wrist_clearance=True,
             background_wall_rgb_periods_s=[0.5, 1, 2, 5],
             host=platform.node(),
@@ -514,7 +522,7 @@ def dispatch(root, request):
     return status(root, ident)
 
 
-def stream_rgb(root, ident, output):
+def stream_rgb(root, ident, output, *, encoding="raw"):
     """Write a bounded JSON header and optional tick-prefixed RGB plane per update."""
     ident = job_id(ident)
     path = root / ident / "trial/preview.rgb"
@@ -544,6 +552,11 @@ def stream_rgb(root, ident, output):
             pass
         if info or frame:
             packet = dict(bytes=len(frame))
+            if frame and encoding == "zlib":
+                compressed = zlib.compress(frame, level=1)
+                if len(compressed) < len(frame):
+                    packet.update(encoding="zlib", raw_bytes=len(frame), bytes=len(compressed))
+                    frame = compressed
             if info:
                 packet["job"] = info
             output.write(json.dumps(packet, allow_nan=False).encode() + b"\n")
@@ -562,7 +575,9 @@ def main():
     init = cmd.add_parser("init")
     init.add_argument("--slots", type=int, required=True)
     cmd.add_parser("rpc")
-    cmd.add_parser("watch-rgb").add_argument("id")
+    watch = cmd.add_parser("watch-rgb")
+    watch.add_argument("id")
+    watch.add_argument("--encoding", choices=("raw", "zlib"), default="raw")
     supervise_cmd = cmd.add_parser("_supervise")
     supervise_cmd.add_argument("id")
     supervise_cmd.add_argument("token")
@@ -572,7 +587,7 @@ def main():
         initialize(root, args.slots)
     elif args.command == "watch-rgb":
         try:
-            stream_rgb(root, args.id, sys.stdout.buffer)
+            stream_rgb(root, args.id, sys.stdout.buffer, encoding=args.encoding)
         except BrokenPipeError:
             return
     elif args.command == "rpc":

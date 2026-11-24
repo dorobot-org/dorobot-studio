@@ -156,6 +156,10 @@ script_mod! {
                     impact := mod.widgets.ux.ToolButton{text:"Impact test"}
                 }
                 fixture := Body{}
+                camera_profile := View{width:Fill height:Fit flow:Down spacing:6.0
+                    Section{text:"Onboard camera rendering"}
+                    Bar{original_visuals := mod.widgets.ux.ToolButton{text:"Original"} compact_visuals := mod.widgets.ux.ToolButton{text:"Compact"}}
+                }
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0
                     Bar{spacing:4.0 seed_title := Section{} layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
                     Bar{seed_input := TextInput{width:Fill height:32 empty_text:"Enter a layout seed"} apply_seed := mod.widgets.ux.ToolButton{text:"Set seed"}}
@@ -599,7 +603,9 @@ impl PluginPanel for Panel {
                 } else {
                     w.robot.name()
                 },
-                if mobile {
+                if transfer && self.page == "aisle_evidence" && w.evidence["visual_profile"] == "compact-v1" {
+                    "Living room · compact onboard cameras"
+                } else if mobile {
                     "Living room · grounded Nano"
                 } else if standing {
                     "G1 · floating-base standing test"
@@ -922,6 +928,9 @@ impl PluginPanel for Panel {
                         "Fixed base · zero gravity"
                     },
                 );
+                self.root.widget(cx, ids!(camera_profile)).set_visible(cx, transfer);
+                self.root.button(cx, ids!(original_visuals)).set_enabled(cx, !w.busy() && w.compact_visuals);
+                self.root.button(cx, ids!(compact_visuals)).set_enabled(cx, !w.busy() && !w.compact_visuals && w.plan["scene_observation"].is_null());
                 self.root
                     .widget(cx, ids!(layouts))
                     .set_visible(cx, mobile || (w.robot == Robot::Nano && w.onboard_context));
@@ -1871,6 +1880,8 @@ impl PluginPanel for Panel {
                 ids!(slide_neg),
                 Action::TargetMotion(TargetMotion::NegativeY),
             ),
+            (ids!(original_visuals), Action::CompactVisuals(false)),
+            (ids!(compact_visuals), Action::CompactVisuals(true)),
             (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
             (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
             (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),
