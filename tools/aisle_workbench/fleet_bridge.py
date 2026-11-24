@@ -123,12 +123,34 @@ def submit(root, registry, alias, request):
     return info
 
 
+def verify_wrist_fixture(folder, request, state):
+    fixture = request.get("rgb_timing", "normal")
+    if state != "completed" or fixture == "normal":
+        return
+    plan = json.loads(base64.b64decode(request["controller"], validate=True))
+    if plan.get("kind") != "table-transfer":
+        return
+    for name, field in [
+        ("source.json", "wrist_rgb_timing"),
+        ("result.json", "wrist_timing"),
+    ]:
+        path = folder / name
+        value = json.loads(path.read_bytes()).get(field) if path.is_file() else None
+        actual = value.get("fixture") if isinstance(value, dict) else value
+        if actual != fixture:
+            raise ValueError(
+                f"Worker {name} does not confirm the requested {fixture} wrist delivery"
+            )
+
+
 def import_trial(root, node, row, status):
+    request = json.loads(row["request"])
     dest = root / row["trial"]
     if dest.is_dir():
         receipt = json.loads((dest / "worker-origin.json").read_bytes())
         if receipt["job"] != row["id"]:
             raise ValueError("Trial directory belongs to another worker job")
+        verify_wrist_fixture(dest, request, receipt["state"])
         return dest
     with tempfile.TemporaryDirectory(dir=root) as tmp:
         folder = Path(tmp) / "trial"
@@ -161,9 +183,7 @@ def import_trial(root, node, row, status):
         controller = folder / "controller.json"
         if not controller.is_file() and status["state"] in ("cancelled", "failed"):
             controller.write_bytes(
-                base64.b64decode(
-                    json.loads(row["request"])["controller"], validate=True
-                )
+                base64.b64decode(request["controller"], validate=True)
             )
         plan = json.loads(controller.read_bytes())
 
@@ -183,6 +203,7 @@ def import_trial(root, node, row, status):
                     or "Worker failed before producing a verdict"
                 ),
             )
+        verify_wrist_fixture(folder, request, status["state"])
         save(
             folder / "worker-origin.json",
             dict(
