@@ -355,6 +355,10 @@ fn compare_transfer(
             continue;
         };
         if source["room_revision_sha256"] != old["room_revision_sha256"]
+            || source["wrist_rgb_timing"].as_str().unwrap_or("normal")
+                != old["wrist_rgb_timing"].as_str().unwrap_or("normal")
+            || source["support_code_hashes"]["nano_wrist_timing.py"]
+                != old["support_code_hashes"]["nano_wrist_timing.py"]
             || source["grasp_motion"] != old["grasp_motion"]
             || (source["grasp_motion"].is_string()
                 && (!source["support_code_hashes"]["nano_moving_grasp.py"].is_string()
@@ -1062,10 +1066,8 @@ impl Workbench {
             cmd.arg("--live-preview");
         }
         if op == "run" || submitting {
-            if self.plan["kind"] == "visual-approach" {
-                cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
-            }
             if mobile {
+                cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
                 cmd.arg("--target-motion").arg(self.target_motion.name());
             }
             cmd.arg("--seed").arg(self.layout_seed.to_string());

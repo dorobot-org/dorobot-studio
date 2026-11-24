@@ -101,6 +101,11 @@ def main():
         help="Compare still and sliding Nano targets in native Studio",
     )
     scenario.add_argument(
+        "--wrist-faults",
+        action="store_true",
+        help="Interrupt the left wrist camera during a Nano grasp and verify the motor hold",
+    )
+    scenario.add_argument(
         "--camera-faults",
         action="store_true",
         help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
@@ -239,6 +244,7 @@ def main():
     if (
         args.standing
         or args.transfer
+        or args.wrist_faults
         or args.camera_faults
         or args.moving_target
         or args.observed_author
@@ -430,6 +436,8 @@ def main():
                     check.append("--observed-author")
                 if args.moving_target:
                     check.append("--moving-target")
+                if args.wrist_faults:
+                    check.append("--wrist-faults")
                 if args.camera_faults:
                     check.append("--camera-faults")
                 if args.handoff:

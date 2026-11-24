@@ -251,8 +251,10 @@ def execute(
     observation_period_s=1,
     observation_clock="simulation",
     target_motion="stationary",
+    rgb_timing="normal",
 ):
     from nano_grasp_estimator import parameters
+    from nano_wrist_timing import WristTiming
 
     controller = out / "controller.json"
     plan = json.loads(controller.read_bytes()) if controller.is_file() else {}
@@ -335,6 +337,7 @@ def execute(
             **(
                 {"grasp_motion": target_motion} if target_motion != "stationary" else {}
             ),
+            wrist_rgb_timing=rgb_timing,
             seed=seed,
             model_sha256=worker.digest(MODEL),
             policy_sha256=worker.digest(policy),
@@ -342,6 +345,7 @@ def execute(
                 f.name: worker.digest(f)
                 for f in (
                     HERE / "nano_grasp_estimator.py",
+                    HERE / "nano_wrist_timing.py",
                     *(
                         (HERE / "nano_moving_grasp.py",)
                         if target_motion != "stationary"
@@ -465,6 +469,25 @@ def execute(
                 ),
             )
 
+    wrist = WristTiming(rgb_timing, out, record)
+
+    def check_wrist(for_policy=False):
+        if judge.phase != "pick":
+            return
+        if sim.tick >= wrist.next_tick or (
+            for_policy and wrist.last_accepted_ns != sim.tick * 10_000_000
+        ):
+
+            def read_rgb():
+                return sim.rig["left_wrist"].render(
+                    rgb=True, depth=False, segmentation=False
+                )[0]
+
+            while not wrist.accept(sim.tick, read_rgb, synchronized=for_policy):
+                # Physics and recording advance with the last complete motor target.
+                for _ in range(wrist.interval_ticks):
+                    step()
+
     def move(command):
         if command["op"] == "wheel":
             speed, turn = command["speed"], command["turn"]
@@ -475,6 +498,7 @@ def execute(
                 raise ValueError("wheel command outside the Nano envelope")
             rates = guard.accept(wheel_rates(speed, 0, turn), guard.next_seq)
             for _ in range(20):
+                check_wrist()
                 sim.targets[sim.wheel_indices] += rates * 0.01
                 step()
         else:
@@ -507,10 +531,12 @@ def execute(
                 ),
             )
             for i in range(count):
+                check_wrist()
                 f = (i + 1) / count
                 sim.targets[indices] = start + f * f * (3 - 2 * f) * delta
                 step()
             for _ in range(20):
+                check_wrist()
                 step()
 
     phases = []
@@ -544,12 +570,16 @@ def execute(
                         json.dumps(dict(tick=sim.tick, **command)), file=log, flush=True
                     )
                     if op == "sense":
+                        check_wrist(for_policy=True)
                         frame_count += 1
                         packet = dict(
                             encoders=np.asarray(sim.robot.get_qpos())[sim.dofs],
                             stamp_ns=np.int64(sim.tick * 10_000_000),
                         )
                         for n in CAMERAS:
+                            if judge.phase == "pick" and n == "left_wrist":
+                                packet[n] = wrist.accepted_rgb
+                                continue
                             packet[n] = sim.rig[n].render(
                                 rgb=True, depth=False, segmentation=False
                             )[0]
@@ -690,7 +720,7 @@ def execute(
                 samples=samples,
             ),
         )
-    if error and (out / "policy.log").stat().st_size:
+    if error and not wrist.timed_out and (out / "policy.log").stat().st_size:
         error = (out / "policy.log").read_text().strip().splitlines()[-1][-350:]
     failed_observation = None
     if (
@@ -744,6 +774,7 @@ def execute(
         requested=colors,
         phase=judge.phase,
         onboard_observations=frame_count,
+        wrist_timing=wrist.result(),
         measured_room_bodies=sim.room_readback(),
         actuator_audit=audit,
         rejected_motor_writes=motors.rejected,

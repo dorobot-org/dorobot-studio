@@ -875,6 +875,7 @@ def simulate(args, meta):
                 record=not getattr(args, "observations_only", False),
                 live_preview=getattr(args, "live_preview", False),
                 observation_progress=getattr(args, "observations_only", False),
+                rgb_timing=getattr(args, "rgb_timing", "normal"),
                 target_motion=getattr(args, "target_motion", "stationary"),
                 observation_period_s=getattr(args, "observation_period_s", 1),
                 observation_clock=getattr(args, "observation_clock", "simulation"),
