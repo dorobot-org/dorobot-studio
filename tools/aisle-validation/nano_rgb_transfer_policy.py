@@ -159,8 +159,8 @@ class Controller:
             raise ValueError("Lost the pickup point after braking")
         return np.array(xy)
 
-    def reach(self, target, steps, subdivisions, vertical=False, supported=False):
-        q = self.targets.copy()
+    def plan_reach(self, q, target, subdivisions, vertical=False, supported=False):
+        q = q.copy()
         start, _ = self.model.grip(q)
         waypoints = []
         for p in np.linspace(start, target, subdivisions + 1)[1:]:
@@ -171,8 +171,27 @@ class Controller:
             else:
                 q = self.model.solve_nearby(p, q)
             waypoints.append({j: float(q[self.names.index(j)]) for j in self.model.arm})
+        return waypoints, q
+
+    def follow(self, waypoints, steps):
         for command in waypoints:
-            self.joints(command, steps // subdivisions)
+            self.joints(command, steps // len(waypoints))
+
+    def reach(self, target, steps, subdivisions, vertical=False, supported=False):
+        waypoints, _ = self.plan_reach(
+            self.targets, target, subdivisions, vertical, supported
+        )
+        self.follow(waypoints, steps)
+
+    def release_paths(self, place, height):
+        inbound, q = self.plan_reach(
+            self.targets, np.r_[place, height + 0.078], 12, supported=True
+        )
+        q[self.names.index(self.grip)] = -0.25
+        outbound, _ = self.plan_reach(
+            q, np.r_[place - [0.07, 0], height + 0.10], 9, supported=True
+        )
+        return inbound, outbound
 
     def pick(self, xy):
         self.reach(np.r_[xy, 0.115], 250, 1, True)
@@ -361,11 +380,11 @@ class Controller:
                 place = (edge["distance"] + inset) * edge["normal"] + along * t
                 if any(np.linalg.norm(place - p) < 0.078 for p in occupied):
                     continue
-                # reach preflights every waypoint before sending the first target.
                 try:
-                    self.reach(np.r_[place, z + 0.078], 340, 12, supported=True)
+                    inbound, outbound = self.release_paths(place, z)
                 except UnreachableGrasp:
                     continue
+                self.follow(inbound, 340)
                 self.act(
                     "table observation",
                     release_xy_m=place.tolist(),
@@ -380,7 +399,7 @@ class Controller:
                 )
             self.phase("release", color)
             self.joints({self.grip: -0.25}, 180)
-            self.reach(np.r_[place - [0.07, 0], z + 0.10], 240, 9, supported=True)
+            self.follow(outbound, 240)
             for _ in range(10):
                 self.drive()
             exposure = self.sense()

@@ -16,7 +16,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import numpy as np
 
 from g1_stand import impact_parameters, launch_position
-from worker import describe, digest, save, validate
+from worker import MODELS, ROOT, describe, digest, save, validate
 
 HERE = Path(__file__).resolve().parent
 FILES = (
@@ -30,7 +30,7 @@ FILES = (
     "reach-checkpoint.json",
     "training.json",
 )
-MODEL = Path(describe("G1")["model"])
+MODEL = ROOT / "data" / MODELS["G1"][0]
 
 
 def read(path):
