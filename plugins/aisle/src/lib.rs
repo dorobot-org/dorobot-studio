@@ -187,11 +187,12 @@ script_mod! {
             device_folder := mod.widgets.ux.ToolButton{text:"Open preflight folder"}
         }
         cohort := Card{width:Fill height:Fill
-            Section{text:"Evaluation or candidate archive"} archive_path := TextInput{width:Fill height:38 empty_text:"Path to the ZIP beside its preregistered suite.json"}
-            baseline_path := TextInput{width:Fill height:38 empty_text:"Baseline archive for comparison (optional)"}
+            Bar{Section{width:90 text:"Evaluation"} archive_path := TextInput{width:Fill height:36 empty_text:"Candidate ZIP beside its suite.json"}}
+            Bar{Section{width:90 text:"Baseline"} baseline_path := TextInput{width:Fill height:36 empty_text:"Optional ZIP to compare against the candidate"}}
             Bar{verify_archive := mod.widgets.ux.PrimaryButton{text:"Verify evaluation"} compare_archives := mod.widgets.ux.ToolButton{text:"Compare with baseline"}}
-            cohort_verdict := Title{} cohort_detail := Body{} failure_detail := Body{}
+            cohort_verdict := Title{} cohort_detail := Body{}
             failure_bar := Bar{earlier_failure := mod.widgets.ux.ToolButton{text:"Previous failure"} later_failure := mod.widgets.ux.ToolButton{text:"Next failure"}}
+            ScrollYView{width:Fill height:Fill flow:Down failure_detail := Body{max_lines:64}}
         }
         summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
