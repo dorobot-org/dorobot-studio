@@ -23,6 +23,22 @@ class InspectionTests(unittest.TestCase):
             "limits": {"shoulder": [-0.08, 0.14]},
         }
 
+    def test_wall_clock_skips_missed_exposures_and_keeps_original_deadlines(self):
+        schedule = worker.BackgroundCadence("wall", 1, 100)
+        seconds = [0, 0.2, 1.05, 3.7, 3.71, 4.01]
+        with patch(
+            "worker.time.monotonic_ns", side_effect=[int(s * 1e9) for s in seconds]
+        ):
+            self.assertEqual(
+                [schedule.due(tick) for tick in (1, 100, 101, 103, 200, 501)],
+                [True, False, True, True, False, True],
+            )
+        schedule = worker.BackgroundCadence("simulation", 2, 100)
+        self.assertEqual(
+            [schedule.due(tick) for tick in (1, 99, 100, 199, 200, 201, 400)],
+            [False, False, False, False, True, False, True],
+        )
+
     def test_joint_and_displacement_guard(self):
         for joint, delta in [
             ("other", 0.05),

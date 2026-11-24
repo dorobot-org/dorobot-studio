@@ -113,6 +113,7 @@ pub enum Action {
     Run,
     Workers(bool),
     CycleBackgroundPeriod,
+    ToggleObservationClock,
     ConnectWorker(String),
     Worker(WorkerAction),
     Stop,
@@ -125,6 +126,21 @@ pub enum Action {
     TrainReach,
     TrainGrasp,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObservationClock {
+    Simulation,
+    Wall,
+}
+
+impl ObservationClock {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Simulation => "simulation",
+            Self::Wall => "wall",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum WorkerAction {
     Connect,
@@ -518,6 +534,7 @@ pub struct Workbench {
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     pub background_period_s: u8,
+    pub observation_clock: ObservationClock,
     pub worker_sample: Option<PathBuf>,
     pub workers_open: bool,
     pub fleet: Value,
@@ -579,6 +596,7 @@ impl Workbench {
             dataset: None,
             exports: Default::default(),
             background_period_s: 1,
+            observation_clock: ObservationClock::Simulation,
             worker_sample: None,
             workers_open: false,
             fleet: read(&root, "worker-selection.json").unwrap_or_default(),
@@ -1003,7 +1021,8 @@ impl Workbench {
             cmd.args(["--fleet-action", action.name(), "--node", &self.worker_node]);
             if matches!(action, WorkerAction::Observations) {
                 cmd.arg("--observation-period-s")
-                    .arg(self.background_period_s.to_string());
+                    .arg(self.background_period_s.to_string())
+                    .args(["--observation-clock", self.observation_clock.name()]);
             }
             if self.fleet["node"].as_str() == Some(&self.worker_node) {
                 if let Some(id) = self.fleet["selected"]["id"].as_str() {
@@ -1260,6 +1279,13 @@ impl Workbench {
                 }
             }
             Action::Export => self.launch("export", Planner::Reference, None),
+            Action::ToggleObservationClock => {
+                self.observation_clock = match self.observation_clock {
+                    ObservationClock::Simulation => ObservationClock::Wall,
+                    ObservationClock::Wall => ObservationClock::Simulation,
+                };
+                Ok(())
+            }
             Action::CycleBackgroundPeriod => {
                 self.background_period_s = match self.background_period_s {
                     1 => 2,

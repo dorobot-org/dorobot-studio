@@ -34,6 +34,28 @@ def save(path, value):
     tmp.replace(path)
 
 
+class BackgroundCadence:
+    """Request at most one fresh physics exposure per deadline on the selected clock."""
+
+    def __init__(self, clock, period_s, ticks_per_second):
+        self.wall = clock == "wall"
+        self.period_ticks = period_s * ticks_per_second
+        self.period_ns = period_s * 1_000_000_000
+        self.next_ns = None
+
+    def due(self, tick, first=False):
+        if not self.wall:
+            return first or tick % self.period_ticks == 0
+        now = time.monotonic_ns()
+        if self.next_ns is None:
+            self.next_ns = now
+        if now < self.next_ns:
+            return False
+        # Skip missed deadlines when physics or rendering stalls.
+        self.next_ns += (1 + (now - self.next_ns) // self.period_ns) * self.period_ns
+        return True
+
+
 def publish_background_rgb(out, tick, rgb):
     """Keep the last operator-requestable exposure and its capture tick."""
     data = rgb.tobytes()
@@ -46,6 +68,7 @@ def publish_background_rgb(out, tick, rgb):
             json.dumps(
                 dict(
                     tick=tick,
+                    published_monotonic_ns=time.monotonic_ns(),
                     width=width,
                     height=height,
                     sha256=hashlib.sha256(data).hexdigest(),
@@ -514,9 +537,11 @@ def prepare(args, meta):
             schema["properties"].update(
                 kind=dict(
                     type="string",
-                    enum=["table-transfer"]
-                    if named
-                    else ["joint-inspection", "visual-approach", "table-transfer"],
+                    enum=(
+                        ["table-transfer"]
+                        if named
+                        else ["joint-inspection", "visual-approach", "table-transfer"]
+                    ),
                 ),
                 color=dict(type="string", enum=["red", "green", "blue"]),
                 color_order=dict(type="string", enum=[named] if named else CUBE_ORDERS),
@@ -749,6 +774,16 @@ def simulate(args, meta):
     save(
         args.out / "source.json",
         dict(
+            **(
+                {
+                    "observation_clock": getattr(
+                        args, "observation_clock", "simulation"
+                    ),
+                    "observation_period_s": getattr(args, "observation_period_s", 1),
+                }
+                if getattr(args, "observations_only", False)
+                else {}
+            ),
             adapter=nx.__name__,
             controller_sha256=hashlib.sha256(original).hexdigest(),
             aisle_revision=revision,
@@ -759,9 +794,7 @@ def simulate(args, meta):
                 else (
                     "standing-development"
                     if standing
-                    else "living-room"
-                    if mobile
-                    else args.fixture
+                    else "living-room" if mobile else args.fixture
                 )
             ),
             adapter_hash=digest(Path(nx.__file__)),
@@ -790,6 +823,7 @@ def simulate(args, meta):
             impact_aim=getattr(args, "impact_aim", DEFAULT_IMPACT_AIM),
             observations_only=getattr(args, "observations_only", False),
             observation_period_s=getattr(args, "observation_period_s", 1),
+            observation_clock=getattr(args, "observation_clock", "simulation"),
             parameters=json.loads(impact_recipe.read_text()) if impact_recipe else None,
         ) | dict(
             **(
@@ -835,6 +869,7 @@ def simulate(args, meta):
                 observation_progress=getattr(args, "observations_only", False),
                 target_motion=getattr(args, "target_motion", "stationary"),
                 observation_period_s=getattr(args, "observation_period_s", 1),
+                observation_clock=getattr(args, "observation_clock", "simulation"),
                 room_objects=room_objects,
                 room_settings=room_settings,
             )
@@ -856,6 +891,7 @@ def simulate(args, meta):
             plan,
             rgb_timing=getattr(args, "rgb_timing", "normal"),
             target_motion=getattr(args, "target_motion", "stationary"),
+            observation_clock=getattr(args, "observation_clock", "simulation"),
             observation_period_s=(
                 getattr(args, "observation_period_s", 1)
                 if getattr(args, "observations_only", False)
@@ -911,6 +947,11 @@ def simulate(args, meta):
     record = not getattr(args, "observations_only", False)
     if record:
         camera.mkdir()
+    cadence = BackgroundCadence(
+        getattr(args, "observation_clock", "simulation"),
+        getattr(args, "observation_period_s", 1),
+        100,
+    )
     in_bounds = True
     for index in range(121):
         target[dof] = initial[dof] + control["delta_rad"] * min(index / 60, 1)
@@ -920,7 +961,12 @@ def simulate(args, meta):
         if not np.isfinite(measured).all():
             raise ValueError("Nonfinite measured robot state")
         in_bounds = in_bounds and bool(lo <= measured[dof] <= hi)
+        emit_rgb = not record and cadence.due(index)
         if index % 5:
+            if emit_rgb:
+                publish_background_rgb(
+                    args.out, index, np.asarray(cam.render()[0], dtype=np.uint8)
+                )
             continue
         row = dict(
             step=index + 1,
@@ -932,7 +978,7 @@ def simulate(args, meta):
             recording.append(
                 dict(step=index + 1, state=measured.tolist(), action=target.tolist())
             )
-        elif index % (100 * getattr(args, "observation_period_s", 1)):
+        elif not emit_rgb:
             save(args.out / "progress.json", row)
             continue
         rgb = np.asarray(cam.render()[0], dtype=np.uint8)
@@ -1062,6 +1108,9 @@ def main():
     )
     p.add_argument("--node", default="local")
     p.add_argument("--job-id")
+    p.add_argument(
+        "--observation-clock", choices=("simulation", "wall"), default="simulation"
+    )
     p.add_argument("--observation-period-s", type=int, choices=(1, 2, 5), default=1)
     p.add_argument(
         "--live-preview",

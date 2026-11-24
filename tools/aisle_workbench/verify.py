@@ -22,6 +22,12 @@ def main():
     parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
     parser.add_argument("--dark", action="store_true")
     parser.add_argument(
+        "--background-clock",
+        choices=("simulation", "wall"),
+        default="simulation",
+        help="Clock for background observations in a fleet measurement",
+    )
+    parser.add_argument(
         "--compare-runs",
         nargs=2,
         type=Path,
@@ -163,6 +169,12 @@ def main():
         help="Run one previously authored Nano red-cube transfer on the selected worker",
     )
     args = parser.parse_args()
+    if args.background_clock == "wall" and (
+        not args.fleet or args.fleet_controller or args.resume_fleet
+    ):
+        parser.error(
+            "--background-clock wall requires a fresh fleet journey with observers"
+        )
     if args.fleet_controller and (
         not args.fleet_node or args.resume_fleet or args.foreground_cadence
     ):
@@ -379,7 +391,9 @@ def main():
                 if args.compare_runs:
                     check.append("--compare-runs")
                 if args.fleet:
-                    check.append("--fleet")
+                    check.extend(
+                        ["--fleet", "--background-clock", args.background_clock]
+                    )
                     if args.fleet_controller:
                         check.append("--fleet-controller")
                     if args.resume_fleet:
@@ -436,9 +450,7 @@ def main():
                 timeout = (
                     1800
                     if args.train_grasp
-                    else 900
-                    if args.transfer or args.fleet or prior_trial
-                    else 330
+                    else 900 if args.transfer or args.fleet or prior_trial else 330
                 )
                 try:
                     subprocess.run(check, check=True, timeout=timeout)

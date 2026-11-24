@@ -64,6 +64,35 @@ class WorkerLeaseTests(unittest.TestCase):
                 dispatch(self.root, req | {"id": str(uuid4())})["state"], "reserved"
             )
 
+    def test_lease_retry_preserves_legacy_clock_and_rejects_changed_clock(self):
+        from fleet_client import check_background_period
+
+        with patch(
+            "fleet_client.send", return_value={"background_rgb_periods_s": [1, 2, 5]}
+        ):
+            check_background_period({}, 1)
+            with self.assertRaisesRegex(ValueError, "wall-clock"):
+                check_background_period({}, 1, "wall")
+        request = self.request | {"mode": "observations"}
+        with patch("fleet_worker.subprocess.Popen"):
+            ident = dispatch(self.root, request)["id"]
+            self.assertEqual(
+                dispatch(self.root, request | {"observation_clock": "simulation"})[
+                    "id"
+                ],
+                ident,
+            )
+            with self.assertRaisesRegex(ValueError, "different request"):
+                dispatch(self.root, request | {"observation_clock": "wall"})
+        for bad in ("device", None, True):
+            with self.assertRaisesRegex(ValueError, "clock"):
+                dispatch(self.root, request | {"observation_clock": bad})
+        with self.assertRaisesRegex(ValueError, "background"):
+            dispatch(
+                self.root,
+                self.request | {"mode": "stream", "observation_clock": "wall"},
+            )
+
     def test_background_clock_and_stream_are_distinct(self):
         for invalid in (True, 0, 3, 10):
             with self.assertRaisesRegex(ValueError, "observation period"):

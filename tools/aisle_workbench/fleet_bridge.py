@@ -347,8 +347,11 @@ def operate(args):
         if args.room_hash and req["room_sha256"] != args.room_hash:
             raise ValueError("Selected room revision has changed")
         if op == "observations":
-            check_background_period(node, args.observation_period_s)
+            clock = getattr(args, "observation_clock", "simulation")
+            check_background_period(node, args.observation_period_s, clock)
             req["observation_period_s"] = args.observation_period_s
+            if clock == "wall":
+                req["observation_clock"] = clock
         req.update(rgb_timing=args.rgb_timing, target_motion=args.target_motion)
         ident = submit(root, registry, alias, req)["id"]
     with journal(root) as db:
@@ -377,9 +380,9 @@ def operate(args):
             trial = import_trial(root, node, row, info).name
         info.update(robot=row["robot"], mode=row["mode"])
         if row["mode"] == "observations":
-            info["observation_period_s"] = json.loads(row["request"]).get(
-                "observation_period_s", 1
-            )
+            request = json.loads(row["request"])
+            info["observation_period_s"] = request.get("observation_period_s", 1)
+            info["observation_clock"] = request.get("observation_clock", "simulation")
     capabilities = send(node, dict(op="hello"))
     return dict(
         node=alias,

@@ -149,7 +149,14 @@ def payload(request):
         or (period != 1 and request["mode"] != "observations")
     ):
         raise ValueError(
-            "Select a background RGB observation period of 1, 2 or 5 simulated seconds"
+            "Select a background RGB observation period of 1, 2 or 5 seconds"
+        )
+    clock = request.get("observation_clock", "simulation")
+    if clock not in ("simulation", "wall") or (
+        clock == "wall" and request["mode"] != "observations"
+    ):
+        raise ValueError(
+            "The wall clock is available only for background RGB observations"
         )
     control = validate(plan, profile)
     if request.get("rgb_timing", "normal") not in (
@@ -206,6 +213,8 @@ def submit(root, request):
     for key, default in (("rgb_timing", "normal"), ("target_motion", "stationary")):
         if request.get(key, default) != default:
             config[key] = request[key]
+    if request.get("observation_clock", "simulation") == "wall":
+        config["observation_clock"] = "wall"
     if request.get("observation_period_s", 1) != 1:
         config["observation_period_s"] = request["observation_period_s"]
     if hashes:
@@ -354,6 +363,8 @@ def supervise(root, ident, token):
             args.extend(
                 (
                     "--observations-only",
+                    "--observation-clock",
+                    config.get("observation_clock", "simulation"),
                     "--observation-period-s",
                     str(config.get("observation_period_s", 1)),
                 )
@@ -429,6 +440,7 @@ def dispatch(root, request):
             protocol=1,
             foreground_rgb_protocol=1,
             background_rgb_periods_s=[1, 2, 5],
+            background_rgb_clocks=["simulation", "wall"],
             host=platform.node(),
             system=platform.system(),
             slots=slots,
