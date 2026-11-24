@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 from uuid import UUID
+import zlib
 
 from worker import describe, digest, validate
 
@@ -480,18 +481,33 @@ def dispatch(root, request):
         if op == "observation" and row["stream"]:
             raise ValueError("Choose a background job to sample an observation")
         path = root / ident / "trial/preview.rgb"
+        extra = (
+            {"job": row}
+            if op == "observation" and request.get("include_job") is True
+            else {}
+        )
         if not path.is_file():
-            return dict(ready=False)
+            return dict(ready=False, **extra)
         raw = path.read_bytes()
         height = (len(raw) - 4) // (480 * 3)
         if height not in (320, 360) or len(raw) != 4 + 480 * height * 3:
             raise ValueError("Invalid live frame")
+        tick = int.from_bytes(raw[:4], "big")
+        if op == "observation" and request.get("after_tick") == tick:
+            return dict(ready=False, **extra)
+        pixels = raw[4:]
+        if op == "observation" and request.get("accept_encoding") == "zlib":
+            compressed = zlib.compress(pixels, level=1)
+            if len(compressed) < len(pixels):
+                pixels = compressed
+                extra["encoding"] = "zlib"
         return dict(
             width=480,
             height=height,
             ready=True,
-            tick=int.from_bytes(raw[:4], "big"),
-            data=base64.b64encode(raw[4:]).decode(),
+            tick=tick,
+            data=base64.b64encode(pixels).decode(),
+            **extra,
         )
     elif op != "status":
         raise ValueError("Unknown worker operation")
