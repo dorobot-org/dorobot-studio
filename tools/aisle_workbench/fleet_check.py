@@ -83,7 +83,10 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         assert len(row["fleet"]["jobs"]) == (1 if args.foreground_cadence else 2)
         page("evidence")
         row = done(
-            lambda w: (w["result"] or {}).get("task_success") and w["dataset"],
+            lambda w: (w["result"] or {}).get("controller_hash")
+            == proof["result"]["controller_hash"]
+            and w["result"]["task_success"] == proof["result"]["task_success"]
+            and w["dataset"],
             "Imported worker trial and export recovered",
         )
         click("aisle_evidence.replay")
