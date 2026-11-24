@@ -1127,7 +1127,7 @@ impl Workbench {
             cmd.arg("--provider").arg(planner.name());
         }
         if matches!(op, "room" | "room-draft") {
-            match self.room_request.as_ref() {
+            match self.room_request.take() {
                 Some(RoomRequest::Survey { source, edit }) => {
                     if !source.trim().is_empty() {
                         cmd.arg("--room-source").arg(source.trim());

@@ -1339,12 +1339,14 @@ def main():
             environment = {}
             if args.room_ambient is not None:
                 try:
-                    environment["ambient_rgb"] = [float(v) for v in args.room_ambient.split()]
+                    tokens = args.room_ambient.split()
+                    environment["ambient_rgb"] = [float(v) for v in tokens] if tokens else None
                 except ValueError as exc:
                     raise ValueError("Use three ambient intensities from zero to one") from exc
             if args.floor_friction is not None:
                 try:
-                    environment["floor_friction"] = float(args.floor_friction)
+                    value = args.floor_friction.strip()
+                    environment["floor_friction"] = float(value) if value else None
                 except ValueError as exc:
                     raise ValueError("Choose a floor friction coefficient from zero to two") from exc
             import_room(

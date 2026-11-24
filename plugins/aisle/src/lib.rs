@@ -140,9 +140,9 @@ script_mod! {
                 Section{text:"Edit obstacle · metres"} geometry := TextInput{width:Fill height:38 empty_text:"name x y height"}
                 save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
                 Section{text:"Ambient light · R G B (0–1)"}
-                room_ambient := TextInput{width:Fill height:34 empty_text:"Three channel intensities"}
+                room_ambient := TextInput{width:Fill height:34 empty_text:"Use scene default"}
                 Section{text:"Floor friction (0–2)"}
-                room_friction := TextInput{width:Fill height:34 empty_text:"Coefficient"}
+                room_friction := TextInput{width:Fill height:34 empty_text:"Use scene default"}
                 save_environment := mod.widgets.ux.ToolButton{text:"Save environment"}
                 default_room := mod.widgets.ux.ToolButton{text:"Use default room"}}
             }
@@ -887,12 +887,16 @@ impl PluginPanel for Panel {
                     }
                     if self.room_preview.as_ref() != preview {
                         let settings = &info["settings"];
-                        let ambient = settings["ambient_rgb"].as_array().map(|rgb| {
-                            rgb.iter().map(ToString::to_string).collect::<Vec<_>>().join(" ")
-                        }).unwrap_or_else(|| "0.6 0.6 0.6".to_owned());
-                        let friction = settings["floor_friction"].as_f64().unwrap_or(0.7);
+                        let ambient = settings["ambient_rgb"]
+                            .as_array()
+                            .map(|rgb| rgb.iter().map(ToString::to_string).collect::<Vec<_>>().join(" "))
+                            .unwrap_or_default();
+                        let friction = settings["floor_friction"]
+                            .as_f64()
+                            .map(|value| value.to_string())
+                            .unwrap_or_default();
                         self.root.text_input(cx, ids!(room_ambient)).set_text(cx, &ambient);
-                        self.root.text_input(cx, ids!(room_friction)).set_text(cx, &friction.to_string());
+                        self.root.text_input(cx, ids!(room_friction)).set_text(cx, &friction);
                         let player = self.root.video_player(cx, ids!(photo));
                         player.clear(cx);
                         if let Some(raw) = preview

@@ -19,6 +19,7 @@ def read_room(path):
 def measure(path, seed, out):
     repo = Path(__file__).resolve().parents[5]
     sys.path.insert(0, str(repo / "tools/aisle-validation"))
+    sys.path.insert(0, str(repo / "tools/aisle_workbench"))
     from run_rgb_transfer import LivingSimulation, MODEL, POSTURE, scene_recipe
     from room_revision import load_revision
 
@@ -61,16 +62,16 @@ def compare(paths, seed, out):
     for (earlier, sha), (later, _), setting in zip(
         rooms, rooms[1:], ("ambient_rgb", "floor_friction")
     ):
-        assert later["parent_sha256"] == sha
-        assert later["settings"][setting] != earlier["settings"][setting]
-        assert later["settings"] == {
-            **earlier["settings"],
-            setting: later["settings"][setting],
-        }
-        assert (
-            later["obstacles"] == earlier["obstacles"]
-            and later["reference_sha256"] == earlier["reference_sha256"]
-        )
+        if later["parent_sha256"] != sha:
+            raise ValueError("Rooms do not share the selected lineage")
+        if (
+            later["settings"][setting] == earlier["settings"][setting]
+            or later["settings"]
+            != {**earlier["settings"], setting: later["settings"][setting]}
+            or later["obstacles"] != earlier["obstacles"]
+            or later["reference_sha256"] != earlier["reference_sha256"]
+        ):
+            raise ValueError(f"Expected only {setting} to change")
 
     rows, images = [], []
     for path, name in zip(paths, ("baseline", "light", "floor"), strict=True):
@@ -104,9 +105,8 @@ def compare(paths, seed, out):
         ),
     )
     (out / "comparison.json").write_text(json.dumps(result, indent=2) + "\n")
-    assert (
-        rgb_mae > 1 and abs(light_slide_delta) < 0.1 and abs(floor_slide_delta) > 0.1
-    ), result
+    if rgb_mae <= 1 or abs(light_slide_delta) >= 0.1 or abs(floor_slide_delta) <= 0.1:
+        raise ValueError(f"No isolated visual or material response: {result}")
 
 
 if __name__ == "__main__":

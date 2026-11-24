@@ -110,7 +110,10 @@ def import_room(
     if environment is not None:
         if not parent:
             raise ValueError("Select a saved room before editing its environment")
-        sheet["environment"] = {**sheet.get("environment", {}), **environment}
+        if environment.keys() - {"ambient_rgb", "floor_friction"}:
+            raise ValueError("Unknown Nexus environment setting")
+        values = {**sheet.get("environment", {}), **environment}
+        sheet["environment"] = {k: v for k, v in values.items() if v is not None}
     settings = sensor_settings(sheet, source, model_sha)
     photo = (source.parent / sheet["image"]).read_bytes()
     im = Image.open(io.BytesIO(photo))
@@ -208,6 +211,11 @@ def import_room(
             or previous["reference_sha256"] != hashlib.sha256(photo).hexdigest()
         ):
             raise ValueError("The selected parent room changed")
+        if environment is not None and previous.get("model_sha256") not in (
+            None,
+            model_sha,
+        ):
+            raise ValueError("Selected room belongs to a different Nano model")
         specs = previous["obstacles"]
     if edit and edit.strip():
         tokens = edit.split()

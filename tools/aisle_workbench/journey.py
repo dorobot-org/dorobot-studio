@@ -77,6 +77,8 @@ def main():
     p.add_argument("--revise-pickup", action="store_true")
     p.add_argument("--compare-runs", action="store_true")
     a = p.parse_args()
+    if a.edit_environment and not a.survey:
+        p.error("--edit-environment requires --survey")
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
 

@@ -153,6 +153,21 @@ class RoomTests(unittest.TestCase):
             revision,
         )
 
+    def test_clearing_an_override_inherits_the_backend_default(self):
+        target = self.root / "inherited"
+        target.mkdir()
+        kwargs = dict(
+            parent=digest(self.saved / "room.json"),
+            environment={"ambient_rgb": None, "floor_friction": 0.9},
+        )
+        revision = import_room(self.saved / "survey.json", target, SCENE, **kwargs)
+        self.assertNotIn("ambient_rgb", revision["settings"])
+        archived = json.loads((target / "survey.json").read_bytes())
+        self.assertEqual(archived["environment"], {"floor_friction": 0.9})
+        self.assertEqual(
+            revision["settings"]["cameras"], self.revision["settings"]["cameras"]
+        )
+
     def test_modified_survey_cannot_change_a_saved_revision(self):
         parent = digest(self.saved / "room.json")
         (self.saved / "survey.json").write_text("{}")
