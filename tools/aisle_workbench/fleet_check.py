@@ -23,6 +23,39 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         run_button("workers")
         done(lambda w: w["workers_open"] and not w["busy"], "Workers page opened")
 
+    def import_and_replay(foreground, result):
+        run_button("fetch_job")
+        row = done(
+            lambda w: not w["busy"]
+            and (w["result"] or {}).get("controller_hash") == result["controller_hash"]
+            and w["selected"],
+            "Downloaded and selected the worker trial",
+            180,
+        )
+        trial = Path(row["selected"])
+        origin = json.loads((trial / "worker-origin.json").read_bytes())
+        assert (
+            origin["job"] == foreground
+            and hashlib.sha256((trial / "controller.json").read_bytes()).hexdigest()
+            == result["controller_hash"]
+        )
+        page("evidence")
+        grab("imported-evidence")
+        click("aisle_evidence.export")
+        row = done(
+            lambda w: not w["busy"] and w["dataset"], "Exported downloaded episode", 180
+        )
+        dataset = Path(row["dataset"])
+        assert (dataset / "meta/info.json").is_file()
+        click("aisle_evidence.replay")
+        wait(
+            lambda j: j["state"]["screen"] == "Replay"
+            and j["state"]["frames"] == result["frames"],
+            "Opened the complete imported episode in Replay",
+        )
+        grab("imported-replay")
+        return origin, trial
+
     if args.recover:
         proof = json.loads(source.read_bytes())[-1]
         enter_workers()
@@ -31,7 +64,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
             and selected(w)["state"] == "completed",
             "Worker selection recovered",
         )
-        assert len(row["fleet"]["jobs"]) == 2
+        assert len(row["fleet"]["jobs"]) == (1 if args.foreground_cadence else 2)
         page("evidence")
         row = done(
             lambda w: (w["result"] or {}).get("task_success") and w["dataset"],
@@ -58,30 +91,69 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
     remote(
         "text",
         "w=0",
-        "t=Pick up the red cube from the floor and place it on the coffee table.",
+        "t=Move the red floor cube onto the coffee table.",
         "wait=1",
     )
-    click("aisle_task.octos")
+    click("aisle_task.codex" if args.provider == "codex" else "aisle_task.octos")
     row = done(
         lambda w: not w["busy"]
         and (w["controller"] or {}).get("kind") == "table-transfer",
-        "DeepSeek prepared a Nano transfer",
+        "Author prepared a Nano transfer",
         180,
     )
     assert row["controller"]["color_order"] == "red"
     enter_workers()
+    if args.foreground_cadence:
+        from fleet_cadence import ALIAS, while_streaming, verify_viewport
+
+        run_button("node")
+        remote(
+            "key",
+            "w=0",
+            "c=KeyA",
+            "logo=1" if sys.platform == "darwin" else "ctrl=1",
+            "wait=1",
+        )
+        remote("text", "w=0", "t=" + ALIAS, "wait=1")
+    else:
+        ALIAS = "local"
     run_button("connect")
     row = done(
-        lambda w: not w["busy"] and (w["fleet"] or {}).get("node") == "local",
-        "Connected to local Nexus worker",
+        lambda w: not w["busy"] and (w["fleet"] or {}).get("node") == ALIAS,
+        "Connected to Nexus worker",
     )
-    assert row["fleet"]["capabilities"]["slots"] == 2
+    assert row["fleet"]["capabilities"]["slots"] == (
+        4 if args.foreground_cadence else 2
+    )
     run_button("queue_stream")
     row = done(
         lambda w: not w["busy"] and selected(w).get("mode") == "stream",
         "Submitted foreground",
     )
     foreground = selected(row)["id"]
+    if args.foreground_cadence:
+        done(
+            lambda w: ((w.get("worker_observation") or {}).get("frame") or {}).get(
+                "tick", 0
+            )
+            > 0,
+            "Foreground stream delivered measured RGB",
+            120,
+        )
+        result, backgrounds = while_streaming(args, foreground, done, grab)
+        origin, trial = import_and_replay(foreground, result)
+        cadence = verify_viewport(args.out, trial, backgrounds)
+        checks.append(
+            dict(
+                check="Four simultaneous simulations with measured viewport cadence",
+                foreground_id=foreground,
+                origin=origin,
+                result=result,
+                cadence=cadence,
+            )
+        )
+        source.write_text(json.dumps(checks, indent=2))
+        return
     frame = done(
         lambda w: ((w.get("worker_observation") or {}).get("frame") or {}).get(
             "tick", 0
@@ -176,36 +248,7 @@ def native_journey(args, checks, page, click, remote, done, grab, wait):
         result["task_success"]
         and result["wheel_supported_ticks"] == result["physics_ticks"]
     )
-    run_button("fetch_job")
-    row = done(
-        lambda w: not w["busy"]
-        and (w["result"] or {}).get("controller_hash") == result["controller_hash"]
-        and w["selected"],
-        "Downloaded and selected the worker trial",
-        180,
-    )
-    trial = Path(row["selected"])
-    origin = json.loads((trial / "worker-origin.json").read_bytes())
-    assert (
-        origin["job"] == foreground
-        and hashlib.sha256((trial / "controller.json").read_bytes()).hexdigest()
-        == result["controller_hash"]
-    )
-    page("evidence")
-    grab("imported-evidence")
-    click("aisle_evidence.export")
-    row = done(
-        lambda w: not w["busy"] and w["dataset"], "Exported downloaded episode", 180
-    )
-    dataset = Path(row["dataset"])
-    assert (dataset / "meta/info.json").is_file()
-    click("aisle_evidence.replay")
-    wait(
-        lambda j: j["state"]["screen"] == "Replay"
-        and j["state"]["frames"] == result["frames"],
-        "Opened the complete imported episode in Replay",
-    )
-    grab("imported-replay")
+    origin, _ = import_and_replay(foreground, result)
     checks.append(
         dict(
             check="Two leased simulations through native Studio",

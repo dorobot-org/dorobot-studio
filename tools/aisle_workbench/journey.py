@@ -30,6 +30,7 @@ def main():
         help="Verify a previously stopped run after restarting Studio",
     )
     p.add_argument("--fleet", action="store_true")
+    p.add_argument("--foreground-cadence", action="store_true")
     p.add_argument("--standing", action="store_true")
     p.add_argument("--device-preflight", action="store_true")
     p.add_argument("--pickup-motion", choices=["slide-positive", "slide-negative"])

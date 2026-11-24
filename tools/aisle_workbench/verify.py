@@ -21,6 +21,11 @@ def main():
     parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
     parser.add_argument("--dark", action="store_true")
     parser.add_argument(
+        "--foreground-cadence",
+        action="store_true",
+        help="Measure visible foreground RGB with three concurrent background Nano workers",
+    )
+    parser.add_argument(
         "--device-preflight",
         action="store_true",
         help="Exercise the selected trial’s device preflight and retained report",
@@ -141,6 +146,8 @@ def main():
         or args.observed_author
     ) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
+    if args.foreground_cadence and (not args.fleet or not args.provider):
+        parser.error("--foreground-cadence requires --fleet and an author")
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=False)
     report = output / "ui.json"
@@ -153,6 +160,10 @@ def main():
     }
     # The binary can come from another build directory. Its digest identifies the
     # executable, while these fields identify the workspace observed at launch.
+    if args.foreground_cadence:
+        from fleet_cadence import registry
+
+        env["DOROBOT_AISLE_WORKERS"] = str(registry(output, studio_root))
     with args.studio.open("rb") as binary:
         binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
     revision = subprocess.check_output(
@@ -247,6 +258,8 @@ def main():
                 ]
                 if args.fleet:
                     check.append("--fleet")
+                    if args.foreground_cadence:
+                        check.append("--foreground-cadence")
                 if args.observed_author:
                     check.append("--observed-author")
                 if args.moving_target:
