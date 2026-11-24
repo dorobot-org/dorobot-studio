@@ -142,11 +142,7 @@
   - 带 Rerun：插件 123 个、loopback 17 个（连跑 3 遍）、面板 15 个；
   - 整个工作区 `--no-default-features` 通过。
 - **审查：** 一次通过，没有严重或重要问题。
-- **许可证，需要你定：**
-  - 这个网格最早来自 AgileX 的 `ugv_gazebo_sim`，那里没有 LICENSE 文件，`package.xml` 写的是 `TODO`；
-  - Apache-2.0 是在 tracer-mini-ros2 里标上的；
-  - 这些已写进 `plugins/dviz/assets/NOTICE-tracer-mini.md`；
-  - 现在只是本地提交，推送或发布前需要你确认。
+- **许可证：** 你定为 Apache-2.0（11-24）。`plugins/dviz/assets/NOTICE-tracer-mini.md` 和根目录 `NOTICE` 已按此写明，同时保留来源（tracer-mini-ros2，最早来自 AgileX `ugv_gazebo_sim`）。
 - **小问题，留到最后整体审查时处理：**
   - 车型名不认识时那条日志默认看不到（要设 `RUST_LOG`）；
   - 精简脚本没有检查输出不超过上限；
@@ -164,7 +160,7 @@
 - **修了 3 处重要问题加 1 处文档（一轮修改，复查全部通过）：**
   1. 规划器计时日志原来每 100 个事件一行（一天超过 2.5 万行，会把 Studio 日志栏里规划器的真正消息挤掉），改成最多每 60 s 一行，给最大值、平均值和次数，加了测试（DORA_NAV `06fac01`）；
   2. 交付①版的 Studio 连上新桥节点时，Rerun 地图上会盖一块不透明灰板（旧版改不了）：文档写明"Studio 要和桥节点一起升级，或先升 Studio"，应急办法是把装好的 `tracer.json` 里 `inputs` 的 `"costmap"` 删掉（`eab7be2`）；
-  3. 车体模型许可证的措辞改成"Apache-2.0，依据 tracer-mini-ros2 的 `package.xml` 声明"，保留上游写的是 `TODO` 的说明（`eab7be2`）；
+  3. 车体模型许可证的措辞改成"Apache-2.0，依据 tracer-mini-ros2 的 `package.xml` 声明"，保留上游写的是 `TODO` 的说明（`eab7be2`）；后来按你的决定直接写 Apache-2.0，去掉 `TODO` 的说明；
   4. DORA_NAV 两处 README 补上桥节点第 11 个输入和规划器的代价地图输出（`06fac01`）。
 - **测试：** DORA_NAV ctest 314 个通过 313 个。没过的 `super_lio_app_paths` 是因为单独的工作树里少一个指向 `build/` 的链接，和改动无关。
 - **部署时在屏幕上看：** Rerun 里车框和路径线在代价地图那一层（z = 0.01 m）之下，看着不对再抬高约 0.02 m。
@@ -197,4 +193,4 @@
   - 画面里能看到浅蓝规划线、橙色目标圆环加箭头、绿色实际轨迹、加粗的红色位姿箭头；
   - 两趟到点后都撤防，底盘回待机，车停在 P5。
 - **还没测：** 在 Displays 里关掉实体、Rerun 里随即清掉这一项，没在屏幕上试，单元测试和 loopback 测试覆盖了。
-- **许可证：** 车体模型的来源许可证要你在推送前确认，见任务 7。
+- **许可证：** 你定为 Apache-2.0，见任务 7。

@@ -11,8 +11,7 @@ License 2.0.
 The mesh was first published by AgileX Robotics in ugv_gazebo_sim
 (<https://github.com/agilexrobotics/ugv_gazebo_sim>,
 `tracer_mini/meshes/base_link.STL`, commit 9d56f12, 2022), from which
-tracer-mini-ros2 descends. That repository has no licence file, and its
-`tracer_mini/package.xml` gives the licence as `TODO`.
+tracer-mini-ros2 descends.
 
 ## Changes
 
@@ -28,6 +27,5 @@ again on the same source gives the same bytes):
 
 ## Licence
 
-Apache License 2.0, <https://www.apache.org/licenses/LICENSE-2.0>, as declared by
-tracer-mini-ros2's `tracer_mini_description/package.xml`; the same licence as the
-rest of `plugins/dviz`.
+Apache License 2.0, <https://www.apache.org/licenses/LICENSE-2.0>; the same
+licence as the rest of `plugins/dviz`.
