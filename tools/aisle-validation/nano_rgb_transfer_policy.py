@@ -60,6 +60,7 @@ class Controller:
             raise ValueError("Joint order differs from the URDF")
         self.colors = config["colors"]
         self.servo = VisualServo(config | {"color": self.colors[0], "standoff_m": 0.45})
+        self.max_forward_speed = config.get("max_forward_speed_m_s", 0.13)
         self.track_grasp = bool(config.get("track_grasp"))
         self.resolve_pickup_ambiguity = (
             config.get("grasp_rgb_association", "wrist-agreement-v1")
@@ -112,7 +113,9 @@ class Controller:
         return packet
 
     def drive(self, speed=0.0, turn=0.0):
-        self.act("wheel", speed=float(speed), turn=float(turn))
+        self.act(
+            "wheel", speed=min(float(speed), self.max_forward_speed), turn=float(turn)
+        )
 
     def joints(self, values, steps):
         self.act("joint", values=values, steps=steps)

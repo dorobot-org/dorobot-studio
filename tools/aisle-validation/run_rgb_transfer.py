@@ -283,6 +283,9 @@ def execute(
             "calibration_source", "Nominal URDF-mounted simulation optics"
         ),
     )
+    if "max_forward_speed_m_s" in plan:
+        worker.validate(plan, worker.describe("Nano"))
+        config["max_forward_speed_m_s"] = plan["max_forward_speed_m_s"]
     if plan.get("track_grasp"):
         import nano_rgb_policy
 
@@ -464,7 +467,10 @@ def execute(
     def move(command):
         if command["op"] == "wheel":
             speed, turn = command["speed"], command["turn"]
-            if not -0.08 <= speed <= 0.13 or not -0.5 <= turn <= 0.5:
+            if (
+                not -0.08 <= speed <= config.get("max_forward_speed_m_s", 0.13)
+                or not -0.5 <= turn <= 0.5
+            ):
                 raise ValueError("wheel command outside the Nano envelope")
             rates = guard.accept(wheel_rates(speed, 0, turn), guard.next_seq)
             for _ in range(20):

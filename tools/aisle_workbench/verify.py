@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -50,6 +51,12 @@ def main():
         const="octos-deepseek",
     )
     scenario = parser.add_mutually_exclusive_group()
+    scenario.add_argument(
+        "--revise-drive",
+        type=Path,
+        metavar="FAILED_TRIAL",
+        help="Revise the Nano forward speed after measured wheel-support loss",
+    )
     scenario.add_argument(
         "--revise-pickup",
         type=Path,
@@ -149,7 +156,30 @@ def main():
         metavar="EARLIER_OUTPUT",
         help="Reconnect a prior two-job fleet check and fetch its completed foreground",
     )
+    parser.add_argument(
+        "--fleet-controller",
+        type=Path,
+        metavar="PREPARED_DIRECTORY",
+        help="Run one previously authored Nano red-cube transfer on the selected worker",
+    )
     args = parser.parse_args()
+    if args.fleet_controller and (
+        not args.fleet_node or args.resume_fleet or args.foreground_cadence
+    ):
+        parser.error(
+            "--fleet-controller requires a registered --fleet-node and a fresh verification"
+        )
+    if args.fleet_controller:
+        plan = json.loads((args.fleet_controller / "controller.json").read_bytes())
+        if (
+            plan.get("kind") != "table-transfer"
+            or plan.get("color_order") != "red"
+            or plan.get("provider") not in ("codex", "octos-deepseek")
+        ):
+            parser.error("Select a prepared agent-authored red Nano transfer")
+        if args.provider and args.provider != plan["provider"]:
+            parser.error("Selected provider differs from the frozen controller")
+        args.provider = plan["provider"]
     if args.resume_fleet and (not args.fleet_node or not args.fleet):
         parser.error(
             "--resume-fleet needs --fleet and the same registered --fleet-node"
@@ -183,6 +213,7 @@ def main():
         or args.moving_target
         or args.observed_author
         or args.revise_pickup
+        or args.revise_drive
     ) and not args.provider:
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     if args.foreground_cadence and (not args.fleet or not args.provider):
@@ -200,12 +231,11 @@ def main():
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
     if args.resume_fleet:
-        import shutil
-
         shutil.copytree(args.resume_fleet / "state", output / "state")
     if args.prepared_pickup and not args.revise_pickup:
         parser.error("--prepared-pickup requires --revise-pickup")
-    if args.revise_pickup and args.compare_runs:
+    prior_trial = args.revise_pickup or args.revise_drive
+    if prior_trial and args.compare_runs:
         parser.error("Select one recorded-trial journey")
     if args.revise_pickup:
         result = json.loads((args.revise_pickup / "result.json").read_bytes())
@@ -215,26 +245,31 @@ def main():
             parser.error(
                 "--revise-pickup requires a stopped Nano pickup with a camera packet"
             )
-    if args.compare_runs or args.revise_pickup:
-        import shutil
-
-        for index, source in enumerate(
-            args.compare_runs or [args.revise_pickup], start=1
+    if args.revise_drive:
+        result = json.loads((args.revise_drive / "result.json").read_bytes())
+        if result.get("task_success") is not False or not result.get(
+            "unsupported_wheel_ranges"
         ):
+            parser.error(
+                "--revise-drive requires a scored trial with lost wheel support"
+            )
+    if args.compare_runs or prior_trial:
+        for index, source in enumerate(args.compare_runs or [prior_trial], start=1):
             if (
                 not (source / "recording.json").is_file()
                 or not (source / "result.json").is_file()
             ):
                 parser.error(f"Missing recording or verdict in {source}")
             shutil.copytree(source, output / "state/aisle" / f"000{index}-Nano-run")
-    if args.prepared_pickup:
-        name = args.prepared_pickup.name
+    preparation = args.prepared_pickup or args.fleet_controller
+    if preparation:
+        name = preparation.name
         if (
             not name.endswith("-Nano-prepare")
-            or not (args.prepared_pickup / "controller.json").is_file()
+            or not (preparation / "controller.json").is_file()
         ):
             parser.error("Select a completed native Nano preparation")
-        shutil.copytree(args.prepared_pickup, output / "state/aisle" / name)
+        shutil.copytree(preparation, output / "state/aisle" / name)
     # The binary can come from another build directory. Its digest identifies the
     # executable, while these fields identify the workspace observed at launch.
     if args.foreground_cadence:
@@ -335,6 +370,8 @@ def main():
                     "--size",
                     args.size,
                 ]
+                if args.revise_drive:
+                    check.append("--revise-drive")
                 if args.prepared_pickup:
                     check.append("--prepared-pickup")
                 if args.revise_pickup:
@@ -343,6 +380,8 @@ def main():
                     check.append("--compare-runs")
                 if args.fleet:
                     check.append("--fleet")
+                    if args.fleet_controller:
+                        check.append("--fleet-controller")
                     if args.resume_fleet:
                         check.append("--resume-fleet")
                     if args.fleet_node:
@@ -398,7 +437,7 @@ def main():
                     1800
                     if args.train_grasp
                     else 900
-                    if args.transfer or args.fleet or args.revise_pickup
+                    if args.transfer or args.fleet or prior_trial
                     else 330
                 )
                 try:

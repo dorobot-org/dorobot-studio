@@ -30,6 +30,7 @@ def main():
         help="Verify a previously stopped run after restarting Studio",
     )
     p.add_argument("--resume-fleet", action="store_true")
+    p.add_argument("--fleet-controller", action="store_true")
     p.add_argument("--fleet-node")
     p.add_argument("--fleet", action="store_true")
     p.add_argument("--foreground-cadence", type=int, choices=range(2, 65))
@@ -51,6 +52,7 @@ def main():
     p.add_argument("--moving-target", action="store_true")
     p.add_argument("--observed-author", action="store_true")
     p.add_argument("--prepared-pickup", action="store_true")
+    p.add_argument("--revise-drive", action="store_true")
     p.add_argument("--revise-pickup", action="store_true")
     p.add_argument("--compare-runs", action="store_true")
     a = p.parse_args()
@@ -126,6 +128,11 @@ def main():
         remote(
             "window", "k=resize", "width=" + width, "height=" + height, "w=0", "wait=1"
         )
+    if a.revise_drive:
+        from drive_check import native_journey
+
+        native_journey(a, page, click, remote, done, grab)
+        return
     if a.revise_pickup:
         from revision_check import native_journey
 

@@ -9,6 +9,26 @@ from run_rgb_transfer import Judge, finger_gap
 
 
 class TransferTests(unittest.TestCase):
+    def test_forward_limit_preserves_braking_reverse_and_steering(self):
+        controller = Controller.__new__(Controller)
+        controller.max_forward_speed = 0.08
+        commands = []
+        controller.act = lambda kind, **args: commands.append(
+            (kind, args["speed"], args["turn"])
+        )
+        for speed, turn in [(0.12, 0.2), (0.055, -0.1), (-0.065, 0), (0, 0.35), (0, 0)]:
+            controller.drive(speed, turn)
+        self.assertEqual(
+            commands,
+            [
+                ("wheel", 0.08, 0.2),
+                ("wheel", 0.055, -0.1),
+                ("wheel", -0.065, 0),
+                ("wheel", 0, 0.35),
+                ("wheel", 0, 0),
+            ],
+        )
+
     def test_clear_reachable_region_between_preferred_release_slots(self):
         side, span = 0.161, (-0.1867, 0.2318)
         occupied = np.array([0.3375, 0.1217])

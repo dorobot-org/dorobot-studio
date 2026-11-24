@@ -1,0 +1,13 @@
+{
+  "reference_controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+  "fixture": "Stationary red cube, existing layout 0 on Metal and Linux WebGPU. Reuse archived uncapped Linux and Mac results on that layout.",
+  "caps_m_s": [
+    0.04,
+    0.06,
+    0.08
+  ],
+  "change": "Cap positive requested forward translation at the designated speed. Preserve reverse, turning, RGB feedback, wheel guard, physics, and all original task criteria.",
+  "selection": "Select the highest of the three speeds passing every existing task criterion on both platforms. If none passes on both, promote none.",
+  "qualification": "Compare baseline and selected speed once per platform on the same three held-out seeds. Publish each verdict. Keep historical defaults.",
+  "disclosure_sha256": "e4ca9b7ea02b41dbf366d1a5c00e22bf566888267acd3b0b50fc915cc64d2b6b"
+}
