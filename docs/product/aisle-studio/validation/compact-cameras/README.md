@@ -35,8 +35,14 @@ Each H100 ran one simulation. Only the foreground used compact cameras. The othe
 | Codex | Development | 102.02 s | 28.21 | 24.06 | 1.98–2.01 Hz | 46/102 | 8/8 |
 | DeepSeek/Octos | Release | 99.20 s | 28.25 | 24.15 | 1.98–2.01 Hz | 47/99 | 8/8 |
 | Codex | Release | 99.87 s | 28.15 | 24.69 | 1.99–2.01 Hz | 51/99 | 8/8 |
+| DeepSeek/Octos | Release, buffered | 100.90 s | 28.10 | 26.61 | 1.97–2.01 Hz | 88/100 | 8/8 |
+| Codex | Release, buffered | 99.18 s | 28.03 | 26.47 | 1.99–2.00 Hz | 86/99 | 8/8 |
 
 Both targets in a full second means at least 25 distinct native draws and at least one verified image received from each of the seven background workers in that second. The fleet acceptance test separately checks the mean rates across at least 30 seconds of eight-way overlap. Both builds with latest-frame-only display fell below the 25 FPS mean. In the Codex run the live receiver observed 4,130 losslessly compressed frames, carrying 99.7 MB of image payload for 2.14 GB of decoded RGB and tick data.
+
+Studio now retains the previous complete foreground exposure and can present it while it is at most 80 ms old. A longer delay skips ahead to the latest frame. Each native draw carries a strictly increasing simulation tick. Both buffered runs met the mean-rate gate. The lowest one-second rates and the longest uninterrupted interval meeting both targets are in the audit output.
+
+The viewer change preserved the recorded data. All sixteen controller and motor journals matched their corresponding latest-frame-only runs. Each foreground also had 347 identical decoded RGB frames in each of its three recorded cameras. [Journal and image digests](viewport-pairs.json) · [Buffered DeepSeek cohort](buffer-deepseek-cohort.json.gz) · [Buffered Codex cohort](buffer-codex-cohort.json.gz)
 
 Run `python docs/product/aisle-studio/validation/compact-cameras/cohorts.py` to recompute the native and background rates from timestamped draws, exposures and received image digests. [DeepSeek cohort](deepseek-cohort.json.gz) · [Codex cohort](codex-cohort.json.gz) · [Release DeepSeek cohort](release-deepseek-cohort.json.gz) · [Release Codex cohort](release-codex-cohort.json.gz)
 

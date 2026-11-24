@@ -58,16 +58,19 @@ def measure(path):
     assert record["profile"] == "compact-v1"
     full_seconds = (end - begin) // 1_000_000_000
     passes = 0
+    streak = longest_streak = 0
     draw_counts = []
     for i in range(full_seconds):
         left = begin + i * 1_000_000_000
         right = left + 1_000_000_000
         count = sum(left <= draw[0] < right for draw in window)
         draw_counts.append(count)
-        passes += int(
-            count >= 25
-            and all(any(left <= t < right for t in times) for times in observations)
+        both = count >= 25 and all(
+            any(left <= t < right for t in times) for times in observations
         )
+        passes += int(both)
+        streak = streak + 1 if both else 0
+        longest_streak = max(streak, longest_streak)
     return dict(
         overlap_s=(end - begin) / 1e9,
         viewport_fps=fps,
@@ -76,6 +79,7 @@ def measure(path):
         slowest_background_hz=min(rates),
         fastest_background_hz=max(rates),
         full_seconds=full_seconds,
+        longest_unbroken_seconds=longest_streak,
         seconds_meeting_both=passes,
         all_tasks_passed=True,
         qualified=summary["qualified"],
