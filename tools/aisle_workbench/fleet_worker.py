@@ -423,6 +423,7 @@ def dispatch(root, request):
                 continue
         return dict(
             protocol=1,
+            background_rgb_periods_s=[1, 2, 5],
             host=platform.node(),
             system=platform.system(),
             slots=slots,

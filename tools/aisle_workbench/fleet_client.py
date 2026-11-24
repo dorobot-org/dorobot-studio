@@ -50,6 +50,13 @@ def send(node, request):
     return result["reply"]
 
 
+def check_background_period(node, period):
+    if period not in send(node, dict(op="hello")).get("background_rgb_periods_s", []):
+        raise ValueError(
+            "This worker does not advertise the selected background RGB period. Update its Studio checkout."
+        )
+
+
 def submission(
     path, mode="observations", seed=0, fixture="standard", ident=None, room=None
 ):
@@ -120,6 +127,8 @@ def main():
     elif args.op != "hello":
         request["id"] = args.id
     node = json.loads(args.nodes.read_bytes())[args.node]
+    if args.op == "submit" and args.mode == "observations":
+        check_background_period(node, args.observation_period_s)
     if args.op == "fetch":
         from fleet_artifacts import download
 

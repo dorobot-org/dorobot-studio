@@ -16,7 +16,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 from fleet_artifacts import download
-from fleet_client import send, submission
+from fleet_client import check_background_period, send, submission
 from fleet_worker import ACTIVE, initialize, job_id
 from worker import ROOT, save
 
@@ -256,6 +256,7 @@ def operate(args):
         if args.room_hash and req["room_sha256"] != args.room_hash:
             raise ValueError("Selected room revision has changed")
         if op == "observations":
+            check_background_period(node, args.observation_period_s)
             req["observation_period_s"] = args.observation_period_s
         req.update(rgb_timing=args.rgb_timing, target_motion=args.target_motion)
         ident = submit(root, registry, alias, req)["id"]
