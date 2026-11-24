@@ -9,11 +9,18 @@
 //! arrow and the goal as a ring with an arrow when it has a yaw. The wheel
 //! zooms about the pointer and a drag pans; the view can also be fitted to
 //! the scene or follow the robot ([`MapCamera`]).
+//!
+//! With a pose or goal tool armed ([`DvizMap2DRef::set_tool`]) a press sets
+//! the position, a drag the heading (previewed, [`tool_preview`]) and the
+//! release sends it as a [`DvizMapAction`]; the wheel still zooms, Esc (the
+//! map takes the key focus) cancels. See [`ToolState`].
 
 use crate::map_view::{
     costmap_rgba, grid_lines, grid_rgba, layer_color, scene_bounds, MapView, NavLayers,
 };
 use crate::nav_scene::{GridLayer, NavScene, Pose2D};
+use crate::nav_tools::{ToolKind, ToolOutcome, ToolState, POSE_PREVIEW_COLOR, TOOL_MIN_DRAG_PX};
+use crate::session::NavCommand;
 use dorobot_studio_plugin::*;
 use dorobot_ux::tokens::pal;
 use dviz_protocol::{nav_entities, nav_status_parts, Grid2DHeader, NavStatus};
@@ -57,6 +64,12 @@ const ZOOM_PER_NOTCH: f64 = 1.2;
 const DRAG_SLOP_PX: f64 = 3.0;
 /// Shown when there is nothing to draw yet.
 const WAITING: &str = "Waiting for map…";
+/// A pose / goal tool's preview while dragged: the arrow's line width in
+/// pixels and its least length on the map, and the press point's dot
+/// (diameter, pixels).
+const TOOL_PX: f32 = 3.0;
+const TOOL_ARROW_MIN_M: f64 = 0.3;
+const TOOL_DOT_PX: f32 = 8.0;
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -319,7 +332,7 @@ pub(crate) fn wheel_factor(scroll: f64) -> f64 {
 
 /// One step of a frame of the map. A frame draws them in this order, each
 /// over the ones before it ([`draw_plan`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MapDraw {
     /// The dark canvas, the same in both themes.
     Canvas,
@@ -343,6 +356,73 @@ pub enum MapDraw {
     Goal,
     /// "Waiting for map…", while there is nothing to show.
     Waiting,
+    /// A dragged tool's press point ([`tool_preview`]): a round dot at `at`
+    /// (pixels from the map's top-left), in `color`.
+    ToolDot {
+        at: [f64; 2],
+        color: [u8; 4],
+    },
+    /// A dragged tool's heading ([`tool_preview`]): an arrow's `strokes`
+    /// (pixels from the map's top-left), in `color`.
+    ToolArrow {
+        strokes: Vec<([f64; 2], [f64; 2])>,
+        color: [u8; 4],
+    },
+}
+
+/// What a frame draws over [`draw_plan`]'s steps for the tool `state`:
+/// nothing unless a tool is being dragged; then a dot where the press point
+/// (kept in map metres) is in `view` now, and, once the drag is at least
+/// [`TOOL_MIN_DRAG_PX`] (the heading the release would send), an arrow from
+/// it along the drag, as long as the drag and at least [`TOOL_ARROW_MIN_M`]
+/// on the map. 2D Goal Pose is drawn in the goal layer's colour, 2D Pose
+/// Estimate in [`POSE_PREVIEW_COLOR`].
+pub fn tool_preview(state: &ToolState, view: &MapView, scene: &NavScene) -> Vec<MapDraw> {
+    let ToolState::Dragging {
+        kind,
+        start_world,
+        start_screen,
+        now_screen,
+    } = *state
+    else {
+        return Vec::new();
+    };
+    let color = match kind {
+        ToolKind::Goal => layer_color(scene, nav_entities::NAV_GOAL),
+        ToolKind::PoseEstimate => POSE_PREVIEW_COLOR,
+    };
+    let at = view.world_to_screen(start_world);
+    if !(at[0].is_finite() && at[1].is_finite()) {
+        return Vec::new();
+    }
+    let mut steps = vec![MapDraw::ToolDot { at, color }];
+    let drag = dvec2(
+        now_screen[0] - start_screen[0],
+        now_screen[1] - start_screen[1],
+    );
+    let length = drag.length();
+    if length >= TOOL_MIN_DRAG_PX {
+        let shaft = length.max(TOOL_ARROW_MIN_M * view.px_per_m);
+        let arrow = arrow_strokes(dvec2(at[0], at[1]), drag / length * shaft);
+        if !arrow.is_empty() {
+            let strokes = arrow
+                .into_iter()
+                .map(|(a, b)| ([a.x, a.y], [b.x, b.y]))
+                .collect();
+            steps.push(MapDraw::ToolArrow { strokes, color });
+        }
+    }
+    steps
+}
+
+/// What the map reports: a command from a pose or goal tool to send, or a
+/// hint to show (a 2D Pose Estimate click without a drag).
+#[derive(Clone, Debug, Default)]
+pub enum DvizMapAction {
+    #[default]
+    None,
+    Send(NavCommand),
+    Hint(&'static str),
 }
 
 /// What a frame draws for `scene` with the legend's `layers`, bottom to top:
@@ -666,6 +746,12 @@ pub struct DvizMap2D {
     costmap_builds: u64,
     #[rust]
     drag: Option<Drag>,
+    /// The pose / goal tool; see [`ToolState`].
+    #[rust(ToolState::Idle)]
+    tool: ToolState,
+    /// Whether the pointer is over the map, for its cursor.
+    #[rust]
+    hovered: bool,
 }
 
 impl DvizMap2D {
@@ -784,6 +870,28 @@ impl DvizMap2D {
                 }
             }
             MapDraw::Waiting => self.waiting(cx, rect),
+            MapDraw::ToolDot { at, color } => {
+                // A segment of no length is a round dot of the line's width.
+                let at = rect.pos + dvec2(at[0], at[1]);
+                let pen = Pen {
+                    width: TOOL_DOT_PX,
+                    color,
+                };
+                strokes(&mut self.draw_line, cx, rect, &[(at, at)], pen);
+            }
+            MapDraw::ToolArrow {
+                strokes: arrow,
+                color,
+            } => {
+                let at = |p: [f64; 2]| rect.pos + dvec2(p[0], p[1]);
+                let arrow: Vec<(Vec2d, Vec2d)> =
+                    arrow.into_iter().map(|(a, b)| (at(a), at(b))).collect();
+                let pen = Pen {
+                    width: TOOL_PX,
+                    color,
+                };
+                strokes(&mut self.draw_line, cx, rect, &arrow, pen);
+            }
         }
     }
 
@@ -808,14 +916,53 @@ impl DvizMap2D {
         self.camera.track(&self.scene);
         self.view.redraw(cx);
     }
+
+    /// The pointer over the map: a crosshair while a tool is armed, else a hand.
+    fn cursor(&self) -> MouseCursor {
+        if self.tool.active().is_some() {
+            MouseCursor::Crosshair
+        } else {
+            MouseCursor::Grab
+        }
+    }
+
+    /// After the tool changed: redraw (the preview) and, under the pointer,
+    /// the cursor.
+    fn tool_changed(&mut self, cx: &mut Cx) {
+        if self.hovered && self.drag.is_none() {
+            cx.set_cursor(self.cursor());
+        }
+        self.view.redraw(cx);
+    }
+
+    /// Where `abs` is from the map's top-left, in pixels.
+    fn local(&self, cx: &Cx, abs: Vec2d) -> [f64; 2] {
+        let at = abs - self.view.area().rect(cx).pos;
+        [at.x, at.y]
+    }
 }
 
 impl Widget for DvizMap2D {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         let area = self.view.area();
+        let dragging_tool = matches!(self.tool, ToolState::Dragging { .. });
         match event.hits(cx, area) {
-            Hit::FingerHoverIn(_) => cx.set_cursor(MouseCursor::Grab),
+            Hit::FingerHoverIn(_) => {
+                self.hovered = true;
+                cx.set_cursor(self.cursor());
+            }
+            Hit::FingerHoverOut(_) => self.hovered = false,
+            // An armed tool: the press sets the position and does not pan.
+            Hit::FingerDown(fe) if fe.is_primary_hit() && self.tool.active().is_some() => {
+                cx.set_key_focus(area);
+                let at = self.local(cx, fe.abs);
+                let world = self.camera.view.screen_to_world(at);
+                self.tool.press(at, world);
+                self.drag = None;
+                cx.set_cursor(MouseCursor::Crosshair);
+                self.view.redraw(cx);
+            }
             Hit::FingerDown(fe) if fe.is_primary_hit() => {
                 self.drag = Some(Drag {
                     start: fe.abs,
@@ -823,6 +970,11 @@ impl Widget for DvizMap2D {
                     panning: false,
                 });
                 cx.set_cursor(MouseCursor::Grabbing);
+            }
+            Hit::FingerMove(fe) if dragging_tool => {
+                let at = self.local(cx, fe.abs);
+                self.tool.moved(at);
+                self.view.redraw(cx);
             }
             Hit::FingerMove(fe) => {
                 let Some(drag) = &mut self.drag else {
@@ -837,9 +989,34 @@ impl Widget for DvizMap2D {
                 self.camera.drag([delta.x, delta.y]);
                 self.moved(cx);
             }
+            // The release sends, wherever it is (the press holds the
+            // pointer); a press taken away sends nothing.
+            Hit::FingerUp(fe) if dragging_tool => {
+                if !fe.is_primary_hit() {
+                    return;
+                }
+                if fe.cancelled || fe.is_sweep {
+                    self.tool.cancel();
+                } else {
+                    let at = self.local(cx, fe.abs);
+                    let action = match self.tool.release(at) {
+                        ToolOutcome::Nothing => DvizMapAction::None,
+                        ToolOutcome::Send(command) => DvizMapAction::Send(command),
+                        ToolOutcome::Hint(hint) => DvizMapAction::Hint(hint),
+                    };
+                    if !matches!(action, DvizMapAction::None) {
+                        cx.widget_action(self.widget_uid(), action);
+                    }
+                }
+                self.tool_changed(cx);
+            }
             Hit::FingerUp(_) => {
                 self.drag = None;
-                cx.set_cursor(MouseCursor::Grab);
+                cx.set_cursor(self.cursor());
+            }
+            Hit::KeyDown(ke) if ke.key_code == KeyCode::Escape && self.tool.active().is_some() => {
+                self.tool.cancel();
+                self.tool_changed(cx);
             }
             Hit::FingerScroll(fs) => {
                 // The zoom takes the whole gesture, so nothing around scrolls with it.
@@ -886,7 +1063,9 @@ impl Widget for DvizMap2D {
             self.camera.track(&self.scene);
         }
         cx.push_clip_rect(rect);
-        for step in draw_plan(&self.scene, &self.layers) {
+        let mut steps = draw_plan(&self.scene, &self.layers);
+        steps.extend(tool_preview(&self.tool, &self.camera.view, &self.scene));
+        for step in steps {
             self.draw_step(cx, rect, step);
         }
         cx.pop_clip_rect();
@@ -959,10 +1138,75 @@ impl DvizMap2DRef {
             .map_or_else(NavLayers::default, |map| map.layers)
     }
 
-    /// What the next frame draws, bottom to top ([`draw_plan`]).
+    /// What the next frame draws, bottom to top: [`draw_plan`], then the
+    /// tool's preview ([`tool_preview`]).
     pub fn draw_plan(&self) -> Vec<MapDraw> {
-        self.borrow()
-            .map_or_else(Vec::new, |map| draw_plan(&map.scene, &map.layers))
+        self.borrow().map_or_else(Vec::new, |map| {
+            let mut steps = draw_plan(&map.scene, &map.layers);
+            steps.extend(tool_preview(&map.tool, &map.camera.view, &map.scene));
+            steps
+        })
+    }
+
+    /// Arms the `tool` (and gives the map the key focus, so Esc cancels
+    /// it), or with `None` puts the tool away. A drag in progress of another
+    /// tool, or with `None`, is dropped and nothing is sent; asking for the
+    /// tool already armed changes nothing.
+    pub fn set_tool(&self, cx: &mut Cx, tool: Option<ToolKind>) {
+        let Some(mut map) = self.borrow_mut() else {
+            return;
+        };
+        if map.tool.active() == tool {
+            return;
+        }
+        match tool {
+            Some(kind) => {
+                map.tool = ToolState::Armed(kind);
+                cx.set_key_focus(map.view.area());
+            }
+            None => map.tool.cancel(),
+        }
+        map.tool_changed(cx);
+    }
+
+    /// The tool armed or being dragged.
+    pub fn tool(&self) -> Option<ToolKind> {
+        self.borrow().and_then(|map| map.tool.active())
+    }
+
+    /// A tool button's click: arms `kind` (and gives the map the key focus),
+    /// or puts it away when it is the one armed.
+    pub fn toggle_tool(&self, cx: &mut Cx, kind: ToolKind) {
+        let Some(mut map) = self.borrow_mut() else {
+            return;
+        };
+        map.tool.toggle(kind);
+        if map.tool.active().is_some() {
+            cx.set_key_focus(map.view.area());
+        }
+        map.tool_changed(cx);
+    }
+
+    /// The command a tool sent, if `actions` hold one.
+    pub fn sent(&self, actions: &Actions) -> Option<NavCommand> {
+        self.map_actions(actions).find_map(|action| match action {
+            DvizMapAction::Send(command) => Some(command),
+            _ => None,
+        })
+    }
+
+    /// The hint a tool gave, if `actions` hold one.
+    pub fn hint(&self, actions: &Actions) -> Option<&'static str> {
+        self.map_actions(actions).find_map(|action| match action {
+            DvizMapAction::Hint(hint) => Some(hint),
+            _ => None,
+        })
+    }
+
+    /// This map's actions in `actions`; every one, not only the first
+    /// (`find_widget_action` would stop at an action of another kind).
+    fn map_actions<'a>(&self, actions: &'a Actions) -> impl Iterator<Item = DvizMapAction> + 'a {
+        actions.filter_widget_actions_cast::<DvizMapAction>(self.widget_uid())
     }
 
     /// Whether a grid texture is held.
@@ -1284,6 +1528,120 @@ mod tests {
         assert_eq!(fill_corners(&octagon).map(<[_]>::len), Some(8));
         let nonagon: Vec<[f32; 2]> = (0..9).map(|i| [i as f32, (i % 2) as f32]).collect();
         assert_eq!(fill_corners(&nonagon), None);
+    }
+
+    /// A tool dragged from (100, 100) on screen, pressed at the map point
+    /// `start_world`, the pointer now at `now`.
+    fn dragging(kind: ToolKind, start_world: [f64; 2], now: [f64; 2]) -> ToolState {
+        ToolState::Dragging {
+            kind,
+            start_world,
+            start_screen: [100.0, 100.0],
+            now_screen: now,
+        }
+    }
+
+    /// While a tool is dragged: a dot at the press point (where the map
+    /// point is on screen now) and an arrow from it along the drag, in the
+    /// goal layer's colour for 2D Goal Pose and POSE_PREVIEW_COLOR for 2D
+    /// Pose Estimate.
+    #[test]
+    fn preview_plan_while_dragging() {
+        let view = MapView::default();
+        let goal_color = [1, 2, 3, 255];
+        let mut scene = NavScene::default();
+        scene.colors.insert(nav_entities::NAV_GOAL, goal_color);
+        for (kind, color) in [
+            (ToolKind::Goal, goal_color),
+            (ToolKind::PoseEstimate, POSE_PREVIEW_COLOR),
+        ] {
+            // Pressed at the map point (1, 1); dragged 40 px to the right.
+            let state = dragging(kind, [1.0, 1.0], [140.0, 100.0]);
+            let steps = tool_preview(&state, &view, &scene);
+            let at = view.world_to_screen([1.0, 1.0]);
+            assert_eq!(steps.len(), 2, "{kind:?}: {steps:?}");
+            assert_eq!(steps[0], MapDraw::ToolDot { at, color }, "{kind:?}");
+            let MapDraw::ToolArrow {
+                strokes,
+                color: arrow_color,
+            } = &steps[1]
+            else {
+                panic!("{kind:?}: {steps:?}");
+            };
+            assert_eq!(*arrow_color, color, "{kind:?}");
+            // The shaft from the dot, 40 px along the drag, then a head.
+            assert_eq!(strokes.len(), 3, "{strokes:?}");
+            assert_eq!(strokes[0], (at, [at[0] + 40.0, at[1]]));
+        }
+    }
+
+    /// The arrow is at least 0.3 m long on the map; a drag under
+    /// TOOL_MIN_DRAG_PX sets no heading, so it shows the dot alone.
+    #[test]
+    fn preview_arrow_is_at_least_0_3_m() {
+        let view = MapView {
+            px_per_m: 200.0,
+            ..MapView::default()
+        };
+        let scene = NavScene::default();
+        // 20 px up at 200 px/m is 0.1 m: drawn 0.3 m = 60 px, still up.
+        let state = dragging(ToolKind::Goal, [0.0, 0.0], [100.0, 80.0]);
+        let steps = tool_preview(&state, &view, &scene);
+        let at = view.world_to_screen([0.0, 0.0]);
+        match &steps[1] {
+            MapDraw::ToolArrow { strokes, .. } => {
+                let (from, to) = strokes[0];
+                assert_eq!(from, at);
+                assert!((to[0] - at[0]).abs() < 1e-9, "{to:?}");
+                assert!((to[1] - (at[1] - 60.0)).abs() < 1e-9, "{to:?}");
+            }
+            other => panic!("{other:?}"),
+        }
+        let short = dragging(ToolKind::Goal, [0.0, 0.0], [105.0, 104.0]);
+        let steps = tool_preview(&short, &view, &scene);
+        assert!(
+            matches!(steps.as_slice(), [MapDraw::ToolDot { .. }]),
+            "{steps:?}"
+        );
+    }
+
+    /// The press point stays on its map point when the view moves (follow,
+    /// zoom); the heading is the drag's, as the tool sends it.
+    #[test]
+    fn preview_stays_on_the_map_point() {
+        let scene = NavScene::default();
+        let state = dragging(ToolKind::PoseEstimate, [2.0, -1.0], [100.0, 60.0]);
+        let moved = MapView {
+            center: [3.0, 4.0],
+            px_per_m: 80.0,
+            ..MapView::default()
+        };
+        let steps = tool_preview(&state, &moved, &scene);
+        let at = moved.world_to_screen([2.0, -1.0]);
+        assert_eq!(
+            steps[0],
+            MapDraw::ToolDot {
+                at,
+                color: POSE_PREVIEW_COLOR
+            }
+        );
+        match &steps[1] {
+            MapDraw::ToolArrow { strokes, .. } => {
+                assert_eq!(strokes[0], (at, [at[0], at[1] - 40.0]));
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn no_preview_when_idle() {
+        let view = MapView::default();
+        let scene = NavScene::default();
+        assert!(tool_preview(&ToolState::Idle, &view, &scene).is_empty());
+        for kind in [ToolKind::Goal, ToolKind::PoseEstimate] {
+            let armed = ToolState::Armed(kind);
+            assert!(tool_preview(&armed, &view, &scene).is_empty(), "{kind:?}");
+        }
     }
 
     /// The grid and line shaders compile for the desktop backends (no GPU is

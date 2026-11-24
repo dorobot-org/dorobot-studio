@@ -3,9 +3,10 @@
 //! own loopback port and topic prefix, and multicast off, as in `loopback.rs`.
 
 use dorobot_plugin_dviz::{
-    scene_bounds, DvizGraphAction, DvizGraphWidgetRefExt, DvizMap2DRef, DvizMap2DWidgetRefExt,
-    DvizNavPanel, DvizPlugin, DvizSession, DvizViewPanel, GridLayer, MapDraw, MapView, NavLayers,
-    NavScene, Pose2D, SessionOptions, ViewerState,
+    scene_bounds, CommandOutcome, DvizGraphAction, DvizGraphWidgetRefExt, DvizMap2DRef,
+    DvizMap2DWidgetRefExt, DvizMapAction, DvizNavPanel, DvizPlugin, DvizSession, DvizViewPanel,
+    GridLayer, MapDraw, MapView, NavCommand, NavLayers, NavScene, Pose2D, SessionOptions, ToolKind,
+    ViewerState,
 };
 use dorobot_studio_core::api::mock::MockBackend;
 use dorobot_studio_plugin::*;
@@ -109,7 +110,6 @@ fn wait_until(timeout: Duration, mut done: impl FnMut() -> bool) -> bool {
 /// Runs the test `test` alone in a child process of this test binary with
 /// `envs` set (for a process-wide setting such as `PATH`), and asserts that
 /// it passed within a minute; a child still running then is killed.
-#[cfg(feature = "rerun")]
 fn assert_child_passes(test: &str, envs: &[(&str, &std::ffi::OsStr)]) {
     use std::{fs, process::Stdio};
     const TIMEOUT: Duration = Duration::from_secs(60);
@@ -1021,4 +1021,314 @@ fn map_view_fits_the_first_scene_until_moved() {
     };
     map.set_layers(&mut cx, hidden);
     assert_eq!(map.layers(), hidden);
+}
+
+/// The `(1.0)` / `(0.0)` the panel put on a widget's draw, as its shader reads it.
+fn button_on(cx: &mut Cx, panel: &DvizNavPanel, path: &[LiveId]) -> f32 {
+    let widget = panel.root().widget(cx, path);
+    let button = widget.borrow::<Button>().expect("button");
+    instance::<1>(cx, &button.draw_bg, live_id!(on))[0]
+}
+
+/// Whether a tool button takes clicks, and whether it is drawn greyed.
+fn tool_button_state(cx: &mut Cx, panel: &DvizNavPanel, path: &[LiveId]) -> (bool, bool) {
+    let widget = panel.root().widget(cx, path);
+    let enabled = widget.borrow::<Button>().expect("button").enabled();
+    (enabled, widget.disabled(cx))
+}
+
+/// The command line's `error` (1 red, 0 ink).
+fn command_red(cx: &mut Cx, panel: &DvizNavPanel) -> f32 {
+    let line = panel.root().widget(cx, ids!(command));
+    let label = line.borrow::<Label>().expect("command label");
+    instance::<1>(cx, &label.draw_text, live_id!(error))[0]
+}
+
+/// A map action as the map sends it after a tool's release.
+fn map_action(cx: &mut Cx, panel: &mut DvizNavPanel, action: DvizMapAction) -> bool {
+    let uid = panel.root().widget(cx, ids!(map)).widget_uid();
+    let actions = cx.capture_actions(|cx| cx.widget_action(uid, action));
+    panel.handle_actions(cx, &actions, &mut MockBackend::new())
+}
+
+/// Not connected: both tools greyed with the reason, a click on one does
+/// nothing and a tool armed anyway is put away; E-STOP and Disarm still
+/// send, and the receipt says why nothing went out, in red.
+#[test]
+fn nav_panel_estop_and_disarm_send_while_the_tools_are_off() {
+    let (mut cx, session) = setup();
+    let mut panel = new_nav_panel(&mut cx, session);
+    sync(&mut cx, &mut panel);
+    for (path, label) in [
+        (ids!(pose_tool), "2D Pose Estimate"),
+        (ids!(goal_tool), "2D Goal Pose"),
+        (ids!(estop), "E-STOP"),
+        (ids!(disarm), "Disarm"),
+    ] {
+        assert_eq!(text(&mut cx, &panel, path), label);
+    }
+    assert_eq!(
+        text(&mut cx, &panel, ids!(tool_reason)),
+        "Pose / goal tools off: not connected"
+    );
+    assert_eq!(text(&mut cx, &panel, ids!(command)), "");
+    assert_eq!(command_red(&mut cx, &panel), 0.0);
+    let map = panel.root().dviz_map2_d(&cx, ids!(map));
+    for path in [ids!(pose_tool), ids!(goal_tool)] {
+        assert_eq!(
+            tool_button_state(&mut cx, &panel, path),
+            (false, true),
+            "{path:?}"
+        );
+        assert!(click(&mut cx, &mut panel, path));
+        assert_eq!(map.tool(), None, "a greyed tool was armed: {path:?}");
+    }
+    map.set_tool(&mut cx, Some(ToolKind::Goal));
+    assert_eq!(map.tool(), Some(ToolKind::Goal));
+    sync(&mut cx, &mut panel);
+    assert_eq!(map.tool(), None, "an unavailable tool stays armed");
+
+    for (path, cmd) in [(ids!(estop), "estop"), (ids!(disarm), "disarm")] {
+        assert!(click(&mut cx, &mut panel, path));
+        let record = session.snapshot().command.expect("a command record");
+        assert_eq!(record.cmd, cmd);
+        assert_eq!(
+            record.replies,
+            [(String::new(), CommandOutcome::NotConnected("not connected"))]
+        );
+        let line = text(&mut cx, &panel, ids!(command));
+        assert_eq!(
+            line,
+            format!(
+                "Last command: {cmd} {} → not sent: not connected  (0 s ago)",
+                record.id
+            )
+        );
+        assert_eq!(command_red(&mut cx, &panel), 1.0);
+    }
+    // No tool is armed: the map previews nothing.
+    assert!(!map
+        .draw_plan()
+        .iter()
+        .any(|step| matches!(step, MapDraw::ToolDot { .. } | MapDraw::ToolArrow { .. })));
+    assert_no_script_errors(&mut cx);
+}
+
+/// A tool's release reaches the session as a command; a hint takes the
+/// reason line, which a sync keeps showing for 2 s.
+#[test]
+fn nav_panel_sends_what_the_map_sends_and_shows_its_hint() {
+    let (mut cx, session) = setup();
+    let mut panel = new_nav_panel(&mut cx, session);
+    sync(&mut cx, &mut panel);
+    let goal = NavCommand::Goal {
+        x: 1.0,
+        y: 2.0,
+        yaw: None,
+    };
+    assert!(map_action(&mut cx, &mut panel, DvizMapAction::Send(goal)));
+    let record = session.snapshot().command.expect("a command record");
+    assert_eq!(record.cmd, "goal");
+    assert!(map_action(
+        &mut cx,
+        &mut panel,
+        DvizMapAction::Hint("drag to set the heading")
+    ));
+    assert_eq!(
+        text(&mut cx, &panel, ids!(tool_reason)),
+        "drag to set the heading"
+    );
+    sync(&mut cx, &mut panel);
+    assert_eq!(
+        text(&mut cx, &panel, ids!(tool_reason)),
+        "drag to set the heading"
+    );
+    assert!(!map_action(&mut cx, &mut panel, DvizMapAction::None));
+    assert_no_script_errors(&mut cx);
+}
+
+/// The tools follow the robot's state end to end, with the token read from
+/// `$HOME/.config/dviz/cmd_token` (so the body runs in a child process with
+/// its own `HOME`): both work while armed and fresh; a tool button arms and
+/// disarms its tool and shows it selected; disarming the robot puts the Goal
+/// tool away and greys its button while Pose Estimate still works; a sent
+/// command carries the token and its reply lands on the command line.
+#[cfg(unix)]
+#[test]
+fn nav_panel_tools_follow_the_robot_and_send_with_the_token() {
+    use std::{
+        fs,
+        os::unix::fs::PermissionsExt,
+        sync::{Arc, Mutex},
+    };
+    const TEST: &str = "nav_panel_tools_follow_the_robot_and_send_with_the_token";
+    const TOKEN: &str = "test-token-123";
+    if std::env::var_os("DVIZ_PANEL_TOOL_HOME").is_none() {
+        let home = std::env::temp_dir().join(format!("dviz-panel-home-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&home);
+        fs::create_dir_all(home.join(".config/dviz")).unwrap();
+        let token = home.join(".config/dviz/cmd_token");
+        fs::write(&token, format!("{TOKEN}\n")).unwrap();
+        fs::set_permissions(&token, fs::Permissions::from_mode(0o600)).unwrap();
+        let result = std::panic::catch_unwind(|| {
+            assert_child_passes(
+                TEST,
+                &[
+                    ("HOME", home.as_os_str()),
+                    ("DVIZ_PANEL_TOOL_HOME", "1".as_ref()),
+                ],
+            )
+        });
+        let _ = fs::remove_dir_all(&home);
+        if let Err(panic) = result {
+            std::panic::resume_unwind(panic);
+        }
+        return;
+    }
+
+    let (mut cx, session) = setup();
+    let mut panel = new_nav_panel(&mut cx, session);
+    let (peer, endpoint) = listening_peer();
+    let prefix = "dviz_nav_tools";
+    // The fake bridge's command queryable: keeps each request, replies ok.
+    let requests: Arc<Mutex<Vec<dviz_protocol::CmdRequest>>> = Arc::default();
+    let _queryable = {
+        let requests = requests.clone();
+        peer.declare_queryable(format!("{prefix}/tracer/cmd"))
+            .callback(move |query| {
+                let bytes = query
+                    .payload()
+                    .map(|p| p.to_bytes().into_owned())
+                    .unwrap_or_default();
+                let request = dviz_protocol::parse_cmd_request(&bytes).expect("a valid request");
+                let ack = dviz_protocol::CmdAck {
+                    id: request.id.clone(),
+                    cmd: request.cmd.clone(),
+                    result: dviz_protocol::CmdResult::Ok,
+                    reason: "accepted".into(),
+                };
+                requests.lock().unwrap().push(request);
+                query
+                    .reply(query.key_expr().clone(), serde_json::to_vec(&ack).unwrap())
+                    .wait()
+                    .unwrap();
+            })
+            .wait()
+            .unwrap()
+    };
+    session
+        .connect(SessionOptions {
+            mode: "peer".into(),
+            connect_endpoints: vec![endpoint],
+            listen_endpoints: Vec::new(),
+            prefix: prefix.into(),
+        })
+        .unwrap();
+    assert!(wait_until(SETTLE, || session.snapshot().connected));
+    assert!(
+        session.snapshot().has_token,
+        "the token in $HOME was not read"
+    );
+    let status = matched_publisher(&peer, format!("{prefix}/tracer/nav/status"));
+    // Publishes the robot's state and syncs once the session has it.
+    let robot_is = |cx: &mut Cx, panel: &mut DvizNavPanel, armed: bool| {
+        let state = json!({"loc_ok": true, "loc_reason": "", "armed": armed, "estop": false,
+                           "gate_reason": "", "cmd_goal_enabled": true});
+        status
+            .put(nav_message("status", state, None))
+            .wait()
+            .unwrap();
+        assert!(
+            wait_until(SETTLE, || session
+                .snapshot()
+                .nav
+                .status
+                .is_some_and(|s| s.armed == armed)),
+            "the status never arrived"
+        );
+        sync(cx, panel);
+    };
+    robot_is(&mut cx, &mut panel, true);
+    assert_eq!(session.snapshot().robots, ["tracer"]);
+    assert_eq!(text(&mut cx, &panel, ids!(tool_reason)), "");
+    let map = panel.root().dviz_map2_d(&cx, ids!(map));
+    for path in [ids!(pose_tool), ids!(goal_tool)] {
+        assert_eq!(
+            tool_button_state(&mut cx, &panel, path),
+            (true, false),
+            "{path:?}"
+        );
+        assert_eq!(button_on(&mut cx, &panel, path), 0.0);
+    }
+
+    // A tool button arms its tool, shown selected; the other switches; the
+    // same again puts it away.
+    assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
+    assert_eq!(map.tool(), Some(ToolKind::Goal));
+    assert_eq!(button_on(&mut cx, &panel, ids!(goal_tool)), 1.0);
+    assert!(click(&mut cx, &mut panel, ids!(pose_tool)));
+    assert_eq!(map.tool(), Some(ToolKind::PoseEstimate));
+    assert_eq!(button_on(&mut cx, &panel, ids!(pose_tool)), 1.0);
+    assert_eq!(button_on(&mut cx, &panel, ids!(goal_tool)), 0.0);
+    assert!(click(&mut cx, &mut panel, ids!(pose_tool)));
+    assert_eq!(map.tool(), None);
+    assert_eq!(button_on(&mut cx, &panel, ids!(pose_tool)), 0.0);
+
+    // Disarmed on the robot: the armed Goal tool is put away and greyed;
+    // Pose Estimate still works.
+    assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
+    assert_eq!(map.tool(), Some(ToolKind::Goal));
+    robot_is(&mut cx, &mut panel, false);
+    assert_eq!(map.tool(), None);
+    assert_eq!(
+        text(&mut cx, &panel, ids!(tool_reason)),
+        "2D Goal Pose off: robot not armed (arm it on the robot)"
+    );
+    assert_eq!(
+        tool_button_state(&mut cx, &panel, ids!(goal_tool)),
+        (false, true)
+    );
+    assert_eq!(
+        tool_button_state(&mut cx, &panel, ids!(pose_tool)),
+        (true, false)
+    );
+    assert!(click(&mut cx, &mut panel, ids!(goal_tool)));
+    assert_eq!(map.tool(), None, "a greyed tool was armed");
+    assert!(click(&mut cx, &mut panel, ids!(pose_tool)));
+    assert_eq!(map.tool(), Some(ToolKind::PoseEstimate));
+
+    // The release's command goes out with the token; the reply is shown.
+    let pose = NavCommand::InitialPose {
+        x: 1.5,
+        y: -0.5,
+        yaw: 0.25,
+    };
+    assert!(map_action(&mut cx, &mut panel, DvizMapAction::Send(pose)));
+    let id = session.snapshot().command.expect("a record").id;
+    assert!(
+        wait_until(SETTLE, || session.snapshot().command.is_some_and(
+            |r| matches!(r.replies.as_slice(), [(_, CommandOutcome::Ack(_))])
+        )),
+        "no reply"
+    );
+    sync(&mut cx, &mut panel);
+    assert_eq!(
+        text(&mut cx, &panel, ids!(command)),
+        format!("Last command: initialpose {id} → ok: accepted  (0 s ago)")
+    );
+    assert_eq!(command_red(&mut cx, &panel), 0.0);
+    // E-STOP goes without the token.
+    assert!(click(&mut cx, &mut panel, ids!(estop)));
+    assert!(wait_until(SETTLE, || requests.lock().unwrap().len() == 2));
+    let sent = requests.lock().unwrap().clone();
+    assert_eq!(sent[0].cmd, "initialpose");
+    assert_eq!(sent[0].token.as_deref(), Some(TOKEN));
+    assert_eq!(
+        (sent[0].x, sent[0].y, sent[0].yaw),
+        (Some(1.5), Some(-0.5), Some(0.25))
+    );
+    assert_eq!(sent[1].cmd, "estop");
+    assert_eq!(sent[1].token, None);
+    assert_no_script_errors(&mut cx);
+    session.disconnect();
 }

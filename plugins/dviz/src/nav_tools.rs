@@ -2,9 +2,6 @@
 //! state machine, drag-to-pose conversion, tool availability and the
 //! command / reason text. No drawing here.
 
-// Task 7 (the panel) is the first caller; drop this then.
-#![allow(dead_code)]
-
 use std::time::{Duration, Instant};
 
 use dviz_protocol::{nav_status_parts, NavStatus};
@@ -136,10 +133,20 @@ pub struct ToolInputs<'a> {
     pub status_age: Option<Duration>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Availability {
     pub pose: Result<(), &'static str>,
     pub goal: Result<(), &'static str>,
+}
+
+impl Availability {
+    /// Whether the `kind` tool may be used.
+    pub fn allows(&self, kind: ToolKind) -> bool {
+        match kind {
+            ToolKind::PoseEstimate => self.pose.is_ok(),
+            ToolKind::Goal => self.goal.is_ok(),
+        }
+    }
 }
 
 /// First matching row of the design's table, per tool.
@@ -442,6 +449,22 @@ mod tests {
         for (i, (inputs, want)) in cases.iter().enumerate() {
             assert_eq!(&tool_availability(inputs), want, "row {i}");
         }
+    }
+
+    #[test]
+    fn allows_reads_each_tool() {
+        let goal_off = Availability {
+            pose: Ok(()),
+            goal: Err("gate state unknown"),
+        };
+        assert!(goal_off.allows(ToolKind::PoseEstimate));
+        assert!(!goal_off.allows(ToolKind::Goal));
+        let both_off = Availability {
+            pose: Err("not connected"),
+            goal: Err("not connected"),
+        };
+        assert!(!both_off.allows(ToolKind::PoseEstimate));
+        assert!(!both_off.allows(ToolKind::Goal));
     }
 
     #[test]

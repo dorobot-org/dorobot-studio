@@ -1,15 +1,24 @@
 //! The `dviz_nav` panel: the navigation scene on an RViz-style 2D map, with
 //! the nav status line above it and a legend whose check boxes switch each
-//! layer.
+//! layer. Its toolbar has the 2D Pose Estimate and 2D Goal Pose tools (used
+//! on the map, greyed while the robot cannot take them) and the E-STOP and
+//! Disarm buttons; under the status line, the last command's receipt and why
+//! the tools are off.
 //!
 //! Like `dviz_view`, the panel only holds a handle to the process-wide
 //! [`DvizSession`] and reads a fresh snapshot on every `sync` (the host syncs
 //! the visible panel about ten times a second). Nothing here waits on the
-//! network; connecting is done in the `dviz_view` panel.
+//! network: commands are handed to [`DvizSession::send_command`], which
+//! returns at once. Connecting is done in the `dviz_view` panel.
 
 use crate::{
-    map_view::layer_color, view_panel::theme_due, DvizMap2DWidgetRefExt, DvizSession, NavLayers,
-    NavScene,
+    map_view::layer_color,
+    nav_tools::{
+        availability_text, command_is_error, command_text, tool_availability, Availability,
+        ToolInputs, ToolKind,
+    },
+    view_panel::theme_due,
+    DvizMap2DWidgetRefExt, DvizSession, NavCommand, NavLayers, NavScene, SessionSnapshot,
 };
 use dorobot_studio_core::{
     api::Backend,
@@ -17,10 +26,12 @@ use dorobot_studio_core::{
 };
 use dorobot_studio_plugin::*;
 use dviz_protocol::{nav_entities, nav_status_parts, NavStatus};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// A status older than this is stale.
 const STALE_AFTER: Duration = Duration::from_secs(2);
+/// How long a tool's hint stays on the reason line.
+const HINT_FOR: Duration = Duration::from_secs(2);
 
 script_mod! {
     use mod.prelude.widgets.*
@@ -36,18 +47,34 @@ script_mod! {
             }
         }
     }
+    // The last command's receipt: the panel's ink, red while it failed.
+    mod.widgets.DvizNavCommand = mod.widgets.DvizLabel{
+        draw_text +: {
+            error: instance(0.0)
+            get_color: fn() {
+                let ink = mix(#xF5F5F7, #x1C1C1E, self.light)   // INK_D, INK_L
+                let red = mix(#xFF453A, #xD70015, self.light)    // the HotBtn's red
+                return mix(ink, red, self.error)
+            }
+        }
+    }
     // A layer's colour in the legend.
     mod.widgets.DvizSwatch = mod.widgets.SolidView{width: 14 height: 10}
 }
 
 /// Every part of the panel that draws text or a ground, by path from its
-/// root, and which of its draws carry `light`. The Follow button is themed
-/// with its selection (`sync_follow_button`). The map is not themed: its
-/// canvas is the same dark grey in both themes, as RViz's.
+/// root, and which of its draws carry `light`. The Follow and tool buttons
+/// are themed with their selection (`sync_follow_button`,
+/// `sync_tool_buttons`). The map is not themed: its canvas is the same dark
+/// grey in both themes, as RViz's.
 const THEMED: &[(&[LiveId], Themed)] = &[
     (ids!(heading), Themed::Text),
     (ids!(fit), Themed::Both),
+    (ids!(estop), Themed::Both),
+    (ids!(disarm), Themed::Both),
     (ids!(status), Themed::Text),
+    (ids!(command), Themed::Text),
+    (ids!(tool_reason), Themed::Text),
     (ids!(legend), Themed::Bg),
     (ids!(legend_label), Themed::Text),
     (ids!(layer_map), Themed::Text),
@@ -59,6 +86,16 @@ const THEMED: &[(&[LiveId], Themed)] = &[
     (ids!(layer_scan), Themed::Text),
     (ids!(disclaimer), Themed::Text),
 ];
+
+/// Each tool button and its tool.
+const TOOL_BUTTONS: [(&[LiveId], ToolKind); 2] = [
+    (ids!(pose_tool), ToolKind::PoseEstimate),
+    (ids!(goal_tool), ToolKind::Goal),
+];
+
+/// How the tool buttons were last styled: `(selected, enabled)` in
+/// `TOOL_BUTTONS` order, and the theme.
+type ToolButtonStyle = ([(bool, bool); 2], f64);
 
 /// Each layer's check box and the switch it sets.
 type LayerSwitch = fn(&mut NavLayers) -> &mut bool;
@@ -219,6 +256,31 @@ pub fn status_is_stale(age: Option<Duration>) -> bool {
     age.is_none_or(|age| age > STALE_AFTER)
 }
 
+/// Which tools `snapshot` allows, and why not ([`tool_availability`]).
+fn snapshot_availability(snapshot: &SessionSnapshot) -> Availability {
+    let nav = &snapshot.nav;
+    tool_availability(&ToolInputs {
+        connected: snapshot.connected,
+        robots: snapshot.robots.len(),
+        has_token: snapshot.has_token,
+        status: nav.status.as_ref(),
+        status_age: nav.status_at.map(|at| at.elapsed()),
+    })
+}
+
+/// The reason line: a tool's `hint` for [`HINT_FOR`] after it was given,
+/// otherwise why the tools are off ([`availability_text`]).
+fn tool_reason_text(
+    hint: Option<(&'static str, Instant)>,
+    availability: &Availability,
+    now: Instant,
+) -> String {
+    match hint {
+        Some((hint, at)) if now.saturating_duration_since(at) < HINT_FOR => hint.to_string(),
+        _ => availability_text(availability),
+    }
+}
+
 /// `text`, then the reason in brackets when there is one.
 fn with_reason(text: String, reason: Option<&str>) -> String {
     match reason.map(str::trim) {
@@ -245,6 +307,14 @@ pub struct DvizNavPanel {
     follow_button: Option<(bool, f64)>,
     /// Whether the status line was last greyed as stale.
     stale: Option<bool>,
+    /// Whether the command line was last coloured as failed.
+    command_error: Option<bool>,
+    /// How the tool buttons were last styled.
+    tool_buttons: Option<ToolButtonStyle>,
+    /// What the tools could do at the last refresh; `None` before it.
+    availability: Option<Availability>,
+    /// A tool's hint and when it was given.
+    hint: Option<(&'static str, Instant)>,
     /// The swatch colours last applied, in `SWATCHES` order.
     swatches: Option<Vec<[u8; 4]>>,
 }
@@ -260,8 +330,17 @@ impl DvizNavPanel {
                 View{width: Fill height: Fit flow: Right spacing: 8.0 align: Align{y: 0.5}
                     fit := mod.widgets.ux.ToolButton{text: "Fit map"}
                     follow := mod.widgets.ux.SegmentButton{text: "Follow robot"}
+                    pose_tool := mod.widgets.ux.SegmentButton{text: "2D Pose Estimate"}
+                    goal_tool := mod.widgets.ux.SegmentButton{text: "2D Goal Pose"}
+                    View{width: Fill height: Fit}
+                    // No keyboard shortcut: a click on them does not take
+                    // the key focus, so no key press sends them afterwards.
+                    estop := mod.widgets.nx.HotBtn{text: "E-STOP" grab_key_focus: false}
+                    disarm := mod.widgets.nx.MiniHot{text: "Disarm" grab_key_focus: false}
                 }
                 status := mod.widgets.DvizNavStatus{width: Fill max_lines: 3 text: "Waiting for nav status"}
+                command := mod.widgets.DvizNavCommand{width: Fill text: ""}
+                tool_reason := mod.widgets.DvizLabel{width: Fill text: ""}
                 View{width: Fill height: Fill flow: Right spacing: 12.0
                     map := mod.widgets.DvizMap2D{}
                     legend := mod.widgets.ux.Card{width: 230 height: Fit flow: Down padding: 12.0 spacing: 8.0
@@ -307,6 +386,10 @@ impl DvizNavPanel {
             themed: None,
             follow_button: None,
             stale: None,
+            command_error: None,
+            tool_buttons: None,
+            availability: None,
+            hint: None,
             swatches: None,
         }
     }
@@ -318,12 +401,14 @@ impl DvizNavPanel {
     }
 
     /// Puts the theme on every part. A style reload also put the check
-    /// boxes, the Follow button, the status grey and the swatches back to
-    /// their source, so those are set again too.
+    /// boxes, the Follow and tool buttons, the status grey, the command red
+    /// and the swatches back to their source, so those are set again too.
     fn apply_theme(&mut self, cx: &mut Cx, light: f64) {
         frame::apply_light(cx, &self.root, THEMED, light);
         self.follow_button = None;
+        self.tool_buttons = None;
         self.stale = None;
+        self.command_error = None;
         self.swatches = None;
         for (path, switch) in LAYER_CHECKS {
             let check = self.root.check_box(cx, path);
@@ -337,6 +422,8 @@ impl DvizNavPanel {
     /// Everything from a fresh snapshot.
     fn refresh(&mut self, cx: &mut Cx) {
         let snapshot = self.session.snapshot();
+        let availability = snapshot_availability(&snapshot);
+        self.availability = Some(availability);
         let nav = snapshot.nav;
         let map = self.root.dviz_map2_d(cx, ids!(map));
         map.set_scene(cx, &nav);
@@ -357,6 +444,30 @@ impl DvizNavPanel {
             self.stale = Some(stale);
         }
         self.sync_follow_button(cx, map.follow());
+        // A tool the robot can no longer take is put away, mid-drag too.
+        if map.tool().is_some_and(|kind| !availability.allows(kind)) {
+            map.set_tool(cx, None);
+        }
+        self.sync_tool_buttons(cx, map.tool(), &availability);
+        let now = Instant::now();
+        let command = snapshot.command.as_ref();
+        let text = command.map_or_else(String::new, |record| command_text(record, now));
+        self.root.label(cx, ids!(command)).set_text(cx, &text);
+        let error = command.is_some_and(command_is_error);
+        if self.command_error != Some(error) {
+            let mut line = self.root.widget(cx, ids!(command));
+            let red = if error { 1.0 } else { 0.0 };
+            script_apply_eval!(cx, line, { draw_text +: { error: #(red) } });
+            self.command_error = Some(error);
+        }
+        if self
+            .hint
+            .is_some_and(|(_, at)| now.saturating_duration_since(at) >= HINT_FOR)
+        {
+            self.hint = None;
+        }
+        let reason = tool_reason_text(self.hint, &availability, now);
+        self.root.label(cx, ids!(tool_reason)).set_text(cx, &reason);
         self.sync_swatches(cx, &nav);
     }
 
@@ -367,6 +478,28 @@ impl DvizNavPanel {
             frame::sync_nav_button(cx, &self.root.widget(cx, ids!(follow)), following, light);
             self.follow_button = Some((following, light));
         }
+    }
+
+    /// Shows each tool button selected while its tool is armed, and greyed
+    /// (clicks ignored) while the robot cannot take it, when that changed.
+    fn sync_tool_buttons(
+        &mut self,
+        cx: &mut Cx,
+        active: Option<ToolKind>,
+        availability: &Availability,
+    ) {
+        let light = self.light();
+        let state = TOOL_BUTTONS.map(|(_, kind)| (active == Some(kind), availability.allows(kind)));
+        if self.tool_buttons == Some((state, light)) {
+            return;
+        }
+        for ((path, _), (selected, enabled)) in TOOL_BUTTONS.iter().zip(state) {
+            let button = self.root.widget(cx, path);
+            frame::sync_nav_button(cx, &button, selected, light);
+            self.root.button(cx, path).set_enabled(cx, enabled);
+            button.set_disabled(cx, !enabled);
+        }
+        self.tool_buttons = Some((state, light));
     }
 
     /// Paints each swatch in its layer's colour, when that changed.
@@ -407,22 +540,55 @@ impl PluginPanel for DvizNavPanel {
         self.refresh(cx);
     }
 
+    /// E-STOP and Disarm send at once, whatever else the batch holds and
+    /// whether or not the tools work; a greyed tool's button is ignored.
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _: &mut dyn Backend) -> bool {
+        let mut handled = false;
+        for (path, command) in [
+            (ids!(estop), NavCommand::Estop),
+            (ids!(disarm), NavCommand::Disarm),
+        ] {
+            if self.root.button(cx, path).clicked(actions) {
+                self.session.send_command(command);
+                handled = true;
+            }
+        }
         let map = self.root.dviz_map2_d(cx, ids!(map));
+        if let Some(command) = map.sent(actions) {
+            self.session.send_command(command);
+            handled = true;
+        }
+        if let Some(hint) = map.hint(actions) {
+            self.hint = Some((hint, Instant::now()));
+            handled = true;
+        }
+        for (path, kind) in TOOL_BUTTONS {
+            if self.root.button(cx, path).clicked(actions) {
+                if self.availability.is_some_and(|a| a.allows(kind)) {
+                    map.toggle_tool(cx, kind);
+                }
+                handled = true;
+            }
+        }
         if self.root.button(cx, ids!(fit)).clicked(actions) {
             map.fit(cx);
-        } else if self.root.button(cx, ids!(follow)).clicked(actions) {
+            handled = true;
+        }
+        if self.root.button(cx, ids!(follow)).clicked(actions) {
             map.set_follow(cx, !map.follow());
-        } else if let Some((switch, on)) = LAYER_CHECKS.iter().find_map(|(path, switch)| {
+            handled = true;
+        }
+        if let Some((switch, on)) = LAYER_CHECKS.iter().find_map(|(path, switch)| {
             Some((switch, self.root.check_box(cx, path).changed(actions)?))
         }) {
             *switch(&mut self.layers) = on;
             map.set_layers(cx, self.layers);
-        } else {
-            return false;
+            handled = true;
         }
-        self.refresh(cx);
-        true
+        if handled {
+            self.refresh(cx);
+        }
+        handled
     }
 
     /// Studio calls this whenever the panel is hidden, so it must not
@@ -601,6 +767,128 @@ mod tests {
         );
         assert_eq!(connection_text(true, None, Some("old")), None);
         assert_eq!(connection_text(true, None, None), None);
+    }
+
+    /// The command and tool-reason lines carry the theme as text; E-STOP and
+    /// Disarm on both their ground and text.
+    #[test]
+    fn themed_includes_command_labels() {
+        let themed = |id: LiveId| {
+            THEMED
+                .iter()
+                .find(|(path, _)| *path == [id])
+                .map(|(_, t)| *t)
+        };
+        for id in [live_id!(command), live_id!(tool_reason)] {
+            assert!(
+                themed(id) == Some(Themed::Text),
+                "{id} is not themed as text"
+            );
+        }
+        for id in [live_id!(estop), live_id!(disarm)] {
+            assert!(
+                themed(id) == Some(Themed::Both),
+                "{id} is not themed on both draws"
+            );
+        }
+    }
+
+    /// A tool's hint replaces the reason line for 2 s, then the line goes
+    /// back to why the tools are off (empty when both work).
+    #[test]
+    fn tool_hint_shows_for_two_seconds() {
+        let t0 = Instant::now();
+        let off = Availability {
+            pose: Ok(()),
+            goal: Err("robot not armed (arm it on the robot)"),
+        };
+        let hint = Some(("drag to set the heading", t0));
+        let at = |ms| t0 + Duration::from_millis(ms);
+        assert_eq!(
+            tool_reason_text(hint, &off, at(0)),
+            "drag to set the heading"
+        );
+        assert_eq!(
+            tool_reason_text(hint, &off, at(1999)),
+            "drag to set the heading"
+        );
+        assert_eq!(
+            tool_reason_text(hint, &off, at(2000)),
+            "2D Goal Pose off: robot not armed (arm it on the robot)"
+        );
+        assert_eq!(
+            tool_reason_text(None, &off, at(0)),
+            "2D Goal Pose off: robot not armed (arm it on the robot)"
+        );
+        let on = Availability {
+            pose: Ok(()),
+            goal: Ok(()),
+        };
+        assert_eq!(tool_reason_text(hint, &on, at(2500)), "");
+    }
+
+    /// The availability the panel computes from a snapshot: the session's
+    /// connection, robots and token, and the nav status with its age.
+    #[test]
+    fn availability_from_the_snapshot() {
+        let mut snapshot = SessionSnapshot::default();
+        assert_eq!(
+            availability_text(&snapshot_availability(&snapshot)),
+            "Pose / goal tools off: not connected"
+        );
+        snapshot.connected = true;
+        snapshot.robots = vec!["tracer".into()];
+        snapshot.has_token = true;
+        snapshot.nav.status = Some(NavStatus {
+            loc_ok: true,
+            armed: false,
+            cmd_goal_enabled: true,
+            ..NavStatus::default()
+        });
+        snapshot.nav.status_at = Some(Instant::now());
+        assert_eq!(
+            availability_text(&snapshot_availability(&snapshot)),
+            "2D Goal Pose off: robot not armed (arm it on the robot)"
+        );
+        snapshot.robots.push("tracer_sim".into());
+        assert_eq!(
+            availability_text(&snapshot_availability(&snapshot)),
+            "Pose / goal tools off: more than one robot on this connection"
+        );
+    }
+
+    /// The status and command lines' shaders compile for the desktop
+    /// backends (no GPU is needed: this is the fork's own shader compiler).
+    #[test]
+    fn line_shaders_compile() {
+        let mut cx = Cx::new(Box::new(|_, _| {}));
+        cx.init_cx_os();
+        cx.with_vm(|vm| {
+            dorobot_studio_core::register_ui(vm);
+            crate::view_panel::script_mod(vm);
+            script_mod(vm);
+            assert!(vm.take_errors().is_empty());
+            let sources = [
+                ("status glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizNavStatus.draw_text, "glsl", false)})),
+                ("status metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizNavStatus.draw_text, "metal", false)})),
+                ("command glsl", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizNavCommand.draw_text, "glsl", false)})),
+                ("command metal", script_eval!(vm, {mod.shader.test_compile_draw_source(mod.widgets.DvizNavCommand.draw_text, "metal", false)})),
+            ];
+            for (name, value) in sources {
+                let source = vm
+                    .heap()
+                    .string_with(value, |_, text| text.to_string())
+                    .unwrap_or_else(|| panic!("{name}: no source"));
+                // An undefined widget gives "no shader object", not an error.
+                assert!(
+                    !source.is_empty()
+                        && !source.starts_with("ERRORS")
+                        && !source.starts_with("no shader"),
+                    "{name}: {source}"
+                );
+            }
+            assert!(vm.take_errors().is_empty());
+        });
     }
 
     #[test]
