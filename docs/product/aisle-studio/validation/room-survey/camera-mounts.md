@@ -11,6 +11,8 @@ In **Task**, select Nano and prepare a visual approach or a floor-to-table trans
 3. For each landmark, record its measured 3D position in metres in the named URDF mounting link **at the time of the exposure**, and its pixel center in the image, measured right and down from the top left. Use a stationary mounting link or transform measurements into its frame separately for every exposure. The expected link names are `head_tilt`, `left_wrist_cam` and `right_wrist_cam`.
 4. Designate at least six distinct points for fitting and three separate points for checking each mount. Spread both sets across the image and include a range of depths. The fit uses only the first group. Studio projects both groups back onto their images and requires every residual to be at most **2 pixels**. A missing image, invalid mounting link, point behind the fitted camera, or excessive residual rejects the import.
 
+Pixel `(0, 0)` denotes the center of the top-left pixel. The Nexus camera expects the principal point at `(240, 180)` for this resolution. Landmark coordinates are operator annotations. Keep the original exposures so another operator can inspect those annotations.
+
 The head camera's first fit observation is shown below.
 
 ```json
@@ -52,7 +54,9 @@ Both Mac sessions authored the red-cube transfer in **Task**, rejected a deliber
 | Mac, headless 1024 × 768, Codex GPT-6.2 Astra | 120 mm | 6,968 / 6,968 | 348 exported frames per camera |
 | One Linux H100 worker, existing DeepSeek controller capped at 80 mm/s | 125 mm | 7,048 / 7,048 | 222 background RGB publications at 2.00 Hz |
 
-All three runs used byte-identical room and survey files. Each run's realized camera intrinsics and mount transforms exactly matched the accepted revision. The motor journals replayed against the URDF with zero invalid rows. The H100 rate measures publications on the worker. The archive includes the original motor journals, controller identities, onboard optics, native journeys and H100 publication timestamps. [Download the trial measurements](camera-mount-trials.zip)
+DeepSeek via Octos also authored a full three-cube task on the same layout. It retried blue after its first placement attempt. Red, green and blue finished 120, 123 and 138 mm inside the table edge, with 100 consecutive table-contact ticks each. The Nano kept wheel support for all 28,302 ticks, with zero joint-limit excursions and zero furniture contacts. Studio exported 1,415 frames per camera and reopened the result after restart.
+
+All four runs used byte-identical room and survey files. Each run's realized camera intrinsics and mount transforms exactly matched the accepted revision. The motor journals replayed against the URDF with zero invalid rows. The H100 rate measures publications on the worker. The archive includes the original motor journals, controller identities, onboard optics, native journeys and H100 publication timestamps. [Download the trial measurements](camera-mount-trials.zip)
 
 ```sh
 python docs/product/aisle-studio/validation/room-survey/check_camera_trials.py
