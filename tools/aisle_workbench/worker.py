@@ -109,6 +109,17 @@ def validate(plan, meta):
             raise ValueError(
                 f"The operator requested only the {named} cube. Revise the controller before running it."
             )
+    if "max_forward_speed_m_s" in plan:
+        cap = plan["max_forward_speed_m_s"]
+        if (
+            meta["robot"] != "Nano"
+            or plan.get("kind") != "table-transfer"
+            or type(cap) not in (float, int)
+            or not 0.025 <= cap <= 0.13
+        ):
+            raise ValueError(
+                "Nano forward speed limit must be 0.025–0.13 m/s for a floor-to-table task"
+            )
     tracking = plan.get("track_grasp", False)
     if type(tracking) is not bool or (
         tracking and plan.get("kind") != "table-transfer"
@@ -135,6 +146,11 @@ def validate(plan, meta):
         return dict(
             kind="table-transfer",
             color_order=plan["color_order"],
+            **(
+                {"max_forward_speed_m_s": plan["max_forward_speed_m_s"]}
+                if "max_forward_speed_m_s" in plan
+                else {}
+            ),
             **({"track_grasp": True} if tracking else {}),
             **(
                 {"grasp_association": plan["grasp_association"]}
