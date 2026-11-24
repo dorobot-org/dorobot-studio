@@ -1,0 +1,9 @@
+{
+  "seed": 4022072275,
+  "archive_index": 27,
+  "task_passed": false,
+  "physics_ticks": 10794,
+  "motor_sha256": "874d846867382196dc631563335fba8caee4016bc54672bcb3a45c1886efa97b",
+  "archived_motor_bytes_equal": true,
+  "error": "ValueError: Could not confirm red in the wrist camera after two grasps"
+}

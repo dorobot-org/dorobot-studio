@@ -1,0 +1,7 @@
+{
+  "registration_revision": "e1e804658e375bc7579c13895a7d9f83f2df08ce",
+  "runtime_revision": "476f293006d0ac0f07c71d80501d86b7e925a26a",
+  "controller_sha256": "4bf8180214a6c0a67e8016afb588f628b2990ce441617e4127d638bab323f72d",
+  "policy_sha256": "19ed6fc3317d429ca73bf39e5f90cd691a81c7bc096472b707ef8526e81e4180",
+  "registered_manifest": "docs/product/aisle-studio/validation/nano-release-workspace/cohort-f-manifest.json"
+}
