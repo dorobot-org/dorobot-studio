@@ -121,12 +121,13 @@ WRIST_CLEARANCE_OPT_IN = re.compile(
 )
 
 
-def named_cube_transfer(task):
+def named_cube_transfer(task, *, moving=False):
     """Recognize an unambiguous single-cube request, leaving spatial and compound instructions to the author."""
     normalized = " ".join(WRIST_CLEARANCE_OPT_IN.sub("", task).lower().split())
+    motion = r"(?:moving|sliding) " if moving else ""
     match = re.fullmatch(
         r"(?:please )?(?:move|place|put|carry|transfer) (?:only )?(?:the |a )?"
-        r"(red|green|blue) (?:floor )?cube (?:from the (?:ground|floor) )?"
+        rf"{motion}(red|green|blue) (?:floor )?cube (?:from the (?:ground|floor) )?"
         r"(?:on|onto|to) (?:the |a )?coffee table[.!]?",
         normalized,
     )
@@ -309,7 +310,10 @@ def measured_feedback(path, meta, output=None):
         }
         from wheel_support import feedback as wheel_feedback
 
-        pickup = wheel_feedback(path, previous, json.loads(parent.read_bytes()))
+        parent_plan = json.loads(parent.read_bytes())
+        pickup = wheel_feedback(path, previous, parent_plan)
+        if parent_plan.get("track_grasp") is True:
+            pickup["previous_track_grasp"] = True
         failure = previous.get("last_pickup_observation")
         if failure and failure.get("color") in previous["requested"]:
             if failure.get("stopped_tick") != previous["physics_ticks"]:
@@ -525,7 +529,8 @@ def prepare(args, meta):
         measured_feedback(args.feedback, meta, args.out) if args.feedback else None
     )
     model_name = None
-    stationary_pickup = False
+    required_tracking = None
+    moving_color = None
     if args.provider == "reference":
         if args.task.strip() != REFERENCE:
             raise ValueError(
@@ -555,9 +560,17 @@ def prepare(args, meta):
         )
         if args.robot == "Nano":
             named = named_cube_transfer(args.task)
-            stationary_pickup = bool(
-                named and not (feedback and "stopped_pickup" in feedback)
-            )
+            moving_color = named_cube_transfer(args.task, moving=True)
+            if moving_color:
+                named = moving_color
+                required_tracking = True
+            elif named and not (
+                feedback
+                and (
+                    feedback.get("previous_track_grasp") or "stopped_pickup" in feedback
+                )
+            ):
+                required_tracking = False
             schema["properties"].update(
                 kind=dict(
                     type="string",
@@ -570,8 +583,8 @@ def prepare(args, meta):
                 color=dict(type="string", enum=["red", "green", "blue"]),
                 color_order=dict(type="string", enum=[named] if named else CUBE_ORDERS),
                 track_grasp=(
-                    dict(type="boolean", enum=[False])
-                    if stationary_pickup
+                    dict(type="boolean", enum=[required_tracking])
+                    if required_tracking is not None
                     else dict(type="boolean")
                 ),
                 standoff_m=dict(type="number"),
@@ -685,10 +698,19 @@ def prepare(args, meta):
         plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
-        if stationary_pickup and plan.get("track_grasp") is True:
+        if moving_color and (
+            plan.get("kind") != "table-transfer"
+            or plan.get("color_order") != moving_color
+        ):
             raise ValueError(
-                "The named floor-cube transfer requires a stationary pickup"
+                f"The operator requested only the moving {moving_color} cube"
             )
+        if (
+            required_tracking is not None
+            and plan.get("track_grasp", False) is not required_tracking
+        ):
+            mode = "tracked" if required_tracking else "stationary"
+            raise ValueError(f"The named floor-cube transfer requires a {mode} pickup")
         if (plan.get("wrist_clearance") is True) != bool(
             args.robot == "Nano" and WRIST_CLEARANCE_OPT_IN.search(args.task)
         ):
@@ -839,9 +861,7 @@ def simulate(args, meta):
                 else (
                     "standing-development"
                     if standing
-                    else "living-room"
-                    if mobile
-                    else args.fixture
+                    else "living-room" if mobile else args.fixture
                 )
             ),
             adapter_hash=digest(Path(nx.__file__)),
@@ -1096,9 +1116,7 @@ def main():
     p.add_argument("--task", default=REFERENCE)
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
-    p.add_argument(
-        "--controller-sha256", help="Digest of the revision selected in Studio"
-    )
+    p.add_argument("--controller-sha256", help="Digest of the revision selected in Studio")
     p.add_argument("--previous-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--current-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--trial", type=Path)

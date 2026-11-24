@@ -223,7 +223,22 @@ class InspectionTests(unittest.TestCase):
             )
             args.task = "Move the sliding red floor cube onto the coffee table."
             self.assertTrue(worker.prepare(args, self.profile)["track_grasp"])
-            self.assertNotIn("enum", ask.call_args.args[2]["properties"]["track_grasp"])
+            props = ask.call_args.args[2]["properties"]
+            self.assertEqual(props["track_grasp"]["enum"], [True])
+            self.assertEqual(props["color_order"]["enum"], ["red"])
+            reply["color_order"] = "red,green,blue"
+            with self.assertRaisesRegex(ValueError, "only the moving red cube"):
+                worker.prepare(args, self.profile)
+            reply["color_order"] = "red"
+            args.task = task
+            with tempfile.TemporaryDirectory() as workspace:
+                args.feedback = args.out = Path(workspace)
+                prior = {"previous_track_grasp": True}
+                with patch.object(worker, "measured_feedback", return_value=prior):
+                    self.assertTrue(worker.prepare(args, self.profile)["track_grasp"])
+                    self.assertNotIn(
+                        "enum", ask.call_args.args[2]["properties"]["track_grasp"]
+                    )
         self.assertTrue(
             worker.validate(reply | {"task": task}, self.profile)["track_grasp"]
         )
