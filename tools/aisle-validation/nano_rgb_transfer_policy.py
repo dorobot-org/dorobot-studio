@@ -10,6 +10,7 @@ import sys
 import cv2
 import numpy as np
 
+from nano_grasp_estimator import color_mask, parameters, predict
 from nano_rgb_policy import CAMERAS, CUBE_CENTRE_Z, VisualServo
 from nano_rgb_table import occupied_table_points, table_edge
 
@@ -18,14 +19,7 @@ from model import Kinematics, UnreachableGrasp  # noqa: E402
 
 
 def visible_in_jaws(rgb, color):
-    hue, sat, val = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV).transpose(2, 0, 1)
-    low, high = {"red": (-7, 7), "green": (45, 82), "blue": (106, 132)}[color]
-    color_mask = (
-        ((hue >= low) & (hue <= high))
-        if low >= 0
-        else ((hue <= high) | (hue >= 180 + low))
-    )
-    mask = color_mask & (sat > 125) & (val > 55)
+    mask = color_mask(cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV), color)
     # Calibrated wrist ROI spans the gripper opening when the jaws are closed.
     h, w = mask.shape
     opening = mask[round(0.61 * h) : round(0.89 * h), round(0.17 * w) : round(0.48 * w)]
@@ -69,6 +63,10 @@ class Controller:
         self.targets = None
         self.last_stamp = -1
         self.grip = "left_j6_gripper"
+        self.carry_detector = parameters(config.get("grasp_plan", {}))
+        self.jaw_indices = [
+            self.names.index(name) for name in (self.grip, "left_j5_roll")
+        ]
         self.wheel_pair = [self.names.index(f"wheel_{i}_joint") for i in (2, 3)]
         self.wheel_radius = config["rolling_radius_m"]
         self.last_rim_distance = None
@@ -123,8 +121,13 @@ class Controller:
         return self.servo.command(self.sense())["xy"]
 
     def held_in_wrist_view(self, color, data=None):
-        rgb = (self.sense() if data is None else data)["left_wrist"]
-        visible = visible_in_jaws(rgb, color)
+        observation = self.sense() if data is None else data
+        rgb = observation["left_wrist"]
+        if self.carry_detector is None:
+            visible = visible_in_jaws(rgb, color)
+        else:
+            grip, roll = observation["encoders"][self.jaw_indices]
+            visible = predict(self.carry_detector, rgb, color, grip, roll)
         self.act("jaw observation", color=color, visible=visible)
         return visible
 

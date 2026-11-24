@@ -162,7 +162,7 @@ script_mod! {
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
         trial_bar := Bar{previous := mod.widgets.ux.ToolButton{text:"Previous run"} next := mod.widgets.ux.ToolButton{text:"Next run"}
             folder := mod.widgets.ux.ToolButton{text:"Open run folder"}
-            export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"} train_reach := mod.widgets.ux.ToolButton{text:"Train shoulder correction"}}
+            export := mod.widgets.ux.PrimaryButton{text:"Export episode"} replay := mod.widgets.ux.PrimaryButton{text:"Open in Replay"} train_reach := mod.widgets.ux.ToolButton{text:"Train shoulder correction"} train_grasp := mod.widgets.ux.ToolButton{text:"Train grasp detector"}}
         status := Body{}
     }
 }
@@ -437,6 +437,21 @@ impl PluginPanel for Panel {
                     )
                 };
                 let mut detail = detail;
+                if let Some(target) = w.plan["trunk_pitch_rad"].as_f64() {
+                    detail.push_str(&format!(
+                        "\nUpright trunk · waist pitch target {target:+.2} rad"
+                    ));
+                }
+                if let (Some(checkpoint), Some(dataset)) = (
+                    w.plan["grasp_checkpoint"].as_str(),
+                    w.plan["training_dataset"].as_str(),
+                ) {
+                    detail.push_str(&format!(
+                        "\nWrist detector {} · dataset {}",
+                        checkpoint.get(..8).unwrap_or(checkpoint),
+                        dataset.get(..8).unwrap_or(dataset)
+                    ));
+                }
                 if let Some(n) = w.plan["scene_observation"]["visible"].as_u64() {
                     detail.push_str(&format!(
                         "\nAuthored from onboard RGB · {n} cubes localized"
@@ -761,6 +776,12 @@ impl PluginPanel for Panel {
                 self.label(cx, ids!(verdict), verdict);
                 let text = if transfer {
                     let mut lines = vec![];
+                    if let Some(checkpoint) = w.evidence["grasp_checkpoint"].as_str() {
+                        lines.push(format!(
+                            "Trained wrist detector {}",
+                            checkpoint.get(..8).unwrap_or(checkpoint)
+                        ));
+                    }
                     for color in w.evidence["requested"]
                         .as_array()
                         .into_iter()
@@ -873,6 +894,16 @@ impl PluginPanel for Panel {
                             .unwrap_or_default()
                             * 100.
                     );
+                    if w.evidence["trunk_pitch_target_rad"]
+                        .as_f64()
+                        .is_some_and(|v| v != 0.0)
+                    {
+                        if let Some(measured) = w.evidence["settled_trunk_pitch_rad"].as_f64() {
+                            summary.push_str(&format!(
+                                "\nUpright trunk · measured waist pitch {measured:+.3} rad"
+                            ));
+                        }
+                    }
                     if let Some(joules) = w.evidence["estimated_positive_joint_work_j"].as_f64() {
                         summary.push_str(&format!("\nEstimated positive joint work {joules:.2} J"));
                     }
@@ -962,6 +993,18 @@ impl PluginPanel for Panel {
                     .set_visible(cx, w.dataset.is_some());
                 self.root
                     .button(cx, ids!(replay))
+                    .set_enabled(cx, !w.busy());
+                let train_grasp = w.robot == Robot::Nano
+                    && w.evidence["kind"] == "table-transfer"
+                    && w.evidence["task_success"] == true
+                    && w.evidence["carry_annotations"] == true
+                    && w.evidence["grasp_checkpoint"].is_null()
+                    && w.dataset.is_some();
+                self.root
+                    .widget(cx, ids!(train_grasp))
+                    .set_visible(cx, train_grasp);
+                self.root
+                    .button(cx, ids!(train_grasp))
                     .set_enabled(cx, !w.busy());
                 let can_train = w.robot == Robot::G1
                     && w.evidence["kind"] == "standing-inspection"
@@ -1085,6 +1128,7 @@ impl PluginPanel for Panel {
             (ids!(folder), Action::Open),
             (ids!(export), Action::Export),
             (ids!(train_reach), Action::TrainReach),
+            (ids!(train_grasp), Action::TrainGrasp),
         ] {
             if self.root.button(cx, id).clicked(actions) {
                 b.dispatch(Intent::Aisle(act));

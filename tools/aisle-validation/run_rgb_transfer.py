@@ -46,8 +46,9 @@ def finger_gap(point, position, rotation, bounds, cube_radius):
 
 
 class Judge:
-    def __init__(self, sim, colors):
+    def __init__(self, sim, colors, record_labels=False):
         self.colors = colors
+        self.airborne_in_jaw = {n: False for n in colors} if record_labels else None
         objects = {s["name"]: b for s, b in zip(sim.specs, sim.bodies)}
         self.cubes = {name: objects[name] for name in colors}
         self.table = objects["coffee_table"]
@@ -164,11 +165,12 @@ class Judge:
             pos = np.asarray(cube.get_pos()).copy()
             if not np.isfinite(pos).all():
                 raise ValueError("Nonfinite cube state")
-            if (
-                n not in other_support
-                and len(fingers[n]) == 2
-                and pos[2] - self.initial[n][2] > 0.05
-            ):
+            elevated = pos[2] - self.initial[n][2] > 0.05
+            if self.airborne_in_jaw is not None:
+                self.airborne_in_jaw[n] = bool(
+                    elevated and fingers[n] and n not in other_support
+                )
+            if n not in other_support and len(fingers[n]) == 2 and elevated:
                 self.grasped[n] += 1
             gap = min(
                 finger_gap(pos, p, r, bounds, self.radii[n]) for p, r, bounds in jaws
@@ -227,6 +229,13 @@ class Judge:
 
 
 def execute(out, seed, colors, record=False, room_objects=(), room_settings=None):
+    from nano_grasp_estimator import parameters
+
+    controller = out / "controller.json"
+    plan = json.loads(controller.read_bytes()) if controller.is_file() else {}
+    detector = parameters(plan)
+    if detector is not None and plan["model_hash"] != worker.digest(MODEL):
+        raise ValueError("Nano grasp checkpoint requires its training URDF")
     sim = LivingSimulation(
         MODEL,
         specs=[*scene_recipe(seed), *room_objects],
@@ -253,6 +262,17 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         ),
     )
     worker.save(out / "calibration.json", config)
+    if detector is not None:
+        config["grasp_plan"] = {
+            k: plan[k]
+            for k in (
+                "grasp_estimator",
+                "grasp_checkpoint",
+                "training_dataset",
+                "parent_controller_sha256",
+                "model_hash",
+            )
+        }
     metadata = worker.describe("Nano")
     xml = ET.parse(MODEL)
     speeds = {
@@ -260,7 +280,7 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         for j in metadata["limits"]
     }
     guard = WheelGuard()
-    judge = Judge(sim, colors)
+    judge = Judge(sim, colors, record_labels=record or detector is not None)
     envelope = MotorEnvelope(MODEL, sim.names, sim.scene.dt)
     journal = out / "motor-targets.f64"
     policy = HERE / "nano_rgb_transfer_policy.py"
@@ -277,6 +297,7 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
             support_code_hashes={
                 f.name: worker.digest(f)
                 for f in (
+                    HERE / "nano_grasp_estimator.py",
                     HERE / "nano_rgb_table.py",
                     HERE / "nano_actuator_audit.py",
                     HERE / "nano_visuals.py",
@@ -319,6 +340,7 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
                     step=sim.tick,
                     state=np.asarray(sim.robot.get_qpos())[sim.dofs].tolist(),
                     action=sim.targets.tolist(),
+                    airborne_in_jaw=[judge.airborne_in_jaw[n] for n in colors],
                 )
             )
         tmp = out / "preview.tmp"
@@ -436,6 +458,33 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
                         payload = data.getvalue()
                         child.stdin.write(struct.pack(">I", len(payload)) + payload)
                     elif op == "jaw observation" and command["color"] == active_color:
+                        if judge.airborne_in_jaw is not None:
+                            with (out / "jaw-diagnostics.jsonl").open(
+                                "a"
+                            ) as diagnostics:
+                                print(
+                                    json.dumps(
+                                        dict(
+                                            tick=sim.tick,
+                                            color=active_color,
+                                            visible=command["visible"],
+                                            airborne_in_jaw=judge.airborne_in_jaw[
+                                                active_color
+                                            ],
+                                            gripper_rad=float(
+                                                packet["encoders"][
+                                                    sim.names.index("left_j6_gripper")
+                                                ]
+                                            ),
+                                            roll_rad=float(
+                                                packet["encoders"][
+                                                    sim.names.index("left_j5_roll")
+                                                ]
+                                            ),
+                                        )
+                                    ),
+                                    file=diagnostics,
+                                )
                         # Retain the exact policy exposure used to confirm a grasp.
                         Image.fromarray(packet["left_wrist"]).save(
                             out / f"jaw-{sim.tick:05}-{active_color}.png"
@@ -495,7 +544,13 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         worker.save(out / "trajectory.json", rows)
         worker.save(
             out / "recording.json",
-            dict(joints=sim.names, fps=5, cameras=list(CAMERAS), samples=samples),
+            dict(
+                joints=sim.names,
+                fps=5,
+                cameras=list(CAMERAS),
+                label_colors=colors,
+                samples=samples,
+            ),
         )
     if error and (out / "policy.log").stat().st_size:
         error = (out / "policy.log").read_text().strip().splitlines()[-1][-350:]
@@ -523,6 +578,9 @@ def execute(out, seed, colors, record=False, room_objects=(), room_settings=None
         rejected_motor_writes=motors.rejected,
         frames=len(samples),
         recording=bool(samples),
+        carry_annotations=bool(samples),
+        grasp_checkpoint=plan.get("grasp_checkpoint"),
+        training_dataset=plan.get("training_dataset") if detector is not None else None,
         seed=seed,
     )
 

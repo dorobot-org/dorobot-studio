@@ -32,7 +32,9 @@ def main():
     p.add_argument("--standing", action="store_true")
     p.add_argument("--transfer", choices=["red", "three"])
     p.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
+    p.add_argument("--upright", action="store_true")
     p.add_argument("--impact", action="store_true")
+    p.add_argument("--train-grasp", action="store_true")
     p.add_argument("--train-reach", action="store_true")
     p.add_argument("--survey", type=Path)
     p.add_argument("--evaluation", type=Path)
@@ -287,7 +289,7 @@ def main():
                 lambda w: w["result"] and w["result"].get("kind") == kind,
                 label + " evidence restored",
             )
-            assert row["result"]["task_success"] and (
+            assert (row["result"]["task_success"] or a.train_grasp) and (
                 a.standing or row["result"]["requested"] == wanted
             )
             assert (
@@ -301,6 +303,11 @@ def main():
                 fixture=row["result"]["fixture"],
                 outcome=row["result"]["task_success"],
             )
+            if a.train_grasp:
+                ck = row["controller"]["grasp_checkpoint"]
+                assert ck and row["result"]["grasp_checkpoint"] == ck
+                assert row["result"]["seed"] == (a.layout + 1) % 3
+                checks[-1]["grasp_checkpoint"] = ck
             if a.train_reach:
                 assert (
                     row["result"]["reach_checkpoint"]
@@ -329,6 +336,8 @@ def main():
         )
         if a.standing:
             request = "Stand on both feet and track a right shoulder displacement of minus 0.08 rad for the standing test."
+        if a.upright:
+            request += " Use the upright trunk posture."
         remote("text", "w=0", "t=" + request, "wait=1")
         click(
             "aisle_task.octos" if a.provider == "octos-deepseek" else "aisle_task.codex"
@@ -426,6 +435,17 @@ def main():
         (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
         assert result["task_success"], result
         if a.standing:
+            if a.upright:
+                assert result["trunk_pitch_target_rad"] == -0.10
+                import numpy as np
+
+                with np.load(Path(row["selected"]) / "motor-work.npz") as motors:
+                    i = list(motors["joints"]).index("waist_pitch_joint")
+                    np.testing.assert_allclose(motors["target"][:, i], -0.10, atol=1e-7)
+                    np.testing.assert_allclose(
+                        motors["q_after"][-100:, i].mean(),
+                        result["settled_trunk_pitch_rad"],
+                    )
             assert result["both_feet_loaded_steps"] == result["steps"] == 2000
             assert abs(result["measured_delta"] + 0.08) < 0.012
             if a.impact:
@@ -588,6 +608,16 @@ def main():
                     stream["width"],
                     stream["height"],
                 ) == (count, 480, 360)
+            if a.train_grasp:
+                from nano_grasp_check import native_journey
+
+                np.testing.assert_array_equal(
+                    signals["annotation.gripper_carry"],
+                    [r["airborne_in_jaw"] for r in record["samples"]],
+                )
+                native_journey(
+                    a, Path(row["selected"]), result, checks, page, click, done, grab
+                )
             click("aisle_evidence.replay")
             wait(
                 lambda j: j["state"]["screen"] == "Replay"

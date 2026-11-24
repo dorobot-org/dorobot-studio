@@ -69,6 +69,11 @@ def validate(plan, meta):
             raise ValueError(
                 "Table transfer requires an ordered selection of distinct Nano floor cubes"
             )
+        if "grasp_checkpoint" in plan or "grasp_estimator" in plan:
+            sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
+            from nano_grasp_estimator import parameters
+
+            parameters(plan)
         return dict(kind="table-transfer", color_order=plan["color_order"])
     if plan.get("kind") == "visual-approach":
         if (
@@ -98,9 +103,21 @@ def validate(plan, meta):
         )
     if not meta["limits"][joint][0] <= delta <= meta["limits"][joint][1]:
         raise ValueError("Target outside the robot joint limits")
-    return dict(joint=joint, delta_rad=delta) | (
-        {"kind": "standing-inspection"} if standing else {}
-    )
+    posture = plan.get("trunk_pitch_rad", 0.0)
+    if (
+        type(posture) not in (float, int)
+        or posture not in (0.0, -0.10)
+        or (posture and not standing)
+    ):
+        raise ValueError(
+            "Choose neutral or upright trunk posture for a G1 standing reach"
+        )
+    validated = dict(joint=joint, delta_rad=delta)
+    if standing:
+        validated["kind"] = "standing-inspection"
+        if posture:
+            validated["trunk_pitch_rad"] = posture
+    return validated
 
 
 def onboard_transfer_feedback(log, requested):
@@ -412,8 +429,13 @@ def prepare(args, meta):
             schema["properties"]["kind"] = dict(
                 type="string", enum=["joint-inspection", "standing-inspection"]
             )
-            schema["required"].append("kind")
+            schema["properties"]["trunk_pitch_rad"] = dict(
+                type="number", enum=[0.0, -0.10]
+            )
+            schema["required"].extend(["kind", "trunk_pitch_rad"])
             prompt = (
+                "Select trunk_pitch_rad=-0.10 only when the operator explicitly requests an upright trunk "
+                "during a standing reach. Otherwise select 0.0. "
                 "Select a G1 simulation capability. Use joint-inspection for shoulder inspections by default. "
                 "If the operator explicitly asks to stand while holding or tracking a signed shoulder "
                 "displacement, select standing-inspection. It uses a free pelvis and a 10 second foot-supported "
@@ -534,7 +556,9 @@ def simulate(args, meta):
                 else (
                     "standing-development"
                     if standing
-                    else "living-room" if mobile else args.fixture
+                    else "living-room"
+                    if mobile
+                    else args.fixture
                 )
             ),
             adapter_hash=digest(Path(nx.__file__)),
@@ -735,6 +759,7 @@ def main():
             "room",
             "evaluate",
             "train-reach",
+            "train-grasp",
         ],
     )
     p.add_argument("--robot", choices=MODELS, required=True)
@@ -843,6 +868,15 @@ def main():
                 parent=args.room_hash if args.room_source is None else None,
                 model_sha=describe("Nano")["model_hash"],
             )
+            return
+        if args.operation == "train-grasp":
+            if args.robot != "Nano" or args.dataset is None or args.trial is None:
+                raise ValueError(
+                    "Choose an exported Nano table-transfer episode to train"
+                )
+            from nano_grasp_checkpoint import train
+
+            train(args.dataset, args.trial, args.out)
             return
         if args.operation == "train-reach":
             if args.robot != "G1" or args.dataset is None or args.trial is None:
