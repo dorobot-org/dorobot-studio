@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main():
+    if not __debug__:
+        raise RuntimeError("Run the evidence checks with assertions enabled")
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument(
         "--datasets",
@@ -127,6 +129,31 @@ def main():
             read("after/native/recovery.json")[-1]["check"]
             == "Imported worker trial and export recovered"
         )
+        previous = read("revised-parent/feedback.json")
+        revision = read("revised-parent/controller.json")
+        assert previous["controller_hash"] == outcomes[0]["controller_hash"]
+        assert (
+            previous["previous_track_grasp"]
+            and previous["stopped_pickup"]["stopped_tick"] == 4364
+        )
+        assert revision["previous_trial"] == previous and revision["track_grasp"]
+        assert (
+            "enum"
+            not in read("revised-parent/schema.json")["properties"]["track_grasp"]
+        )
+        with ZipFile(ROOT / "sliding-trial.zip") as slide:
+            assert slide.read("controller.json") == z.read(
+                "deepseek-sliding/author/controller.json"
+            )
+            moved = json.loads(slide.read("result.json"))
+            assert (
+                moved["controller_hash"]
+                == hashlib.sha256(slide.read("controller.json")).hexdigest()
+            )
+            assert (
+                moved["task_success"]
+                and moved["wheel_supported_ticks"] == moved["physics_ticks"] == 6692
+            )
         live = read("after/native/reopened.json")
         reopened_dataset = Path(live["dataset"])
         export = read(f"after/{reopened_dataset.parent.name}/export.json")
