@@ -318,8 +318,24 @@ def foreground_packets(pipe, silence_s=10):
         yield packet, decode_plane(raw, encoding, expanded)
 
 
+def publish_foreground_frame(out, raw):
+    """Keep the last two complete exposures so a late Studio draw can recover one."""
+    latest = out / "preview.rgb"
+    previous_tmp = out / "preview-previous.tmp"
+    tmp = out / "preview.tmp"
+    tmp.write_bytes(raw)
+    if latest.exists():
+        try:
+            os.link(latest, previous_tmp)
+        except OSError:
+            shutil.copyfile(latest, previous_tmp)
+        previous_tmp.replace(out / "preview-previous.rgb")
+    tmp.replace(latest)
+
+
 def watch_foreground(node, ident, out, root, *, compress=False):
     job, frame = None, None
+    (out / "preview-previous.tmp").unlink(missing_ok=True)
     options = ("--encoding", "zlib") if compress else ()
     transport = dict(frames=0, compressed_frames=0, wire_bytes=0, raw_bytes=0)
     proc = subprocess.Popen(worker_command(node, "watch-rgb", ident, *options), stdout=subprocess.PIPE)
@@ -339,9 +355,7 @@ def watch_foreground(node, ident, out, root, *, compress=False):
                 transport["compressed_frames"] += int(packet.get("encoding") == "zlib")
                 transport["wire_bytes"] += packet["bytes"]
                 transport["raw_bytes"] += len(raw)
-                tmp = out / "preview.tmp"
-                tmp.write_bytes(raw)
-                tmp.replace(out / "preview.rgb")
+                publish_foreground_frame(out, raw)
                 frame = dict(
                     tick=int.from_bytes(raw[:4], "big"),
                     height=(len(raw) - 4) // 1440,

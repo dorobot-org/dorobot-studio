@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from fleet_bridge import (
     foreground_packets,
+    publish_foreground_frame,
     journal,
     reconcile,
     record,
@@ -141,6 +142,21 @@ class WorkspaceAdmissionTests(unittest.TestCase):
             verify_wrist_fixture(self.root, request, "completed")
         out.write_text('{"wrist_timing":{"fixture":"normal"},"wrist_clearance":true}')
         verify_wrist_fixture(self.root, request, "completed")
+
+    def test_foreground_retains_the_previous_complete_exposure(self):
+        latest = self.root / "preview.rgb"
+        previous = self.root / "preview-previous.rgb"
+        for i in range(1, 4):
+            publish_foreground_frame(self.root, bytes([i]))
+            self.assertEqual(latest.read_bytes(), bytes([i]))
+            if i == 1:
+                self.assertFalse(previous.exists())
+            else:
+                self.assertEqual(previous.read_bytes(), bytes([i-1]))
+        with patch("fleet_bridge.os.link", side_effect=OSError("unsupported")):
+            publish_foreground_frame(self.root, b"four")
+        self.assertEqual(latest.read_bytes(), b"four")
+        self.assertEqual(previous.read_bytes(), bytes([3]))
 
     def test_lossless_foreground_plane_has_a_bounded_exact_size(self):
         raw = (123).to_bytes(4, "big") + bytes(480 * 360 * 3)

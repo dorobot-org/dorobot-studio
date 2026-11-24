@@ -256,7 +256,7 @@ impl Panel {
     fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
         self.root.label(cx, id).set_text(cx, s);
     }
-    fn show_camera(&mut self, cx: &mut Cx, dir: Option<&PathBuf>) {
+    fn show_camera(&mut self, cx: &mut Cx, dir: Option<&PathBuf>, buffered: bool) {
         use std::io::Read;
         let camera = self.root.video_player(cx, ids!(camera));
         if self.frame.as_ref().is_some_and(|(old, _)| Some(old) != dir) {
@@ -264,21 +264,29 @@ impl Panel {
             self.frame = None;
         }
         let Some(dir) = dir else { return };
-        let Ok(mut file) = std::fs::File::open(dir.join("preview.rgb")) else {
+        let last = self.frame.as_ref().map(|(_, tick)| *tick);
+        if buffered && last.is_some() && camera.borrow().is_some_and(|v| v.measured_frame_pending()) {
             return;
+        }
+        let open = |name: &str, recent: bool| {
+            let mut file = std::fs::File::open(dir.join(name)).ok()?;
+            let mut stamp = [0; 4];
+            file.read_exact(&mut stamp).ok()?;
+            let tick = u32::from_be_bytes(stamp) as u64;
+            if last.is_some_and(|previous| tick <= previous) {
+                return None;
+            }
+            if recent && file.metadata().ok()?.modified().ok()?.elapsed().ok()? > std::time::Duration::from_millis(80) {
+                return None;
+            }
+            Some((tick, file))
         };
-        let mut stamp = [0; 4];
-        if file.read_exact(&mut stamp).is_err() {
-            return;
-        }
-        let tick = u32::from_be_bytes(stamp) as u64;
-        if self
-            .frame
-            .as_ref()
-            .is_some_and(|(_, previous)| *previous == tick)
-        {
-            return;
-        }
+        let next = if buffered && last.is_some() {
+            open("preview-previous.rgb", true)
+        } else {
+            None
+        };
+        let Some((tick, mut file)) = next.or_else(|| open("preview.rgb", false)) else { return };
         // The producer atomically replaces this file. Its header and pixels belong to the same exposure.
         let Ok(meta) = file.metadata() else { return };
         const SMALL: u64 = 4 + 480 * 320 * 3;
@@ -411,7 +419,7 @@ impl Panel {
         } else {
             &w.worker_sample
         };
-        self.show_camera(cx, directory.as_ref());
+        self.show_camera(cx, directory.as_ref(), true);
         self.camera_title(
             cx,
             if stream {
@@ -473,7 +481,7 @@ impl Panel {
         let standing = w.progress["kind"] == "standing-inspection";
         let transfer = w.progress["kind"] == "table-transfer";
         let mobile = transfer || w.progress["kind"] == "visual-approach";
-        self.show_camera(cx, w.live.as_ref());
+        self.show_camera(cx, w.live.as_ref(), false);
         self.camera_title(
             cx,
             if mobile {
