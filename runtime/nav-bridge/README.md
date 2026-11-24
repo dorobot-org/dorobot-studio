@@ -143,7 +143,7 @@ Every field has a default (the Tracer Mini values below).
 | `map_cloud_max_points`, `map_cloud_voxel_m` | 50000, 0.10 | `map/cloud` downsampling |
 | `trail_min_step_m`, `trail_max_points` | 0.05, 3000 | `nav/trail` |
 | `colors` | RViz-like: plan `[0,180,255,255]`, trail `[0,220,0,255]`, goal `[255,170,0,255]`, footprint `[220,220,220,255]`, scan `[255,0,0,255]`, map cloud `[180,180,180,255]` | layer colours (RGBA) |
-| `radii` | plan 0.025, trail 0.02, goal 0.015, footprint 0.01 | line and arrow radius in metres (`radius` in `linestrips3d` / `arrows3d`, for Rerun) |
+| `radii` | plan 0.025, trail 0.02, goal 0.04, footprint 0.01 | line and arrow radius in metres (`radius` in `linestrips3d` / `arrows3d`, for Rerun) |
 | `robot_model` | `"tracer_mini"` | sent in `nav/status`; the body model Studio draws (`null`: none) |
 | `log_forward_per_node_hz` | 5 | node log lines per node per second (0: none) |
 

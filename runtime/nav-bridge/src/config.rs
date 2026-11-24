@@ -78,7 +78,7 @@ pub struct Radii {
 
 impl Default for Radii {
     fn default() -> Self {
-        Radii { plan: 0.025, trail: 0.02, goal: 0.015, footprint: 0.01 }
+        Radii { plan: 0.025, trail: 0.02, goal: 0.04, footprint: 0.01 }
     }
 }
 
@@ -190,7 +190,7 @@ mod tests {
         let shipped = load_config(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config/tracer.json"))).unwrap();
         assert_eq!(shipped.colors, want);
         let r = BridgeConfig::default().radii;
-        assert_eq!((r.plan, r.trail, r.goal, r.footprint), (0.025, 0.02, 0.015, 0.01));
+        assert_eq!((r.plan, r.trail, r.goal, r.footprint), (0.025, 0.02, 0.04, 0.01));
     }
 
     #[test]

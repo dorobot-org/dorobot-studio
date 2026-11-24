@@ -285,10 +285,10 @@ const HEADING_Z: f32 = 0.05;
 const HEADING_COLOR: [u8; 4] = [255, 25, 0, 255];
 /// The goal's ring, `<goal>/ring`, in the goal's colour (this one when the
 /// message has none) and line radius (this one when it has none).
-const GOAL_RING_RADIUS: f32 = 0.15;
+const GOAL_RING_RADIUS: f32 = 0.2;
 const GOAL_RING_SEGMENTS: usize = 24;
 const GOAL_COLOR: [u8; 4] = [255, 170, 0, 255];
-const GOAL_LINE_RADIUS: f32 = 0.015;
+const GOAL_LINE_RADIUS: f32 = 0.04;
 /// The costmap lies this far (m) above the map, which is at z = 0.
 const COSTMAP_Z: f32 = 0.01;
 /// Most quads in one costmap mesh (4 vertices each, about 90 bytes): a
@@ -1552,7 +1552,7 @@ mod tests {
         let goal = msg(
             "arrows3d",
             json!({"origins": [[1, 2, 0]], "vectors": [[0.5, 0, 0]],
-                   "color": [255, 170, 0, 255], "radius": 0.015}),
+                   "color": [255, 170, 0, 255], "radius": 0.04}),
         );
         assert_eq!(sink.log("tracer/nav/goal", &goal, None), Ok(()));
         let pose = msg(
@@ -1571,10 +1571,10 @@ mod tests {
         assert_eq!(xyz.len(), 25 * 3, "24 segments, closed: {xyz:?}");
         for p in xyz.chunks(3) {
             let r = (p[0] - 1.0).hypot(p[1] - 2.0);
-            assert!((r - 0.15).abs() < 1e-5 && p[2] == 0.0, "{p:?} at {r}");
+            assert!((r - 0.2).abs() < 1e-5 && p[2] == 0.0, "{p:?} at {r}");
         }
         assert_eq!(xyz[..3], xyz[xyz.len() - 3..], "not closed");
-        assert_eq!(f32_leaves(&ring, "LineStrips3D:radii"), [[0.015]]);
+        assert_eq!(f32_leaves(&ring, "LineStrips3D:radii"), [[0.04]]);
         assert_eq!(
             u32_leaves(&ring, "LineStrips3D:colors"),
             [packed([255, 170, 0, 255])]

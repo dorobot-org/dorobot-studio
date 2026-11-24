@@ -31,7 +31,7 @@
     "goal": [255, 170, 0, 255],
     "scan": [255, 0, 0, 255]
   },
-  "radii": { "plan": 0.025, "trail": 0.02, "goal": 0.015, "footprint": 0.01 },
+  "radii": { "plan": 0.025, "trail": 0.02, "goal": 0.04, "footprint": 0.01 },
   "robot_model": "tracer_mini",
   "log_forward_per_node_hz": 5
 }
