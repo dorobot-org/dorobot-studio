@@ -1,0 +1,187 @@
+[
+  {
+    "backend": "headless",
+    "size": "1440x900",
+    "studio_commit": "dfe68790b85ac2b16affb6f44aa8a619add0358c",
+    "binary_sha256": "a79fe1239a3c5cb3c5e29777f88e9d88ef76b2fcff795acc7f999dbf837e4599",
+    "mode": "pinned room comparison",
+    "action_number": 7,
+    "first_different_actions": [
+      {
+        "tick": 40,
+        "op": "wheel",
+        "speed": 0.0,
+        "turn": 0.4184846299267395
+      },
+      {
+        "tick": 40,
+        "op": "wheel",
+        "speed": 0.0,
+        "turn": 0.4191120472087017
+      }
+    ],
+    "trials": [
+      {
+        "trial": "0001-Nano-run",
+        "passed": true,
+        "frames": 345,
+        "motor_sha256": "fb265f567fd471d72a834b78516e3b21ea76dd0bd63a8037ab03957754df53bd"
+      },
+      {
+        "trial": "0002-Nano-run",
+        "passed": true,
+        "frames": 351,
+        "motor_sha256": "cf7f39c05a3e5abf13be61fdb45f0ce5dea82b3996cc2bf347376b2aa253410d"
+      }
+    ],
+    "baseline_replay": {
+      "side": "previous",
+      "frame": 1,
+      "time_s": 0.2,
+      "frames": 345
+    },
+    "current_replay_after_restart": {
+      "side": "current",
+      "frame": 1,
+      "time_s": 0.2,
+      "frames": 351
+    },
+    "comparison": "Baseline 0001-Nano-run \u00b7 First change at action 7 \u00b7 previous wheel at tick 40, current wheel at tick 40.",
+    "room": {
+      "detail": "Ambient RGB [0.58,0.6,0.62] \u2192 [0.4,0.42,0.44] \u00b7 Floor friction 0.65 \u2192 0.8\nred \u00b7 baseline settled (124.5 mm) \u2192 current settled (86.3 mm) \u00b7 nearest table edge\nPhysics steps 6908 \u2192 7028",
+      "outcome": "Baseline passed \u00b7 Current passed"
+    },
+    "pinned_baseline": {
+      "result_sha256": "97643dd4e074ade00cb6b66f5856f49b636d396a8cbc50b70aa2e812903b6175",
+      "trial": "0001-Nano-run"
+    },
+    "controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "room_sha256": [
+      "b4e922a72fd7c095a4e01ba59100aff2ab319bb50ac5a6e1ed362b65223f4978",
+      "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
+    ]
+  },
+  {
+    "backend": "offscreen",
+    "size": "1024x768",
+    "studio_commit": "dfe68790b85ac2b16affb6f44aa8a619add0358c",
+    "binary_sha256": "a79fe1239a3c5cb3c5e29777f88e9d88ef76b2fcff795acc7f999dbf837e4599",
+    "mode": "pinned room comparison",
+    "action_number": 7,
+    "first_different_actions": [
+      {
+        "tick": 40,
+        "op": "wheel",
+        "speed": 0.0,
+        "turn": 0.4184846299267395
+      },
+      {
+        "tick": 40,
+        "op": "wheel",
+        "speed": 0.0,
+        "turn": 0.4191120472087017
+      }
+    ],
+    "trials": [
+      {
+        "trial": "0001-Nano-run",
+        "passed": true,
+        "frames": 345,
+        "motor_sha256": "fb265f567fd471d72a834b78516e3b21ea76dd0bd63a8037ab03957754df53bd"
+      },
+      {
+        "trial": "0002-Nano-run",
+        "passed": true,
+        "frames": 351,
+        "motor_sha256": "cf7f39c05a3e5abf13be61fdb45f0ce5dea82b3996cc2bf347376b2aa253410d"
+      }
+    ],
+    "baseline_replay": {
+      "side": "previous",
+      "frame": 1,
+      "time_s": 0.2,
+      "frames": 345
+    },
+    "current_replay_after_restart": {
+      "side": "current",
+      "frame": 1,
+      "time_s": 0.2,
+      "frames": 351
+    },
+    "comparison": "Baseline 0001-Nano-run \u00b7 First change at action 7 \u00b7 previous wheel at tick 40, current wheel at tick 40.",
+    "room": {
+      "detail": "Ambient RGB [0.58,0.6,0.62] \u2192 [0.4,0.42,0.44] \u00b7 Floor friction 0.65 \u2192 0.8\nred \u00b7 baseline settled (124.5 mm) \u2192 current settled (86.3 mm) \u00b7 nearest table edge\nPhysics steps 6908 \u2192 7028",
+      "outcome": "Baseline passed \u00b7 Current passed"
+    },
+    "pinned_baseline": {
+      "result_sha256": "97643dd4e074ade00cb6b66f5856f49b636d396a8cbc50b70aa2e812903b6175",
+      "trial": "0001-Nano-run"
+    },
+    "controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "room_sha256": [
+      "b4e922a72fd7c095a4e01ba59100aff2ab319bb50ac5a6e1ed362b65223f4978",
+      "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8"
+    ]
+  },
+  {
+    "backend": "headless",
+    "size": "1024x768",
+    "studio_commit": "dfe68790b85ac2b16affb6f44aa8a619add0358c",
+    "binary_sha256": "a79fe1239a3c5cb3c5e29777f88e9d88ef76b2fcff795acc7f999dbf837e4599",
+    "mode": "legacy same-room comparison",
+    "action_number": 1148,
+    "first_different_actions": [
+      null,
+      {
+        "tick": 17814,
+        "op": "grasp observation",
+        "color": "blue",
+        "xy": [
+          0.26386652389658505,
+          0.2084773152754107
+        ],
+        "cameras": [
+          "head",
+          "left_wrist"
+        ],
+        "stamp_ns": 178140000000,
+        "velocity_xy_m_s": [
+          0.0,
+          0.0
+        ],
+        "intercept_xy_m": [
+          0.26386652389658505,
+          0.2084773152754107
+        ],
+        "height_m": 0.09933750000000001
+      }
+    ],
+    "trials": [
+      {
+        "trial": "0001-Nano-run",
+        "passed": false,
+        "frames": 890,
+        "motor_sha256": "e683eae72f8358589322ecdb6941f26f647877f628040ccea6ce7983bfd00a36"
+      },
+      {
+        "trial": "0002-Nano-run",
+        "passed": true,
+        "frames": 1179,
+        "motor_sha256": "d194d277dc6371f05c0247b5eb48e813bc7304aa950b281631ca7be26121d656"
+      }
+    ],
+    "baseline_replay": {
+      "side": "previous",
+      "frame": 889,
+      "time_s": 177.8,
+      "frames": 890
+    },
+    "current_replay_after_restart": {
+      "side": "current",
+      "frame": 889,
+      "time_s": 177.8,
+      "frames": 1179
+    },
+    "comparison": "Matched layout 0 \u00b7 previous 0001-Nano-run\nPrevious failed (2 settled) \u00b7 current passed (3 settled). Local policy or support code changed. First change at action 1148 \u00b7 previous trace ended, current grasp observation at tick 17814."
+  }
+]

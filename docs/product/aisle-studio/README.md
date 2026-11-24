@@ -14,6 +14,8 @@ Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and 
 
 ## Operator guides
 
+[Pin a room baseline and replay the first different action in either recording](validation/room-environment/compare-recordings.md)
+
 [Change Nano room lighting and floor friction, then measure the effect in Nexus](validation/room-environment/README.md)
 
 [Review the settings a controller revision changed and identify its measured parent](validation/controller-review/README.md)

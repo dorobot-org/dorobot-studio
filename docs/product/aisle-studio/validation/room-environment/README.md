@@ -19,6 +19,8 @@ All three scenes used the real Nano URDF, the same calibrated head camera, layou
 
 Dimming the light changed the raw head-camera pixels by a mean absolute 11.58 levels on an 8-bit scale. Raising the floor coefficient shortened the slide by 6.21 mm. AISLE’s Nexus fixture uses the higher of the two colliding surface coefficients. With a cube coefficient of 0.70, changing the floor from 0.65 to 0.60 produced the same 47.78 mm slide in a [separate below-threshold check](subthreshold.json). [Original head RGB](head-original.png) · [Dimmed head RGB](head-dim.png) · [Room hashes and measurements](comparison.json)
 
+For an interactive comparison, pin the original trial in Evidence and open each recording at the first different action. [Compare two recorded rooms](compare-recordings.md)
+
 ## Matched floor-to-table task
 
 The same DeepSeek-via-Octos controller and seed 0 placed the red cube in the baseline room and in the edited room. The baseline stopped 124.5 mm inside the nearest table edge after 6,908 physics steps. With dimmer lighting and 0.80 floor friction, the headless trial stopped 86.3 mm inside the edge after 7,028 steps. Both maintained wheel support on every scored tick. This pair measures one layout. The downloadable calibration files use the repository-relative URDF path. The receipts include the original calibration hashes. [Controller, calibration and verdict files](trial-evidence.zip)
