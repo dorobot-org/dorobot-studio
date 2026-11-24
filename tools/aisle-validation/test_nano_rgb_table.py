@@ -58,7 +58,10 @@ class TableTests(unittest.TestCase):
         pose[:3, 3] = [0.4, 0.20, 0.75]
         k = np.array([[100, 0, 50], [0, 100, 50], [0, 0, 1]])
         edge = dict(height=0.53, normal=np.array([1.0, 0.0]), distance=0.30)
-        occupied = occupied_table_points([(rgb, pose, k)], edge, ["green"])
+        self.assertEqual(occupied_table_points([(rgb, pose, k)], edge, ["green"]), [])
+        occupied = occupied_table_points(
+            [(rgb, pose, k)], edge, ["green"], include_clipped=True
+        )
         self.assertEqual(len(occupied), 1)
         np.testing.assert_allclose(occupied[0], [0.409, 0.289], atol=0.001)
         self.assertEqual(occupied_table_points([(rgb, pose, k)], edge, ["red"]), [])

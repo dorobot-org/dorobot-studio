@@ -125,17 +125,25 @@ def submit(root, registry, alias, request):
 
 def verify_wrist_fixture(folder, request, state):
     fixture = request.get("rgb_timing", "normal")
-    if state != "completed" or fixture == "normal":
+    if state != "completed":
         return
     plan = json.loads(base64.b64decode(request["controller"], validate=True))
     if plan.get("kind") != "table-transfer":
+        return
+    wants_clearance = plan.get("wrist_clearance", False)
+    if fixture == "normal" and not wants_clearance:
         return
     for name, field in [
         ("source.json", "wrist_rgb_timing"),
         ("result.json", "wrist_timing"),
     ]:
         path = folder / name
-        value = json.loads(path.read_bytes()).get(field) if path.is_file() else None
+        record = json.loads(path.read_bytes()) if path.is_file() else {}
+        if wants_clearance and record.get("wrist_clearance") is not True:
+            raise ValueError(
+                f"Worker {name} does not confirm experimental wrist clearance"
+            )
+        value = record.get(field)
         if field == "wrist_timing":
             value = value.get("fixture") if isinstance(value, dict) else None
         if value != fixture:
@@ -374,12 +382,20 @@ def operate(args):
             req["observation_period_s"] = args.observation_period_s
             if clock == "wall":
                 req["observation_clock"] = clock
-        if (
-            args.rgb_timing != "normal"
-            and json.loads(base64.b64decode(req["controller"])).get("kind")
-            == "table-transfer"
+        plan = json.loads(base64.b64decode(req["controller"], validate=True))
+        wants_clearance = plan.get("wrist_clearance", False)
+        if plan.get("kind") == "table-transfer" and (
+            args.rgb_timing != "normal" or wants_clearance
         ):
-            if args.rgb_timing not in send(node, {"op": "hello"}).get(
+            capabilities = send(node, {"op": "hello"})
+            if (
+                wants_clearance
+                and capabilities.get("experimental_wrist_clearance") is not True
+            ):
+                raise ValueError(
+                    "Update the selected worker to use experimental wrist clearance"
+                )
+            if args.rgb_timing != "normal" and args.rgb_timing not in capabilities.get(
                 "transfer_wrist_timing", []
             ):
                 raise ValueError(

@@ -201,6 +201,37 @@ class InspectionTests(unittest.TestCase):
             dict(kind="table-transfer", color_order="red,green,blue"),
         )
 
+    def test_experimental_wrist_clearance_requires_an_explicit_positive_selection(self):
+        base = "Move the red floor cube onto the coffee table."
+        args = SimpleNamespace(
+            robot="Nano",
+            task=base + " Use experimental wrist clearance.",
+            feedback=None,
+            provider="codex",
+            out=Path("."),
+        )
+        reply = dict(
+            supported=True,
+            kind="table-transfer",
+            color_order="red",
+            wrist_clearance=True,
+        )
+        with patch.object(
+            worker, "request_controller", return_value=(reply, "test-model")
+        ) as ask:
+            self.assertTrue(worker.prepare(args, self.profile)["wrist_clearance"])
+        self.assertEqual(
+            ask.call_args.args[2]["properties"]["color_order"]["enum"], ["red"]
+        )
+        args.task = base + " Do not use experimental wrist clearance."
+        with patch.object(
+            worker, "request_controller", return_value=(reply, "test-model")
+        ):
+            with self.assertRaisesRegex(ValueError, "operator"):
+                worker.prepare(args, self.profile)
+        with self.assertRaisesRegex(ValueError, "requires a Nano"):
+            worker.validate(reply | {"wrist_clearance": "yes"}, self.profile)
+
     def test_transfer_requires_nano_and_a_distinct_color_order(self):
         for order in ["blue", "green,blue,red"]:
             p = dict(kind="table-transfer", color_order=order)

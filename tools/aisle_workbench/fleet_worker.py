@@ -444,6 +444,7 @@ def dispatch(root, request):
             background_rgb_periods_s=[1, 2, 5],
             background_rgb_clocks=["simulation", "wall"],
             transfer_wrist_timing=["normal", "intermittent", "disconnected"],
+            experimental_wrist_clearance=True,
             background_wall_rgb_periods_s=[0.5, 1, 2, 5],
             host=platform.node(),
             system=platform.system(),

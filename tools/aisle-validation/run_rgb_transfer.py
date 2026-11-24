@@ -286,8 +286,10 @@ def execute(
             "calibration_source", "Nominal URDF-mounted simulation optics"
         ),
     )
-    if "max_forward_speed_m_s" in plan:
+    if "wrist_clearance" in plan or "max_forward_speed_m_s" in plan:
         worker.validate(plan, worker.describe("Nano"))
+    config["wrist_clearance"] = plan.get("wrist_clearance", False)
+    if "max_forward_speed_m_s" in plan:
         config["max_forward_speed_m_s"] = plan["max_forward_speed_m_s"]
     if plan.get("track_grasp"):
         import nano_rgb_policy
@@ -338,6 +340,7 @@ def execute(
                 {"grasp_motion": target_motion} if target_motion != "stationary" else {}
             ),
             wrist_rgb_timing=rgb_timing,
+            wrist_clearance=config["wrist_clearance"],
             seed=seed,
             model_sha256=worker.digest(MODEL),
             policy_sha256=worker.digest(policy),
@@ -775,6 +778,7 @@ def execute(
         phase=judge.phase,
         onboard_observations=frame_count,
         wrist_timing=wrist.result(),
+        wrist_clearance=config["wrist_clearance"],
         measured_room_bodies=sim.room_readback(),
         actuator_audit=audit,
         rejected_motor_writes=motors.rejected,

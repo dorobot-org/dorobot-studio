@@ -116,9 +116,14 @@ def describe(robot):
     )
 
 
+WRIST_CLEARANCE_OPT_IN = re.compile(
+    r"(?:^|(?<=[.!?]))\s*use experimental wrist clearance[.!]?\s*$", re.IGNORECASE
+)
+
+
 def named_cube_transfer(task):
     """Recognize an unambiguous single-cube request, leaving spatial and compound instructions to the author."""
-    normalized = " ".join(task.lower().split())
+    normalized = " ".join(WRIST_CLEARANCE_OPT_IN.sub("", task).lower().split())
     match = re.fullmatch(
         r"(?:please )?(?:move|place|put|carry|transfer) (?:only )?(?:the |a )?"
         r"(red|green|blue) (?:floor )?cube (?:from the (?:ground|floor) )?"
@@ -151,6 +156,12 @@ def validate(plan, meta):
             raise ValueError(
                 "Nano forward speed limit must be 0.025–0.13 m/s for a floor-to-table task"
             )
+    if "wrist_clearance" in plan and (
+        type(plan["wrist_clearance"]) is not bool
+        or meta["robot"] != "Nano"
+        or plan.get("kind") != "table-transfer"
+    ):
+        raise ValueError("Experimental wrist clearance requires a Nano table transfer")
     tracking = plan.get("track_grasp", False)
     if type(tracking) is not bool or (
         tracking and plan.get("kind") != "table-transfer"
@@ -177,6 +188,7 @@ def validate(plan, meta):
         return dict(
             kind="table-transfer",
             color_order=plan["color_order"],
+            **({"wrist_clearance": True} if plan.get("wrist_clearance") else {}),
             **(
                 {"max_forward_speed_m_s": plan["max_forward_speed_m_s"]}
                 if "max_forward_speed_m_s" in plan
@@ -623,6 +635,10 @@ def prepare(args, meta):
             )
         elif args.robot == "Nano":
             prompt += "\nIf selecting the target requires comparing its current position with others and no onboard measurements are provided, reject the request."
+        if args.robot == "Nano" and WRIST_CLEARANCE_OPT_IN.search(args.task):
+            schema["properties"]["wrist_clearance"] = dict(type="boolean", enum=[True])
+            schema["required"].append("wrist_clearance")
+            prompt += " The operator selected experimental wrist clearance. Set wrist_clearance=true for the transfer."
         if feedback and "wheel_support" in feedback:
             schema["properties"]["max_forward_speed_m_s"] = dict(
                 anyOf=[
@@ -661,6 +677,12 @@ def prepare(args, meta):
         plan, model_name = request_controller(args.provider, prompt, schema, args.out)
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
+        if (plan.get("wrist_clearance") is True) != bool(
+            args.robot == "Nano" and WRIST_CLEARANCE_OPT_IN.search(args.task)
+        ):
+            raise ValueError(
+                "The controller must match the operator’s experimental wrist clearance selection"
+            )
     if feedback and "wheel_support" in feedback and args.provider != "reference":
         if plan.get("max_forward_speed_m_s") is None:
             plan.pop("max_forward_speed_m_s", None)

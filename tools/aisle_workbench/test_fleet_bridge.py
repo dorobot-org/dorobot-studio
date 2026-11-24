@@ -62,6 +62,19 @@ class WorkspaceAdmissionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source.json does not confirm"):
             verify_wrist_fixture(self.root, request, "completed")
         verify_wrist_fixture(self.root, request, "cancelled")
+        plan = {"kind": "table-transfer", "wrist_clearance": True}
+        request.update(
+            controller=base64.b64encode(json.dumps(plan).encode()).decode(),
+            rgb_timing="normal",
+        )
+        (self.root / "source.json").write_text(
+            '{"wrist_rgb_timing":"normal","wrist_clearance":true}'
+        )
+        out.write_text('{"wrist_timing":{"fixture":"normal"}}')
+        with self.assertRaisesRegex(ValueError, "experimental wrist clearance"):
+            verify_wrist_fixture(self.root, request, "completed")
+        out.write_text('{"wrist_timing":{"fixture":"normal"},"wrist_clearance":true}')
+        verify_wrist_fixture(self.root, request, "completed")
 
     def test_stalled_partial_rgb_plane_times_out(self):
         reader, writer = os.pipe()

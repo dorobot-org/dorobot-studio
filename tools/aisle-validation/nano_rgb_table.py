@@ -113,7 +113,7 @@ def table_edge(views):
     )
 
 
-def occupied_table_points(views, edge, colors):
+def occupied_table_points(views, edge, colors, *, include_clipped=False):
     """Intersect RGB cube centroids with their measured supporting tabletop plane."""
     points = []
     for rgb, pose, intrinsics in views:
@@ -126,8 +126,10 @@ def occupied_table_points(views, edge, colors):
             for (x, y, w, h, area), (u, v) in zip(components[1:], centres[1:]):
                 if area < 12 or min(w, h) < 3 or max(w, h) > 3 * min(w, h):
                     continue
-                # A previously placed cube can enter the wrist view at the image
-                # boundary. Its visible center still reserves occupied space.
+                if not include_clipped and (
+                    x == 0 or y == 0 or x + w >= rgb.shape[1] or y + h >= rgb.shape[0]
+                ):
+                    continue
                 ray = rays(np.array([[u, v]]), pose, intrinsics)[0]
                 if abs(ray[2]) < 0.035:
                     continue

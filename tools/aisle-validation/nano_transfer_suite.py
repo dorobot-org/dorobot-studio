@@ -162,6 +162,12 @@ def receipt(case, member, plan):
         or src.get("controller_sha256") != plan["controller_sha256"]
     ):
         raise ValueError("Episode controller differs from the frozen artifact")
+    selected_clearance = read(case / "controller.json").get("wrist_clearance", False)
+    if (
+        src.get("wrist_clearance", False) != selected_clearance
+        or r.get("wrist_clearance", False) != selected_clearance
+    ):
+        raise ValueError("The release camera selection differs from the controller")
     retained = src["support_code_hashes"]
     expected_files = {Path(path).name: value for path, value in files.items()}
     if "nano_wrist_timing.py" in expected_files and (

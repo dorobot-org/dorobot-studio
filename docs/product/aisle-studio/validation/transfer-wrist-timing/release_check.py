@@ -48,7 +48,7 @@ def project(z, prefix):
         CAMERAS, controller.table_views(packet, CAMERAS), strict=True
     ):
         for color in ["red", "green"]:
-            points = occupied_table_points([view], edge, [color])
+            points = occupied_table_points([view], edge, [color], include_clipped=True)
             distances[camera][color] = [
                 round(float(np.linalg.norm(chosen - p)) * 1000, 1) for p in points
             ]

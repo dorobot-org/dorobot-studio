@@ -613,7 +613,8 @@ impl PluginPanel for Panel {
                     "Choose a reference task or use an agent to prepare a controller.".into()
                 } else if transfer {
                     format!(
-                        "Move floor cubes to the coffee table\n{} · {} · revision {}/{}",
+                        "Move floor cubes to the coffee table{}\n{} · {} · revision {}/{}",
+                        if w.plan["wrist_clearance"] == true { " · Experimental wrist clearance" } else { "" },
                         w.plan["color_order"]
                             .as_str()
                             .unwrap_or("")
@@ -1242,6 +1243,9 @@ impl PluginPanel for Panel {
                 self.label(cx, ids!(verdict), verdict);
                 let text = if transfer {
                     let mut lines = vec![];
+                    if w.evidence["wrist_clearance"] == true {
+                        lines.push("Experimental wrist clearance".to_string());
+                    }
                     let wrist = &w.evidence["wrist_timing"];
                     if let Some(fixture) = wrist["fixture"].as_str() {
                         let outcome = if wrist["received"] == 0 {

@@ -125,7 +125,7 @@ def native_journey(args, checks, page, click, remote, done, grab):
     three = args.wrist_faults == "three"
     order = "red,green,blue" if three else "red"
     instruction = (
-        "Move all three floor cubes onto the coffee table in red, green, blue order."
+        "Move all three floor cubes onto the coffee table in red, green, blue order. Use experimental wrist clearance."
         if three
         else "Move the red floor cube onto the coffee table."
     )
@@ -143,7 +143,8 @@ def native_journey(args, checks, page, click, remote, done, grab):
     click("aisle_task.codex" if args.provider == "codex" else "aisle_task.octos")
     state = done(
         lambda w: not w["busy"]
-        and (w.get("controller") or {}).get("color_order") == order,
+        and (w.get("controller") or {}).get("color_order") == order
+        and (not three or w["controller"].get("wrist_clearance") is True),
         f"Prepared transfer for {order}",
         180,
     )
