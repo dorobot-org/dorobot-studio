@@ -1,5 +1,5 @@
 {
-  "deepseek-offscreen": {
+  "foreground-four-offscreen-r1": {
     "common_physics_window_s": 60.668277,
     "draw_window_s": 60.623304833,
     "viewport_draws": 1748,
@@ -17,6 +17,9 @@
       68,
       68
     ],
+    "provider": "octos-deepseek",
+    "backend": "offscreen",
+    "viewport_size": "1440x900",
     "sessions": 4,
     "meets_cadence": true,
     "background_wall_fps": [
@@ -49,7 +52,7 @@
       }
     }
   },
-  "codex-headless": {
+  "foreground-four-headless-codex-r1": {
     "common_physics_window_s": 59.524556667,
     "draw_window_s": 59.497577125,
     "viewport_draws": 1726,
@@ -67,6 +70,9 @@
       68,
       68
     ],
+    "provider": "codex",
+    "backend": "headless",
+    "viewport_size": "1024x768",
     "sessions": 4,
     "meets_cadence": true,
     "background_wall_fps": [
@@ -99,13 +105,251 @@
       }
     }
   },
+  "foreground-six-offscreen-r1": {
+    "sessions": 6,
+    "draw_source": "1795494422955425000-Nano-fleet-watch",
+    "background_wall_fps": [
+      1.0388150679802715,
+      1.022941242867288,
+      1.027888421565348,
+      1.0143461237442841,
+      1.0174652561349746
+    ],
+    "meets_cadence": true,
+    "common_physics_window_s": 63.849079959,
+    "draw_window_s": 63.793328959,
+    "viewport_draws": 1815,
+    "viewport_fps": 28.435575154979897,
+    "median_draw_gap_ms": 33.160542,
+    "p95_draw_gap_ms": 57.18575,
+    "maximum_draw_gap_ms": 206.698208,
+    "foreground_target_fps": 30,
+    "foreground_total_source_exposures": 2531,
+    "foreground_total_recorded_frames": 342,
+    "first_common_tick": 719,
+    "last_common_tick": 5503,
+    "background_observations": [
+      68,
+      68,
+      68,
+      68,
+      68
+    ],
+    "provider": "octos-deepseek",
+    "backend": "offscreen",
+    "viewport_size": "1440x900",
+    "complete_one_second_windows": 63,
+    "windows_below_25": 0,
+    "minimum_draws_in_one_second": 25,
+    "maximum_draws_in_one_second": 31,
+    "median_draws_in_one_second": 29,
+    "successes": 6,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "exported_videos": {
+      "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.head/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      }
+    }
+  },
+  "foreground-six-codex-offscreen-r1": {
+    "sessions": 6,
+    "draw_source": "1795494699920737000-Nano-fleet-watch",
+    "background_wall_fps": [
+      1.0289247120196048,
+      1.007513629501369,
+      1.0139218219024972,
+      1.0339782684242276,
+      1.029505279449928
+    ],
+    "meets_cadence": true,
+    "common_physics_window_s": 63.696927875,
+    "draw_window_s": 63.676974459,
+    "viewport_draws": 1826,
+    "viewport_fps": 28.660281294851274,
+    "median_draw_gap_ms": 32.871375,
+    "p95_draw_gap_ms": 57.29,
+    "maximum_draw_gap_ms": 181.951875,
+    "foreground_target_fps": 30,
+    "foreground_total_source_exposures": 2540,
+    "foreground_total_recorded_frames": 342,
+    "first_common_tick": 1151,
+    "last_common_tick": 5953,
+    "background_observations": [
+      68,
+      68,
+      68,
+      68,
+      68
+    ],
+    "provider": "codex",
+    "backend": "offscreen",
+    "viewport_size": "1440x900",
+    "complete_one_second_windows": 63,
+    "windows_below_25": 1,
+    "minimum_draws_in_one_second": 23,
+    "maximum_draws_in_one_second": 31,
+    "median_draws_in_one_second": 29,
+    "successes": 6,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "exported_videos": {
+      "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.head/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      }
+    }
+  },
+  "foreground-seven-offscreen-r1": {
+    "sessions": 7,
+    "draw_source": "1795494539135877000-Nano-fleet-watch",
+    "background_wall_fps": [
+      0.9407897351019997,
+      0.9613588521974586,
+      0.9505858284968257,
+      0.9537102177383576,
+      0.9446320463164002,
+      0.9362270529217903
+    ],
+    "meets_cadence": false,
+    "common_physics_window_s": 69.090874208,
+    "draw_window_s": 69.0305435,
+    "viewport_draws": 1986,
+    "viewport_fps": 28.755387099045514,
+    "median_draw_gap_ms": 32.885708,
+    "p95_draw_gap_ms": 57.891,
+    "maximum_draw_gap_ms": 204.424083,
+    "foreground_target_fps": 30,
+    "foreground_total_source_exposures": 2727,
+    "foreground_total_recorded_frames": 342,
+    "first_common_tick": 708,
+    "last_common_tick": 5362,
+    "background_observations": [
+      68,
+      68,
+      68,
+      68,
+      68,
+      68
+    ],
+    "provider": "octos-deepseek",
+    "backend": "offscreen",
+    "viewport_size": "1440x900",
+    "complete_one_second_windows": 69,
+    "windows_below_25": 1,
+    "minimum_draws_in_one_second": 24,
+    "maximum_draws_in_one_second": 31,
+    "median_draws_in_one_second": 29,
+    "successes": 7,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "exported_videos": {
+      "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.head/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      }
+    }
+  },
+  "foreground-eight-offscreen-r3": {
+    "sessions": 8,
+    "draw_source": "1795494290469988000-Nano-fleet-watch",
+    "background_wall_fps": [
+      0.8613177470819776,
+      0.8559233445350463,
+      0.8529357051361595,
+      0.8442272320157228,
+      0.8536308511832659,
+      0.8762858943672074,
+      0.8655320810531113
+    ],
+    "meets_cadence": false,
+    "common_physics_window_s": 76.178175666,
+    "draw_window_s": 76.141697375,
+    "viewport_draws": 2163,
+    "viewport_fps": 28.394428736623627,
+    "median_draw_gap_ms": 33.054708000000005,
+    "p95_draw_gap_ms": 58.225667,
+    "maximum_draw_gap_ms": 215.325333,
+    "foreground_target_fps": 30,
+    "foreground_total_source_exposures": 2999,
+    "foreground_total_recorded_frames": 342,
+    "first_common_tick": 679,
+    "last_common_tick": 5098,
+    "background_observations": [
+      68,
+      68,
+      68,
+      68,
+      68,
+      68,
+      68
+    ],
+    "provider": "octos-deepseek",
+    "backend": "offscreen",
+    "viewport_size": "1440x900",
+    "complete_one_second_windows": 76,
+    "windows_below_25": 2,
+    "minimum_draws_in_one_second": 24,
+    "maximum_draws_in_one_second": 31,
+    "median_draws_in_one_second": 29.0,
+    "successes": 8,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "exported_videos": {
+      "videos/chunk-000/observation.images.right_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.left_wrist/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      },
+      "videos/chunk-000/observation.images.head/episode_000000.mp4": {
+        "width": 480,
+        "height": 360,
+        "nb_read_frames": "342"
+      }
+    }
+  },
   "openssh": {
     "transport": "One OpenSSH connection on loopback",
-    "fresh_received_frames": 2318,
-    "source_frames": 2318,
-    "rgb_hashes": 2317,
-    "rate": 29.038782052073426,
-    "job": "58e5b277-d90f-4571-b3c4-2a116a8496bb"
+    "fresh_received_frames": 2221,
+    "source_frames": 2222,
+    "rgb_hashes": 2220,
+    "rate": 29.454984715574582,
+    "job": "97c3883d-cbff-429b-916f-0d4bae7c3327"
   },
   "direct_run": {
     "draws": 2204,

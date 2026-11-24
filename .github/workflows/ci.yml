@@ -55,6 +55,10 @@ jobs:
           persist-credentials: false
       - name: Test AISLE inspection contracts
         run: python3 -m unittest discover -s tools/aisle_workbench -p test_worker.py
+      - name: Verify foreground stream handling and archived native measurements
+        run: |
+          python3 -m unittest discover -s tools/aisle_workbench -p test_fleet_bridge.py
+          python3 docs/product/aisle-studio/validation/foreground-preview/audit.py
       - name: Test Nexus worker when present
         env:
           PYTHONDONTWRITEBYTECODE: "1"

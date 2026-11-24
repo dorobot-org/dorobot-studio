@@ -369,6 +369,9 @@ def execute(
         return sim.rig["head"].render(rgb=True, depth=False, segmentation=False)[0]
 
     def show_preview(rgb):
+        # Final progress publication can revisit the last streamed physics step.
+        if live_preview and preview_times and preview_times[-1][0] == sim.tick:
+            return
         tmp = out / "preview.tmp"
         tmp.write_bytes(struct.pack(">I", sim.tick) + rgb.tobytes())
         tmp.replace(out / "preview.rgb")
