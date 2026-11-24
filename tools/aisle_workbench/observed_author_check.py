@@ -19,11 +19,10 @@ def journey(args, checks, page, click, remote, done, grab, wait):
     model = describe("Nano")["model"]
     transfer = args.observed_author == "transfer"
     kind = "table-transfer" if transfer else "visual-approach"
-    input_label = (
-        "Sent to Codex · Head and both wrist images plus measured positions"
-        if args.provider == "codex"
-        else "Sent to DeepSeek · Positions measured from onboard RGB"
-    )
+    labels = {
+        "codex": "Sent to Codex · Head and both wrist images plus measured positions",
+        "octos-deepseek": "Sent to DeepSeek · Positions measured from onboard RGB",
+    }
     if args.recover:
         page("evidence")
         row = done(
@@ -33,6 +32,10 @@ def journey(args, checks, page, click, remote, done, grab, wait):
             "Observed target trial reopened",
         )
         assert (Path(row["selected"]) / PACKET).is_file()
+        last = json.loads((args.out / "journey.json").read_bytes())[-1]["trials"][-1]
+        assert row["result"]["controller_hash"] == last["controller_hash"]
+        assert row["controller"] == last["controller"]
+        input_label = labels[last["controller"]["provider"]]
         page("task")
         wait(
             lambda j: j["controls"]["aisle_task.author_inputs"]["text"] == input_label,
@@ -40,6 +43,7 @@ def journey(args, checks, page, click, remote, done, grab, wait):
         )
         (args.out / "recovery.json").write_text(json.dumps(checks, indent=2))
         return
+    input_label = labels[args.provider]
     request = (
         "Move only the leftmost visible floor cube as seen by the robot onto the coffee table."
         if transfer
@@ -140,6 +144,7 @@ def journey(args, checks, page, click, remote, done, grab, wait):
                 (author / "controller-request.json").read_bytes()
             )
             receipt = provider_request["onboard_input"]
+            assert receipt["provider"] == args.provider
             assert receipt == binding["author_input"]
             assert receipt["packet_sha256"] == binding["files"][PACKET]
             assert receipt["calibration_sha256"] == binding["files"][CALIBRATION]
@@ -153,7 +158,8 @@ def journey(args, checks, page, click, remote, done, grab, wait):
             )
             assert [im["camera"] for im in receipt["images"]] == expected
             for image in receipt["images"]:
-                png = author / image["file"]
+                png = path / image["file"]
+                assert png.read_bytes() == (author / image["file"]).read_bytes()
                 assert hashlib.sha256(png.read_bytes()).hexdigest() == image["sha256"]
                 with Image.open(png) as pixels:
                     assert np.array_equal(np.asarray(pixels), packet[image["camera"]])

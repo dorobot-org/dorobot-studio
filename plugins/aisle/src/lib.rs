@@ -651,7 +651,7 @@ impl PluginPanel for Panel {
                     },
                 );
                 let inputs = &w.plan["scene_observation"]["author_input"];
-                let label = match (w.plan["provider"].as_str(), inputs["images"].as_array()) {
+                let label = match (inputs["provider"].as_str(), inputs["images"].as_array()) {
                     (Some("codex"), Some(images)) if images.len() == 3 => "Sent to Codex · Head and both wrist images plus measured positions",
                     (Some("octos-deepseek"), Some(images)) if images.is_empty() => "Sent to DeepSeek · Positions measured from onboard RGB",
                     _ => "",

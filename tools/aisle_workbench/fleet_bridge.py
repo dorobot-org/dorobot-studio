@@ -18,6 +18,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 from visual_profile import BUNDLE_SHA256, validate_profile
+from onboard_scene import verify_observation_files
 from fleet_artifacts import download
 from fleet_client import (
     check_background_period,
@@ -180,6 +181,14 @@ def verify_visual_profile(folder, request, state):
             )
 
 
+def verify_author_inputs(folder, request, state):
+    if state == "completed":
+        plan = json.loads(base64.b64decode(request["controller"], validate=True))
+        binding = plan.get("scene_observation", {})
+        if "author_input" in binding:
+            verify_observation_files(folder, binding)
+
+
 def import_trial(root, node, row, status):
     request = json.loads(row["request"])
     dest = root / row["trial"]
@@ -187,6 +196,7 @@ def import_trial(root, node, row, status):
         receipt = json.loads((dest / "worker-origin.json").read_bytes())
         if receipt["job"] != row["id"]:
             raise ValueError("Trial directory belongs to another worker job")
+        verify_author_inputs(dest, request, receipt["state"])
         verify_visual_profile(dest, request, receipt["state"])
         verify_wrist_fixture(dest, request, receipt["state"])
         return dest
@@ -241,6 +251,7 @@ def import_trial(root, node, row, status):
                     or "Worker failed before producing a verdict"
                 ),
             )
+        verify_author_inputs(folder, request, status["state"])
         verify_visual_profile(folder, request, status["state"])
         verify_wrist_fixture(folder, request, status["state"])
         save(
@@ -434,12 +445,22 @@ def operate(args):
         visual_profile = getattr(args, "visual_profile", "original")
         validate_profile(visual_profile, plan)
         wants_clearance = plan.get("wrist_clearance", False)
-        if plan.get("kind") == "table-transfer" and (
-            args.rgb_timing != "normal"
-            or wants_clearance
-            or visual_profile != "original"
+        needs_images = bool(
+            plan.get("scene_observation", {}).get("author_input", {}).get("images")
+        )
+        if needs_images or (
+            plan.get("kind") == "table-transfer"
+            and (
+                args.rgb_timing != "normal"
+                or wants_clearance
+                or visual_profile != "original"
+            )
         ):
             capabilities = send(node, {"op": "hello"})
+            if needs_images and capabilities.get("onboard_author_images") is not True:
+                raise ValueError(
+                    "Update the selected worker to retain camera images sent to Codex"
+                )
             if visual_profile != "original":
                 if (
                     capabilities.get("nano_visual_bundles", {}).get(visual_profile)
