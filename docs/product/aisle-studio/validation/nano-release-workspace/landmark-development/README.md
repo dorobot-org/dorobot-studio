@@ -27,3 +27,5 @@ During a turn the G controller checks table standoff and heading after each comm
 ## Native DeepSeek run on layout 19
 
 DeepSeek V4 Flash through Octos authored the three-cube program in headless Makepad Studio. On seed 1865171047 the Nano used its wrist cameras and encoders to select a sidestep while holding green. It placed all three cubes, kept loaded wheel contact for all 28,504 physics steps, and recorded zero joint-limit excursions. The native motor file matched the original Codex-authored development run byte for byte. Studio exported a 1,425-frame three-camera episode with the same seed and reopened it after restart. The archive includes the provider identity, controller, measured result, motor file, export metadata and native interaction receipts. [Native DeepSeek evidence](native-deepseek-sidestep.zip)
+
+On independently committed cohort G, the camera-selected controller completed 38/50 full transfers. All 50 journals verified with zero guard bypasses. The release threshold is 45. The integrated workbench retains the continuous-tracking controller. [All twelve failed layouts and native replay](../cohort-g/README.md)
