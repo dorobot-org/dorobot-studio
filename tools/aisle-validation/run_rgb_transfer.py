@@ -637,6 +637,17 @@ def execute(
                         if active_color in slides:
                             slides[active_color].observe(command)
                         child.stdin.write(b'{"ok":true}\n')
+                    elif op == "release observation":
+                        if (
+                            judge.phase != "place" or command["color"] != active_color
+                            or packet is None or command["stamp_ns"] != int(packet["stamp_ns"])
+                            or command["stamp_ns"] != sim.tick * 10_000_000
+                        ):
+                            raise ValueError("Release observation requires the current placement exposure")
+                        folder = out / "release-observations"
+                        folder.mkdir(exist_ok=True)
+                        np.savez_compressed(folder / f"{sim.tick:06}.npz", **packet)
+                        child.stdin.write(b'{"ok":true}\n')
                     elif op == "table observation":
                         child.stdin.write(b'{"ok":true}\n')
                     elif op in ("wheel", "joint"):

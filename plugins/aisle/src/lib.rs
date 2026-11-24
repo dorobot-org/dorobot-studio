@@ -135,8 +135,9 @@ script_mod! {
                     impact := mod.widgets.ux.ToolButton{text:"Impact test"}
                 }
                 fixture := Body{}
-                layouts := View{width:Fill height:Fit flow:Down spacing:6.0 Section{text:"Development layout"}
-                    Bar{layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
+                layouts := View{width:Fill height:Fit flow:Down spacing:6.0
+                    Bar{spacing:4.0 seed_title := Section{} layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
+                    Bar{seed_input := TextInput{width:Fill height:32 empty_text:"Enter a layout seed"} apply_seed := mod.widgets.ux.ToolButton{text:"Set seed"}}
                 }
                 rgb_delivery := View{width:Fill height:Fit flow:Down spacing:6.0
                     Section{text:"Cube motion · world Y"}
@@ -891,6 +892,8 @@ impl PluginPanel for Panel {
                 self.root
                     .button(cx, ids!(impact))
                     .set_enabled(cx, !w.busy() && !w.impact);
+                self.label(cx, ids!(seed_title), &format!("Layout {}", w.layout_seed));
+                self.root.button(cx, ids!(apply_seed)).set_enabled(cx, !w.busy());
                 for (id, seed) in [
                     (ids!(layout0) as &[LiveId], 0),
                     (ids!(layout1), 1),
@@ -1196,12 +1199,18 @@ impl PluginPanel for Panel {
                         let archive_id = |side: &str| {
                             result[side]["archive_sha256"].as_str().and_then(|s| s.get(..8)).unwrap_or("?")
                         };
-                        let detail = format!(
+                        let mut detail = format!(
                             "Baseline {} · {} of {} passed\nCandidate {} · {} of {} passed\nBoth passed {} · gained {} · lost {} · both failed {} · unverified {}",
                             archive_id("baseline"), result["baseline"]["successes"], result["cases"],
                             archive_id("candidate"), result["candidate"]["successes"], result["cases"],
                             counts["both_passed"], counts["improved"], counts["regressed"], counts["both_failed"], counts["unverified"]
                         );
+                        let receipts = [result["baseline"]["archive_integrity"].as_str(), result["candidate"]["archive_integrity"].as_str()];
+                        if receipts.contains(&Some("Local output receipt")) {
+                            detail.push_str("\nIncludes a locally supplied camera archive receipt.");
+                        } else if receipts == [Some("Published Studio output digest"); 2] {
+                            detail.push_str("\nBoth camera archives match published digests.");
+                        }
                         self.label(cx, ids!(cohort_verdict), "Matched cohort comparison");
                         self.label(cx, ids!(cohort_detail), &detail);
                         let selected = failures.and_then(|v| v.get(w.failure_index));
@@ -1231,7 +1240,7 @@ impl PluginPanel for Panel {
                         self.label(cx, ids!(failure_detail), &detail);
                         return;
                     }
-                    let (title, detail) = if result["cases"].is_number() {
+                    let (title, mut detail) = if result["cases"].is_number() {
                         let title = if result["split"] == "development" {
                             "Development results"
                         } else if result["split"] == "matched" {
@@ -1265,6 +1274,9 @@ impl PluginPanel for Panel {
                     } else {
                         ("No evaluation selected", String::new())
                     };
+                    if let (Some(count), Some(receipt)) = (result["release_exposures"].as_u64(), result["archive_integrity"].as_str()) {
+                        detail.push_str(&format!("\n{count} camera packets · {receipt}"));
+                    }
                     self.label(cx, ids!(cohort_verdict), title);
                     self.label(cx, ids!(cohort_detail), &detail);
                     let failure = failures
@@ -1801,6 +1813,11 @@ impl PluginPanel for Panel {
                 b.dispatch(Intent::Aisle(act));
                 return true;
             }
+        }
+        if self.root.button(cx, ids!(apply_seed)).clicked(actions) {
+            let seed = self.root.text_input(cx, ids!(seed_input)).text();
+            b.dispatch(Intent::Aisle(Action::CustomLayout(seed)));
+            return true;
         }
         if self.root.button(cx, ids!(device_listen)).clicked(actions) {
             let endpoint = self.root.text_input(cx, ids!(device_endpoint)).text();

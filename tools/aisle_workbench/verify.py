@@ -12,6 +12,7 @@ import time
 
 
 def main():
+    from journey import layout_seed
     from worker import observation_seconds
 
     parser = argparse.ArgumentParser(description=__doc__)
@@ -165,7 +166,12 @@ def main():
         choices=["slide-positive", "slide-negative"],
         help="Track and intercept a moving floor cube during Nano transfer",
     )
-    parser.add_argument("--layout", type=int, choices=[0, 1, 2], default=0)
+    parser.add_argument("--layout", type=layout_seed, default=0)
+    parser.add_argument(
+        "--wrist-clearance",
+        action="store_true",
+        help="Author a three-cube transfer with the experimental placement check",
+    )
     parser.add_argument(
         "--impact", action="store_true", help="Select the G1 development impact fixture"
     )
@@ -253,6 +259,8 @@ def main():
         parser.error("--upright requires --standing")
     if args.impact and not args.standing:
         parser.error("--impact requires --standing")
+    if args.wrist_clearance and args.transfer != "three":
+        parser.error("--wrist-clearance requires --transfer three")
     if args.layout and not args.transfer:
         parser.error("--layout requires a Nano transfer scenario")
     if (
@@ -491,6 +499,8 @@ def main():
                     check.append("--device-preflight")
                 if args.pickup_motion:
                     check.extend(["--pickup-motion", args.pickup_motion])
+                if args.wrist_clearance:
+                    check.append("--wrist-clearance")
                 if args.transfer:
                     check.extend(
                         ["--transfer", args.transfer, "--layout", str(args.layout)]
@@ -506,9 +516,9 @@ def main():
                         check.append("--screenshots")
                 if args.wrist_faults == "three":
                     # Allow authoring, three full trials and the UI transitions.
+                    timeout = 5400
+                elif args.train_grasp or args.transfer == "three":
                     timeout = 2400
-                elif args.train_grasp:
-                    timeout = 1800
                 elif args.transfer or args.fleet or args.wrist_faults or prior_trial:
                     timeout = 900
                 else:
