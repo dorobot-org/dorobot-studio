@@ -147,6 +147,8 @@ Every field has a default (the Tracer Mini values below).
 | `robot_model` | `"tracer_mini"` | sent in `nav/status`; the body model Studio draws (`null`: none) |
 | `log_forward_per_node_hz` | 5 | node log lines per node per second (0: none) |
 
+Upgrade order (costmap): a Studio from delivery ① does not know the `costmap/global` layer. It paints any costmap-kind grid as an opaque unknown-grey static quad at z = 0 over the Rerun map; the Displays toggle cannot clear static data and the bridge's 5 s resend brings it back (the 2D view is unaffected). Update Studio together with, or before, the bridge. Stop-gap when Studio cannot be updated: delete the `"costmap": "costmap"` entry from `inputs` in the installed `tracer.json` and restart the bridge (a Dora input id that is not in `inputs` is ignored, so the layer is not published).
+
 A missing or invalid map does not stop the bridge: the layer is not published, the
 problem is printed on stderr and sent as a WARN log entry naming the file.
 

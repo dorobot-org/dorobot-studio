@@ -86,6 +86,8 @@ Navigation 面板的操作：滚轮缩放（以光标为中心），拖动平移
 
 日志、节点和数据流图来自车上各节点真实的 Dora 日志，在 "Visualization" 标签的 Logs / Nodes 里看。
 
+**升级顺序（costmap）**：桥现在会发 `costmap/global`（`grid2d`，kind `costmap`）。交付 ① 的旧版 Studio 不认识这个层，会把任何 costmap 类网格画成不透明的未知色（灰）静态色块，盖在 Rerun 的地图上（z = 0），Displays 开关清不掉静态数据，5 s 内又会补发回来；2D 视图不受影响。所以请与桥同时升级 Studio，或先于桥升级。临时办法（旧 Studio 不能改）：把车上已安装的 `tracer.json` 的 `inputs` 里的 `"costmap"` 一行删掉，桥就不再发这个层（`inputs` 里没有的 Dora 输入会被忽略），改完重启桥。
+
 ## 合成发布器
 
 没有真机时用合成发布器试：

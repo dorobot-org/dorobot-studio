@@ -28,5 +28,6 @@ again on the same source gives the same bytes):
 
 ## Licence
 
-Apache License 2.0, <https://www.apache.org/licenses/LICENSE-2.0>, as for the
+Apache License 2.0, <https://www.apache.org/licenses/LICENSE-2.0>, as declared by
+tracer-mini-ros2's `tracer_mini_description/package.xml`; the same licence as the
 rest of `plugins/dviz`.
