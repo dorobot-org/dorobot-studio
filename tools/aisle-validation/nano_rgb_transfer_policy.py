@@ -434,7 +434,15 @@ class Controller:
             if index:
                 self.drive()
                 cameras = CAMERAS if self.wrist_clearance else ("head", "right_wrist")
-                views = self.table_views(self.sense(), cameras)
+                observation = self.sense()
+                views = self.table_views(observation, cameras)
+                if self.wrist_clearance:
+                    self.act(
+                        "release observation", stamp_ns=int(observation["stamp_ns"]),
+                        color=color, height_m=float(edge["height"]), distance_m=float(edge["distance"]),
+                        normal=edge["normal"].tolist(), along=edge["along"].tolist(),
+                        span_m=list(edge["span"]),
+                    )
                 occupied = occupied_table_points(
                     views,
                     edge,
