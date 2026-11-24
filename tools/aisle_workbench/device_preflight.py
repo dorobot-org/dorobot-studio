@@ -169,13 +169,26 @@ def run(args):
     if args.robot == "Nano":
         profile_path = ROOT / "robots/adora_nano_feetech/profile.json"
         profile = read(profile_path)
+        required = (
+            ("arms", "cameras", "measured_odometry")
+            if result["kind"] == "table-transfer"
+            else ("arms",)
+        )
+        missing = [
+            key for key in required if profile["capabilities"].get(key) is not True
+        ]
+        detail = ", ".join(key.replace("_", " ") for key in missing)
         return receipt | dict(
+            required_capabilities=required,
+            missing_capabilities=missing,
             adapter=profile["name"],
             adapter_profile_sha256=digest(profile_path),
-            state="Adapter incomplete",
+            state="Adapter incomplete" if missing else "Profile declared",
             wheels=profile["wheel_joints"],
             capabilities=profile["capabilities"],
-            reason="The Feetech base maps three wheels. This controller also needs measured joint feedback; the installed adapter has no arm or camera channels.",
+            reason=f"The installed profile maps {len(profile['wheel_joints'])} wheels. Missing for this trial: {detail}."
+            if missing
+            else "The profile declares the requested channels. Physical input and calibration still require validation.",
         )
     if result["kind"] != "standing-inspection":
         return receipt | dict(
@@ -245,7 +258,7 @@ def run(args):
                     ],
                     stdout=log,
                     stderr=log,
-                    timeout=20,
+                    timeout=30,
                 )
                 if sub.returncode or (sender and sender.wait(timeout=5)):
                     log.flush()

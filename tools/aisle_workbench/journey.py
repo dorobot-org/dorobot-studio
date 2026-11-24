@@ -510,6 +510,39 @@ def main():
                     and absence["preflight"]["motor_commands_sent"] == 0
                 )
                 checks[-1]["receipt"] = absence["preflight"]
+                click("aisle_evidence.device_replay")
+                active = done(
+                    lambda w: w["busy"] and w["worker_pid"], "Device preflight running"
+                )
+                group = active["worker_pid"]
+
+                def capture_has_started(_):
+                    preflights = sorted(
+                        Path(row["selected"]).parent.glob("*-G1-device-preflight")
+                    )
+                    return preflights and (preflights[-1] / "lowstate.jsonl").is_file()
+
+                wait(capture_has_started, "DDS subscriber joined")
+                click("aisle_evidence.device_stop")
+                cancelled = done(
+                    lambda w: not w["busy"]
+                    and (w["preflight"] or {}).get("reason") == "Stopped by operator",
+                    "Operator stopped DDS capture",
+                )
+                assert cancelled["preflight"]["motor_commands_sent"] == 0
+
+                def capture_has_exited(_):
+                    output = subprocess.check_output(
+                        ["ps", "-axo", "pgid=,stat="], text=True
+                    )
+                    return not any(
+                        int(fields[0]) == group and not fields[1].startswith("Z")
+                        for fields in (line.split() for line in output.splitlines())
+                        if len(fields) == 2
+                    )
+
+                wait(capture_has_exited, "All DDS processes exited")
+                checks[-1]["process_group_exited"] = True
             click("aisle_evidence.device_replay")
             expected = "Dry run measured" if a.standing else "Adapter incomplete"
             observed = done(
