@@ -4,6 +4,7 @@
 pub mod command;
 pub mod config;
 pub mod encode;
+pub mod forward;
 pub mod formats;
 pub mod geom;
 pub mod logs;
