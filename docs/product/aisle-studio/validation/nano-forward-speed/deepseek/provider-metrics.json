@@ -1,0 +1,7 @@
+{
+  "provider": "octos-deepseek",
+  "model": "deepseek-v4-flash",
+  "wall_seconds": 2.401819207938388,
+  "input_tokens": 6923,
+  "output_tokens": 277
+}
