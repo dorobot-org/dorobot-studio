@@ -56,5 +56,15 @@
   "requested": [
     "red"
   ],
-  "controller_hash": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e"
+  "controller_hash": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+  "three_cube": {
+    "physics_ticks": 33462,
+    "passed": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "frames_per_camera": 1673,
+    "recording_fps": 5
+  }
 }
