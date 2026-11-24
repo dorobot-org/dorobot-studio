@@ -66,7 +66,7 @@ class VisualServo:
             )
         self.last_stamp = -1
 
-    def command(self, packet, *, preferred_camera=None):
+    def command(self, packet, *, preferred_camera=None, resolve_ambiguity=False):
         if set(packet) != {*CAMERAS, "stamp_ns", "encoders"}:
             raise ValueError("unexpected observation channels")
         stamp = packet["stamp_ns"]
@@ -80,8 +80,7 @@ class VisualServo:
         if q.shape != (len(self.names),) or not np.isfinite(q).all():
             raise ValueError("invalid encoder vector")
         self.last_stamp = int(stamp)
-        points = []
-        used = []
+        candidates = {}
         for name, (chain, indices, mount, intrinsics, (w, h)) in self.cameras.items():
             rgb = packet[name]
             if rgb.dtype != np.uint8 or rgb.shape != (h, w, 3):
@@ -90,13 +89,27 @@ class VisualServo:
             pose = np.eye(4)
             pose[:3, 3], pose[:3, :3] = pos, rot
             views = detect(rgb, self.target, intrinsics, pose @ mount)
-            if len(views) > 1:
+            if len(views) > 1 and not resolve_ambiguity:
                 return self.stop("ambiguous")
             if views:
-                points.append(views[0])
-                used.append(name)
-        if not points:
+                candidates[name] = views
+        if not candidates:
             return self.stop("lost")
+        points = []
+        used = list(candidates)
+        for name, views in candidates.items():
+            if len(views) == 1:
+                points.append(views[0])
+                continue
+            # During a tracked descent a single wrist candidate can resolve a
+            # second camera's alternatives if exactly one lies within 35 mm.
+            wrist = candidates.get(preferred_camera, [])
+            if len(wrist) != 1:
+                return self.stop("ambiguous")
+            matches = [p for p in views if np.linalg.norm(p - wrist[0]) <= 0.035]
+            if len(matches) != 1:
+                return self.stop("ambiguous")
+            points.append(matches[0])
         point = np.median(points, axis=0)
         if any(np.linalg.norm(p - point) > 0.06 for p in points):
             return self.stop("inconsistent views")

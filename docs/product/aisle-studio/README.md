@@ -73,3 +73,5 @@ To draft room geometry from a reference image and operator description, use **Dr
 Run concurrent simulations from **Run → Workers**. Fetch the selected job into Evidence and Replay. [Configure local or SSH workers and reproduce the native trials](validation/worker-leases/README.md)
 
 To track a sliding floor cube during descent, request a moving pickup on Task, select a slide direction on Scene and inspect pre-contact speed and opposing-finger lift in Evidence. [Use and verify the moving-grasp controller](validation/moving-grasp/README.md)
+
+[Watch the Nano catch and place three moving cubes from its onboard cameras](validation/moving-grasp-wrist-agreement/README.md)

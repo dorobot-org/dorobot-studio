@@ -203,7 +203,9 @@ class Controller:
         heights = np.linspace(0.115, CUBE_CENTRE_Z + 0.004, 9)[1:]
         for index, height in enumerate(heights):
             packet = self.sense()
-            reading = self.servo.command(packet, preferred_camera="left_wrist")
+            reading = self.servo.command(
+                packet, preferred_camera="left_wrist", resolve_ambiguity=True
+            )
             point = reading["xy"]
             stamp_ns = int(packet["stamp_ns"])
             stamp = stamp_ns * 1e-9

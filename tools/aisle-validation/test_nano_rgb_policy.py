@@ -60,6 +60,34 @@ class VisualServoTests(unittest.TestCase):
             (cmd["state"], cmd["speed"], cmd["yaw_rate"]), ("ambiguous", 0, 0)
         )
 
+    def test_descent_requires_unique_agreement_to_disambiguate_a_second_view(self):
+        head, wrist = self.packet["head"], self.packet["left_wrist"]
+        head[25:35, 35:45, 0] = 255
+        head[15:25, 15:25, 0] = 255
+        wrist[25:35, 35:45, 0] = 255
+
+        def observe():
+            self.packet["stamp_ns"] += 1
+            return self.servo.command(
+                self.packet, preferred_camera="left_wrist", resolve_ambiguity=True
+            )
+
+        self.assertEqual(observe()["cameras"], ["head", "left_wrist"])
+        wrist.fill(0)
+        self.assertEqual(observe()["state"], "ambiguous")
+        wrist[15:25, 15:25, 0] = 255
+        wrist[25:35, 35:45, 0] = 255
+        self.assertEqual(observe()["state"], "ambiguous")
+        wrist.fill(0)
+        wrist[45:55, 65:75, 0] = 255
+        self.assertEqual(observe()["state"], "ambiguous")
+        head.fill(0)
+        head[25:35, 29:39, 0] = 255
+        head[25:35, 41:51, 0] = 255
+        wrist.fill(0)
+        wrist[25:35, 35:45, 0] = 255
+        self.assertEqual(observe()["state"], "ambiguous")
+
 
 if __name__ == "__main__":
     unittest.main()
