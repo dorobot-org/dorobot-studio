@@ -61,7 +61,19 @@ def run(args, page, click, remote, done, grab, checks):
                 lambda state: state["failure_index"] == len(comparison["changes"]) - 2,
                 "Previous changed case",
             )
-        fill("baseline_path", args.reject_cohort or after)
+        # Switching to a single archive must clear comparison mode in the operation.
+        click("aisle_evidence.verify_archive")
+        done(
+            lambda state: not state["busy"]
+            and (state["evaluation"] or {}).get("archive_sha256") == archives[1],
+            "Single evaluation reopened",
+            120,
+        )
+        fill("baseline_path", before)
+        click("aisle_evidence.compare_archives")
+        assert done(matched, "Comparison reopened", 120)["evaluation"] == comparison
+        reject_archive = args.reject_cohort or after
+        fill("baseline_path", reject_archive)
         click("aisle_evidence.compare_archives")
         rejected = done(
             lambda state: not state["busy"]
@@ -77,17 +89,9 @@ def run(args, page, click, remote, done, grab, checks):
             "Incompatible comparison rejected",
             120,
         )
+        checks[-1]["rejected_archive_sha256"] = hashlib.sha256(
+            reject_archive.read_bytes()
+        ).hexdigest()
         assert rejected["evaluation"] == comparison
-        # Switching to a single archive must clear comparison mode in the operation.
-        click("aisle_evidence.verify_archive")
-        done(
-            lambda state: not state["busy"]
-            and (state["evaluation"] or {}).get("archive_sha256") == archives[1],
-            "Single evaluation reopened",
-            120,
-        )
-        fill("baseline_path", before)
-        click("aisle_evidence.compare_archives")
-        assert done(matched, "Comparison reopened", 120)["evaluation"] == comparison
     name = "recovery.json" if args.recover else "journey.json"
     (args.out / name).write_text(json.dumps(checks, indent=2))

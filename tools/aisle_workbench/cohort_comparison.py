@@ -8,12 +8,26 @@ from nano_suite_evidence import compare_archives
 
 
 def manifest(path):
-    public = path.with_name("suite.json").read_bytes()
+    if not path.is_file():
+        raise ValueError(f"Cannot open cohort archive {path}")
+    sidecar = path.with_name("suite.json")
+    if not sidecar.is_file():
+        raise ValueError(f"Place the public suite.json beside {path}")
+    public = sidecar.read_bytes()
     return json.loads(public), hashlib.sha256(public).hexdigest()
 
 
 def compare_g1(baseline, candidate, manifests):
     (left, left_hash), (right, right_hash) = manifests
+    for spec in (left, right):
+        if (
+            not isinstance(spec.get("criteria"), dict)
+            or not isinstance(spec.get("inputs"), dict)
+            or not {"urdf", "meshes"} <= spec["inputs"].keys()
+        ):
+            raise ValueError(
+                "G1 comparison needs the robot, meshes and scoring criteria in each manifest"
+            )
     if (
         left.get("impact_aim", "pelvis-v1") != right.get("impact_aim", "pelvis-v1")
         or left["criteria"] != right["criteria"]
@@ -29,7 +43,7 @@ def compare_g1(baseline, candidate, manifests):
     # The salt commits a case before disclosure. Its physical identity is the recipe.
     def by_recipe(summary):
         rows = summary.pop("rows")
-        by_key = {json.dumps(r["recipe"], sort_keys=True): r for r in rows}
+        by_key = {tuple(sorted(r["recipe"].items())): r for r in rows}
         if len(by_key) != len(rows):
             raise ValueError("A G1 suite contains duplicate impact recipes")
         return by_key
@@ -56,9 +70,9 @@ def compare_g1(baseline, candidate, manifests):
 
 
 def compare(baseline, candidate):
+    left, right = manifest(baseline), manifest(candidate)
     if baseline.samefile(candidate):
         raise ValueError("Choose two separate cohort archives")
-    left, right = manifest(baseline), manifest(candidate)
     profile = left[0].get("profile")
     if profile != right[0].get("profile"):
         raise ValueError("Choose two cohort archives for the same robot")
@@ -98,7 +112,7 @@ def compare(baseline, candidate):
                     **pair,
                     outcome=outcome,
                     baseline_reasons=failures[0].get(pair["baseline_index"], []),
-                    candidate_reasons=failures[1].get(pair["candidate_index"], [])
+                    candidate_reasons=failures[1].get(pair["candidate_index"], []),
                 )
             )
 

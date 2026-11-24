@@ -49,6 +49,15 @@ jobs:
           cmp "$guide/capacity.json" "$RUNNER_TEMP/wrist-capacity.json"
           /usr/bin/python3 "$guide/selection.py" "$guide/selection.zip" > "$RUNNER_TEMP/wrist-selection.json"
           cmp "$guide/selection.json" "$RUNNER_TEMP/wrist-selection.json"
+      - name: Replay Nano and G1 cohort comparisons
+        run: |
+          aisle="$RUNNER_TEMP/aisle-replay"
+          git init -q "$aisle"
+          git -C "$aisle" fetch --depth=1 https://github.com/moxin-org/AISLE.git dbd34a71b6f82a011541b433306ca7e6a705e823
+          git -C "$aisle" checkout -q --detach FETCH_HEAD
+          "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: opencv-python-headless==5.1.0.95
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_cohort_comparison.py
+
       - name: Install Rust
         run: |
           rustup toolchain install 1.95.0 --profile minimal

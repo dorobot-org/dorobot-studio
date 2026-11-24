@@ -1,10 +1,14 @@
 """Exercise paired verdicts using the published, measured Nano motor records."""
 
 import json
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from zipfile import ZipFile
+from shutil import copyfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aisle_workbench"))
 
 from nano_suite_evidence import EVIDENCE, pack
 from nano_transfer_suite import summarize, worker
@@ -69,3 +73,29 @@ class CohortComparison(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "Manifest"):
                 compare(base, candidate)
+
+    def test_real_g1_matched_impacts(self):
+        with TemporaryDirectory() as root:
+            inputs = []
+            for name in ("g1-upright-trunk", "g1-standing-heading"):
+                path = Path(root) / name
+                path.mkdir()
+                copyfile(
+                    GUIDE.parent / name / "matched-suite.json", path / "suite.json"
+                )
+                copyfile(GUIDE.parent / name / "matched.zip", path / "cohort.zip")
+                inputs.append(path / "cohort.zip")
+            result = compare(*inputs)
+            self.assertEqual(
+                (result["baseline"]["successes"], result["candidate"]["successes"]),
+                (17, 20),
+            )
+            self.assertEqual(
+                [r["baseline_index"] for r in result["changes"]], [9, 12, 13]
+            )
+            self.assertTrue(
+                all(
+                    r["outcome"] == "improved" and r["baseline_reasons"]
+                    for r in result["changes"]
+                )
+            )
