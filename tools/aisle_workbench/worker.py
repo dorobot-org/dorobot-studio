@@ -115,11 +115,11 @@ def validate(plan, meta):
     heading = plan.get("trunk_yaw_rad", 0.0)
     if (
         type(heading) not in (float, int)
-        or heading not in (0.0, 0.34906585)
+        or heading not in (0.0, 0.34906585, 0.52359878)
         or (heading and (not standing or posture))
     ):
         raise ValueError(
-            "Choose the neutral stance or a standing 20-degree left waist turn"
+            "Choose the neutral stance or a standing 20- or 30-degree left waist turn"
         )
     validated = dict(joint=joint, delta_rad=delta)
     if heading:
@@ -444,11 +444,11 @@ def prepare(args, meta):
                 type="number", enum=[0.0, -0.10]
             )
             schema["properties"]["trunk_yaw_rad"] = dict(
-                type="number", enum=[0.0, 0.34906585]
+                type="number", enum=[0.0, 0.34906585, 0.52359878]
             )
             schema["required"].extend(["kind", "trunk_pitch_rad", "trunk_yaw_rad"])
             prompt = (
-                "Set trunk_yaw_rad=0.34906585 for a requested 20-degree left waist turn in standing, with neutral pitch. Otherwise select 0.0. "
+                "Set trunk_yaw_rad=0.34906585 for a requested 20-degree left waist turn or 0.52359878 for a 30-degree left waist turn in standing, with neutral pitch. Otherwise select 0.0. "
                 "Select trunk_pitch_rad=-0.10 only when the operator explicitly requests an upright trunk "
                 "during a standing reach. Otherwise select 0.0. "
                 "Select a G1 simulation capability. Use joint-inspection for shoulder inspections by default. "
