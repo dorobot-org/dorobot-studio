@@ -15,3 +15,5 @@ The shift is at most 14 cm. Lateral speed is limited to 18 mm/s and steering cor
 Four of five disclosed failures were recovered. All five motor journals verified and none recorded a guard bypass. The two turning runs and the three sideways runs reproduced the motor journals of their individually tested maneuvers. These development seeds were used to design the selection rule. [Verified trial archive](evidence.zip) · [Development inputs](suite.json) · [Independent cohort G protocol](../cohort-g/protocol.md)
 
 Native Evidence verified the two output receipts, showed four gains and one layout failing both controllers, and restored the same comparison after restart. [Native Studio comparison](native-comparison.png) · [Instrumented actions and scores](native-comparison.json)
+
+All four control layouts passed and reproduced the earlier control motor journals byte for byte. The four control seeds were 1724068725, 1064838320, 289513494 and 0. Cohort G then started on its separately committed 50 layouts. [Control evidence](../landmark-controls/evidence.zip) · [Control manifest](../landmark-controls/suite.json)
