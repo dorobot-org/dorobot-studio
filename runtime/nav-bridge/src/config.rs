@@ -82,6 +82,32 @@ impl Default for Radii {
     }
 }
 
+/// Command channel (Studio to robot). Goals and initial poses stay off unless `goal_enabled`.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct CmdConfig {
+    pub goal_enabled: bool,
+    /// Robot-side token file; a leading `~/` is expanded.
+    pub token_file: String,
+    /// UDP address of the robot's nav_command.
+    pub forward: String,
+    pub reply_timeout_ms: u64,
+    /// Token bucket refill rate (burst 2).
+    pub max_goal_per_s: f32,
+}
+
+impl Default for CmdConfig {
+    fn default() -> Self {
+        CmdConfig {
+            goal_enabled: false,
+            token_file: "~/.config/dviz/cmd_token".into(),
+            forward: "127.0.0.1:9998".into(),
+            reply_timeout_ms: 1000,
+            max_goal_per_s: 2.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct BridgeConfig {
@@ -104,6 +130,7 @@ pub struct BridgeConfig {
     /// Body model Studio draws, sent in `nav/status`
     pub robot_model: Option<String>,
     pub log_forward_per_node_hz: f32,
+    pub cmd: CmdConfig,
 }
 
 impl Default for BridgeConfig {
@@ -138,6 +165,7 @@ impl Default for BridgeConfig {
             radii: Radii::default(),
             robot_model: Some("tracer_mini".into()),
             log_forward_per_node_hz: 5.0,
+            cmd: CmdConfig::default(),
         }
     }
 }
@@ -191,6 +219,23 @@ mod tests {
         assert_eq!(shipped.colors, want);
         let r = BridgeConfig::default().radii;
         assert_eq!((r.plan, r.trail, r.goal, r.footprint), (0.025, 0.02, 0.04, 0.01));
+    }
+
+    #[test]
+    fn cmd_config_defaults() {
+        let d = CmdConfig::default();
+        assert!(!d.goal_enabled);
+        assert_eq!(d.token_file, "~/.config/dviz/cmd_token");
+        assert_eq!(d.forward, "127.0.0.1:9998");
+        assert_eq!(d.reply_timeout_ms, 1000);
+        assert_eq!(d.max_goal_per_s, 2.0);
+        let c: BridgeConfig = serde_json::from_str("{}").unwrap();
+        assert_eq!(c.cmd, d);
+        let shipped = load_config(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config/tracer.json"))).unwrap();
+        assert_eq!(shipped.cmd, CmdConfig::default());
+        let c: BridgeConfig = serde_json::from_str(r#"{"cmd":{"goal_enabled":true}}"#).unwrap();
+        assert!(c.cmd.goal_enabled);
+        assert_eq!(c.cmd.forward, "127.0.0.1:9998");
     }
 
     #[test]
