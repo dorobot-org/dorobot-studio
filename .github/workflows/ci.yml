@@ -73,6 +73,7 @@ jobs:
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle_workbench -p test_room_revision.py
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle_workbench -p test_device_preflight.py
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle_workbench -p test_author_input.py
+          "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/onboard-authoring/camera-inputs/audit.py
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/room-survey/check_camera_trials.py
           /usr/bin/python3 tools/fetch_robot_meshes.py g1
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_cohort_comparison.py
