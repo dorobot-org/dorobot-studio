@@ -357,6 +357,132 @@ class Controller:
         return landmarks
 
     def reposition_for_release(self, edge, occupied, packet, color, prior_colors):
+        landmarks = self.release_landmarks(packet, edge, prior_colors)
+        if not landmarks:
+            raise ValueError(
+                "Cannot identify an earlier cube before changing the placement pose"
+            )
+        # Turning changes the wrist field of view. Two distinct previously placed
+        # colors give the turn multiple landmarks to register the new image.
+        colors = {item_color for camera, item_color in landmarks}
+        if len(colors) >= 2:
+            return self.turn_for_release(
+                edge, occupied, packet, color, prior_colors, landmarks
+            )
+        return self.shift_for_release(edge, occupied, packet, color, prior_colors)
+
+    def shift_for_release(self, edge, occupied, packet, color, prior_colors):
+        # Predict whether shifting along the docked base's y axis could bring
+        # a clear part of the observed rim into the left arm's reachable area.
+        for offset in (-0.08, 0.08, -0.14, 0.14):
+            shift = np.array([0.0, offset])
+            predicted = edge | {
+                "distance": edge["distance"] - edge["normal"] @ shift,
+                "span": np.asarray(edge["span"]) - edge["along"] @ shift,
+            }
+            if self.release_slot(predicted, [p - shift for p in occupied]) is not None:
+                break
+        else:
+            raise ValueError(
+                "No reachable clear release point in the observed rim or bounded sidestep"
+            )
+
+        wheel_ids = [self.names.index(f"wheel_{i}_joint") for i in (1, 2, 3)]
+        start = packet["encoders"][wheel_ids].copy()
+
+        def displacement(sample):
+            w1, w2, w3 = sample["encoders"][wheel_ids] - start
+            return self.wheel_radius * np.array(
+                [
+                    (w2 - w3) / math.sqrt(3),
+                    (2 * w1 - w2 - w3) / 3,
+                ]
+            )
+
+        def observed_rim(sample):
+            current = self.table(sample)
+            if current is None:
+                raise ValueError(
+                    "Could not see the table rim during the placement sidestep"
+                )
+            old_normal, new_normal = edge["normal"], current["normal"]
+            heading_error = math.atan2(
+                old_normal[0] * new_normal[1] - old_normal[1] * new_normal[0],
+                old_normal @ new_normal,
+            )
+            drift = current["distance"] - edge["distance"]
+            alignment = current["normal"] @ edge["normal"]
+            self.act(
+                "table observation",
+                standoff_change_m=float(drift),
+                normal_agreement=float(alignment),
+                heading_error_rad=heading_error,
+                lateral_encoder_m=float(displacement(sample)[1]),
+                color=color,
+            )
+            if abs(drift) > 0.025 or alignment < math.cos(0.09):
+                raise ValueError(
+                    "Lost the measured table standoff during the placement sidestep"
+                )
+            return current, heading_error
+
+        self.act("table observation", lateral_goal_m=offset, color=color)
+        heading_error = 0.0
+        try:
+            for _ in range(72):
+                remaining = offset - displacement(packet)[1]
+                if abs(remaining) < 0.005:
+                    break
+                self.act(
+                    "wheel",
+                    speed=0.0,
+                    turn=float(np.clip(3.0 * heading_error, -0.2, 0.2)),
+                    lateral_m_s=float(np.clip(2 * remaining, -0.018, 0.018)),
+                )
+                packet = self.sense()
+                _, heading_error = observed_rim(packet)
+            else:
+                raise ValueError(
+                    "Wheel encoders did not confirm the bounded placement sidestep"
+                )
+        finally:
+            self.drive()
+        packet = self.sense()
+        current, _ = observed_rim(packet)
+        self.release_observation(packet, current, color)
+        if not self.held_in_wrist_view(color, packet):
+            raise ValueError(
+                "Cannot confirm the carried cube after the placement sidestep"
+            )
+        self.last_rim_distance = current["distance"]
+        seen = occupied_table_points(
+            self.table_views(packet, CAMERAS),
+            current,
+            prior_colors,
+            include_clipped=True,
+        )
+        # Keep earlier sightings even if they are now occluded. The newly measured
+        # rim supplies heading and standoff, wheel encoders supply travel along it.
+        motion = displacement(packet)
+        tangent_before = np.array([-edge["normal"][1], edge["normal"][0]])
+        tangent_after = np.array([-current["normal"][1], current["normal"][0]])
+        kept = []
+        for point in occupied:
+            inset = point @ edge["normal"] - edge["distance"]
+            along = (point - motion) @ tangent_before
+            kept.append(
+                (current["distance"] + inset) * current["normal"]
+                + along * tangent_after
+            )
+        self.act(
+            "table observation",
+            fresh_occupants=len(seen),
+            retained_occupants=len(kept),
+            color=color,
+        )
+        return current, seen + kept
+
+    def turn_for_release(self, edge, occupied, packet, color, prior_colors, landmarks):
         # A turn in place changes where the left arm can reach on the observed rim.
         # Try both directions before considering a larger change of heading.
         for angle in (0.20, -0.20, 0.30, -0.30):
@@ -373,9 +499,6 @@ class Controller:
                 "No reachable clear release point within the bounded placement turn"
             )
 
-        landmarks = self.release_landmarks(packet, edge, prior_colors)
-        if not landmarks:
-            raise ValueError("Cannot track an earlier cube through a placement turn")
         original = edge["normal"]
         tangent = np.array([-original[1], original[0]])
 

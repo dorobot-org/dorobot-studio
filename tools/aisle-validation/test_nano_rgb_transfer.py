@@ -78,7 +78,68 @@ class TransferTests(unittest.TestCase):
             all(span[0] <= y <= span[1] and depth >= 0.085 for y, depth, _ in choices)
         )
 
-    def test_placement_turn_tracks_cube_across_wrist_views(self):
+    def test_sidestep_requires_new_rim_and_keeps_occluded_cubes(self):
+        controller = Controller.__new__(Controller)
+        controller.names = ["wheel_1_joint", "wheel_2_joint", "wheel_3_joint"]
+        controller.wheel_radius = 0.05
+        controller.release_slot = Mock(return_value=True)
+        controller.act = Mock()
+        controller.drive = Mock()
+        controller.table_views = Mock(return_value=[])
+        controller.release_observation = Mock()
+        controller.held_in_wrist_view = Mock(return_value=True)
+        edge = dict(
+            normal=np.array([1.0, 0.0]),
+            along=np.array([0.0, 1.0]),
+            distance=0.3,
+            height=0.54,
+            span=[-0.2, 0.25],
+        )
+        controller.table = Mock(return_value=edge | {"along": -edge["along"]})
+        original = {"encoders": np.zeros(3)}
+        shifted = {"encoders": np.array([-1.6, 0.8, 0.8])}
+        controller.sense = Mock(side_effect=[shifted, shifted])
+        with patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]):
+            _, occupied = controller.shift_for_release(
+                edge, [np.array([0.43, 0.15])], original, "green", ["red"]
+            )
+        np.testing.assert_allclose(occupied, [[0.43, 0.23]])
+        controller.release_observation.assert_called_once()
+        controller.drive.assert_called_once_with()
+        controller.held_in_wrist_view.assert_called_once_with("green", shifted)
+
+        controller.table.return_value = None
+        controller.sense.side_effect = [shifted]
+        controller.drive.reset_mock()
+        controller.release_observation.reset_mock()
+        with self.assertRaisesRegex(ValueError, "table rim"):
+            controller.shift_for_release(edge, [], original, "green", ["red"])
+        controller.drive.assert_called_once_with()
+        controller.release_observation.assert_not_called()
+
+    def test_choose_pose_change_using_distinct_visible_cube_colors(self):
+        controller = Controller.__new__(Controller)
+        controller.shift_for_release = Mock()
+        controller.turn_for_release = Mock()
+        args = ({}, [], {}, "blue", ["red", "green"])
+        single_color = {
+            ("left_wrist", "red"): [0.40, 0.18],
+            ("right_wrist", "red"): [0.37, 0.16],
+        }
+        controller.release_landmarks = Mock(return_value=single_color)
+        controller.reposition_for_release(*args)
+        controller.shift_for_release.assert_called_once_with(*args)
+        multiple = single_color | {("left_wrist", "green"): [0.41, 0.25]}
+        controller.release_landmarks.return_value = multiple
+        controller.reposition_for_release(*args)
+        controller.turn_for_release.assert_called_once_with(*args, multiple)
+        controller.release_landmarks.return_value = {}
+        with self.assertRaisesRegex(ValueError, "earlier cube"):
+            controller.reposition_for_release(*args)
+        self.assertEqual(controller.shift_for_release.call_count, 1)
+        self.assertEqual(controller.turn_for_release.call_count, 1)
+
+    def test_placement_turn_keeps_landmark_registration_through_a_wrist_handoff(self):
         controller = Controller.__new__(Controller)
         controller.release_slot = Mock(return_value=True)
         controller.drive = Mock()
@@ -86,58 +147,52 @@ class TransferTests(unittest.TestCase):
         controller.table_views = Mock(return_value=[])
         controller.release_observation = Mock()
         controller.held_in_wrist_view = Mock(return_value=True)
-        controller.table = lambda sample: sample["rim"]
-        controller.release_landmarks = lambda sample, *_: sample["cubes"]
+        controller.table = lambda packet: packet["rim"]
+        controller.release_landmarks = lambda packet, *_: packet["landmarks"]
 
-        def packet(angle, keys, along_shift):
+        def exposure(angle, cameras, offset):
             normal = np.array([np.cos(angle), np.sin(angle)])
-            tangent = np.array([-normal[1], normal[0]])
+            along = np.array([-normal[1], normal[0]])
             rim = dict(
-                normal=normal,
-                along=tangent,
-                distance=0.3,
-                height=0.54,
-                span=[-0.2, 0.25],
+                normal=normal, along=along, distance=0.3, height=0.54, span=[-0.2, 0.25]
             )
-            return {
-                "rim": rim,
-                "cubes": {
-                    key: 0.43 * normal + (0.15 + along_shift) * tangent for key in keys
+            return dict(
+                rim=rim,
+                landmarks={
+                    (camera, color): 0.43 * normal + (y + offset) * along
+                    for camera in cameras
+                    for color, y in (("red", 0.15), ("green", 0.21))
                 },
-            }
+            )
 
-        # The right wrist sees the cube initially. A shared exposure lets the
-        # controller keep tracking when only the left wrist sees it after the turn.
-        start = packet(0.0, ["right"], 0)
-        mid = packet(0.1, ["left", "right"], 0.002)
-        end = packet(0.20, ["left"], 0.004)
-        controller.sense = Mock(side_effect=[mid, end, end])
+        start = exposure(0.0, ["right_wrist"], 0.0)
+        middle = exposure(0.1, ["left_wrist", "right_wrist"], 0.002)
+        end = exposure(0.2, ["left_wrist"], 0.004)
+        occupied = [np.array([0.43, 0.15])]
+        args = (start["rim"], occupied, start, "blue", ["red", "green"])
+        controller.sense = Mock(side_effect=[middle, end, end])
         with patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]):
-            rim, obstacles = controller.reposition_for_release(
-                start["rim"], [np.array([0.43, 0.15])], start, "green", ["red"]
-            )
-        expected = 0.43 * rim["normal"] + 0.154 * rim["along"]
-        np.testing.assert_allclose(obstacles, [expected])
-        self.assertTrue(
-            any(
-                call.kwargs.get("initial_view_match") is False
-                for call in controller.act.call_args_list
-            )
+            rim, obstacles = controller.reposition_for_release(*args)
+        np.testing.assert_allclose(
+            obstacles, [0.43 * rim["normal"] + 0.154 * rim["along"]]
         )
-        commands = [
-            call.kwargs.get("turn", 0) for call in controller.drive.call_args_list
-        ]
-        np.testing.assert_allclose(commands, [-0.16, -0.15, 0])
         controller.release_observation.assert_called_once()
-        controller.held_in_wrist_view.assert_called_once_with("green", end)
 
-        # With no common landmark between consecutive views the base must brake.
-        controller.sense = Mock(return_value=packet(0.1, ["left"], 0))
-        controller.release_observation.reset_mock()
         controller.drive.reset_mock()
-        with self.assertRaisesRegex(ValueError, "consecutive"):
-            controller.reposition_for_release(start["rim"], [], start, "green", ["red"])
-        self.assertEqual(controller.drive.call_args.kwargs, {})
+        controller.release_observation.reset_mock()
+        # The rim stays visible and the landmarks return by the endpoint.
+        # Losing all of them mid-turn still requires immediate braking.
+        missing = exposure(0.1, [], 0.0)
+        recovered = exposure(0.2, ["right_wrist"], 0.004)
+        controller.sense = Mock(side_effect=[missing, recovered, recovered])
+        with (
+            patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]),
+            self.assertRaisesRegex(ValueError, "consecutive placement-turn"),
+        ):
+            controller.reposition_for_release(*args)
+        self.assertEqual(controller.sense.call_count, 1)
+        self.assertEqual(controller.drive.call_count, 2)
+        controller.drive.assert_called_with()
         controller.release_observation.assert_not_called()
 
     def test_blue_background_does_not_confirm_grasp(self):

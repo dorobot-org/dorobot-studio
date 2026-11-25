@@ -557,7 +557,19 @@ def _execute(
                 or not -0.5 <= turn <= 0.5
             ):
                 raise ValueError("wheel command outside the Nano envelope")
-            rates = guard.accept(wheel_rates(speed, 0, turn), guard.next_seq)
+            lateral = command.get("lateral_m_s", 0.0)
+            if type(lateral) not in (int, float) or not -0.018 <= lateral <= 0.018:
+                raise ValueError("lateral speed outside the Nano envelope")
+            if lateral and (
+                not config.get("wrist_clearance")
+                or judge.phase != "place"
+                or speed
+                or abs(turn) > 0.2
+            ):
+                raise ValueError(
+                    "lateral motion requires a speed-limited wrist-clearance placement"
+                )
+            rates = guard.accept(wheel_rates(speed, lateral, turn), guard.next_seq)
             for _ in range(20):
                 check_wrist()
                 sim.targets[sim.wheel_indices] += rates * 0.01

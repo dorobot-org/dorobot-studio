@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "split": "development",
+  "cases": 4,
+  "success_requirement": null,
+  "required_guard_bypasses": 0,
+  "controller_sha256": "4bf8180214a6c0a67e8016afb588f628b2990ce441617e4127d638bab323f72d",
+  "color_order": [
+    "red",
+    "green",
+    "blue"
+  ],
+  "inputs": {
+    "recipe": "nano-living-room-floor-cubes-v1",
+    "urdf": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "mesh_inventory_sha256": "d9c91aa439830f76b42734a745f2690ca75e78f591736b65fe7b0cd5325dd396",
+    "studio_files": {
+      "tools/aisle-validation/nano_transfer_suite.py": "44def6c91116df4b102b0b914f9ace3100d8b741783c592290d03233e082ec58",
+      "tools/aisle-validation/run_rgb_transfer.py": "a9a3994c5d0b1eed0117de3be34f177fe17322101d14166a2ada1590ec5dfde6",
+      "tools/aisle-validation/nano_wrist_timing.py": "f6b35a1d7001d25a06267716bbdf90cc5f996d6b7909757adcafd6c1e38051cd",
+      "tools/aisle-validation/nano_rgb_transfer_policy.py": "e792494a08bc6cc959e7c908cb1b15cd82bf3adc9720e3578656556ec31423ba",
+      "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+      "tools/aisle-validation/nano_rgb_policy.py": "63b6fe6f7b338c619ac9a9c0fcc54b20ee38189734bf48432eaf8a43996b36ad",
+      "tools/aisle-validation/nano_rgb_table.py": "fc309a26ca10d2fa7c85285da76353fce17888784d39e56aec27c9d2d93f9d13",
+      "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+      "tools/aisle-validation/nano_living.py": "8683ce5133ba6811764f78b566f80becad7efd75eca0d806033fcfa069591843",
+      "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+      "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+      "tools/aisle-validation/run_rgb_approach.py": "e232a7ada5c4dd05e8715a541c3729c0db553e5f58126d556d1a61cb1732367a",
+      "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+      "tools/aisle-validation/nano_reach_physics.py": "ae01cfe01a39ba50ddd5728c666dbe345dbf792020d1e983e2a36e54e8688d8b",
+      "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+      "tools/aisle_workbench/worker.py": "dd63c7e1a443ece2e06dcc11ad1574936388b1ab355c57f2b5033d9c08ac0b4d"
+    },
+    "aisle_files": {
+      "kinematics.py": "0656cb4c9c4769365c42fc175deefb69d7a7a3dda77991329b1cedf33f7d5aaa",
+      "nexus_backend.py": "c333364613b059c51bb200d5f7bfcf323b24ca6fff0db79cc8661bca0704cdf1",
+      "nexus_physics.toml": "b9bb311826193028b291b5fbcd1931fbfaa6ea7d7d526eff7e871bc2d4fa8403"
+    },
+    "packages": {
+      "dimforge-nexus3d": "0.2.1",
+      "numpy": "2.5.5",
+      "scipy": "1.18.1",
+      "opencv-python-headless": "5.1.0.95",
+      "Pillow": "13.0.0"
+    },
+    "python": "3.13.5"
+  },
+  "commitments": [
+    "422ae8a8ef8c1dd3cf5c9e3e5081209d4e8c3863e3ab35a433381c63ab7c9f7d",
+    "09cbc576444612c76c24ec863e6707d36f7c5890b879c8f41d58e83298c58f02",
+    "500be516770cf4b4e5d25d234e51a913b5f74475c82eb8ae5b208e6d04b9beac",
+    "09024ddd1bd25f3c743d6e69db395a875c920e1b1dbdaa4766d38000859c6ea6"
+  ]
+}
