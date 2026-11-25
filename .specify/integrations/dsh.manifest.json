@@ -1,0 +1,16 @@
+{
+  "integration": "dsh",
+  "version": "1.4.4",
+  "installed_at": "2026-11-24T02:47:47.157114+00:00",
+  "files": {
+    ".dsh/skills/speckit-analyze/SKILL.md": "09a8362e825aa60e51862718b27627757c23b8fbd4efa02533e58c4254e6fba3",
+    ".dsh/skills/speckit-clarify/SKILL.md": "71e33a2b57c45df45450c38e14dfa75a4de8e433b8249579d7e2e5ee916e1df0",
+    ".dsh/skills/speckit-constitution/SKILL.md": "d47e8fcc8a1cb0752534a887460a75c8b109179f7f6cb068bfbf5e8200b50717",
+    ".dsh/skills/speckit-implement/SKILL.md": "43b8f90256ee507567f520062f7554a6504d7e70ba06b20bc6fcc99d0d8b799b",
+    ".dsh/skills/speckit-converge/SKILL.md": "b026a024d4ca727fc1f76bf61535361fb9678e6d255fff5a209dbab401b218b4",
+    ".dsh/skills/speckit-plan/SKILL.md": "715e089d2073f0b2541906d8d80d423f6a4a6798ee62a158d2a0ac5a30609241",
+    ".dsh/skills/speckit-checklist/SKILL.md": "33b8b6ee47ac320ce0deca77029776f4660afce1c772f1b91505a96e55d0700e",
+    ".dsh/skills/speckit-specify/SKILL.md": "494bff1b3ee489ce4ae5f79880afa7c2339abb26a9422dc93de7123496ea289c",
+    ".dsh/skills/speckit-tasks/SKILL.md": "0e6f757c98dff92ec7362510bc72b5a240195a31f384e7cc6ce6478307ea61c4"
+  }
+}
