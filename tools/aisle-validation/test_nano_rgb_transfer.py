@@ -139,6 +139,62 @@ class TransferTests(unittest.TestCase):
         self.assertEqual(controller.shift_for_release.call_count, 1)
         self.assertEqual(controller.turn_for_release.call_count, 1)
 
+    def test_placement_turn_keeps_landmark_registration_through_a_wrist_handoff(self):
+        controller = Controller.__new__(Controller)
+        controller.release_slot = Mock(return_value=True)
+        controller.drive = Mock()
+        controller.act = Mock()
+        controller.table_views = Mock(return_value=[])
+        controller.release_observation = Mock()
+        controller.held_in_wrist_view = Mock(return_value=True)
+        controller.table = lambda packet: packet["rim"]
+        controller.release_landmarks = lambda packet, *_: packet["landmarks"]
+
+        def exposure(angle, cameras, offset):
+            normal = np.array([np.cos(angle), np.sin(angle)])
+            along = np.array([-normal[1], normal[0]])
+            rim = dict(
+                normal=normal, along=along, distance=0.3, height=0.54, span=[-0.2, 0.25]
+            )
+            return dict(
+                rim=rim,
+                landmarks={
+                    (camera, color): 0.43 * normal + (y + offset) * along
+                    for camera in cameras
+                    for color, y in (("red", 0.15), ("green", 0.21))
+                },
+            )
+
+        start = exposure(0.0, ["right_wrist"], 0.0)
+        middle = exposure(0.1, ["left_wrist", "right_wrist"], 0.002)
+        end = exposure(0.2, ["left_wrist"], 0.004)
+        occupied = [np.array([0.43, 0.15])]
+        args = (start["rim"], occupied, start, "blue", ["red", "green"])
+        controller.sense = Mock(side_effect=[middle, end, end])
+        with patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]):
+            rim, obstacles = controller.reposition_for_release(*args)
+        np.testing.assert_allclose(
+            obstacles, [0.43 * rim["normal"] + 0.154 * rim["along"]]
+        )
+        controller.release_observation.assert_called_once()
+
+        controller.drive.reset_mock()
+        controller.release_observation.reset_mock()
+        # The rim stays visible and the landmarks return by the endpoint.
+        # Losing all of them mid-turn still requires immediate braking.
+        missing = exposure(0.1, [], 0.0)
+        recovered = exposure(0.2, ["right_wrist"], 0.004)
+        controller.sense = Mock(side_effect=[missing, recovered, recovered])
+        with (
+            patch("nano_rgb_transfer_policy.occupied_table_points", return_value=[]),
+            self.assertRaisesRegex(ValueError, "consecutive placement-turn"),
+        ):
+            controller.reposition_for_release(*args)
+        self.assertEqual(controller.sense.call_count, 1)
+        self.assertEqual(controller.drive.call_count, 2)
+        controller.drive.assert_called_with()
+        controller.release_observation.assert_not_called()
+
     def test_blue_background_does_not_confirm_grasp(self):
         rgb = np.zeros((360, 480, 3), np.uint8)
         rgb[:, :80] = [25, 70, 200]
