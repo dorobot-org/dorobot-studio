@@ -172,12 +172,6 @@ pub enum RobotViewAction {
     LoadFailed { path: String, error: String },
 }
 
-/// Offscreen supersampling factor for the 3D pass. 2.0 = 4 samples/pixel
-/// after the composite's bilinear downsample; the cost is 4x the fragment
-/// work on a pass that draws a few hundred thousand triangles, which is
-/// nothing next to having a readable silhouette.
-const SSAA_SCALE: f64 = 2.0;
-
 /// Shadow map resolution. 2048 is what MuJoCo's Filament backend defaults to
 /// and is ample for a box fitted to one robot.
 const SHADOW_MAP_SIZE: usize = 2048;
@@ -1983,12 +1977,6 @@ impl Widget for RobotView {
         self.ensure_initialized(cx.cx);
         self.ensure_geometries(cx.cx);
         self.camera.set_desktop_viewport_rect(rect);
-        // Supersample: makepad has no MSAA render targets (no sample count in
-        // TextureFormat), so the offscreen 3D pass is rendered at SSAA_SCALE x
-        // and the composite's bilinear fetch box-filters it back down. This is
-        // the only antialiasing the robot's silhouette gets — without it the
-        // STL edges crawl visibly while orbiting.
-        self.pass.set_size(cx, rect.size * SSAA_SCALE);
         self.pass.set_color_texture(
             cx,
             &self.color_texture,
@@ -2006,7 +1994,13 @@ impl Widget for RobotView {
 
         cx.make_child_pass(&self.pass);
         cx.begin_pass(&self.pass, None);
+        // begin_pass inherits the parent rect. Bind the child to the viewport
+        // before reading the dimensions used to allocate its textures.
+        cx.set_pass_area(&self.pass, self.area);
         let dpi = cx.current_dpi_factor();
+        let (width, height) = cx
+            .get_pass_rect(self.pass.draw_pass_id(), dpi)
+            .map_or((1, 1), |pass_rect| Cx::pass_pixel_size(pass_rect.size, dpi));
         if let Some(scene_state) = self.camera.desktop_scene_state(rect, cx.time()) {
             set_pass_camera(cx.cx, &self.pass, &scene_state, self.pan_offset);
             let cx3d = &mut Cx3d::new(cx.cx);
@@ -2016,7 +2010,6 @@ impl Widget for RobotView {
 
         // The extra color target is sampled; DepthD32 handles depth testing.
         self.draw_bg.set_scene_textures(&self.color_texture, &self.surface_depth_texture);
-        let (width, height) = Cx::pass_pixel_size(rect.size, dpi);
         let ao = std::env::var("URDF_AO")
             .ok()
             .and_then(|value| value.parse::<f32>().ok())
@@ -2056,7 +2049,6 @@ impl Widget for RobotView {
         self.draw_bg.ground_color = self.ground_color;
         self.draw_bg.draw_abs(cx, rect);
         self.area = self.draw_bg.area();
-        cx.set_pass_area(&self.pass, self.area);
         DrawStep::done()
     }
 }
