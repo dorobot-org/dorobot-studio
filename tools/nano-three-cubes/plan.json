@@ -1,0 +1,521 @@
+[
+  {
+    "op": "navigate",
+    "position": [
+      -0.91,
+      -0.73
+    ],
+    "phase": "approach red cube"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.5,
+      0.2
+    ],
+    "seconds": 3,
+    "phase": "align above red"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.5,
+      0.026
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "phase": "lower to red"
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j6_gripper": 0.55
+    },
+    "seconds": 2,
+    "phase": "grasp red"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.5,
+      0.13
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "phase": "test red grasp",
+    "expect": {
+      "cube_min_z": 0.1
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.5,
+      0.48
+    ],
+    "seconds": 8,
+    "cartesian": true,
+    "down": false,
+    "phase": "lift red above table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "navigate",
+    "position": [
+      0.23,
+      -0.31
+    ],
+    "speed": 0.08,
+    "phase": "carry red to table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.55,
+      0.08,
+      0.46
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "down": false,
+    "phase": "position red above table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.55,
+      0.06,
+      0.415
+    ],
+    "seconds": 3,
+    "cartesian": true,
+    "down": false,
+    "phase": "lower red onto table",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j6_gripper": -0.25
+    },
+    "seconds": 2,
+    "phase": "release red",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.48,
+      -0.1,
+      0.53
+    ],
+    "seconds": 3,
+    "cartesian": true,
+    "down": false,
+    "phase": "withdraw from red",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "wait",
+    "seconds": 3,
+    "phase": "verify red settled",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "select",
+    "cube": "green",
+    "phase": "start green task"
+  },
+  {
+    "op": "navigate",
+    "position": [
+      -1.2,
+      -0.31
+    ],
+    "speed": 0.12,
+    "phase": "return for green"
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j1_yaw": 0,
+      "left_j2_pitch": 0,
+      "left_j3_pitch": 0,
+      "left_j4_pitch": 0,
+      "left_j5_roll": 0
+    },
+    "seconds": 3,
+    "phase": "park arm for green"
+  },
+  {
+    "op": "navigate",
+    "position": [
+      -0.91,
+      -1.18
+    ],
+    "speed": 0.12,
+    "phase": "approach green cube"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.95,
+      0.2
+    ],
+    "seconds": 3,
+    "phase": "align above green"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.95,
+      0.026
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "phase": "lower to green"
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j6_gripper": 0.55
+    },
+    "seconds": 2,
+    "phase": "grasp green"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.95,
+      0.13
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "phase": "test green grasp",
+    "expect": {
+      "cube_min_z": 0.1
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -0.95,
+      0.48
+    ],
+    "seconds": 8,
+    "cartesian": true,
+    "down": false,
+    "phase": "lift green above table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "navigate",
+    "position": [
+      -0.91,
+      -1.05
+    ],
+    "speed": 0.08,
+    "phase": "carry green to table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "navigate",
+    "position": [
+      0.46,
+      -0.31
+    ],
+    "speed": 0.08,
+    "phase": "carry green to table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.78,
+      0.08,
+      0.46
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "down": false,
+    "phase": "position green above table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.78,
+      0.06,
+      0.415
+    ],
+    "seconds": 3,
+    "cartesian": true,
+    "down": false,
+    "phase": "lower green onto table",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j6_gripper": -0.25
+    },
+    "seconds": 2,
+    "phase": "release green",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.71,
+      -0.1,
+      0.53
+    ],
+    "seconds": 3,
+    "cartesian": true,
+    "down": false,
+    "phase": "withdraw from green",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "wait",
+    "seconds": 3,
+    "phase": "verify green settled",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "select",
+    "cube": "blue",
+    "phase": "start blue task"
+  },
+  {
+    "op": "navigate",
+    "position": [
+      -1.2,
+      -0.31
+    ],
+    "speed": 0.12,
+    "phase": "return for blue"
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j1_yaw": 0,
+      "left_j2_pitch": 0,
+      "left_j3_pitch": 0,
+      "left_j4_pitch": 0,
+      "left_j5_roll": 0
+    },
+    "seconds": 3,
+    "phase": "park arm for blue"
+  },
+  {
+    "op": "navigate",
+    "position": [
+      -0.91,
+      -1.58
+    ],
+    "speed": 0.12,
+    "phase": "approach blue cube"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -1.35,
+      0.2
+    ],
+    "seconds": 3,
+    "phase": "align above blue"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -1.35,
+      0.026
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "phase": "lower to blue"
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j6_gripper": 0.55
+    },
+    "seconds": 2,
+    "phase": "grasp blue"
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -1.35,
+      0.13
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "phase": "test blue grasp",
+    "expect": {
+      "cube_min_z": 0.1
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      -0.65,
+      -1.35,
+      0.48
+    ],
+    "seconds": 8,
+    "cartesian": true,
+    "down": false,
+    "phase": "lift blue above table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "navigate",
+    "position": [
+      0,
+      -0.31
+    ],
+    "speed": 0.08,
+    "phase": "carry blue to table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.32,
+      0.08,
+      0.46
+    ],
+    "seconds": 4,
+    "cartesian": true,
+    "down": false,
+    "phase": "position blue above table",
+    "expect": {
+      "cube_min_z": 0.44
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.32,
+      0.06,
+      0.415
+    ],
+    "seconds": 3,
+    "cartesian": true,
+    "down": false,
+    "phase": "lower blue onto table",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j6_gripper": -0.25
+    },
+    "seconds": 2,
+    "phase": "release blue",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "reach",
+    "position": [
+      0.25,
+      -0.1,
+      0.53
+    ],
+    "seconds": 3,
+    "cartesian": true,
+    "down": false,
+    "phase": "withdraw from blue",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "wait",
+    "seconds": 3,
+    "phase": "verify all three settled",
+    "expect": {
+      "cube_min_z": 0.39
+    }
+  },
+  {
+    "op": "navigate",
+    "position": [
+      -0.25,
+      -0.7
+    ],
+    "speed": 0.08,
+    "phase": "back away from completed placements"
+  },
+  {
+    "op": "arm",
+    "joints": {
+      "left_j1_yaw": 0,
+      "left_j2_pitch": 0,
+      "left_j3_pitch": 0,
+      "left_j4_pitch": 0,
+      "left_j5_roll": 0
+    },
+    "seconds": 3,
+    "phase": "park arm after three placements"
+  },
+  {
+    "op": "wait",
+    "seconds": 3,
+    "phase": "three cubes complete",
+    "name": "final"
+  }
+]

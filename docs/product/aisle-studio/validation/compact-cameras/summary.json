@@ -1,0 +1,70 @@
+{
+  "fixed_inputs": {
+    "matched-original": {
+      "backend": "webgpu",
+      "nexus": "0.2.1",
+      "journal": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+      "mean_step_render_ms": 45.8945514765625,
+      "median_head_ms": 32.024665,
+      "changed_pixel_pct": 0.0,
+      "mean_abs_channel_error": 0.0,
+      "equal_encoder_samples": 8
+    },
+    "matched-mesh": {
+      "backend": "webgpu",
+      "nexus": "0.2.1",
+      "journal": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+      "mean_step_render_ms": 33.790496,
+      "median_head_ms": 19.64983,
+      "changed_pixel_pct": 1.5674913194444444,
+      "mean_abs_channel_error": 0.6694947595164609,
+      "equal_encoder_samples": 8
+    },
+    "matched-compact": {
+      "backend": "webgpu",
+      "nexus": "0.2.1",
+      "journal": "f5610c87817af9d12fcf9a7100ae7e4dff5991a5526aa28315e3ae161e1e474a",
+      "mean_step_render_ms": 24.25885584765625,
+      "median_head_ms": 10.449516,
+      "changed_pixel_pct": 3.435088734567901,
+      "mean_abs_channel_error": 0.7718350533693416,
+      "equal_encoder_samples": 8
+    }
+  },
+  "worker": {
+    "frames": 4202,
+    "seconds": 153.077935744,
+    "mean_fps": 27.443537042631313,
+    "full_seconds": 153,
+    "seconds_at_least_25": 152,
+    "min_fps": 20,
+    "median_fps": 27,
+    "max_fps": 31
+  },
+  "studio": {
+    "frames": 3768,
+    "seconds": 152.671862959,
+    "mean_fps": 24.67383266955763,
+    "full_seconds": 152,
+    "seconds_at_least_25": 105,
+    "min_fps": 4,
+    "median_fps": 26.0,
+    "max_fps": 30
+  },
+  "supported_ticks": 6948,
+  "settled_contact_ticks": 100,
+  "requested": [
+    "red"
+  ],
+  "controller_hash": "6cbe97fbacac3beb34c60045d57533e8ee5955dea87d9b5e4a06e691cdeb259e",
+  "three_cube": {
+    "physics_ticks": 33462,
+    "passed": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "frames_per_camera": 1673,
+    "recording_fps": 5
+  }
+}

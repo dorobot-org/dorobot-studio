@@ -1,0 +1,11 @@
+{
+  "joint": "right_shoulder_pitch_joint",
+  "delta_rad": -0.08,
+  "trunk_yaw_rad": 0.34906585,
+  "kind": "standing-inspection",
+  "robot": "G1",
+  "task": "Stand on both feet, turn the waist 20 degrees to the left with neutral pitch, and hold a right shoulder pitch displacement of minus 0.08 radians.",
+  "provider": "octos-deepseek",
+  "policy_model": "deepseek-v4-flash",
+  "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+}

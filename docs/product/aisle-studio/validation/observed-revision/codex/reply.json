@@ -1,0 +1,12 @@
+{
+  "joint": "left_j2_pitch",
+  "delta_rad": 0.05,
+  "supported": true,
+  "kind": "table-transfer",
+  "color": "red",
+  "color_order": "red,green,blue",
+  "track_grasp": true,
+  "standoff_m": 0.45,
+  "association_choice": "wrist-agreement-v1",
+  "observation_rationale": "At the stopped blue pickup, the two head candidates were 0.243 m and 0.004 m from the sole left-wrist candidate, so only the second matched within 0.035 m."
+}

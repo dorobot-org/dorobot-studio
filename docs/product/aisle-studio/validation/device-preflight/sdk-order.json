@@ -1,0 +1,151 @@
+{
+  "sdk_commit": "814556d15970dd2ecf1c9984e845ca02ab07e206",
+  "source_sha256": "044dc6f9f132ec4ddcdef7f6eda0fc74118dc21abc50e64de441179a748d1984",
+  "matched": [
+    {
+      "motor_slot": 0,
+      "urdf_joint": "left_hip_pitch_joint",
+      "unitree_constant": "LeftHipPitch"
+    },
+    {
+      "motor_slot": 1,
+      "urdf_joint": "left_hip_roll_joint",
+      "unitree_constant": "LeftHipRoll"
+    },
+    {
+      "motor_slot": 2,
+      "urdf_joint": "left_hip_yaw_joint",
+      "unitree_constant": "LeftHipYaw"
+    },
+    {
+      "motor_slot": 3,
+      "urdf_joint": "left_knee_joint",
+      "unitree_constant": "LeftKnee"
+    },
+    {
+      "motor_slot": 4,
+      "urdf_joint": "left_ankle_pitch_joint",
+      "unitree_constant": "LeftAnklePitch"
+    },
+    {
+      "motor_slot": 5,
+      "urdf_joint": "left_ankle_roll_joint",
+      "unitree_constant": "LeftAnkleRoll"
+    },
+    {
+      "motor_slot": 6,
+      "urdf_joint": "right_hip_pitch_joint",
+      "unitree_constant": "RightHipPitch"
+    },
+    {
+      "motor_slot": 7,
+      "urdf_joint": "right_hip_roll_joint",
+      "unitree_constant": "RightHipRoll"
+    },
+    {
+      "motor_slot": 8,
+      "urdf_joint": "right_hip_yaw_joint",
+      "unitree_constant": "RightHipYaw"
+    },
+    {
+      "motor_slot": 9,
+      "urdf_joint": "right_knee_joint",
+      "unitree_constant": "RightKnee"
+    },
+    {
+      "motor_slot": 10,
+      "urdf_joint": "right_ankle_pitch_joint",
+      "unitree_constant": "RightAnklePitch"
+    },
+    {
+      "motor_slot": 11,
+      "urdf_joint": "right_ankle_roll_joint",
+      "unitree_constant": "RightAnkleRoll"
+    },
+    {
+      "motor_slot": 12,
+      "urdf_joint": "waist_yaw_joint",
+      "unitree_constant": "WaistYaw"
+    },
+    {
+      "motor_slot": 13,
+      "urdf_joint": "waist_roll_joint",
+      "unitree_constant": "WaistRoll"
+    },
+    {
+      "motor_slot": 14,
+      "urdf_joint": "waist_pitch_joint",
+      "unitree_constant": "WaistPitch"
+    },
+    {
+      "motor_slot": 15,
+      "urdf_joint": "left_shoulder_pitch_joint",
+      "unitree_constant": "LeftShoulderPitch"
+    },
+    {
+      "motor_slot": 16,
+      "urdf_joint": "left_shoulder_roll_joint",
+      "unitree_constant": "LeftShoulderRoll"
+    },
+    {
+      "motor_slot": 17,
+      "urdf_joint": "left_shoulder_yaw_joint",
+      "unitree_constant": "LeftShoulderYaw"
+    },
+    {
+      "motor_slot": 18,
+      "urdf_joint": "left_elbow_joint",
+      "unitree_constant": "LeftElbow"
+    },
+    {
+      "motor_slot": 19,
+      "urdf_joint": "left_wrist_roll_joint",
+      "unitree_constant": "LeftWristRoll"
+    },
+    {
+      "motor_slot": 20,
+      "urdf_joint": "left_wrist_pitch_joint",
+      "unitree_constant": "LeftWristPitch"
+    },
+    {
+      "motor_slot": 21,
+      "urdf_joint": "left_wrist_yaw_joint",
+      "unitree_constant": "LeftWristYaw"
+    },
+    {
+      "motor_slot": 22,
+      "urdf_joint": "right_shoulder_pitch_joint",
+      "unitree_constant": "RightShoulderPitch"
+    },
+    {
+      "motor_slot": 23,
+      "urdf_joint": "right_shoulder_roll_joint",
+      "unitree_constant": "RightShoulderRoll"
+    },
+    {
+      "motor_slot": 24,
+      "urdf_joint": "right_shoulder_yaw_joint",
+      "unitree_constant": "RightShoulderYaw"
+    },
+    {
+      "motor_slot": 25,
+      "urdf_joint": "right_elbow_joint",
+      "unitree_constant": "RightElbow"
+    },
+    {
+      "motor_slot": 26,
+      "urdf_joint": "right_wrist_roll_joint",
+      "unitree_constant": "RightWristRoll"
+    },
+    {
+      "motor_slot": 27,
+      "urdf_joint": "right_wrist_pitch_joint",
+      "unitree_constant": "RightWristPitch"
+    },
+    {
+      "motor_slot": 28,
+      "urdf_joint": "right_wrist_yaw_joint",
+      "unitree_constant": "RightWristYaw"
+    }
+  ]
+}

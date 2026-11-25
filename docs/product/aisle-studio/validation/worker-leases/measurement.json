@@ -1,0 +1,497 @@
+{
+  "mixed_mac": [
+    {
+      "id": "72ee9b50-ab0e-4af8-b775-5dcd5aa82eac",
+      "state": "reserved",
+      "created": 1795483919.079228,
+      "ended": null,
+      "stream": 1,
+      "message": null
+    },
+    {
+      "id": "72ee9b50-ab0e-4af8-b775-5dcd5aa82eac",
+      "state": "running",
+      "created": 1795483919.079228,
+      "ended": null,
+      "stream": 1,
+      "message": null
+    },
+    {
+      "rejected": "This worker already has a foreground stream"
+    },
+    {
+      "id": "58d3e64e-5362-46bf-8340-4a6b7ce72221",
+      "state": "reserved",
+      "created": 1795483919.2987788,
+      "ended": null,
+      "stream": 0,
+      "message": null
+    },
+    {
+      "rejected": "All simulation slots are occupied"
+    },
+    {
+      "rejected": "This job ID already identifies a different request"
+    },
+    {
+      "rejected": "Choose the foreground job for a live frame"
+    },
+    {
+      "active": [
+        {
+          "id": "72ee9b50-ab0e-4af8-b775-5dcd5aa82eac",
+          "state": "running",
+          "created": 1795483919.079228,
+          "ended": null,
+          "stream": 1,
+          "message": null,
+          "progress": {
+            "kind": "table-transfer",
+            "step": 181,
+            "state": "locate",
+            "color": "red",
+            "requested": [
+              "red"
+            ],
+            "table_contacts": 0
+          }
+        },
+        {
+          "id": "58d3e64e-5362-46bf-8340-4a6b7ce72221",
+          "state": "running",
+          "created": 1795483919.2987788,
+          "ended": null,
+          "stream": 0,
+          "message": null,
+          "progress": {
+            "kind": "table-transfer",
+            "step": 200,
+            "state": "locate",
+            "color": "red",
+            "requested": [
+              "red",
+              "green",
+              "blue"
+            ]
+          }
+        }
+      ],
+      "frame": {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 180
+      }
+    },
+    {
+      "id": "58d3e64e-5362-46bf-8340-4a6b7ce72221",
+      "state": "stopping",
+      "created": 1795483919.2987788,
+      "ended": null,
+      "stream": 0,
+      "message": null,
+      "progress": {
+        "kind": "table-transfer",
+        "step": 200,
+        "state": "locate",
+        "color": "red",
+        "requested": [
+          "red",
+          "green",
+          "blue"
+        ]
+      }
+    },
+    [
+      {
+        "id": "72ee9b50-ab0e-4af8-b775-5dcd5aa82eac",
+        "state": "completed",
+        "created": 1795483919.079228,
+        "ended": 1795484002.245413,
+        "stream": 1,
+        "message": null,
+        "progress": {
+          "kind": "table-transfer",
+          "step": 6849,
+          "state": "back away",
+          "color": "red",
+          "requested": [
+            "red"
+          ],
+          "table_contacts": 1
+        },
+        "result": {
+          "cubes": {
+            "red": {
+              "passed": true,
+              "opposing_finger_airborne_ticks": 3182,
+              "final_position_m": [
+                0.1555689126253128,
+                0.7180509567260742,
+                0.5599989891052246
+              ],
+              "table_contact_tail_ticks": 100,
+              "detached": true,
+              "min_finger_clearance_tail_m": 0.29385481821736925,
+              "cube_center_over_table": true,
+              "nearest_table_edge_m": 0.11805095672607424,
+              "required_table_inset_m": 0.035,
+              "settle_motion_m": 0.0
+            }
+          },
+          "table_top_m": 0.54,
+          "wheel_supported_ticks": 6848,
+          "unsupported_wheel_ranges": [],
+          "physics_ticks": 6848,
+          "robot_furniture_contacts": {},
+          "max_joint_excursion_rad": 0,
+          "root_pose_writes": 0,
+          "passed": true,
+          "error": null,
+          "requested": [
+            "red"
+          ],
+          "phase": "back away",
+          "onboard_observations": 128,
+          "measured_room_bodies": {},
+          "actuator_audit": {
+            "format": "little-endian float64, initial targets then one row per physics tick",
+            "applied_rows": 6848,
+            "invalid_rows": 0,
+            "unmatched_ticks": 0,
+            "initial_targets_valid": true,
+            "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+            "passed": true
+          },
+          "rejected_motor_writes": 0,
+          "frames": 342,
+          "recording": true,
+          "carry_annotations": true,
+          "grasp_checkpoint": null,
+          "training_dataset": null,
+          "seed": 0,
+          "robot": "Nano",
+          "fixture": "living-room",
+          "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+          "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+          "kind": "table-transfer",
+          "room_revision_sha256": null,
+          "room_obstacles": [],
+          "task_success": true
+        }
+      },
+      {
+        "id": "58d3e64e-5362-46bf-8340-4a6b7ce72221",
+        "state": "cancelled",
+        "created": 1795483919.2987788,
+        "ended": 1795483928.158723,
+        "stream": 0,
+        "message": "Cancelled by operator",
+        "progress": {
+          "kind": "table-transfer",
+          "step": 200,
+          "state": "locate",
+          "color": "red",
+          "requested": [
+            "red",
+            "green",
+            "blue"
+          ]
+        }
+      }
+    ]
+  ],
+  "loopback_ssh": {
+    "capabilities": {
+      "protocol": 1,
+      "host": "Mac",
+      "system": "Darwin",
+      "slots": 1,
+      "active": [],
+      "backend": "metal",
+      "nexus": "0.2.1",
+      "robots": {
+        "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627"
+      },
+      "worker_sha256": "f9a7faae7d692e3f766dee1c8d7ce6fa82788641c9c9696b792d946110518206"
+    },
+    "start": {
+      "id": "04c12277-7e6e-45a5-b305-c5231478a986",
+      "state": "reserved",
+      "created": 1795484096.483306,
+      "ended": null,
+      "stream": 1,
+      "message": null
+    },
+    "room_sha256": "6d8ef7c6d2e969ce6a1102f0e1749063a6f0ddd697fe36aae0f5ea61e81da07b",
+    "controller_sha256": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "sampled": [
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 180
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 420
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 660
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 880
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 1140
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 1400
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 1640
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 1860
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 2080
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 2300
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 2520
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 2740
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 2940
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 3160
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 3380
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 3600
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 3840
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 4060
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 4260
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 4480
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 4680
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 4900
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 5140
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 5380
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 5660
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 5940
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 6180
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 6440
+      },
+      {
+        "width": 480,
+        "height": 360,
+        "ready": true,
+        "tick": 6720
+      }
+    ],
+    "final": {
+      "id": "04c12277-7e6e-45a5-b305-c5231478a986",
+      "state": "completed",
+      "created": 1795484096.483306,
+      "ended": 1795484166.30804,
+      "stream": 1,
+      "message": null,
+      "progress": {
+        "kind": "table-transfer",
+        "step": 6849,
+        "state": "back away",
+        "color": "red",
+        "requested": [
+          "red"
+        ],
+        "table_contacts": 1
+      },
+      "result": {
+        "cubes": {
+          "red": {
+            "passed": true,
+            "opposing_finger_airborne_ticks": 3182,
+            "final_position_m": [
+              0.1555689126253128,
+              0.7180509567260742,
+              0.5599989891052246
+            ],
+            "table_contact_tail_ticks": 100,
+            "detached": true,
+            "min_finger_clearance_tail_m": 0.29385481821736925,
+            "cube_center_over_table": true,
+            "nearest_table_edge_m": 0.11805095672607424,
+            "required_table_inset_m": 0.035,
+            "settle_motion_m": 0.0
+          }
+        },
+        "table_top_m": 0.54,
+        "wheel_supported_ticks": 6848,
+        "unsupported_wheel_ranges": [],
+        "physics_ticks": 6848,
+        "robot_furniture_contacts": {},
+        "max_joint_excursion_rad": 0,
+        "root_pose_writes": 0,
+        "passed": true,
+        "error": null,
+        "requested": [
+          "red"
+        ],
+        "phase": "back away",
+        "onboard_observations": 128,
+        "measured_room_bodies": {
+          "room_teal_ottoman": {
+            "physics_body": 17,
+            "center_m": [
+              1.2733325958251953,
+              -0.4461878538131714,
+              0.1301027536392212
+            ]
+          }
+        },
+        "actuator_audit": {
+          "format": "little-endian float64, initial targets then one row per physics tick",
+          "applied_rows": 6848,
+          "invalid_rows": 0,
+          "unmatched_ticks": 0,
+          "initial_targets_valid": true,
+          "sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+          "passed": true
+        },
+        "rejected_motor_writes": 0,
+        "frames": 342,
+        "recording": true,
+        "carry_annotations": true,
+        "grasp_checkpoint": null,
+        "training_dataset": null,
+        "seed": 0,
+        "robot": "Nano",
+        "fixture": "living-room",
+        "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+        "kind": "table-transfer",
+        "room_revision_sha256": "6d8ef7c6d2e969ce6a1102f0e1749063a6f0ddd697fe36aae0f5ea61e81da07b",
+        "room_obstacles": [
+          "room_teal_ottoman"
+        ],
+        "task_success": true
+      }
+    }
+  },
+  "downloaded_archive": {
+    "bytes": 21298432,
+    "sha256": "4049197f533c501003b4cd1d3bcd90ca7c1b2c40c29c2fb5ee3b14c19ce0b9a3"
+  }
+}

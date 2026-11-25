@@ -1,0 +1,404 @@
+{
+  "source_cohort": "C (disclosed development cases)",
+  "original": [
+    {
+      "index": 0,
+      "passed": true,
+      "physics_ticks": 22584,
+      "wheel_supported_ticks": 22584,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "abfcee9c7bd0df10a655c76047f675ec5169a5ccdc59e1e4533d9c4667568c0b",
+      "matched_original_motors": true,
+      "result_sha256": "cf8ef45ba2bf28afa3a1642c4c86e997c9480cd17950e52cee0e89185f5a2952"
+    },
+    {
+      "index": 10,
+      "passed": false,
+      "physics_ticks": 28042,
+      "wheel_supported_ticks": 28041,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "9ed282f4021bfd20fdded90428ab978b5ad1399566e886279689d681f0f108bc",
+      "matched_original_motors": true,
+      "result_sha256": "8d658294ab8e9c5dde6bbb449519c0ac65f4d97f4af2d5b7d42ba6cc5b07a383"
+    },
+    {
+      "index": 12,
+      "passed": false,
+      "physics_ticks": 26790,
+      "wheel_supported_ticks": 26790,
+      "error": "ValueError: Could not confirm blue in the wrist camera after two grasps",
+      "robot_furniture_contacts": {},
+      "motor_sha256": "b6092d997f1105ba4e87568ec029a78c087133f6cc1fc367060353efc0b26fbc",
+      "matched_original_motors": true,
+      "result_sha256": "0c9e622cddf59989255d42f34d96c37294a724002c73c369f472111e91e8b54b"
+    },
+    {
+      "index": 14,
+      "passed": false,
+      "physics_ticks": 23584,
+      "wheel_supported_ticks": 23583,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "6fd2dfc2b536313eebd80d8af1097644bbfb0c86f9ef5bf0310d332916356d35",
+      "matched_original_motors": true,
+      "result_sha256": "d2472100a7ddca2d10de2a404a57e5950d6d39fb4c9c2d795c05c168678b3cd2"
+    },
+    {
+      "index": 20,
+      "passed": false,
+      "physics_ticks": 8456,
+      "wheel_supported_ticks": 8456,
+      "error": "ValueError: Lost red during two transport attempts",
+      "robot_furniture_contacts": {},
+      "motor_sha256": "4c910ccdd12de0e5113efb811638fc2962c2f9e217b0ae0c2ef72b5401a359a0",
+      "matched_original_motors": true,
+      "result_sha256": "4841cdb2274f4274c3ea83c892ff6508e23e6a820592719e62720d6db9ae4ef2"
+    },
+    {
+      "index": 22,
+      "passed": false,
+      "physics_ticks": 19264,
+      "wheel_supported_ticks": 19264,
+      "error": "ValueError: Lost green during two transport attempts",
+      "robot_furniture_contacts": {},
+      "motor_sha256": "ea38d73050b452589e5842475f50e80e6b80350663c9bae06e7b3aead281ee34",
+      "matched_original_motors": true,
+      "result_sha256": "dc487c90c6de3a1458bdefd8c4b48ca96fb269fe7f0cd8a1dd1eb42a84620951"
+    },
+    {
+      "index": 33,
+      "passed": false,
+      "physics_ticks": 31162,
+      "wheel_supported_ticks": 31162,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "7efe0c7b05e3500f9afb2cac48f6c4fd9ce08ef6db07ff6f86089a9fb19f3230",
+      "matched_original_motors": true,
+      "result_sha256": "fb13b44289f22ee41cae184c1b7d2857628b29f7ffaa6e68618a8a4a5a775658"
+    },
+    {
+      "index": 43,
+      "passed": false,
+      "physics_ticks": 8316,
+      "wheel_supported_ticks": 8316,
+      "error": "ValueError: Lost red during two transport attempts",
+      "robot_furniture_contacts": {},
+      "motor_sha256": "3a2a3bd9bdfc8007d31b5541cdb42a57e6be5db87c0ab63ddd633c266e424155",
+      "matched_original_motors": true,
+      "result_sha256": "0317a6a923a9696a9e02dafdebda11933188964fc27ca76223ed671959549516"
+    }
+  ],
+  "contact_traces": [
+    {
+      "case": 0,
+      "color": "red",
+      "seed": 3068130270,
+      "passed": true,
+      "error": null,
+      "motor_sha256": "abfcee9c7bd0df10a655c76047f675ec5169a5ccdc59e1e4533d9c4667568c0b",
+      "trace_sha256": "8f2670565178c398f1e69247afb111c6549610c16e8e558ccbc6a130276c0b71",
+      "carries": [
+        {
+          "start_tick": 2438,
+          "last_opposed_airborne_tick": 5518,
+          "world_height_m": 0.6265202760696411,
+          "up_in_wrist": [
+            0.999823080657471,
+            0.017139199489054846,
+            0.007754142469529768
+          ],
+          "active_command": {
+            "tick": 5498,
+            "op": "wheel",
+            "speed": 0.0,
+            "turn": 0.0
+          },
+          "below_base_tick": null
+        }
+      ],
+      "matched_original_motors": true
+    },
+    {
+      "case": 20,
+      "color": "red",
+      "seed": 1858973236,
+      "passed": false,
+      "error": "ValueError: Lost red during two transport attempts",
+      "motor_sha256": "4c910ccdd12de0e5113efb811638fc2962c2f9e217b0ae0c2ef72b5401a359a0",
+      "trace_sha256": "6e2d39b146bb7a7965faa6c790cc2f1308a1bc5f08dc6316fca60293027e890c",
+      "carries": [
+        {
+          "start_tick": 2338,
+          "last_opposed_airborne_tick": 2927,
+          "world_height_m": 0.04840702936053276,
+          "up_in_wrist": [
+            -0.002544017335728732,
+            0.011105098183287254,
+            0.9999351003013204
+          ],
+          "active_command": {
+            "tick": 2918,
+            "op": "wheel",
+            "speed": 0.0,
+            "turn": 0.38
+          },
+          "below_base_tick": 2936
+        },
+        {
+          "start_tick": 6876,
+          "last_opposed_airborne_tick": 7593,
+          "world_height_m": 0.07394328713417053,
+          "up_in_wrist": [
+            -0.0028620213691227837,
+            0.012254668723521479,
+            0.9999208128372019
+          ],
+          "active_command": {
+            "tick": 7576,
+            "op": "wheel",
+            "speed": 0.0,
+            "turn": 0.1579429144776592
+          },
+          "below_base_tick": 7605
+        }
+      ],
+      "matched_original_motors": true
+    },
+    {
+      "case": 22,
+      "color": "green",
+      "seed": 2483977739,
+      "passed": false,
+      "error": "ValueError: Lost green during two transport attempts",
+      "motor_sha256": "ea38d73050b452589e5842475f50e80e6b80350663c9bae06e7b3aead281ee34",
+      "trace_sha256": "00b769f56fbd10c27c94e731c8f843162f22a5c0512cbbd5d6e49f2ae93ed25a",
+      "carries": [
+        {
+          "start_tick": 10746,
+          "last_opposed_airborne_tick": 12390,
+          "world_height_m": 0.6157334446907043,
+          "up_in_wrist": [
+            0.9998148525623414,
+            0.017103720232761077,
+            0.00882174219611187
+          ],
+          "active_command": {
+            "tick": 12386,
+            "op": "wheel",
+            "speed": 0.055,
+            "turn": 0.09293715546056527
+          },
+          "below_base_tick": 12426
+        },
+        {
+          "start_tick": 16564,
+          "last_opposed_airborne_tick": 18413,
+          "world_height_m": 0.05579066649079323,
+          "up_in_wrist": [
+            -0.003091029568265201,
+            0.012418108116159583,
+            0.999918114698795
+          ],
+          "active_command": {
+            "tick": 18404,
+            "op": "wheel",
+            "speed": 0.0,
+            "turn": 0.0
+          },
+          "below_base_tick": 18424
+        }
+      ],
+      "matched_original_motors": true
+    },
+    {
+      "case": 43,
+      "color": "red",
+      "seed": 4275826203,
+      "passed": false,
+      "error": "ValueError: Lost red during two transport attempts",
+      "motor_sha256": "3a2a3bd9bdfc8007d31b5541cdb42a57e6be5db87c0ab63ddd633c266e424155",
+      "trace_sha256": "a930737e508e4a8e797d30a8545a480783ee18d916c54995d0290cca5f8a9372",
+      "carries": [
+        {
+          "start_tick": 2178,
+          "last_opposed_airborne_tick": 2731,
+          "world_height_m": 0.06574404239654541,
+          "up_in_wrist": [
+            -0.002864257600022735,
+            0.012188040161615676,
+            0.9999216207882695
+          ],
+          "active_command": {
+            "tick": 2718,
+            "op": "wheel",
+            "speed": 0.0,
+            "turn": 0.38
+          },
+          "below_base_tick": 2743
+        },
+        {
+          "start_tick": 6736,
+          "last_opposed_airborne_tick": 7980,
+          "world_height_m": 0.43219801783561707,
+          "up_in_wrist": [
+            0.7880426995339231,
+            -0.35865870143833867,
+            0.5003522301945331
+          ],
+          "active_command": {
+            "tick": 7476,
+            "op": "joint",
+            "values": {
+              "left_j1_yaw": -0.04150566294690044,
+              "left_j2_pitch": 0.968531282919911,
+              "left_j3_pitch": -2.397597286124579,
+              "left_j4_pitch": 1.4290659081030346,
+              "left_j5_roll": 1.35
+            },
+            "steps": 800
+          },
+          "below_base_tick": 8013
+        }
+      ],
+      "matched_original_motors": true
+    }
+  ],
+  "support_every_carry": [
+    {
+      "index": 0,
+      "passed": false,
+      "physics_ticks": 24464,
+      "wheel_supported_ticks": 24464,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "027b81bc2b768c4a5c5470a4ee805fcacb5ed7e2fb88a8ebbc62b67f9f37ee97",
+      "matched_original_motors": false,
+      "result_sha256": "ed481b96e53c51d63dcd05ac0baa5df83a3a6a5301ea9b909131ee4b981b01a9"
+    },
+    {
+      "index": 10,
+      "passed": true,
+      "physics_ticks": 30542,
+      "wheel_supported_ticks": 30542,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "3c95b4316df878cfe3f6f45c795917886c689a42f8739e644a72d9d998d5f4ae",
+      "matched_original_motors": false,
+      "result_sha256": "7d30a9f0dcd320f8e0e9bdb097fde38f5aadb89700c5f25cd96355b327211821"
+    },
+    {
+      "index": 12,
+      "passed": true,
+      "physics_ticks": 27862,
+      "wheel_supported_ticks": 27862,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "cc1a21885a0dd701bf4236367bbea849f501920a45d77fdb9f08b8d441d1a7b3",
+      "matched_original_motors": false,
+      "result_sha256": "a85b96aac2b9f8b2b1b3d0878b730ebcea9dd3739bf27881c6f60222cb4c3291"
+    },
+    {
+      "index": 14,
+      "passed": false,
+      "physics_ticks": 30322,
+      "wheel_supported_ticks": 30321,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "532c94c874332e3bf91be9aa692fe31cfe737d3f82bf9e0bffcb830819a49fe2",
+      "matched_original_motors": false,
+      "result_sha256": "76cce222aea074e768473ddb327e42914b763612de938d9900d81ad9567b1088"
+    },
+    {
+      "index": 20,
+      "passed": true,
+      "physics_ticks": 24184,
+      "wheel_supported_ticks": 24184,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "8a473f3112abd48d7b5fcdf308d74af916ea6613fbe90c5a01ef562c0b3ba924",
+      "matched_original_motors": false,
+      "result_sha256": "27bb1df497156e8ec23e08242fc4d57a2cf2d538c88f81758cc22367999f83db"
+    },
+    {
+      "index": 22,
+      "passed": true,
+      "physics_ticks": 29142,
+      "wheel_supported_ticks": 29142,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "5ee4dfc7df70d888a08c7192d382b3ae221a36dd971ed37fd7d614969626af9a",
+      "matched_original_motors": false,
+      "result_sha256": "fd30bbc36f9ca2df008ddeb2bcb9701d626d0cb7cd68706e3695a5b7041847a1"
+    },
+    {
+      "index": 33,
+      "passed": true,
+      "physics_ticks": 30824,
+      "wheel_supported_ticks": 30824,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "e920a692c67db795040ebcc7ee9fa7322c1b41d02dddcacec84ebb96efc1f2ba",
+      "matched_original_motors": false,
+      "result_sha256": "045f76e478e3fd159f2480caaeb759ceccf4064e29961f0da3bab0d40e8543f0"
+    },
+    {
+      "index": 43,
+      "passed": true,
+      "physics_ticks": 43500,
+      "wheel_supported_ticks": 43500,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "b1e04d6db524293f2deaded276de1b723ba753edb8d8eff1727d4bf8d6cb9cfa",
+      "matched_original_motors": false,
+      "result_sha256": "02ff84bbc8064920c33fbb9f0f213c59c48193089d14a054ec1e6b79927c39d4"
+    }
+  ],
+  "support_after_two_drops": [
+    {
+      "index": 0,
+      "passed": true,
+      "physics_ticks": 22584,
+      "wheel_supported_ticks": 22584,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "abfcee9c7bd0df10a655c76047f675ec5169a5ccdc59e1e4533d9c4667568c0b",
+      "matched_original_motors": true,
+      "result_sha256": "cf8ef45ba2bf28afa3a1642c4c86e997c9480cd17950e52cee0e89185f5a2952"
+    },
+    {
+      "index": 20,
+      "passed": true,
+      "physics_ticks": 31360,
+      "wheel_supported_ticks": 31360,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "e32c0419e307e61326fbfc2c6eb65ec8941102748efded8892421f45ba7b790b",
+      "matched_original_motors": false,
+      "result_sha256": "c982e65540b55da6daf7a540724b235b740b5b2dcf117e9316f316266ae2a0d8"
+    },
+    {
+      "index": 22,
+      "passed": true,
+      "physics_ticks": 35500,
+      "wheel_supported_ticks": 35500,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "5330b61f9dc74dbe8037404c17f93231837014ddba369ab079f45338a245b4f3",
+      "matched_original_motors": false,
+      "result_sha256": "e1e52ed3da4631c6950555c7813daa6b89672f4c8d17f7c95a66512eb678a568"
+    },
+    {
+      "index": 43,
+      "passed": true,
+      "physics_ticks": 32540,
+      "wheel_supported_ticks": 32540,
+      "error": null,
+      "robot_furniture_contacts": {},
+      "motor_sha256": "e138d8e301897c4b24e3cf0ca2c0ed0ef12d0aaac7daebaee7dd987998dfa6e4",
+      "matched_original_motors": false,
+      "result_sha256": "dbc124143f2ed64c3239367b338936661e2a23745cc67b61eb54da56a782b2ba"
+    }
+  ]
+}

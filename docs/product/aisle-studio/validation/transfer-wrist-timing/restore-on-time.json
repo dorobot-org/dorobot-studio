@@ -1,0 +1,12 @@
+[
+  {
+    "check": "Wrist timeout recovered after restart",
+    "robot": "Nano",
+    "status": "Ready"
+  },
+  {
+    "check": "Restored on-time wrist delivery",
+    "robot": "Nano",
+    "status": "Ready"
+  }
+]

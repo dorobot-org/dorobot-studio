@@ -2018,6 +2018,7 @@ dependencies = [
 name = "dorobot-flex"
 version = "0.1.0-rc.2"
 dependencies = [
+ "dorobot-plugin-aisle",
  "dorobot-plugin-collection",
  "dorobot-plugin-control",
  "dorobot-plugin-policy",
@@ -2030,6 +2031,17 @@ dependencies = [
  "makepad-widgets",
  "serde_json",
  "urdf-rs",
+]
+
+[[package]]
+name = "dorobot-plugin-aisle"
+version = "0.1.0-rc.2"
+dependencies = [
+ "dorobot-studio-core",
+ "dorobot-studio-plugin",
+ "dorobot-ux",
+ "makepad-urdf-player",
+ "serde_json",
 ]
 
 [[package]]
@@ -2075,6 +2087,7 @@ dependencies = [
  "dorobot-ux",
  "env_logger",
  "ffmpeg-next",
+ "libc",
  "log",
  "makepad-app-shell",
  "makepad-urdf-player",
@@ -2083,6 +2096,8 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "sha2",
+ "tempfile",
  "thiserror 1.0.69",
  "urdf-rs",
  "zenoh",

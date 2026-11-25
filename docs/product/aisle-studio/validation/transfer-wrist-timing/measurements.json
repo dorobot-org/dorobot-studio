@@ -1,0 +1,492 @@
+{
+  "codex": {
+    "trials": [
+      {
+        "fixture": "normal",
+        "controller": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+        "task_success": true,
+        "first_hold_tick": null,
+        "resume_tick": null,
+        "held_ticks": 0,
+        "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+        "physics_ticks": 6848,
+        "rejected": {},
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [
+          "red"
+        ]
+      },
+      {
+        "fixture": "intermittent",
+        "controller": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+        "task_success": true,
+        "first_hold_tick": 1000,
+        "resume_tick": 1160,
+        "held_ticks": 160,
+        "motor_sha256": "8bae9c656e7afff5f775aa9e755afe58b82dbb30850ce3a7ae705989d77d12fb",
+        "physics_ticks": 7028,
+        "rejected": {
+          "repeated or out-of-order packet": 3,
+          "late packet": 5
+        },
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [
+          "red"
+        ],
+        "left_arm_encoder_span_rad": 0.14326021075248718,
+        "last_hold_encoder_error_rad": 0.009157150765322752
+      },
+      {
+        "fixture": "disconnected",
+        "controller": "1165374b64d6c67f5e3f7abfadbf232a6c1d4b653d3174cf09bde125902cba63",
+        "task_success": false,
+        "first_hold_tick": 1000,
+        "resume_tick": null,
+        "held_ticks": 180,
+        "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+        "physics_ticks": 1180,
+        "rejected": {
+          "repeated or out-of-order packet": 10
+        },
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [],
+        "left_arm_encoder_span_rad": 0.14326032996177673,
+        "last_hold_encoder_error_rad": 0.009157210369967528
+      }
+    ],
+    "author": {
+      "provider": "codex",
+      "model": "gpt-6.2-astra",
+      "wall_seconds": 6.858768540900201
+    },
+    "source_commit": "5eef3af2589284b2845d85ece682c1983785615a",
+    "binary_sha256": "ac08b98d04f553d5ae7588493fff6737548af758e3ac8c796f200b476afb3578"
+  },
+  "deepseek": {
+    "trials": [
+      {
+        "fixture": "normal",
+        "controller": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "task_success": true,
+        "first_hold_tick": null,
+        "resume_tick": null,
+        "held_ticks": 0,
+        "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+        "physics_ticks": 6848,
+        "rejected": {},
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [
+          "red"
+        ]
+      },
+      {
+        "fixture": "intermittent",
+        "controller": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "task_success": true,
+        "first_hold_tick": 1000,
+        "resume_tick": 1160,
+        "held_ticks": 160,
+        "motor_sha256": "8bae9c656e7afff5f775aa9e755afe58b82dbb30850ce3a7ae705989d77d12fb",
+        "physics_ticks": 7028,
+        "rejected": {
+          "repeated or out-of-order packet": 3,
+          "late packet": 5
+        },
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [
+          "red"
+        ],
+        "left_arm_encoder_span_rad": 0.14326021075248718,
+        "last_hold_encoder_error_rad": 0.009157150765322752
+      },
+      {
+        "fixture": "disconnected",
+        "controller": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+        "task_success": false,
+        "first_hold_tick": 1000,
+        "resume_tick": null,
+        "held_ticks": 180,
+        "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+        "physics_ticks": 1180,
+        "rejected": {
+          "repeated or out-of-order packet": 10
+        },
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [],
+        "left_arm_encoder_span_rad": 0.14326032996177673,
+        "last_hold_encoder_error_rad": 0.009157210369967528
+      }
+    ],
+    "author": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 2.3018669579178095,
+      "input_tokens": 10786,
+      "output_tokens": 157
+    },
+    "source_commit": "5eef3af2589284b2845d85ece682c1983785615a",
+    "binary_sha256": "ac08b98d04f553d5ae7588493fff6737548af758e3ac8c796f200b476afb3578"
+  },
+  "three": {
+    "trials": [
+      {
+        "fixture": "normal",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": true,
+        "first_hold_tick": null,
+        "resume_tick": null,
+        "held_ticks": 0,
+        "motor_sha256": "f52906850b459559cf4f5bd86460bc81c4b3ed492b695e1a0a6ef40d2de474bb",
+        "physics_ticks": 23744,
+        "rejected": {},
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "blue_release": {
+          "decision_tick": 21494,
+          "sample_tick": 21500,
+          "index": 1074,
+          "tick": 22070,
+          "op": "table observation",
+          "release_xy_m": [
+            0.39179105713682016,
+            0.15505286396388362
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        }
+      },
+      {
+        "fixture": "intermittent",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": false,
+        "first_hold_tick": 1000,
+        "resume_tick": 1160,
+        "held_ticks": 160,
+        "motor_sha256": "80226b592351f0b68022b345dcf65e21b367b5bafbe9d6a40259159ba8de28ef",
+        "physics_ticks": 26482,
+        "rejected": {
+          "repeated or out-of-order packet": 3,
+          "late packet": 5
+        },
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [
+          "red",
+          "green"
+        ],
+        "left_arm_encoder_span_rad": 0.14326021075248718,
+        "last_hold_encoder_error_rad": 0.009157150765322752,
+        "blue_release": {
+          "decision_tick": 24252,
+          "sample_tick": 24260,
+          "index": 1212,
+          "tick": 24828,
+          "op": "table observation",
+          "release_xy_m": [
+            0.3935292637595626,
+            0.15502039631940204
+          ],
+          "observed_occupants": 0,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        }
+      },
+      {
+        "fixture": "disconnected",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": false,
+        "first_hold_tick": 1000,
+        "resume_tick": null,
+        "held_ticks": 180,
+        "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+        "physics_ticks": 1180,
+        "rejected": {
+          "repeated or out-of-order packet": 10
+        },
+        "policy_sha256": "828679f7881a55dea68911c159cfb5a70dfcac4881b291a176dda19137aaaacc",
+        "settled": [],
+        "left_arm_encoder_span_rad": 0.14326032996177673,
+        "last_hold_encoder_error_rad": 0.009157210369967528
+      }
+    ]
+  },
+  "revised": {
+    "trials": [
+      {
+        "fixture": "normal",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": true,
+        "first_hold_tick": null,
+        "resume_tick": null,
+        "held_ticks": 0,
+        "motor_sha256": "9b12a9330ce859a35db67a0137d6d4c26ddfc6c85b31dbb4d30d04b30ab146f9",
+        "physics_ticks": 23724,
+        "rejected": {},
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "blue_release": {
+          "decision_tick": 21494,
+          "sample_tick": 21500,
+          "index": 1074,
+          "tick": 22070,
+          "op": "table observation",
+          "release_xy_m": [
+            0.39127588368623684,
+            0.0750545227541072
+          ],
+          "observed_occupants": 2,
+          "release_search": "preferred",
+          "inset_m": 0.085
+        }
+      },
+      {
+        "fixture": "intermittent",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": true,
+        "first_hold_tick": 1000,
+        "resume_tick": 1160,
+        "held_ticks": 160,
+        "motor_sha256": "3b3ffaf2f69f3c0cbc7144ac8009ee37f3e28ab1fb0492d9a29ac2582e9788e0",
+        "physics_ticks": 26462,
+        "rejected": {
+          "repeated or out-of-order packet": 3,
+          "late packet": 5
+        },
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "left_arm_encoder_span_rad": 0.14326021075248718,
+        "last_hold_encoder_error_rad": 0.009157150765322752,
+        "blue_release": {
+          "decision_tick": 24252,
+          "sample_tick": 24260,
+          "index": 1212,
+          "tick": 24828,
+          "op": "table observation",
+          "release_xy_m": [
+            0.393317274024238,
+            0.08776661214752965
+          ],
+          "observed_occupants": 2,
+          "release_search": "grid",
+          "inset_m": 0.085
+        }
+      },
+      {
+        "fixture": "disconnected",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": false,
+        "first_hold_tick": 1000,
+        "resume_tick": null,
+        "held_ticks": 180,
+        "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+        "physics_ticks": 1180,
+        "rejected": {
+          "repeated or out-of-order packet": 10
+        },
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [],
+        "left_arm_encoder_span_rad": 0.14326032996177673,
+        "last_hold_encoder_error_rad": 0.009157210369967528
+      }
+    ]
+  },
+  "codex-three": {
+    "trials": [
+      {
+        "fixture": "normal",
+        "controller": "0fd4c9c9c4a2f26442995601339257774b71f4d1ffc132993e61fc463a5d3a09",
+        "task_success": true,
+        "first_hold_tick": null,
+        "resume_tick": null,
+        "held_ticks": 0,
+        "motor_sha256": "9b12a9330ce859a35db67a0137d6d4c26ddfc6c85b31dbb4d30d04b30ab146f9",
+        "physics_ticks": 23724,
+        "rejected": {},
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [
+          "red",
+          "green",
+          "blue"
+        ]
+      },
+      {
+        "fixture": "intermittent",
+        "controller": "0fd4c9c9c4a2f26442995601339257774b71f4d1ffc132993e61fc463a5d3a09",
+        "task_success": true,
+        "first_hold_tick": 1000,
+        "resume_tick": 1160,
+        "held_ticks": 160,
+        "motor_sha256": "3b3ffaf2f69f3c0cbc7144ac8009ee37f3e28ab1fb0492d9a29ac2582e9788e0",
+        "physics_ticks": 26462,
+        "rejected": {
+          "repeated or out-of-order packet": 3,
+          "late packet": 5
+        },
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "left_arm_encoder_span_rad": 0.14326021075248718,
+        "last_hold_encoder_error_rad": 0.009157150765322752
+      },
+      {
+        "fixture": "disconnected",
+        "controller": "0fd4c9c9c4a2f26442995601339257774b71f4d1ffc132993e61fc463a5d3a09",
+        "task_success": false,
+        "first_hold_tick": 1000,
+        "resume_tick": null,
+        "held_ticks": 180,
+        "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+        "physics_ticks": 1180,
+        "rejected": {
+          "repeated or out-of-order packet": 10
+        },
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [],
+        "left_arm_encoder_span_rad": 0.14326032996177673,
+        "last_hold_encoder_error_rad": 0.009157210369967528
+      }
+    ],
+    "author": {
+      "provider": "codex",
+      "model": "gpt-6.2-astra",
+      "wall_seconds": 7.513224999886006
+    },
+    "source_commit": "a065e468519a084358a694b50b278da4ff081b69",
+    "binary_sha256": "d0eafe962b2bdc9f97a6fe40ec743dcdb614c3fabdd12311a307e1a54d4e7a5f"
+  },
+  "deepseek-three": {
+    "trials": [
+      {
+        "fixture": "normal",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": true,
+        "first_hold_tick": null,
+        "resume_tick": null,
+        "held_ticks": 0,
+        "motor_sha256": "9b12a9330ce859a35db67a0137d6d4c26ddfc6c85b31dbb4d30d04b30ab146f9",
+        "physics_ticks": 23724,
+        "rejected": {},
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [
+          "red",
+          "green",
+          "blue"
+        ]
+      },
+      {
+        "fixture": "intermittent",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": true,
+        "first_hold_tick": 1000,
+        "resume_tick": 1160,
+        "held_ticks": 160,
+        "motor_sha256": "3b3ffaf2f69f3c0cbc7144ac8009ee37f3e28ab1fb0492d9a29ac2582e9788e0",
+        "physics_ticks": 26462,
+        "rejected": {
+          "repeated or out-of-order packet": 3,
+          "late packet": 5
+        },
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "left_arm_encoder_span_rad": 0.14326021075248718,
+        "last_hold_encoder_error_rad": 0.009157150765322752
+      },
+      {
+        "fixture": "disconnected",
+        "controller": "8d960a108be803934646a31c96a13344765d04a5b88a36aaaa423d9ff50fbc5a",
+        "task_success": false,
+        "first_hold_tick": 1000,
+        "resume_tick": null,
+        "held_ticks": 180,
+        "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+        "physics_ticks": 1180,
+        "rejected": {
+          "repeated or out-of-order packet": 10
+        },
+        "policy_sha256": "f06c6c800178a441d3f85340775a58c417b6fcd1c66487ab63031001dd8d5dad",
+        "settled": [],
+        "left_arm_encoder_span_rad": 0.14326032996177673,
+        "last_hold_encoder_error_rad": 0.009157210369967528
+      }
+    ],
+    "author": {
+      "provider": "octos-deepseek",
+      "model": "deepseek-v4-flash",
+      "wall_seconds": 2.5469239591620862,
+      "input_tokens": 6402,
+      "output_tokens": 214
+    },
+    "source_commit": "a065e468519a084358a694b50b278da4ff081b69",
+    "binary_sha256": "d0eafe962b2bdc9f97a6fe40ec743dcdb614c3fabdd12311a307e1a54d4e7a5f"
+  },
+  "legacy_approach": {
+    "physics_ticks": 620,
+    "final_range_m": 0.4675184009709523,
+    "controller": "a566e5ac6e663280bd8bffd9a0e2413a81f43a2aae74e2d59ab171c639f3b6c1"
+  },
+  "fleet": {
+    "older_rejected_before_submission": true,
+    "current_worker": [
+      "normal",
+      "intermittent",
+      "disconnected"
+    ],
+    "lease": "f3399e08-c5bb-44d4-b57e-8038829a7890",
+    "state": "completed",
+    "task_success": false,
+    "error": "Left wrist RGB timed out during pick",
+    "motor_sha256": "0ec2c9f64a45fc2e6c19361f80b9efc3a2ee581acac1904fef08d175cc6e2c9e",
+    "archive_sha256": "f5da2a6574e50cedb5306682de28f2a883bf43714323b6f50f2beb9e09e9ba45"
+  },
+  "exports": {
+    "intermittent": {
+      "frames": 1323,
+      "held_steps": [
+        1000,
+        1020,
+        1040,
+        1060,
+        1080,
+        1100,
+        1120,
+        1140
+      ],
+      "delivery_log_sha256": "5a0fed8bd38fe813aed0d9dbc467e5c489b46dd3b26a6ac37ce11f680a2625fe"
+    },
+    "disconnected": {
+      "frames": 59,
+      "held_steps": [
+        1000,
+        1020,
+        1040,
+        1060,
+        1080,
+        1100,
+        1120,
+        1140,
+        1160,
+        1180
+      ],
+      "delivery_log_sha256": "12c42e2071f32823740588212cbeda1417ddc45335495b4e99a6c71cad194f3f"
+    }
+  }
+}

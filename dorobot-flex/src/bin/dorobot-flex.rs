@@ -441,6 +441,9 @@ impl App {
     }
 
     fn display_status(&self) -> &str {
+        if self.plugins.selected().is_some_and(|p| p.starts_with("aisle_")) {
+            return self.backend.status().filter(|s| !s.is_empty() && !s.starts_with("Choose Simulation or Real robot")).unwrap_or("AISLE · Nexus simulation");
+        }
         if matches!(self.plugins.selected(), Some("hardware_live_mirror" | "nexus_setup" | "nexus_train" | "nexus_rollout"))
             || (self.backend.screen() == Screen::Record && self.nexus_record())
         {
@@ -546,8 +549,9 @@ impl App {
         self.sync_workflow(cx);
         let live = self.backend.screen() == Screen::Live;
         let teleop = matches!(self.backend.screen(), Screen::Live | Screen::Record) && self.backend.playback().live.is_some();
+        self.ui.flex_panels(cx, ids!(hardware_teleop.upper.grid)).set_external_source(cx, self.external_stream);
         self.ui.widget(cx, ids!(live_bar)).set_visible(cx, live && self.external_stream && self.backend.hardware().nano.is_none());
-        self.ui.widget(cx, ids!(gamepad_help)).set_visible(cx, teleop);
+        self.ui.widget(cx, ids!(gamepad_help)).set_visible(cx, teleop && !self.external_stream);
         self.ui.widget(cx,ids!(gamepad_setup)).set_visible(cx, live);
         self.ui.widget(cx,ids!(hardware_teleop.toolbar.camera_hint)).set_visible(cx, self.workflow_help);
         if teleop {
@@ -814,6 +818,7 @@ impl MatchEvent for App {
         self.plugins.mount_toolbox(cx, &self.ui.widget(cx, ids!(plugin_tools))).expect("插件工具箱挂载失败");
         self.plugins.mount_tabs(cx, &self.ui.widget(cx, ids!(workspace_tabs.plugin_tabs))).expect("插件标签栏挂载失败");
         let args: Vec<String> = std::env::args().collect();
+        self.external_stream = args.iter().any(|a| a == "--live-socket");
         let saved = if args.iter().any(|a| a == "--demo" || a == "--live-socket") {
             None
         } else {
@@ -857,6 +862,10 @@ impl MatchEvent for App {
                 if let Some(t) = target {
                     self.navigate(t);
                 } else if let Some(panel) = match name.as_str() {
+                    "aisle-task" => Some("aisle_task"),
+                    "aisle-scene" => Some("aisle_scene"),
+                    "aisle-run" => Some("aisle_run"),
+                    "aisle-evidence" => Some("aisle_evidence"),
                     "nexus-setup" => Some("nexus_setup"),
                     "nexus-training" => Some("nexus_train"),
                     "nexus-inference" => Some("nexus_rollout"),
@@ -909,7 +918,7 @@ impl MatchEvent for App {
             self.sync_plugins(cx);
         } else {
             let nexus_panel = match self.plugins.selected() {
-                Some(panel @ ("nexus_setup" | "nexus_train" | "nexus_rollout")) => Some(LiveId::from_str(panel)),
+                Some(panel @ ("aisle_task" | "aisle_scene" | "aisle_run" | "aisle_evidence" | "nexus_setup" | "nexus_train" | "nexus_rollout")) => Some(LiveId::from_str(panel)),
                 None if self.backend.screen() == Screen::Record && self.nexus_record() => Some(live_id!(page_record)),
                 _ => None,
             };
@@ -964,13 +973,10 @@ impl MatchEvent for App {
                 });
                 let signals = self.ui.play_screen(cx, ids!(page_play)).signal_probe(cx);
                 let monitor_signals = self.ui.play_screen(cx, ids!(monitor_play)).signal_probe(cx);
-                dorobot_flex::ux_probe::write(
-                    cx,
-                    &self.ui,
-                    serde_json::json!({
+                let mut probe = serde_json::json!({
                         "screen": self.backend.screen().label(), "dark": frame::light_mode() < 0.5,
                         "workflow": {"calibrated":self.backend.workflow().calibrated,"nano":self.backend.hardware().nano.as_ref().map(|n|serde_json::json!({"active":n.active,"mock":n.mock,"phase":n.phase,"acks":n.acks})),"simulation":self.backend.workflow().simulation,"active":self.backend.workflow().active,"ready":self.backend.workflow().ready,"phase":self.backend.workflow().phase,"frames":self.backend.workflow().frames,"saved":self.backend.workflow().saved,"dataset":self.backend.workflow().dataset,"detail":self.backend.workflow().detail},
-                        "episode": play.selected, "playing": play.is_playing, "time": play.current_time,
+                        "episode": play.selected, "replay_frame":play.frame_index(), "playing": play.is_playing, "time": play.current_time,
                         "recorded_joints": play.joints_now(),
                         "signals": signals,
                         "live":play.live.as_ref().map(|v|serde_json::json!({"sequence":v.sequence,"connected":v.connected,"finished":v.finished,"cameras":v.images.keys().collect::<Vec<_>>()})),
@@ -994,8 +1000,24 @@ impl MatchEvent for App {
                         "panel_layout": self.ui.flex_panels(cx, ids!(page_play.upper.grid)).snapshot(),
                         "recording": self.backend.record().recording, "saved": self.backend.record().saved, "discarded": self.backend.record().discarded,
                         "language": self.language.code(), "untranslated": self.localizer.untranslated(),
-                        "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()
-                    }),
+                        "folder_pending": self.folder_request.is_some(), "status": self.backend.status(), "hub_open": self.hub_upload.is_some(), "robot_animating": self.ui.robot_view(cx, ids!(page_play.stage_3d)).is_animating(), "signals_visible": self.ui.widget(cx, ids!(page_play.timeline.tl_body.lanes)).visible()});
+                if self.plugins.selected() == Some("aisle_run") {
+                    let camera = self.ui.widget(cx, ids!(aisle_run.camera));
+                    probe["aisle_camera_label_draw_ns"] = serde_json::json!(camera
+                        .borrow::<dorobot_flex::widgets::video_player::VideoPlayer>()
+                        .and_then(|v| v.label_draw_ns()));
+                }
+                probe["aisle_panel"] = serde_json::json!(self.plugins.selected());
+                probe["aisle_source_root"] = serde_json::json!(dorobot_flex::runtime::root().canonicalize().ok());
+                probe["aisle"] = serde_json::json!(self.backend.aisle().map(|w|serde_json::json!({"robot":w.robot.name(),"busy":w.busy(),"worker_pid":w.worker_pid(),"workers_open":w.workers_open,"background_period_s":w.background_period_s,"observation_clock":w.observation_clock.name(),"fleet":w.fleet,"worker_observation":w.worker_observation,"status":w.status,"scene_joints":w.scene["joint_count"],"progress":w.progress,"controller":w.plan,"selected":w.selected,"live":w.live,"compliant":w.compliant,"impact":w.impact,"rgb_timing":w.rgb_timing.name(),"compact_visuals":w.compact_visuals,"target_motion":w.target_motion.name(),"onboard_context":w.onboard_context,"room_editor":w.room_editor,"show_device":w.show_device,"preflight":w.preflight,"show_evaluation":w.show_evaluation,"evaluation":w.evaluation,"failure_index":w.failure_index,"room_draft":w.room_draft_info,"room_draft_path":w.room_draft_path,"room_info":w.room_info,"room_path":w.room_path,"layout_seed":w.layout_seed,"revision":w.revision_index(),"controller_diff":w.controller_diff,"dataset":w.dataset,"room_baseline":w.room_baseline,"room_pair_note":w.room_pair_note,"transfer_comparison":w.transfer_comparison,"decision_observation":w.decision,"result":w.evidence})));
+                if self.plugins.selected() == Some("aisle_scene") {
+                    let view = self.ui.widget(cx, ids!(aisle_scene.robot));
+                    probe["aisle_joint_highlights"] = serde_json::json!(
+                        view.borrow::<makepad_urdf_player::robot_view::RobotView>()
+                            .map(|robot| robot.control_highlights())
+                    );
+                }
+                dorobot_flex::ux_probe::write(cx,&self.ui,probe,
                     &[
                         "page_record.body.right.session",
                         "page_record.body.right.session.ss_body.cues",
@@ -1015,6 +1037,8 @@ impl MatchEvent for App {
                         "page_play.toolbar",
                         "page_play.timeline",
                         "page_play.timeline.tl_head",
+                        "workspace_tabs.plugin_tabs.plugin_tab_aisle_task", "workspace_tabs.plugin_tabs.plugin_tab_aisle_scene", "workspace_tabs.plugin_tabs.plugin_tab_aisle_run", "workspace_tabs.plugin_tabs.plugin_tab_aisle_evidence",
+                        "aisle_task.nano", "aisle_task.g1", "aisle_task.instruction", "aisle_task.reference", "aisle_task.onboard", "aisle_task.author_inputs", "aisle_task.review_controller", "aisle_task.controller_changes", "aisle_task.diff_scroll", "aisle_task.codex", "aisle_task.octos", "aisle_task.older", "aisle_task.newer", "aisle_task.revise", "aisle_task.revise_codex", "aisle_scene.standard", "aisle_scene.compliant", "aisle_scene.level", "aisle_scene.impact", "aisle_scene.still", "aisle_scene.slide_pos", "aisle_scene.slide_neg", "aisle_scene.original_visuals", "aisle_scene.compact_visuals", "aisle_scene.on_time", "aisle_scene.late_rgb", "aisle_scene.frozen_rgb", "aisle_scene.layout0", "aisle_scene.layout1", "aisle_scene.layout2", "aisle_scene.seed_input", "aisle_scene.apply_seed", "aisle_scene.inspect", "aisle_scene.room_mode", "aisle_scene.robot_mode", "aisle_scene.survey_path", "aisle_scene.joint_card", "aisle_scene.joint_mode", "aisle_scene.joint_query", "aisle_scene.joint_count", "aisle_scene.joint_name", "aisle_scene.joint_detail", "aisle_scene.joint_previous", "aisle_scene.joint_next", "aisle_scene.room_detail", "aisle_scene.import_survey", "aisle_scene.photo_octos", "aisle_scene.photo_codex", "aisle_scene.apply_draft", "aisle_scene.discard_draft", "aisle_scene.geometry", "aisle_scene.save_geometry", "aisle_scene.survey_card", "aisle_scene.room_ambient", "aisle_scene.room_friction", "aisle_scene.save_environment", "aisle_scene.default_room", "aisle_run.camera_label", "aisle_run.local_run", "aisle_run.workers", "aisle_run.node", "aisle_run.connect", "aisle_run.refresh", "aisle_run.clock", "aisle_run.period", "aisle_run.sample_job", "aisle_run.queue_stream", "aisle_run.queue_background", "aisle_run.older_job", "aisle_run.newer_job", "aisle_run.cancel_job", "aisle_run.fetch_job", "aisle_run.start_run", "aisle_run.stop_run", "aisle_evidence.room_baseline", "aisle_evidence.room_details", "aisle_evidence.status", "aisle_evidence.summary_title", "aisle_evidence.detail", "aisle_evidence.verdict", "aisle_evidence.device_mode", "aisle_evidence.device_replay", "aisle_evidence.device_listen", "aisle_evidence.device_stop", "aisle_evidence.device_endpoint", "aisle_evidence.device_folder", "aisle_evidence.trial_mode", "aisle_evidence.evaluation_mode", "aisle_evidence.archive_path", "aisle_evidence.baseline_path", "aisle_evidence.compare_archives", "aisle_evidence.verify_archive", "aisle_evidence.earlier_failure", "aisle_evidence.later_failure", "aisle_evidence.previous", "aisle_evidence.next", "aisle_evidence.folder", "aisle_evidence.export", "aisle_evidence.replay", "aisle_evidence.decision_rgb", "aisle_evidence.previous_change", "aisle_evidence.current_change", "aisle_evidence.train_reach", "aisle_evidence.train_grasp",
                         "data_workspace", "plugin_tools", "plugin_tabs", "data_tabs",
                         "workspace_tabs.plugin_tabs.plugin_tab_page_hardware", "workspace_tabs.plugin_tabs.plugin_tab_hardware_teleop", "workspace_tabs.plugin_tabs.plugin_tab_page_record",
                         "workspace_tabs.data_tabs.tab_library", "workspace_tabs.data_tabs.tab_play", "workspace_tabs.data_tabs.tab_eval",
@@ -1281,8 +1305,9 @@ impl MatchEvent for App {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         let previous_screen = self.backend.screen();
         let previous_job = self.backend.nexus().and_then(|state| state.job_dir.clone());
-        let opening_saved = self.plugins.selected() == Some("nexus_setup")
-            && self.ui.button(cx, ids!(nexus_setup.open_saved)).clicked(actions);
+        let opening_saved = (self.plugins.selected() == Some("nexus_setup")
+            && self.ui.button(cx, ids!(nexus_setup.open_saved)).clicked(actions))
+            || (self.plugins.selected() == Some("aisle_evidence") && self.ui.button(cx, ids!(aisle_evidence.replay)).clicked(actions));
         let mut dirty = self.plugins.handle_actions(cx, actions, &mut *self.backend);
         if dirty {
             if self.backend.screen() != previous_screen || (opening_saved && self.backend.screen() == Screen::Play) {
@@ -1317,7 +1342,13 @@ impl MatchEvent for App {
             (ids!(wf_start), Intent::StartSimulation), (ids!(wf_stop), Intent::StopSimulation),
             (ids!(wf_back), Intent::Navigate(Screen::Hardware)), (ids!(wf_operate), Intent::Navigate(Screen::Live)), (ids!(wf_next), Intent::Navigate(Screen::Record)),
             (ids!(wf_replay), Intent::OpenSavedRecording),
-        ] { if self.ui.button(cx,path).clicked(actions) { if matches!(intent, Intent::Navigate(_)) { self.plugins.follow_navigation(); } self.backend.dispatch(intent); dirty = true; } }
+        ] { if self.ui.button(cx,path).clicked(actions) {
+            if matches!(intent, Intent::Navigate(_)) { self.plugins.follow_navigation(); }
+            if matches!(intent, Intent::StartSimulation | Intent::SelectSimulation(_) | Intent::SelectNanoBase(_)) {
+                self.external_stream = false;
+            }
+            self.backend.dispatch(intent); dirty = true;
+        } }
         for (path, action) in [(ids!(wf_record), "record"), (ids!(wf_finish), "stop"), (ids!(wf_save), "save"), (ids!(wf_discard), "discard")] {
             if self.ui.button(cx,path).clicked(actions) {
                 self.backend.dispatch(Intent::SimulationCapture { action: action.into(), task: self.ui.text_input(cx,ids!(wf_task)).text(), destination: self.ui.text_input(cx,ids!(wf_destination)).text() }); dirty = true;

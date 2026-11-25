@@ -1,0 +1,13 @@
+{
+  "joint": "right_shoulder_pitch_joint",
+  "delta_rad": -0.08,
+  "kind": "standing-inspection",
+  "robot": "G1",
+  "task": "Stand on both feet and track a right shoulder displacement of minus 0.08 rad for the standing test.",
+  "provider": "octos-deepseek",
+  "policy_model": "deepseek-v4-flash",
+  "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+  "reach_checkpoint": "b870d3f005ad0d6b3ae0e5ed0f13dbf46f18ebae83359147f0fa30da88379f21",
+  "training_dataset": "f34937b46945a1bc3e429961790f100ca96bc77094d1852d3c8cf8270f27d3c4",
+  "parent_controller_sha256": "951ad73ff1cc10b8740677f2f9575c6272badcee7634c2704e1be76fd3f27d88"
+}

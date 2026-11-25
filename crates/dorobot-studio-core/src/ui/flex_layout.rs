@@ -459,6 +459,19 @@ impl Widget for FlexPanels {
     }
 }
 impl FlexPanelsRef {
+    /// External agents need an orbitable scene, without the gamepad trace map.
+    /// Preserve separate layouts when switching back to the built-in controller.
+    pub fn set_external_source(&self, cx: &mut Cx, external: bool) {
+        if let Some(mut v) = self.borrow_mut() {
+            let key = if external { "live-external-camera-layout.json" } else { "live-hardware-camera-layout.json" };
+            if v.persistence_key == key { return; }
+            if v.loaded { v.state.save(&v.persistence_key); }
+            v.persistence_key = key.into();
+            v.state = PanelLayout::load(key);
+            v.loaded = true;
+            v.view.redraw(cx);
+        }
+    }
     pub fn is_hardware_camera(&self) -> bool {
         self.borrow().is_some_and(|v| v.persistence_key.contains("hardware-camera-"))
     }

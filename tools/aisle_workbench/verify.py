@@ -1,0 +1,629 @@
+"""Launch a fresh native Studio, exercise the pages and verify evidence after restart."""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import time
+
+
+def main():
+    from journey import layout_seed
+    from worker import observation_seconds
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--studio", type=Path, required=True)
+    parser.add_argument("--remote", default="makepad-remote")
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--backend", choices=["headless", "offscreen"], default="headless"
+    )
+    parser.add_argument("--size", choices=["1024x768", "1440x900"], default="1440x900")
+    parser.add_argument("--dark", action="store_true")
+    parser.add_argument(
+        "--background-period-s",
+        type=observation_seconds,
+        choices=(0.5, 1, 2, 5),
+        help="Background RGB period for a fresh fleet journey",
+    )
+    parser.add_argument(
+        "--background-clock",
+        choices=("simulation", "wall"),
+        default="simulation",
+        help="Clock for background observations in a fleet measurement",
+    )
+    parser.add_argument(
+        "--compare-runs",
+        nargs=2,
+        type=Path,
+        metavar=("PREVIOUS", "CURRENT"),
+        help="Verify replay of the first changed action using two recorded Nano trials",
+    )
+    parser.add_argument("--room-baseline", action="store_true", help="Pin and compare surveyed rooms in the selected two-run journey")
+    parser.add_argument(
+        "--foreground-cadence",
+        nargs="?",
+        type=int,
+        const=4,
+        choices=range(2, 65),
+        metavar="SESSIONS",
+        help="Measure native foreground RGB with this many concurrent Nano sessions (default four)",
+    )
+    parser.add_argument(
+        "--device-preflight",
+        action="store_true",
+        help="Exercise the selected trial’s device preflight and retained report",
+    )
+    models = parser.add_mutually_exclusive_group()
+    models.add_argument("--codex", dest="provider", action="store_const", const="codex")
+    models.add_argument(
+        "--octos-deepseek",
+        dest="provider",
+        action="store_const",
+        const="octos-deepseek",
+    )
+    scenario = parser.add_mutually_exclusive_group()
+    scenario.add_argument(
+        "--revise-drive",
+        type=Path,
+        metavar="FAILED_TRIAL",
+        help="Revise the Nano forward speed after measured wheel-support loss",
+    )
+    scenario.add_argument(
+        "--revise-pickup",
+        type=Path,
+        metavar="FAILED_TRIAL",
+        help="Revise a recorded Nano pickup and run the frozen controller",
+    )
+    scenario.add_argument(
+        "--fleet",
+        action="store_true",
+        help="Submit concurrent jobs from native Run and fetch one into Evidence",
+    )
+    scenario.add_argument(
+        "--standing", action="store_true", help="Run a floating-base G1 tracking trial"
+    )
+    scenario.add_argument(
+        "--transfer",
+        choices=["red", "three"],
+        help="Run and score a Nano floor-to-table journey",
+    )
+    scenario.add_argument(
+        "--observed-author",
+        nargs="?", const="approach", choices=("approach", "transfer"),
+        help="Select a target from two actual onboard scene observations",
+    )
+    scenario.add_argument(
+        "--moving-target",
+        action="store_true",
+        help="Compare still and sliding Nano targets in native Studio",
+    )
+    scenario.add_argument(
+        "--wrist-faults",
+        nargs="?",
+        const="red",
+        choices=["red", "three"],
+        help="Interrupt the left wrist camera during a Nano grasp and verify the motor hold",
+    )
+    scenario.add_argument(
+        "--camera-faults",
+        action="store_true",
+        help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
+    )
+    scenario.add_argument(
+        "--revision-selection",
+        action="store_true",
+        help="Run the selected Nano and G1 revisions after switching robots and restarting Studio",
+    )
+    scenario.add_argument(
+        "--handoff",
+        action="store_true",
+        help="Revise a measured Codex trial using DeepSeek via Octos",
+    )
+    scenario.add_argument(
+        "--compare-cohorts",
+        type=Path,
+        nargs=2,
+        metavar=("BASELINE", "CANDIDATE"),
+        help="Compare two archived Nano layouts or G1 impact cohorts and reopen the result",
+    )
+    parser.add_argument(
+        "--reject-cohort",
+        type=Path,
+        help="Also try an incompatible archive in the comparison journey",
+    )
+    scenario.add_argument(
+        "--evaluation",
+        type=Path,
+        help="Verify a batch archive in Evidence and reopen it after restart",
+    )
+    parser.add_argument(
+        "--train-reach",
+        action="store_true",
+        help="Train and run a correction from the exported G1 episode",
+    )
+    parser.add_argument(
+        "--photo-input",
+        type=Path,
+        help="Draft and review the reference room from its calibrated photograph",
+    )
+    parser.add_argument(
+        "--upright", action="store_true", help="Request an upright G1 trunk posture"
+    )
+    parser.add_argument(
+        "--train-grasp",
+        action="store_true",
+        help="Train a Nano wrist detector and run it on a different layout",
+    )
+    parser.add_argument(
+        "--heading",
+        nargs="?",
+        const=20,
+        type=int,
+        choices=(20, 30),
+        help="Test a bounded left waist turn in degrees",
+    )
+    parser.add_argument(
+        "--pickup-motion",
+        choices=["slide-positive", "slide-negative"],
+        help="Track and intercept a moving floor cube during Nano transfer",
+    )
+    parser.add_argument("--layout", type=layout_seed, default=0)
+    parser.add_argument(
+        "--wrist-clearance",
+        action="store_true",
+        help="Author a three-cube transfer with the experimental placement check",
+    )
+    parser.add_argument(
+        "--impact", action="store_true", help="Select the G1 development impact fixture"
+    )
+    parser.add_argument(
+        "--survey",
+        type=Path,
+        help="Import and edit the Nano reference survey during a transfer",
+    )
+    parser.add_argument("--edit-environment", action="store_true", help="Edit Nexus lighting and friction in a surveyed Nano room")
+    parser.add_argument(
+        "--prepared-pickup",
+        type=Path,
+        help="Reopen the original native authoring receipt without a second model call",
+    )
+    parser.add_argument(
+        "--fleet-node",
+        help="Run the two-job native fleet check against this registered worker",
+    )
+    parser.add_argument(
+        "--resume-fleet",
+        type=Path,
+        metavar="EARLIER_OUTPUT",
+        help="Reconnect to the selected foreground of a prior fleet check and fetch its original recording",
+    )
+    parser.add_argument(
+        "--fleet-controller",
+        type=Path,
+        metavar="PREPARED_DIRECTORY",
+        help="Run one previously authored Nano red-cube transfer on the selected worker",
+    )
+    parser.add_argument(
+        "--compact-visuals",
+        action="store_true",
+        help="Select compact Nano cameras in Scene before the registered fleet transfer",
+    )
+    args = parser.parse_args()
+    if args.compact_visuals and not args.fleet_controller:
+        parser.error("--compact-visuals requires --fleet-controller")
+    if args.room_baseline and not args.compare_runs:
+        parser.error("--room-baseline requires --compare-runs BASELINE CANDIDATE")
+    if args.background_period_s is not None and (
+        not args.fleet or args.fleet_controller or args.resume_fleet
+    ):
+        parser.error(
+            "--background-period-s requires a fresh fleet journey with observers"
+        )
+    if args.background_period_s == 0.5 and args.background_clock != "wall":
+        parser.error(
+            "The 0.5 second background period requires --background-clock wall"
+        )
+    if args.background_clock == "wall" and (
+        not args.fleet or args.fleet_controller or args.resume_fleet
+    ):
+        parser.error(
+            "--background-clock wall requires a fresh fleet journey with observers"
+        )
+    if args.fleet_controller and (
+        not args.fleet_node or args.resume_fleet or args.foreground_cadence
+    ):
+        parser.error(
+            "--fleet-controller requires a registered --fleet-node and a fresh verification"
+        )
+    if args.fleet_controller:
+        plan = json.loads((args.fleet_controller / "controller.json").read_bytes())
+        if (
+            plan.get("kind") != "table-transfer"
+            or plan.get("color_order") != "red"
+            or plan.get("provider") not in ("codex", "octos-deepseek")
+        ):
+            parser.error("Select a prepared agent-authored red Nano transfer")
+        if args.provider and args.provider != plan["provider"]:
+            parser.error("Selected provider differs from the frozen controller")
+        args.provider = plan["provider"]
+    if args.resume_fleet and (not args.fleet_node or not args.fleet):
+        parser.error(
+            "--resume-fleet needs --fleet and the same registered --fleet-node"
+        )
+    if args.fleet_node and (not args.fleet or args.foreground_cadence):
+        parser.error("--fleet-node requires a registered-worker --fleet journey")
+    if args.photo_input and (args.survey or not args.transfer):
+        parser.error("--photo-input requires a transfer without --survey")
+    if args.edit_environment and not args.survey:
+        parser.error("--edit-environment requires --survey")
+    if args.survey and not args.transfer:
+        parser.error("--survey requires --transfer")
+    if args.train_grasp and not args.transfer:
+        parser.error("--train-grasp requires --transfer")
+    if args.pickup_motion and not args.transfer:
+        parser.error("--pickup-motion requires --transfer")
+    if args.device_preflight and not (args.transfer or args.standing):
+        parser.error("--device-preflight requires --standing or --transfer")
+    if args.train_reach and not args.standing:
+        parser.error("--train-reach requires --standing")
+    if args.heading and (not args.standing or args.upright):
+        parser.error("--heading requires --standing with neutral pitch")
+    if args.upright and not args.standing:
+        parser.error("--upright requires --standing")
+    if args.impact and not args.standing:
+        parser.error("--impact requires --standing")
+    if args.wrist_clearance and args.transfer != "three":
+        parser.error("--wrist-clearance requires --transfer three")
+    if args.layout and not args.transfer:
+        parser.error("--layout requires a Nano transfer scenario")
+    if (
+        args.standing
+        or args.transfer
+        or args.wrist_faults
+        or args.camera_faults
+        or args.moving_target
+        or args.observed_author
+        or args.revise_pickup
+        or args.revise_drive
+    ) and not args.provider:
+        parser.error("Select --codex or --octos-deepseek to author the requested trial")
+    if args.foreground_cadence and (not args.fleet or not args.provider):
+        parser.error("--foreground-cadence requires --fleet and an author")
+    if args.fleet and not args.provider and not args.resume_fleet:
+        args.provider = "octos-deepseek"
+    if args.revision_selection and not args.provider:
+        parser.error("--revision-selection requires --codex or --octos-deepseek")
+    if args.reject_cohort and not args.compare_cohorts:
+        parser.error("--reject-cohort requires --compare-cohorts")
+    output = args.out.resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    report = output / "ui.json"
+    studio_root = Path(__file__).resolve().parents[2]
+    env = os.environ | {
+        "MAKEPAD_HAL_BACKEND": args.backend,
+        "DOROBOT_UX_REPORT": str(report),
+        "DOROBOT_STUDIO_SOURCE_ROOT": str(studio_root),
+        "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
+    }
+    if args.resume_fleet:
+        from fleet_check import submitted_foreground
+
+        shutil.copytree(args.resume_fleet / "state", output / "state")
+        _, _, author = submitted_foreground(output / "state/aisle", args.fleet_node)
+        if args.provider and args.provider != author:
+            parser.error("Selected provider differs from the submitted controller")
+        args.provider = author
+    if args.prepared_pickup and not args.revise_pickup:
+        parser.error("--prepared-pickup requires --revise-pickup")
+    prior_trial = args.revise_pickup or args.revise_drive
+    if prior_trial and args.compare_runs:
+        parser.error("Select one recorded-trial journey")
+    if args.revise_pickup:
+        result = json.loads((args.revise_pickup / "result.json").read_bytes())
+        if result.get("task_success") is not False or not result.get(
+            "last_pickup_observation"
+        ):
+            parser.error(
+                "--revise-pickup requires a stopped Nano pickup with a camera packet"
+            )
+    if args.revise_drive:
+        result = json.loads((args.revise_drive / "result.json").read_bytes())
+        if result.get("task_success") is not False or not result.get(
+            "unsupported_wheel_ranges"
+        ):
+            parser.error(
+                "--revise-drive requires a scored trial with lost wheel support"
+            )
+    if args.compare_runs or prior_trial:
+        for index, source in enumerate(args.compare_runs or [prior_trial], start=1):
+            if (
+                not (source / "recording.json").is_file()
+                or not (source / "result.json").is_file()
+            ):
+                parser.error(f"Missing recording or verdict in {source}")
+            shutil.copytree(source, output / "state/aisle" / f"000{index}-Nano-run")
+    preparation = args.prepared_pickup or args.fleet_controller
+    if preparation:
+        name = preparation.name
+        if (
+            not name.endswith("-Nano-prepare")
+            or not (preparation / "controller.json").is_file()
+        ):
+            parser.error("Select a completed native Nano preparation")
+        shutil.copytree(preparation, output / "state/aisle" / name)
+    # The binary can come from another build directory. Its digest identifies the
+    # executable, while these fields identify the workspace observed at launch.
+    if args.foreground_cadence:
+        from fleet_cadence import registry
+
+        env["DOROBOT_AISLE_WORKERS"] = str(
+            registry(output, studio_root, args.foreground_cadence)
+        )
+    with args.studio.open("rb") as binary:
+        binary_hash = hashlib.file_digest(binary, "sha256").hexdigest()
+    revision = subprocess.check_output(
+        ["git", "-C", str(studio_root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    changed = subprocess.check_output(
+        ["git", "-C", str(studio_root), "status", "--porcelain"], text=True
+    ).splitlines()
+    source_hashes = {
+        str(path.relative_to(studio_root)): hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        for path in sorted(
+            [
+                *Path(__file__).resolve().parent.glob("*.py"),
+                *(studio_root / "tools/aisle-validation").glob("*.py"),
+                *(studio_root / "tools/nano-three-cubes").glob("*.py"),
+                *(
+                    studio_root / f
+                    for f in (
+                        "Cargo.lock",
+                        "crates/dorobot-studio-core/src/runtime.rs",
+                        "crates/dorobot-studio-core/src/widgets/video_player.rs",
+                        "plugins/aisle/src/lib.rs",
+                        "plugins/aisle/src/joint_inspector.rs",
+                        "vendor/makepad-urdf-player/src/robot_view.rs",
+                        "crates/dorobot-studio-core/src/api/aisle.rs",
+                        "crates/dorobot-studio-core/src/api/aisle/room_pair.rs",
+                        "dorobot-flex/src/bin/dorobot-flex.rs",
+                    )
+                ),
+            ]
+        )
+    }
+
+    def check_sources():
+        for name, expected in source_hashes.items():
+            if (
+                hashlib.sha256((studio_root / name).read_bytes()).hexdigest()
+                != expected
+            ):
+                raise RuntimeError(
+                    f"Native verification source changed during the run: {name}"
+                )
+
+    sessions = []
+    for stage in ["journey", "recovery"]:
+        check_sources()
+        with args.studio.open("rb") as binary:
+            if hashlib.file_digest(binary, "sha256").hexdigest() != binary_hash:
+                raise RuntimeError(
+                    "Studio executable changed between journey and recovery"
+                )
+        report.unlink(missing_ok=True)
+        command = [str(args.studio.resolve()), "--remote", "--screen", "aisle-task"]
+        if args.dark:
+            command.append("--dark")
+        if args.fleet or args.transfer:
+            env["DOROBOT_AISLE_DRAW_TRACE"] = str(
+                output / "verified" / f"{stage}-draws.jsonl"
+            )
+        with (output / f"{stage}.log").open("w") as log:
+            started_ns = time.time_ns()
+            process = subprocess.Popen(
+                command, env=env, stdout=log, stderr=subprocess.STDOUT
+            )
+            try:
+                deadline = time.monotonic() + 30
+                while not report.exists():
+                    if process.poll() is not None or time.monotonic() > deadline:
+                        raise RuntimeError(f"Studio failed to start. See {log.name}")
+                    time.sleep(0.1)
+                if (
+                    Path(
+                        json.loads(report.read_text())["state"].get("aisle_source_root")
+                        or ""
+                    )
+                    != studio_root
+                ):
+                    raise RuntimeError(
+                        "Studio launched against a different source checkout"
+                    )
+                check = [
+                    sys.executable,
+                    str(Path(__file__).with_name("journey.py")),
+                    "--remote",
+                    args.remote,
+                    "--pid",
+                    str(process.pid),
+                    "--report",
+                    str(report),
+                    "--out",
+                    str(output / "verified"),
+                    "--size",
+                    args.size,
+                ]
+                if args.revise_drive:
+                    check.append("--revise-drive")
+                if args.prepared_pickup:
+                    check.append("--prepared-pickup")
+                if args.revise_pickup:
+                    check.append("--revise-pickup")
+                if args.compare_runs:
+                    check.append("--compare-runs")
+                    if args.room_baseline:
+                        check.append("--room-baseline")
+                if args.fleet:
+                    check.extend(
+                        ["--fleet", "--background-clock", args.background_clock]
+                    )
+                    if args.background_period_s is not None:
+                        check.extend(
+                            ["--background-period-s", str(args.background_period_s)]
+                        )
+                    if args.fleet_controller:
+                        check.append("--fleet-controller")
+                    if args.compact_visuals:
+                        check.append("--compact-visuals")
+                    if args.resume_fleet:
+                        check.append("--resume-fleet")
+                    if args.fleet_node:
+                        check.extend(["--fleet-node", args.fleet_node])
+                    if args.foreground_cadence:
+                        check.extend(
+                            ["--foreground-cadence", str(args.foreground_cadence)]
+                        )
+                if args.observed_author:
+                    check.extend(["--observed-author", args.observed_author])
+                if args.moving_target:
+                    check.append("--moving-target")
+                if args.wrist_faults:
+                    check.extend(["--wrist-faults", args.wrist_faults])
+                if args.camera_faults:
+                    check.append("--camera-faults")
+                if args.revision_selection:
+                    check.append("--revision-selection")
+                if args.handoff:
+                    check.append("--handoff")
+                if args.compare_cohorts:
+                    check.extend(
+                        [
+                            "--compare-cohorts",
+                            *(str(p.resolve()) for p in args.compare_cohorts),
+                        ]
+                    )
+                    if args.reject_cohort:
+                        check.extend(
+                            ["--reject-cohort", str(args.reject_cohort.resolve())]
+                        )
+                if args.evaluation:
+                    check.extend(["--evaluation", str(args.evaluation.resolve())])
+                if args.train_grasp:
+                    check.append("--train-grasp")
+                if args.train_reach:
+                    check.append("--train-reach")
+                if args.standing:
+                    check.append("--standing")
+                    if args.heading:
+                        check.extend(["--heading", str(args.heading)])
+                    if args.upright:
+                        check.append("--upright")
+                    if args.impact:
+                        check.append("--impact")
+                if args.photo_input:
+                    check.extend(["--photo-input", str(args.photo_input.resolve())])
+                if args.survey:
+                    check.extend(["--survey", str(args.survey.resolve())])
+                    if args.edit_environment:
+                        check.append("--edit-environment")
+                if args.device_preflight:
+                    check.append("--device-preflight")
+                if args.pickup_motion:
+                    check.extend(["--pickup-motion", args.pickup_motion])
+                if args.wrist_clearance:
+                    check.append("--wrist-clearance")
+                if args.transfer:
+                    check.extend(
+                        ["--transfer", args.transfer, "--layout", str(args.layout)]
+                    )
+                if stage == "recovery":
+                    check.append("--recover")
+                    if args.compare_runs and args.backend == "offscreen":
+                        check.append("--screenshots")
+                else:
+                    if args.provider:
+                        check.append("--" + args.provider)
+                    if args.backend == "offscreen":
+                        check.append("--screenshots")
+                if args.wrist_faults == "three":
+                    # Allow authoring, three full trials and the UI transitions.
+                    timeout = 5400
+                elif args.train_grasp or args.transfer == "three":
+                    timeout = 2400
+                elif args.transfer or args.observed_author == "transfer" or args.fleet or args.wrist_faults or prior_trial:
+                    timeout = 900
+                else:
+                    timeout = 330
+                try:
+                    subprocess.run(check, check=True, timeout=timeout)
+                except (subprocess.SubprocessError, KeyboardInterrupt):
+                    if args.foreground_cadence:
+                        from fleet_cadence import cancel_benchmark_jobs
+
+                        cancel_benchmark_jobs(output)
+                    raise
+                status = subprocess.check_output(
+                    [args.remote, "app", str(process.pid), "status"], text=True
+                )
+                windows = [
+                    w
+                    for line in status.splitlines()
+                    for w in json.loads(line).get("w", [])
+                    if w.get("i") == 0
+                ]
+                state = json.loads(report.read_text())["state"]
+                assert state["dark"] == args.dark
+                sessions.append(
+                    dict(
+                        stage=stage,
+                        pid=process.pid,
+                        started_unix_ns=started_ns,
+                        observed_unix_ns=time.time_ns(),
+                        observed_dark=state["dark"],
+                        observed_source_root=state["aisle_source_root"],
+                        windows=[w.get("sz") for w in windows],
+                    )
+                )
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                process.wait(timeout=15)
+
+    check_sources()
+    directory = output / "verified"
+    manifest = dict(
+        backend=args.backend,
+        requested_size=args.size,
+        provider=(
+            "codex+octos-deepseek" if args.handoff else args.provider or "reference"
+        ),
+        native_binary_sha256=binary_hash,
+        studio_source_commit=revision,
+        source_files_sha256=source_hashes,
+        workspace_changes_at_launch=changed,
+        sessions=sessions,
+        trials=sorted(p.name for p in (output / "state/aisle").glob("*-run")),
+        files={
+            p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(directory.iterdir())
+        },
+    )
+    (directory / "mode-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    if args.foreground_cadence:
+        cadence = json.loads((directory / "preview-cadence.json").read_bytes())
+        if not cadence["meets_cadence"]:
+            raise SystemExit(
+                "Cadence target missed. Measured rates and all robot verdicts are retained in "
+                + str(directory)
+            )
+
+
+if __name__ == "__main__":
+    main()

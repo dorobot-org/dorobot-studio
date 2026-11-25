@@ -1,0 +1,25 @@
+# Background RGB observations
+
+In **Run → Workers**, connect to a worker and choose the background RGB period before submitting. Choose **Sim time** or **Wall time**, then select a period of 1, 2 or 5 seconds. Wall time also offers a 0.5-second period. Sim time follows physics steps. Wall time requests a fresh image against the worker’s monotonic clock and skips missed deadlines. Select **Background run**. The worker captures the configured RGB image and keeps its latest frame. Use **Snapshot** to fetch a single image. The selected foreground job continues streaming. A worker advertises supported periods at connection. The local controller independently requests the sensors it needs for navigation and balance.
+
+**Fetch evidence** downloads the selected job, including the capture tick, worker publication timestamp and SHA-256 for each background image in `background-observations.jsonl`. The last image is in `preview.rgb`, preceded by a four-byte big-endian physics tick. Background jobs save sparse operator observations. Choose **Stream run** to record a full episode for export and Replay. Nano mobile observations use the head camera. G1 standing observations use the external operator camera.
+
+Headless and offscreen Studio both submitted overlapping real Nexus simulations, selected a two-second background period, fetched an RGB observation from the Nano, matched its checksum to an exposure in the worker archive and reopened the cancelled job. Both foreground simulations placed the red cube in 6,848 continuously supported steps and reopened all 342 exported frames in Replay. The compact 1024×768 layout keeps the sampling, cancel and fetch actions in view. [Source-bound native checks](native.json) · [Compact Run page](background-snapshot.png)
+
+Two G1 runs of the same standing controller used a one-second and a five-second period. Each kept both feet supported for all 2,000 steps and reached the wrist target under the frontal impact. Eleven and three operator images were retained respectively, including the first observation. The largest target difference was 0.00000483 rad and the largest measured joint difference was 0.00000245 rad. [G1 samples and motor-trace comparison](g1.json)
+
+Reproduce the G1 comparison from the Studio checkout using an installed AISLE environment and a new output directory.
+
+```sh
+.venv-aisle/bin/python tools/aisle_workbench/observation_period_check.py \
+  docs/product/aisle-studio/validation/g1-frontal-impact/controller.json \
+  /tmp/g1-observation-periods
+```
+
+With the worker client, pass `--observation-period-s 2` on background submission and use `observation JOB_ID output.rgb` to fetch one image. Physical multi-host throughput remains an open benchmark.
+
+On a 128 GiB M3 Max, one foreground and three background Nano sessions completed through real inference, RGB delivery, evidence download and dataset export in 77.51 wall seconds. [Single-host throughput and raw timestamps](local-capacity/README.md)
+
+[Measure native foreground draws alongside delivered background observations](../foreground-preview/README.md)
+
+[Wall-clock delivery, native controls and G1 impact measurements](../wall-clock-rgb/README.md)

@@ -234,6 +234,7 @@ fn dir_size(path: &Path) -> u64 {
 
 pub struct FileBackend {
     nexus: nexus::NexusRuntime,
+    aisle: aisle::Workbench,
     simulation: super::workflow::SimulationRuntime,
     nano_driver: super::supported::NanoRuntime,
     live_client: Option<super::live::LiveClient>,
@@ -307,6 +308,7 @@ impl FileBackend {
     pub fn with_open(root: impl AsRef<Path>, prefer: Option<&str>) -> Self {
         let mut b = Self {
             nexus: nexus::NexusRuntime::default(),
+            aisle: aisle::Workbench::default(),
             simulation: super::workflow::SimulationRuntime::default(),
             nano_driver: super::supported::NanoRuntime::default(),
             live_client: None,
@@ -431,6 +433,9 @@ impl FileBackend {
         self.replay_model = nexus_replay_model(&ds);
         self.playback = PlaybackState {
             dataset_name: summary.name.clone(),
+            dataset_root: Some(
+                summary.path.canonicalize().unwrap_or_else(|_| summary.path.clone()),
+            ),
             selected: episodes.first().map(|e| e.index),
             episodes,
             stats: EpisodeStats::default(),
@@ -861,6 +866,7 @@ impl Backend for FileBackend {
         if (self.screen == Screen::Live && self.hardware.nano.is_none()) || (self.screen == Screen::Record && self.simulation.state.simulation && self.simulation.state.active) { &self.live_preview } else { &self.playback }
     }
     fn replay(&self) -> &PlaybackState { &self.playback }
+    fn aisle(&self) -> Option<&aisle::Workbench> { Some(&self.aisle) }
     fn nexus(&self) -> Option<&nexus::NexusState> { Some(&self.nexus.state) }
     fn telemetry(&self) -> Option<&telemetry::TelemetryState> {
         Some(&self.telemetry_state)
@@ -887,6 +893,7 @@ impl Backend for FileBackend {
         }
 
         match intent {
+            Intent::Aisle(action) => self.aisle.dispatch(action),
             Intent::Nexus(intent) => {
                 use nexus::NexusIntent::*;
                 if !self.nexus.state.allows(&intent) { return; }
@@ -1114,6 +1121,7 @@ impl Backend for FileBackend {
     }
 
     fn poll(&mut self) {
+        self.aisle.poll();
         self.nexus.poll();
         if let Some(receiver) = &mut self.telemetry_receiver {
             let now = std::time::Instant::now();

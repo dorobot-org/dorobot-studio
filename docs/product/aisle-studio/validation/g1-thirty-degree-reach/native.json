@@ -1,0 +1,588 @@
+{
+  "trial": {
+    "journey": [
+      {
+        "check": "standing controller authored",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "G1 impact selected",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 prepare"
+      },
+      {
+        "check": "g1 scene checked",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 scene"
+      },
+      {
+        "check": "standing stream active",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing fresh frame",
+        "robot": "G1",
+        "status": "Running \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing adjudicated",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 run"
+      },
+      {
+        "check": "standing physical verdict",
+        "both_feet_loaded_steps": 2000,
+        "controller_hash": "ea0d0b4aa4edaaf22970af1872142742e5765db13547227872254448862e5c2f",
+        "disturbance": {
+          "contacts": 4,
+          "last_contact_step": 610,
+          "links": [
+            "torso_link"
+          ],
+          "normal_impulse_sum_ns": 0.1907786640804261,
+          "passed": true,
+          "recovered_step": 710,
+          "recovery_s": 0.5
+        },
+        "estimated_negative_joint_work_j": -0.5084403376858936,
+        "estimated_positive_joint_work_j": 0.6642527997026472,
+        "fixture": "standing-impact-development",
+        "floor_contact_links_other_than_feet": [],
+        "frames": 101,
+        "joint": "right_shoulder_pitch_joint",
+        "kind": "standing-inspection",
+        "max_joint_excursion_rad": 0.0,
+        "max_pelvis_drift_m": 0.004134481772780418,
+        "measured_delta": -0.08000029623508453,
+        "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+        "motor_work_sha256": "18e0315d4263d6f0999632b61b8c03fbd80ee219748e9af58404bb89713bce3e",
+        "peak_tilt_deg": 2.314565474417044,
+        "recorded_frames": 100,
+        "recording": true,
+        "requested_delta": -0.08,
+        "robot": "G1",
+        "root_pose_writes": 0,
+        "settled_trunk_pitch_rad": 0.11738527566194534,
+        "settled_trunk_yaw_rad": 0.5218512564897537,
+        "steps": 2000,
+        "task_success": true,
+        "trunk_pitch_target_rad": 0.0,
+        "trunk_yaw_target_rad": 0.52359878,
+        "within_limits": true,
+        "wrist_reach": {
+          "final_error_m": 0.00498591502297143,
+          "final_m": [
+            0.26355627179145813,
+            -0.02390124648809433,
+            0.06360891461372375
+          ],
+          "frame": "world",
+          "link": "right_wrist_yaw_link",
+          "max_final_100_error_m": 0.004985974017295446,
+          "passed": true,
+          "requested_travel_m": 0.023014145138673284,
+          "start_m": [
+            0.25071993470191956,
+            -0.039961718022823334,
+            0.04769159108400345
+          ],
+          "target_m": [
+            0.2651273027612598,
+            -0.02772054820427686,
+            0.06081532468157884
+          ],
+          "tolerance_m": 0.01,
+          "trace_sha256": "121b50fb363347ba0b8e078d83d9f72cc7fe020cc965cc16306ed21e61e40b86"
+        }
+      },
+      {
+        "check": "G1 standing episode exported",
+        "robot": "G1",
+        "status": "Completed \u00b7 G1 \u00b7 export"
+      },
+      {
+        "check": "G1 native Replay and synchronized encoder/action columns",
+        "cameras": [
+          "operator"
+        ],
+        "frames_per_camera": 100,
+        "joints": 29
+      }
+    ],
+    "recovery": [
+      {
+        "check": "standing evidence restored",
+        "robot": "G1",
+        "status": "Ready",
+        "restored_robot": "G1",
+        "controller_hash": "ea0d0b4aa4edaaf22970af1872142742e5765db13547227872254448862e5c2f",
+        "fixture": "standing-impact-development",
+        "outcome": true
+      }
+    ],
+    "mode-manifest": {
+      "backend": "offscreen",
+      "requested_size": "1440x900",
+      "provider": "octos-deepseek",
+      "native_binary_sha256": "a27c20fda052bfca06245cf56f5a53d62195e14bc9b0bcc06ae84c9b3edf377c",
+      "studio_source_commit": "6345008a0da6668c44c50e993f975d65f0f4c0ea",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "24dcd2a32f0181da91f92bea77fa6f750cc16471eac87afb99baefb06f21e373",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "840a1a631444df2b38220d9758493d7605c6b1c0a308382c5c3ab6cb61625fca",
+        "plugins/aisle/src/lib.rs": "f7d826ccce6fe9f57404fc4f817ae40bb96bbd52a0e47ffa2b75cb4c50b1faef",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "b5c45b90fbea0dce33a62d9cb88e3eb54bd0d267f3bd793aa2575ba2d21f4f2d",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "fa2cf6b35933bdc041d359c043053fe635f752fdcb13abc112ae9aca25d8178a",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "94da785e461223495932fd72801ffd94b3d4ececdf2bc9dbd6f72cf22d87f4b5",
+        "tools/aisle-validation/run_rgb_transfer.py": "de35d8f325a3547fe11ac7f735c009511c6c37e351026f91b0d32fe6bdf03186",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "c490755d6bf779afc397785d50b49d8fa9695b626d3447683ff944ebdce3910f",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+        "tools/aisle_workbench/g1_stand.py": "be1c054385fda2436c464089bd55beffaaf4046f9abc98e5557174f551c86050",
+        "tools/aisle_workbench/journey.py": "b4e68f1cd48f6517aa68f7c9fd0d8c67ddef5e5218dc5eb81ab492b7dee17ed4",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "e6515f51c5e43ba7aba13f2179e326caf193dcf90fe4775d6c0c6ff92448001d",
+        "tools/aisle_workbench/verify.py": "5c8f20a1e5950051a2e4dfae2502dd19259c25a01c864aaae4f34581c22f7835",
+        "tools/aisle_workbench/worker.py": "fa4cc7f12e88ebe0f95ef14786333b45641b2b3e34337e397e5c29afe03bfc95",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 93510,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-g1-standing-thirty",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 98972,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-g1-standing-thirty",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        }
+      ],
+      "trials": [
+        "1795486444665356000-G1-run"
+      ],
+      "files": {
+        "journey.json": "409fa6056363bd90a8e9137d40542e84a3209fd3f5efaafa6e3efa943341eb25",
+        "recovery.json": "8d5b7eafe6b4d48c7664a442a1e3d0a23676fbfb05d5dbe19e38e8d972843f68",
+        "standing-evidence.png": "0750f08635f1ff5c22f5e7d20c0e99f9ee89120fe1a128fa80357299337ae0e1",
+        "standing-replay.png": "88225ea5657b7676333921f1dc0ec387731d37370635fe74d6a0e299b80efb97",
+        "standing-run.png": "20141d8817369175b50508145154fc2d5fb53782dc848e68e984e44081296ec1",
+        "standing-scene.png": "a7dd0fd1f35e58d45556398d1f6169aa6edeef86bc6848eb31c1e3de03a4ab00",
+        "standing-task.png": "4483f772d183d69558a7439cae9cf309df6bd14bab41f3012882e9c3e3788db9"
+      }
+    }
+  },
+  "batch_a": {
+    "journey": [
+      {
+        "check": "Layout archive verified",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 G1",
+        "evaluation": {
+          "archive_sha256": "f444a4aa376d732bb23c8c1b207e9a8a76f878256262caa055cb0eca2d1c3aa5",
+          "cases": 20,
+          "failures": [],
+          "manifest_sha256": "6ccbd83565c81a522adeffc64968f3f30f9a6327590db10fb46908e130ff9030",
+          "profile": "g1-standing-reach-v1",
+          "qualified": true,
+          "requirement": 20,
+          "split": "bounded-impact",
+          "successes": 20,
+          "verified": 20,
+          "verified_guard_bypasses": 0
+        }
+      },
+      {
+        "check": "Unreadable archive rejected",
+        "robot": "Nano",
+        "status": "[Errno 2] No such file or directory: '/Users/yuechen/home/aisle-studio-artifacts/g1-thirty-a/missing-archive-for-ui-check.zip'"
+      }
+    ],
+    "recovery": [
+      {
+        "check": "Layout evaluation restored",
+        "robot": "Nano",
+        "status": "Ready",
+        "evaluation": {
+          "archive_sha256": "f444a4aa376d732bb23c8c1b207e9a8a76f878256262caa055cb0eca2d1c3aa5",
+          "cases": 20,
+          "failures": [],
+          "manifest_sha256": "6ccbd83565c81a522adeffc64968f3f30f9a6327590db10fb46908e130ff9030",
+          "profile": "g1-standing-reach-v1",
+          "qualified": true,
+          "requirement": 20,
+          "split": "bounded-impact",
+          "successes": 20,
+          "verified": 20,
+          "verified_guard_bypasses": 0
+        }
+      }
+    ],
+    "mode-manifest": {
+      "backend": "headless",
+      "requested_size": "1024x768",
+      "provider": "reference",
+      "native_binary_sha256": "a27c20fda052bfca06245cf56f5a53d62195e14bc9b0bcc06ae84c9b3edf377c",
+      "studio_source_commit": "6345008a0da6668c44c50e993f975d65f0f4c0ea",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "24dcd2a32f0181da91f92bea77fa6f750cc16471eac87afb99baefb06f21e373",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "840a1a631444df2b38220d9758493d7605c6b1c0a308382c5c3ab6cb61625fca",
+        "plugins/aisle/src/lib.rs": "f7d826ccce6fe9f57404fc4f817ae40bb96bbd52a0e47ffa2b75cb4c50b1faef",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "b5c45b90fbea0dce33a62d9cb88e3eb54bd0d267f3bd793aa2575ba2d21f4f2d",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "fa2cf6b35933bdc041d359c043053fe635f752fdcb13abc112ae9aca25d8178a",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "94da785e461223495932fd72801ffd94b3d4ececdf2bc9dbd6f72cf22d87f4b5",
+        "tools/aisle-validation/run_rgb_transfer.py": "de35d8f325a3547fe11ac7f735c009511c6c37e351026f91b0d32fe6bdf03186",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "c490755d6bf779afc397785d50b49d8fa9695b626d3447683ff944ebdce3910f",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+        "tools/aisle_workbench/g1_stand.py": "be1c054385fda2436c464089bd55beffaaf4046f9abc98e5557174f551c86050",
+        "tools/aisle_workbench/journey.py": "b4e68f1cd48f6517aa68f7c9fd0d8c67ddef5e5218dc5eb81ab492b7dee17ed4",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "e6515f51c5e43ba7aba13f2179e326caf193dcf90fe4775d6c0c6ff92448001d",
+        "tools/aisle_workbench/verify.py": "5c8f20a1e5950051a2e4dfae2502dd19259c25a01c864aaae4f34581c22f7835",
+        "tools/aisle_workbench/worker.py": "fa4cc7f12e88ebe0f95ef14786333b45641b2b3e34337e397e5c29afe03bfc95",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 44497,
+          "observed_dark": true,
+          "observed_source_root": "/Users/yuechen/home/aisle-g1-standing-thirty",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 44696,
+          "observed_dark": true,
+          "observed_source_root": "/Users/yuechen/home/aisle-g1-standing-thirty",
+          "windows": [
+            [
+              1024,
+              768
+            ]
+          ]
+        }
+      ],
+      "trials": [],
+      "files": {
+        "journey.json": "34cb67b71ac87ae19b0997bf486d4340514ff2e20195ee00e441565c7f08b6bf",
+        "recovery.json": "57ab329cce745f5d3499db99e2583cab09c296f684ff4ef121a7c70958086e82"
+      }
+    }
+  },
+  "batch_b": {
+    "journey": [
+      {
+        "check": "Layout archive verified",
+        "robot": "Nano",
+        "status": "Evaluation verified \u00b7 G1",
+        "evaluation": {
+          "archive_sha256": "59624d80c562f7fddd4d998d25814a9ace6ffb6bbddc9641a7c2e479bf2484be",
+          "cases": 20,
+          "failures": [],
+          "manifest_sha256": "6ccbd83565c81a522adeffc64968f3f30f9a6327590db10fb46908e130ff9030",
+          "profile": "g1-standing-reach-v1",
+          "qualified": true,
+          "requirement": 20,
+          "split": "bounded-impact",
+          "successes": 20,
+          "verified": 20,
+          "verified_guard_bypasses": 0
+        }
+      },
+      {
+        "check": "Unreadable archive rejected",
+        "robot": "Nano",
+        "status": "[Errno 2] No such file or directory: '/Users/yuechen/home/aisle-studio-artifacts/g1-thirty-b/missing-archive-for-ui-check.zip'"
+      }
+    ],
+    "recovery": [
+      {
+        "check": "Layout evaluation restored",
+        "robot": "Nano",
+        "status": "Ready",
+        "evaluation": {
+          "archive_sha256": "59624d80c562f7fddd4d998d25814a9ace6ffb6bbddc9641a7c2e479bf2484be",
+          "cases": 20,
+          "failures": [],
+          "manifest_sha256": "6ccbd83565c81a522adeffc64968f3f30f9a6327590db10fb46908e130ff9030",
+          "profile": "g1-standing-reach-v1",
+          "qualified": true,
+          "requirement": 20,
+          "split": "bounded-impact",
+          "successes": 20,
+          "verified": 20,
+          "verified_guard_bypasses": 0
+        }
+      }
+    ],
+    "mode-manifest": {
+      "backend": "offscreen",
+      "requested_size": "1440x900",
+      "provider": "reference",
+      "native_binary_sha256": "a27c20fda052bfca06245cf56f5a53d62195e14bc9b0bcc06ae84c9b3edf377c",
+      "studio_source_commit": "6345008a0da6668c44c50e993f975d65f0f4c0ea",
+      "source_files_sha256": {
+        "Cargo.lock": "f28be093e12170552eeaaa83e54f7b5a08656dece8b85879979184189ce79d0e",
+        "crates/dorobot-studio-core/src/api/aisle.rs": "24dcd2a32f0181da91f92bea77fa6f750cc16471eac87afb99baefb06f21e373",
+        "crates/dorobot-studio-core/src/runtime.rs": "ccec0417d029df8629a673429d90a63c04e8471c35438a7b2d85e0e2d63ce3c9",
+        "dorobot-flex/src/bin/dorobot-flex.rs": "840a1a631444df2b38220d9758493d7605c6b1c0a308382c5c3ab6cb61625fca",
+        "plugins/aisle/src/lib.rs": "f7d826ccce6fe9f57404fc4f817ae40bb96bbd52a0e47ffa2b75cb4c50b1faef",
+        "tools/aisle-validation/check_rgb_lift.py": "4010cc235109bf90315c1c5f1d8c8a0e3d2632740ecbddb80d1b9d9cabbd86f1",
+        "tools/aisle-validation/check_studio.py": "36a79c1200e3017ded85579d6f726bc55808b11b7f636f3fe3c036d4db58cc43",
+        "tools/aisle-validation/nano_actuator_audit.py": "7eb64944c66a11ef228c1baadc97199c43190d03524ab61dfaef621137f427b4",
+        "tools/aisle-validation/nano_cameras.py": "ef95f393180f3788f66a4ec774e7ce726215d0430b81e0a0376afa7aa2b7deca",
+        "tools/aisle-validation/nano_dora.py": "f76a791fea6339cb39b233b818b35340434eea5c135fc22eefece1ca71913802",
+        "tools/aisle-validation/nano_dora_node.py": "9fe777d194f59979b8ee199db2accba103eaf8665276f3d446aa180e5cffabc3",
+        "tools/aisle-validation/nano_dora_sim.py": "799d7e30c7649f9dd17b631d7e53fa2c0a317c0560f5cc5c5c98cc898de9240d",
+        "tools/aisle-validation/nano_grasp_estimator.py": "60d0b860724af0a07b124d931ba42005fb15693bc1f1ea9fcfbad150dee035b1",
+        "tools/aisle-validation/nano_living.py": "4354b3158035349ef04561f7632fafa1963aaf64d9854a4babfa014a9b2603c4",
+        "tools/aisle-validation/nano_living_node.py": "2de30f41e32698b4bc2e45c853a255f4c61d22cbaeb44a3e3654f64648e0ef75",
+        "tools/aisle-validation/nano_living_record.py": "35446348b979c92b2e93a1f602b3bc40adfd9bf55256032ecdbd6a9c77baf512",
+        "tools/aisle-validation/nano_living_stream.py": "dd7b9c3d5ec5f8f88920439c71f1015a98d0e05b1645dfb3d663d7247ed55145",
+        "tools/aisle-validation/nano_reach_physics.py": "f38155c6e2133c21f4ef1bf9cee0cd1a16f9e28a5dc7878993f60979ec83aa97",
+        "tools/aisle-validation/nano_rgb_policy.py": "d7b7498e702bb54ef854eda87a4580a16d3db1d55781782a23584bad9da76262",
+        "tools/aisle-validation/nano_rgb_table.py": "25bc457d327b2a9554ccd0166e3dfef5353d8493cc2c2a5a799bb6105765a328",
+        "tools/aisle-validation/nano_rgb_transfer_policy.py": "b5c45b90fbea0dce33a62d9cb88e3eb54bd0d267f3bd793aa2575ba2d21f4f2d",
+        "tools/aisle-validation/nano_session_record.py": "18197e1625a45b2b373a54909951be594ee186fc8893cd77491df4580ecdd5bd",
+        "tools/aisle-validation/nano_suite_evidence.py": "fa2cf6b35933bdc041d359c043053fe635f752fdcb13abc112ae9aca25d8178a",
+        "tools/aisle-validation/nano_teleop.py": "843b02e40b4f1d2f547668d18b52b13cfafd3f800526267d25dd1713ffe2d42d",
+        "tools/aisle-validation/nano_teleop_node.py": "f36756fb4a940abfc56d1f75c2eba13b23fbf507885ff6e12c3e00628d3a4463",
+        "tools/aisle-validation/nano_transfer_suite.py": "4cb882a8f5a8fbf64faa12b1452de2d30c9dd765ec645986c72411957ff88843",
+        "tools/aisle-validation/nano_validation.py": "560cd05ecf5a15ec571d44cd28c97cdeb38c263a6ec71e22df853e0fa65f503a",
+        "tools/aisle-validation/nano_visuals.py": "1f1e9e56d7c3631857e97602465043a30b56c161b1f654bb9fcc264c09278605",
+        "tools/aisle-validation/nano_workspace.py": "81f0cf0fc3f3c1e53a2b56a374164e8ddd8fc48350ab857ea2f29f7394df8505",
+        "tools/aisle-validation/run_living.py": "eed0ab9fd7db2180d05a8aab9d1761231684768a13f24ab77741939e7947d659",
+        "tools/aisle-validation/run_rgb_approach.py": "94da785e461223495932fd72801ffd94b3d4ececdf2bc9dbd6f72cf22d87f4b5",
+        "tools/aisle-validation/run_rgb_transfer.py": "de35d8f325a3547fe11ac7f735c009511c6c37e351026f91b0d32fe6bdf03186",
+        "tools/aisle-validation/run_teleop.py": "deb765e95559db47c3a3e0b983b2aef62e92618bb721a4924ea23594cf7ab392",
+        "tools/aisle-validation/test_nano_dora.py": "b06361f7f342dd1201521631b437e740d229e420bdf098e0d0bfe4a62ee4c90d",
+        "tools/aisle-validation/test_nano_dora_graph.py": "66b1493a53cfba5f3df9dd11bf4d2c33ecfe6f1c9c615febdd84d6574225b914",
+        "tools/aisle-validation/test_nano_grasp_estimator.py": "035b5272fe68a102e85983504fd08a9f767e8caa008652aa134620466bdc13e4",
+        "tools/aisle-validation/test_nano_living.py": "7b8011ed22dc6b1ba23e097e3d09c9c8a122556ca8ba813e40ebb501549fe330",
+        "tools/aisle-validation/test_nano_qualification.py": "00e13548f12582a309822146382932da2d8aa446dfdd808e73108493c462d052",
+        "tools/aisle-validation/test_nano_reach.py": "255413cca93131e3e977ef5b7e3653f4c0927c75d9872eb17a8dd90b55a5937b",
+        "tools/aisle-validation/test_nano_rgb_policy.py": "104092f6f1a058369ddc7c9357fb2ca06db83d1a4d0ca9d55bb46504d9aa63c4",
+        "tools/aisle-validation/test_nano_rgb_table.py": "51aee21bd32847c5d3d91bd4b4357e69843486ea68d96e95bf6959166a77bd19",
+        "tools/aisle-validation/test_nano_rgb_transfer.py": "c490755d6bf779afc397785d50b49d8fa9695b626d3447683ff944ebdce3910f",
+        "tools/aisle-validation/test_nano_symmetry.py": "2cd8cf282d2f9a7d1073a1b278c1dc2e2afdf8408b8c581494da9fbfe10dc818",
+        "tools/aisle-validation/test_nano_teleop.py": "060d606a4655f585f70e6ad2faba7f596ae814a8c4c537f0d9f2a5da572ec209",
+        "tools/aisle-validation/test_nano_validation.py": "32a0aaad4c9f9212af3d8d063a6a6d8f66d890cd23c783bc983a11d81fa3a792",
+        "tools/aisle-validation/test_session_record.py": "4699486c63f2ad070872906407f6a4d245ec8242d23589d16a410daca218c2f9",
+        "tools/aisle-validation/verify_arm_reach.py": "12b34fff39cc6547888794ed970ad1ee29dea7e711432537e0b17adce08cc64f",
+        "tools/aisle-validation/verify_artifacts.py": "45697a75d94274f0d7e03c7305ff4ee0cf81dde107e3c54ed7ccdbb3b39eebdf",
+        "tools/aisle-validation/verify_dora.py": "80a29fe71f1f7bf372df08bee2e2a98b981fc91a75f61d41e4c372203ba207b3",
+        "tools/aisle-validation/verify_living.py": "ddd4a1bcfda3e27ca185c842df8cf9ed294dcd67cc38edb2defc8122cf5bf829",
+        "tools/aisle-validation/verify_living_visuals.py": "21b88f7481c2702c2f664dd439fc63704532e928c9338f565e8ed451dd47be92",
+        "tools/aisle-validation/verify_rgb_replay.py": "d95be5d7689b025befa0deb7eaeef8744508dbde0f49ff9dd1d1ddbe5716c54a",
+        "tools/aisle-validation/verify_session_record.py": "bdbed0c8bc003cdf1e7081ee1b9f60aecc371bda05b4743493e37f32189b9baa",
+        "tools/aisle_workbench/g1_reach_checkpoint.py": "80b5cb55f1ca1278e99592e101a551d9eed3b4c9f45972117f95caa99e671e73",
+        "tools/aisle_workbench/g1_reach_suite.py": "bfe244ae7f8630046db9e6531ca6939d7a5f372b50dab397879558d02fb1fcd9",
+        "tools/aisle_workbench/g1_stand.py": "be1c054385fda2436c464089bd55beffaaf4046f9abc98e5557174f551c86050",
+        "tools/aisle_workbench/journey.py": "b4e68f1cd48f6517aa68f7c9fd0d8c67ddef5e5218dc5eb81ab492b7dee17ed4",
+        "tools/aisle_workbench/moving_target_check.py": "a420c621c2c52c61157b9bc03786e269c05d5ef6d41c195e1f2514fa0792feca",
+        "tools/aisle_workbench/nano_grasp_check.py": "ede64237e004c03c36e449982b2658cf7b92845f9f1b5e3464d95e256532ab88",
+        "tools/aisle_workbench/nano_grasp_checkpoint.py": "4a7854929c23722a30b07c4873dce0c981b1cca0231ad34ab1579505d1a76d3f",
+        "tools/aisle_workbench/observed_author_check.py": "9a393c9708c584249fa3f906c8c50f7ee66e57acef58b311ef6af8d87837b289",
+        "tools/aisle_workbench/onboard_scene.py": "19eddd5e9fc310f4983f509f1a43a7ecc200684bee652661302eabec88bc6354",
+        "tools/aisle_workbench/photo_room.py": "060d9f1d7d1cc29e133dce1a5b7db6cd9072ccc3ce4580dbdf7a31c6f7e13c6f",
+        "tools/aisle_workbench/photo_room_check.py": "919afb65a243fadfb1c48f44be63c11b94a12d68ce300820b76cf9a096f32f2f",
+        "tools/aisle_workbench/replay.py": "da7cd39814184c36386141d372f8a7a0b9c2d1db202047609dab5c8de11c7979",
+        "tools/aisle_workbench/room_revision.py": "28cee5fed489eddd546bd99157d467eab9bafc6499b9e76283653143bcef79e7",
+        "tools/aisle_workbench/sensor_timing_check.py": "a0ad60a6c07dfa0361749ce3797adb613631ff473f4b8bcbe603f82b340efa3d",
+        "tools/aisle_workbench/test_g1_reach.py": "79975a56399d0550dc497660757d96ee4c095320a39b7ce226cef915603119fd",
+        "tools/aisle_workbench/test_g1_reach_checkpoint.py": "e8f6255678bdc7a7505bed2237977748ca466d9f3f198e1f4eab25874147b563",
+        "tools/aisle_workbench/test_photo_room.py": "a54d4988ab4ea48634beb1f140a835e2a857e7d4cf37f0dc1a22e828cbf488c1",
+        "tools/aisle_workbench/test_room_revision.py": "1a20292218b71e5662908f6604f74d4e287d9f0d00a9f9bbd4aa2d84cbd35f4e",
+        "tools/aisle_workbench/test_worker.py": "e6515f51c5e43ba7aba13f2179e326caf193dcf90fe4775d6c0c6ff92448001d",
+        "tools/aisle_workbench/verify.py": "5c8f20a1e5950051a2e4dfae2502dd19259c25a01c864aaae4f34581c22f7835",
+        "tools/aisle_workbench/worker.py": "fa4cc7f12e88ebe0f95ef14786333b45641b2b3e34337e397e5c29afe03bfc95",
+        "tools/nano-three-cubes/demo.py": "a300a2f698c09e9cdc77679d2fb19c62ed9ce54ce3961bae8e481da67773697c",
+        "tools/nano-three-cubes/model.py": "6d854855c2ddceeba8edaffef8d4638652a535c281829435e8115b8fcdddc37e",
+        "tools/nano-three-cubes/observe_studio.py": "ce14cb71f9a3f2d86691d8baa7f7ad92497c3142842874b4859170ff2590ffa4",
+        "tools/nano-three-cubes/verify.py": "2bb005e231f0d2e5800ea06ccbb63d5857dbe153e5345ba16b65e57a830ac1f4",
+        "tools/nano-three-cubes/verify_studio.py": "0b4d1b3cfb27112b09be1762f5073814600a32653955f351b84e64f2474c0282"
+      },
+      "workspace_changes_at_launch": [],
+      "sessions": [
+        {
+          "stage": "journey",
+          "pid": 57368,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-g1-standing-thirty",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        },
+        {
+          "stage": "recovery",
+          "pid": 57684,
+          "observed_dark": false,
+          "observed_source_root": "/Users/yuechen/home/aisle-g1-standing-thirty",
+          "windows": [
+            [
+              1440,
+              900
+            ]
+          ]
+        }
+      ],
+      "trials": [],
+      "files": {
+        "journey.json": "d313ff03b23fdda03ce3d3ac39e3a2827d160f0a927ab28be192e625db611da9",
+        "layout-evaluation.png": "1a4f1f6139e20fbbf07c59d6af6dc10ef2db8a732bcecd983c6b1e34b144c3ae",
+        "recovery.json": "cd5cec6a9392a0a2265a4d1395880da61c40b5926e9fef31e00c327ecb7062bb"
+      }
+    }
+  }
+}

@@ -1,0 +1,3364 @@
+{
+  "manifest_sha256": "3f64faea894cd691c2c0d51c4e1905bbc2031bb724adb0d45d77b86a2f7af027",
+  "split": "hidden",
+  "cases": 50,
+  "successes": 32,
+  "verified": 50,
+  "verified_guard_bypasses": 0,
+  "qualified": false,
+  "rows": [
+    {
+      "index": 0,
+      "seed": 3968954341,
+      "salt": "255b0a20478fa26a5cc559ec72a8a255a84d7007f875ef8d",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 30720,
+      "motor_sha256": "5577722bfbab05a69b46a3f5d4de22245708500a8310faa66d24524b3f9d5ad0",
+      "actions_sha256": "4dabfde055dff9b23bc6a609ed84e61e602731beaae9b245ed374bbe43d00917",
+      "result_sha256": "50f1dbf4eeef3ef6921b2dd20d00185476c9beddac97441914a5b3bbb6b2713a",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "c83fec48d14f0ccee056d5cfbaa14cf78d0271f09cae865478631583cb43f931",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4595,
+          "final_position_m": [
+            0.33020806312561035,
+            0.6992296576499939,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.27495799932523907,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09922965764999392,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3247,
+          "final_position_m": [
+            0.34028980135917664,
+            0.753400444984436,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3260599869824873,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.15340044498443606,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4006,
+          "final_position_m": [
+            0.29817602038383484,
+            0.6478414535522461,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.23256295547052797,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.047841453552246116,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 1,
+      "seed": 357419639,
+      "salt": "29a76a553d7ad3fb03de2b59bb45334c4f283cfc3aeb192e",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23084,
+      "motor_sha256": "cfa1d492d8b67271394535b4549bb623a1342dbfb439374048bd74fd0da0a072",
+      "actions_sha256": "afdbcb292a2da0964756e12829de86a27e7c2b1f8554df4146969c4408596bf8",
+      "result_sha256": "cf4219666be3c5a14134205d1c46ab5aafcadd89df5d1db016bcfdf3196e31e5",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "d35725502d3de18d0bba8bccf3c4d6c0162ce7f270ea038f20d38f4c95944c1e",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3164,
+          "final_position_m": [
+            0.16388794779777527,
+            0.6773425340652466,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3028712587114243,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0773425340652466,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3439,
+          "final_position_m": [
+            0.2541550397872925,
+            0.7278019785881042,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3181309692136712,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12780197858810427,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3798,
+          "final_position_m": [
+            0.3305886685848236,
+            0.7117399573326111,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2884527460950818,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.1117399573326111,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 2,
+      "seed": 885467859,
+      "salt": "ecbc17ce11d93c124457211135d0b7dfb698a2ec9dbb2aaf",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 17022,
+      "motor_sha256": "b629881422d7f1b397dc88384fc804a8da03496c8a6a74b1af2364a552350372",
+      "actions_sha256": "95a04035a6f4ca2ec0e2e66afd0f5414d40f8189298e9852ed66ae296adc4cea",
+      "result_sha256": "4d39e8cd4ad0dc9b7bef64891e09d983e2041a3bc7a8289d2bf2601103143db1",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "797128c1bce027014d81f292d124d68d3595a35e34c76aed4c229294ca96aa6f",
+      "error": "ValueError: Could not confirm green in the wrist camera after two grasps",
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4105,
+          "final_position_m": [
+            0.2953793406486511,
+            0.7016047239303589,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.7703055259193334,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10160472393035891,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7148640155792236,
+            0.15446476638317108,
+            -0.014301075600087643
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.021779546090795437,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.4455352187156677,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.8083166480064392,
+            -0.3183932900428772,
+            -0.014301073737442493
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3927286646702599,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.9183932304382324,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 3,
+      "seed": 2472388465,
+      "salt": "de86ee42c06d056c5fb53aaf28317fba29b7d3bfe2597b80",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 27842,
+      "motor_sha256": "7246c39210eac8fcc3fd67e62d53b9708da6943bdf2bcfa2a239dc9058a9940e",
+      "actions_sha256": "4e0db669187c9bc3f71221f6b0665ed1a53f8af26e8ccbcba16490565fd81292",
+      "result_sha256": "2ab0bbbedefb9f8d02d708ee06e42604629e74c10984cd7aa23fdfd50a545121",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "6e7799aed20d5a312ba6415ba1f21b4d7cae1935ed089890da2b6d7f113835b7",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4080,
+          "final_position_m": [
+            0.36299481987953186,
+            0.6773619651794434,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2890012769193591,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.07736196517944338,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3736,
+          "final_position_m": [
+            0.4443318545818329,
+            0.721589207649231,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3082555141050218,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12158920764923098,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3236,
+          "final_position_m": [
+            0.5098825097084045,
+            0.7133932709693909,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28846373534026604,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11339327096939089,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 4,
+      "seed": 359691140,
+      "salt": "1629331e2c92213ab1c0fd8e7002ae1c12c908eeab2dbe28",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23984,
+      "motor_sha256": "0269b1f8c510bbf8c14728bbcfb430bec0d8b350b87d55119b9499144c11a664",
+      "actions_sha256": "bdc0c7bf0d5d29d566c08853bafbf0dd71c665ee6ecd1fa6e21ed39d329773be",
+      "result_sha256": "7a01bad682e0f67319f99cdfcffe9bfa0cf04e9161c264843eec7bea43400492",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "01f9066913d78b808f6ea18167cba33741c902d3600a09e284098285bb1d0a7a",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3495,
+          "final_position_m": [
+            0.1569492369890213,
+            0.6840415000915527,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3125357010405871,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08404150009155276,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3801,
+          "final_position_m": [
+            0.39553558826446533,
+            0.7127987742424011,
+            0.5599978566169739
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2735212803174208,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11279877424240115,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 3264,
+          "final_position_m": [
+            0.4129335582256317,
+            0.7103834748268127,
+            0.5999860763549805
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28527130579147475,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11038347482681277,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 5,
+      "seed": 2844364720,
+      "salt": "f081c1f40b290792cd7eef82c39e04d0afa79ef2a0eca39a",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23384,
+      "motor_sha256": "b034fa3ab6e8837ed7afa91533656ed39501f4116edc184cf0eab52d15457482",
+      "actions_sha256": "3f46856094ac0ab465405f48b3a1b03893d8499ccb640b2656b6aebb922758ed",
+      "result_sha256": "7b858ecacac0d0358096f8e882249ff1e1b44e7b6ed469a54f35b8ede8d3a126",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "a34418aa908005e3699e6dee7ee765c0ae28619f4f6ede6d5de62cec5763dca1",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3084,
+          "final_position_m": [
+            0.29250800609588623,
+            0.6767675876617432,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26722497931918604,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.07676758766174319,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3831,
+          "final_position_m": [
+            0.43019917607307434,
+            0.7372901439666748,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3013546229539963,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.13729014396667483,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3355,
+          "final_position_m": [
+            0.3430787920951843,
+            0.6849644780158997,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2626956553851279,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08496447801589968,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 6,
+      "seed": 400001625,
+      "salt": "f44f17bf16cf5b8fcbd86475eadd9a74067fae0199863556",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23324,
+      "motor_sha256": "64e82e112d164482262c2924ffe0d046360bd9d7126e2375b62daad6be73bb37",
+      "actions_sha256": "a9f935ba8a330dc5486170d4144a3e647c8f84722178eea1a0a3d4080c175583",
+      "result_sha256": "13ee79a36295fa9dab0230853e59744ab26e907bbd2e1979c9a77cedb37a2039",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "00f97dd8d99e604234fb34d302533d0542713a4a7cee4b8876e27a9067a7973b",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3166,
+          "final_position_m": [
+            0.18643726408481598,
+            0.6795766353607178,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3431273999778535,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0795766353607178,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3457,
+          "final_position_m": [
+            0.3651050627231598,
+            0.6913121342658997,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2840385742986227,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09131213426589968,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3758,
+          "final_position_m": [
+            0.4318889081478119,
+            0.7157478332519531,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29087830913736346,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11574783325195315,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 7,
+      "seed": 877750787,
+      "salt": "4ec11f662f73508c6e5b83f34360a318add581a98e0e2aef",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 10516,
+      "motor_sha256": "66068ea6c4b963a297efeef7467f6c1067e145d11ef68d24d60c2be1dd436822",
+      "actions_sha256": "4b3637d48b7e0832b4559933cfd92a47e76f34622e463f28715166cf5db8872e",
+      "result_sha256": "f903c6a84ec184d0886ad86a817742d14ac5bd15c031a833a77f5888cc9c09ca",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "b2d4e4359b08b2bf39fc83ef82dd6e8085080c480b110f00d733d9460868c273",
+      "error": "ValueError: Lost red during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 2519,
+          "final_position_m": [
+            0.07479699701070786,
+            0.38814064860343933,
+            -0.014301068149507046
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.5823913530839222,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.21185932159423826,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.6878578066825867,
+            0.2187318205833435,
+            -0.014301074668765068
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.7809779149462912,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.38126817941665647,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7903797626495361,
+            -0.35330644249916077,
+            -0.01430107094347477
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 1.167453147733084,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.9533064126968384,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 8,
+      "seed": 2461838070,
+      "salt": "c45c9c79814597c9c72ea53eb1581d800752fc626bc0eec0",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 10494,
+      "motor_sha256": "9a961025e6d2a7ad7143b23ac31b426622564cb964bef8ad9f69e76ef62395d0",
+      "actions_sha256": "674b9250ce4bee5241cdaee38c6287d1aad0b5edea82bfbc8e747b0de52f544e",
+      "result_sha256": "28c4013bd812d4d39d12e0c29880b352b6723a570792a50f491d42fa33ababf6",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "6cc26bdd8aaf390c5bb8fd4c57f3678ee42c8b4d60b459b36c7b69b59a65ae8b",
+      "error": "ValueError: Lost red during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 1120,
+          "final_position_m": [
+            0.5782066583633423,
+            0.3125167787075043,
+            -0.014301076531410217
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.6569421867586516,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.2874831914901733,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7234979271888733,
+            0.25001394748687744,
+            -0.01430107094347477
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.7472015992401195,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.34998605251312254,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.6875534057617188,
+            -0.31471702456474304,
+            -0.014301072806119919
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.9107435385400064,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.9147170543670654,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 9,
+      "seed": 2704475297,
+      "salt": "2ebc339d400c4cc4106f70b5753949030f74010f576008ea",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 7996,
+      "motor_sha256": "508d50b5b5ba82c6fe982df61e8b630eca7360a45eeba2398011bab3e04e1c72",
+      "actions_sha256": "c6ad190c4913431320056fbae6d0f674031b09c6991a77b972aaeff16aade578",
+      "result_sha256": "2e4d006953088e3254a81744dbb79740e3cc5fcfc55404b7677a5bf38e08dfcc",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "08bae7accb7a899d2aa28185c1659fcd469e0bb84ec18a6143e53f82d7190b6e",
+      "error": "ValueError: Lost red during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 1492,
+          "final_position_m": [
+            0.49267199635505676,
+            0.2949047088623047,
+            -0.014301070012152195
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.5885855556284552,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.3050952911376953,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.8803273439407349,
+            0.24354779720306396,
+            -0.014301074668765068
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.8067831060208144,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.356452202796936,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7442243099212646,
+            -0.3263455629348755,
+            -0.014301072806119919
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.882156024001451,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.9263455629348755,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 10,
+      "seed": 2004333069,
+      "salt": "2019464fd1355afd3e2aca7da592206cd1c8f0b4712b5438",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 25182,
+      "motor_sha256": "2b5da3c3dda1628d51c92f783e83ff45309b902d3e1396657748471cf3920540",
+      "actions_sha256": "60087e477d865831a3df46083e36a1c07df945154b9a9a1fcf31910674da8353",
+      "result_sha256": "121b4273ce3c030a536d89e3ceb16a59b34723f2f07e7224ed9884d733e4c366",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "08d2d4d281d134fc7887995d6133dc97b21c14e08ecb68ada08d908569ed37a9",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3909,
+          "final_position_m": [
+            0.3851756453514099,
+            0.7273727655410767,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2990107043011387,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12737276554107668,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3151,
+          "final_position_m": [
+            0.3656015694141388,
+            0.692203938961029,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2709431277195873,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09220393896102907,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3304,
+          "final_position_m": [
+            0.4181608259677887,
+            0.6897743344306946,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.25835563234577463,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0897743344306946,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 11,
+      "seed": 368836155,
+      "salt": "8081f4202038c90735fdc3622b3fef0cbd0cdb20b1117f99",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 9676,
+      "motor_sha256": "d8cf163077f4139d6be9d25e1ff8f440e17cc07ea67096ba7a561e9d2f1fd667",
+      "actions_sha256": "3b99887de74d64fb123ae3d0cc6c42f343ca0a51bdb113120bff47f7bec99f43",
+      "result_sha256": "66949b57a73e94f60091a3f3a5dee321d85ef36342d39e2d7935373ed1acb942",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "ae6fd750301e61b0c96bfd0c73648e2644e2054276b9b1a723eceec0f284e44f",
+      "error": "ValueError: Lost red during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 1441,
+          "final_position_m": [
+            0.4870643615722656,
+            0.16253186762332916,
+            -0.014301070012152195
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.591438134883743,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.437468147277832,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.8476595282554626,
+            0.242638498544693,
+            -0.014301074668765068
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.8002235907411459,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.3573615312576294,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7155243754386902,
+            -0.00519885029643774,
+            -0.014301072806119919
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.7147682060310101,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.6051988363265991,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 12,
+      "seed": 1404237753,
+      "salt": "9112bd0c8ef1419d841eef92d3c4d259171626bd50b1b9cc",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 31160,
+      "motor_sha256": "d17b66bc8b0e6e21489682cacfbfab2d0ce1f370d5d515a0df3e195264575b92",
+      "actions_sha256": "6c4fbcb2120be0f5dbdd26b7a2f97d2fd14dcf2f5676447c71902101e646e01f",
+      "result_sha256": "396e7a67ca69c8dd1594e0bf4454140b8aab188bba7cbc10c2c303de8b7e59af",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "b89e87cae5da44fa28128027d6f8463b4de4ae4083080503eb668abe122682b8",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4565,
+          "final_position_m": [
+            0.2441006302833557,
+            0.7007906436920166,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29232414621138414,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10079064369201662,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 2.9802322387695312e-08
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 5075,
+          "final_position_m": [
+            0.2319977879524231,
+            0.6385862827301025,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2375931743643952,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.03858628273010256,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3272,
+          "final_position_m": [
+            0.28884077072143555,
+            0.7117089033126831,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29138897476534,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11170890331268313,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 13,
+      "seed": 3681886153,
+      "salt": "533adcac04d9af6770fbe113f1288eb3e760a09cadcef89d",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23544,
+      "motor_sha256": "75bd7712bec4dd57288ec8fce79acbd4d95bb5374331585a19a0735ca927ab9b",
+      "actions_sha256": "ce1c805c3a0622b022e0b132e75f1776aa47256f8a070966d4f6c10cc4e67c2b",
+      "result_sha256": "092ab3244fabb96e70420d15ca7ed260802bf03d53bc574beb11b0bc93ca7898",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "0af18566f5c3b030cc57168747358aa457735fe72a44a78dd8aa69b4d2100afb",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3122,
+          "final_position_m": [
+            0.19094614684581757,
+            0.6743077635765076,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.31231128389733265,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.07430776357650759,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3822,
+          "final_position_m": [
+            0.3719027638435364,
+            0.7030404210090637,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2765149301072729,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10304042100906374,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3458,
+          "final_position_m": [
+            0.4439722001552582,
+            0.7207945585250854,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2803108388759397,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12079455852508547,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 14,
+      "seed": 23831365,
+      "salt": "40c392835ad02f7003e6e08e452bb6bfffd4b42b6f0334d0",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23844,
+      "motor_sha256": "c1b557f72375c91d1a2f6e47d308ed6d9da530e075c8d73435702e054b3ec62e",
+      "actions_sha256": "c5f8b86e705a4121e3f612c161a7098663641e6132f6ca8c10421c64890cd406",
+      "result_sha256": "1ad3ce4eb45419bd0e3ddb3c0f6d193ed91b62b47eb8594663978a5ecc2e2085",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "ec79255c76dbe070f68f57f8f900ff7c3fa82ab71e0647bbba766f4d2efbc6bc",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3873,
+          "final_position_m": [
+            0.20042279362678528,
+            0.6860211491584778,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3138100944497959,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0860211491584778,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3463,
+          "final_position_m": [
+            0.29227936267852783,
+            0.7146756052970886,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.31106020315168137,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11467560529708865,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3240,
+          "final_position_m": [
+            0.38555505871772766,
+            0.7106798887252808,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2845726654219432,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11067988872528078,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 15,
+      "seed": 2620075808,
+      "salt": "4463a7fa15bacd1884a19e4c0c229b7217fe0930402c70f2",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 29142,
+      "motor_sha256": "13fd9d4cb1c9b0ed3756b1b57e53f321c6156bf6c093216de272cd7c80404c55",
+      "actions_sha256": "baf2d8682b29c2a84c31db58434fe67ef61a3390f286790eaff4d5e3401914ed",
+      "result_sha256": "220fef55634918aa658491a0f1f51d62af9bbe576ce9509d33a546f6089ec351",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "b7029e9123e309fca8c36617142c221b50bbc08c7d49a88d2c653ee6372a8e98",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3929,
+          "final_position_m": [
+            0.20950855314731598,
+            0.7104792594909668,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29673424768256335,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11047925949096682,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4018,
+          "final_position_m": [
+            0.22890926897525787,
+            0.6529306173324585,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.23918456783819275,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.05293061733245852,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3225,
+          "final_position_m": [
+            0.28926557302474976,
+            0.7235687375068665,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29098672846841905,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12356873750686648,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 16,
+      "seed": 2798318715,
+      "salt": "118c1351eddfd3ccaed4bef943a83feecc9dea920c897e76",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 29620,
+      "motor_sha256": "78b278b00356e02d63f094d9a844744dc966ad3c786beb6cb5d0efe253bae7dd",
+      "actions_sha256": "9c400b31dd03772e706b0afb2c0c344e2fab187349c6976570d40ee3f9a8a858",
+      "result_sha256": "13b05f757361c0410df88ba33992a7c47e5364ec06e5c2051f77737caa168015",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "8a5f10845e953c5f7a0d6fbe4769510a1e62d5ab3b535cbaf6b771ba06aa8786",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3198,
+          "final_position_m": [
+            0.3245168924331665,
+            0.7226462960243225,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.32596724771259306,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12264629602432253,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4237,
+          "final_position_m": [
+            0.3630959093570709,
+            0.6989693641662598,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29389794492982546,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09896936416625979,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3813,
+          "final_position_m": [
+            0.432594358921051,
+            0.7103412747383118,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2859233818759902,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11034127473831179,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 17,
+      "seed": 2084400044,
+      "salt": "bd87f562da3c544f63240909a8d9d947ab3b7e7a9b3c44f0",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 29082,
+      "motor_sha256": "f2e5dff97606b09a086b6dff715c67f29f45594cbca0f666c1b77c7a114284fa",
+      "actions_sha256": "56e502933a230c56ac3c949811096859b348e3494e0678e35685007790a0493e",
+      "result_sha256": "c8d2f0a32403a207fdd1647eb0d897a0331b283eaa22b7539c1de0cb0ce519cc",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "b3c2be21561813f831be23e774602e0714da01f2a66014c894fa7c8d6d35cc19",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3124,
+          "final_position_m": [
+            0.20883557200431824,
+            0.6752557158470154,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2670676897887797,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0752557158470154,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3780,
+          "final_position_m": [
+            0.3098222613334656,
+            0.7158624529838562,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2855839986139438,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11586245298385622,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4037,
+          "final_position_m": [
+            0.2690824568271637,
+            0.6858949065208435,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26100388495154536,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08589490652084353,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 18,
+      "seed": 1168469256,
+      "salt": "0360f2cf592082ca78493e99afc48f181ada58808ef42052",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 3620,
+      "motor_sha256": "0ac67d5d1f3c030b8195ada74c0c7380e04df69de7be8366ac5a674da0da8a6c",
+      "actions_sha256": "5821678f77851b54d587e765df5567186f9ea4e1ef41659a57c5d1be08c151fc",
+      "result_sha256": "ade0bd90049c06d07390747228f27387dc947a77918828aee4fc157b4f75a2b5",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "5569dac5678900c6b4a2d671fb287b17bda5e029486f7339dcf4b048ea18c5f5",
+      "error": "ValueError: Could not align the cube with the left arm",
+      "cubes": {
+        "red": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7838684916496277,
+            -0.05873457342386246,
+            -0.014301075600087643
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 1.0648833118960015,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.6587345361709595,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7942907214164734,
+            0.2017143964767456,
+            -0.014301075600087643
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.95195186816375,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.3982856035232544,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.8492717742919922,
+            -0.3457392752170563,
+            -0.014301074668765068
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 1.2909337213309977,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.9457392454147339,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {
+        "locate/left_finger_b/coffee_table": 1,
+        "locate/left_finger_a/coffee_table": 3299
+      }
+    },
+    {
+      "index": 19,
+      "seed": 1195337725,
+      "salt": "be1e37eeadad70f36702a94144e9b94723d05fda5b564d44",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 26742,
+      "motor_sha256": "6a03f555d071cb749f145d3dbc86b3094ba8d32cd950c590a6906a6d4af729cf",
+      "actions_sha256": "1e5a71d646e01c839c28c747d95688baea374ea87f78adae1d7af2ac9c741e76",
+      "result_sha256": "222633b1ec58a67c0533c41a8ed6be77ed258ad75003be1cb80a0f8546803b7d",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "0350df23d0539257e966e86e34bba7d11ee55ec6b5625fc9a7e6834b947b7944",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3909,
+          "final_position_m": [
+            0.3361910581588745,
+            0.7231414318084717,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3008404054260364,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.1231414318084717,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4487,
+          "final_position_m": [
+            0.3340935707092285,
+            0.6631477475166321,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2450445728310458,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0631477475166321,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3308,
+          "final_position_m": [
+            0.38049301505088806,
+            0.6972357630729675,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2685785536136229,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09723576307296755,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 20,
+      "seed": 2598305554,
+      "salt": "1b15fdb278c16bb596d692a31f91ef3adb3a7ff6b60b1c3f",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 30060,
+      "motor_sha256": "78d839136aa304591924d28d934759a886002c5e3c741cf3b250f6b2b0ec7b30",
+      "actions_sha256": "e131797593ffc5778c0793b109cf9705c92de8ff801df7106687dccc8d65f531",
+      "result_sha256": "f56a44514063429ef83fb34a0ee98dc249d72cbb17717c2b26a34f38e1c887ed",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "68c6c3389038f9145aaf165e76ad90edbb3e1269efea4e88387f40c8e57b67c5",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4117,
+          "final_position_m": [
+            0.16799218952655792,
+            0.7248549461364746,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.4127153626380286,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12485494613647463,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3150,
+          "final_position_m": [
+            0.3551444709300995,
+            0.6965798735618591,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3042796457705386,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09657987356185915,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3815,
+          "final_position_m": [
+            0.46951204538345337,
+            0.6943528056144714,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.27413178652398684,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09435280561447146,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 21,
+      "seed": 1180359671,
+      "salt": "a5c94c2edbdeca88ed39bed708d11899c5347eaf91954392",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 29042,
+      "motor_sha256": "adf83e1e7d71ed79c66bc7cf6cd5f97e3e368b03e0f55618c980ca08001eddd5",
+      "actions_sha256": "0e755b11f55886826c86f5e05995ae8718029d5c1825841c2557cfead7c2e1de",
+      "result_sha256": "d503b265bb249e3b35143457f72b3aa01a980fac2e7e97ca960f6a61489fec0e",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "b8676180e06b6c45fc54e784f6b4655b38d015f97efbe8787fa72d2a97760ac8",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3133,
+          "final_position_m": [
+            0.23757292330265045,
+            0.705349862575531,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3303315808662455,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10534986257553103,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3748,
+          "final_position_m": [
+            0.19034384191036224,
+            0.7002798318862915,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.34609680756653616,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10027983188629153,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3829,
+          "final_position_m": [
+            0.41099298000335693,
+            0.7095787525177002,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2856169545011065,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10957875251770022,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 22,
+      "seed": 1386331631,
+      "salt": "4eed0a8b7437a532ebbffeefcfff8c171fcc0cd452ac7279",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23804,
+      "motor_sha256": "090258a28b4effbdb23d42ff7e1f807c34b0d107c459f0a1dc12b9d3b17f74e1",
+      "actions_sha256": "e193bdc2b1d437ec78f600f7929172eb4e9ec875db37dee0632e2f4d2c593154",
+      "result_sha256": "24ba17c0d0e31aa09bddeb8a1dbcf9d1665e7c4e0a15ee7c77aa465b27a14dcc",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "7425ecd908950321dd31070c07444e65aed415dbad86af3aefdb6e5643bb53da",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3443,
+          "final_position_m": [
+            0.18483243882656097,
+            0.6829676032066345,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.30948207528717236,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08296760320663454,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3752,
+          "final_position_m": [
+            0.35790979862213135,
+            0.7151238322257996,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2915407819800951,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11512383222579958,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3339,
+          "final_position_m": [
+            0.3605136275291443,
+            0.6666715145111084,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.24555966754868525,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.06667151451110842,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 23,
+      "seed": 2681883464,
+      "salt": "fd0135de24bd8c3128d872585490728944c964eccf34651f",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23504,
+      "motor_sha256": "522a32bd1e6dfadda5298298511e96af6a4087fbd27c268a30646d2a872ee176",
+      "actions_sha256": "ea9f37c929610581845fd9c7fe37e8b99d2a06042719b2be1f44b8c75701b673",
+      "result_sha256": "abada5e1b92cb7e3f5c0d457275bbae3dd9cfb6c718d27dff12eefb933e4a49f",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "d4dbe81d501224f5e26dfa4a82e41310a612e5c10599e9501f9cbc11d872918b",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3126,
+          "final_position_m": [
+            0.26221543550491333,
+            0.7115135788917542,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.313470570136493,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11151357889175417,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 3431,
+          "final_position_m": [
+            0.24318084120750427,
+            0.6335241198539734,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2563774632874671,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": 0.03352411985397341,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3835,
+          "final_position_m": [
+            0.3946124315261841,
+            0.7238413095474243,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.293072553221646,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12384130954742434,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 24,
+      "seed": 1121214705,
+      "salt": "7010346dc01be9a61f6ac95b4f4ef3a75ca6d0dadbbeb2ef",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 31142,
+      "motor_sha256": "6e0a76f2a83de5d76dd46775806c84a060f95dcc2299a70402d8d3fc7ba0eace",
+      "actions_sha256": "24f280786b21ea165421367adbf6da63fd36f0641ca8f0f326295170cb05503f",
+      "result_sha256": "71673d381fd8da968f60c517270cc5c9792fc0945e7223d29f2427f86764b0c6",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "27967ecbcc9b4859ab93612dd83d590e9576bd9621ec1d7a80bca7b270166f8c",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3823,
+          "final_position_m": [
+            0.34976309537887573,
+            0.7232621312141418,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28095228564452174,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12326213121414187,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 6222,
+          "final_position_m": [
+            0.16976884007453918,
+            0.7099572420120239,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3040952217820416,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10995724201202395,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3245,
+          "final_position_m": [
+            0.29313695430755615,
+            0.7018769383430481,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2713925253655515,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10187693834304812,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 25,
+      "seed": 1261975345,
+      "salt": "4de94dc2f81969d4d9e67cb302c15eb92b134ad14e5ba49c",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 27522,
+      "motor_sha256": "50bce435b437f1c34d357b740f0c3579068e0d083807499a0bc11ae170f4ee61",
+      "actions_sha256": "cdc6349e6951698daa29e09a09dbe2c5100353381b3686b4e289e9f29bfba511",
+      "result_sha256": "5817e9292d78525b6a11fce8226219a3a8d8ca1c5fe8ffb9a9efb7f197dd7661",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "3f55764985333e224dcca55b10fb51673b3f981f88dca4631fab6d588b2c639f",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3165,
+          "final_position_m": [
+            0.269811749458313,
+            0.722087025642395,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3154112024377601,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12208702564239504,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4165,
+          "final_position_m": [
+            0.27109405398368835,
+            0.6572951078414917,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2554370651857253,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.05729510784149172,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3837,
+          "final_position_m": [
+            0.35633721947669983,
+            0.714589536190033,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2861522217725423,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11458953619003298,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 26,
+      "seed": 1666079552,
+      "salt": "13c229f4ca96a6fd208e15bae801ddee67c4e2202fad75f3",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 28582,
+      "motor_sha256": "1a8c4c765b6507735431b3b1536eded62709d1887c690060cada830ee0d5f6c2",
+      "actions_sha256": "316368d8b9c35751a5f38db894b2b2578a1c841df557b5f1631d4dfe58951c0d",
+      "result_sha256": "de181f6198d6321fb7fb8c06e05fe76be5adcc1fda37b0f3e1b7e207428eebe5",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "7c54c605be0dbe1cb5208513374683f902a9c52a7e3dbc28cc73a900d40aed81",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3117,
+          "final_position_m": [
+            0.22806452214717865,
+            0.6786971092224121,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2946207609667475,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.07869710922241213,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3847,
+          "final_position_m": [
+            0.34502148628234863,
+            0.6837319135665894,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26214425624806,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08373191356658938,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3754,
+          "final_position_m": [
+            0.45787185430526733,
+            0.7231292724609375,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29086318947807766,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12312927246093752,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 27,
+      "seed": 1358442381,
+      "salt": "5f998f62dfb8b874262e442659a1f9e483495c0e4ff1908d",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 22184,
+      "motor_sha256": "62bb4b3256be6a737c9a443a51544d0ad46ba41e314de762557b43a35507254e",
+      "actions_sha256": "839050024e82ac128fe5feda7e8502b9ba4f52a3a9ac8183e3308ec6010e5ffb",
+      "result_sha256": "c55c127c0f1609b1b798ddd4b0546ec4ed491d57f7ea47d40b26b42ac2244c1a",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "d617f3406f9fe15339e658902c5e2211a51be60e22c73725280923851885229f",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3472,
+          "final_position_m": [
+            0.3520740866661072,
+            0.7299627065658569,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3231876807818898,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12996270656585696,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3194,
+          "final_position_m": [
+            0.3593953549861908,
+            0.6725199818611145,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26775650993756855,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.07251998186111452,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3799,
+          "final_position_m": [
+            0.4786911904811859,
+            0.7140407562255859,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.27923287389084905,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11404075622558596,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 28,
+      "seed": 853983334,
+      "salt": "c09f3ec7fe364cdbe814e717ec78c5027fdfb2d049576ba2",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 34462,
+      "motor_sha256": "fecd720ea5729fa07e8aa4b1c0d46ca3c6f29a5d8ef9f164a16a31f3c0f6f564",
+      "actions_sha256": "1a19aaffbd48ecf12f3d952b0b1560b33d1180d40388193172dfea131cd6d3c7",
+      "result_sha256": "985015094d9a7ee8a2f070697d0bfd2c0ba2742e4dc1948ed73f2b145ac6dbd3",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "b474e0f16da0115f6b37161354752aae90a928957740a82a6e7c1241ea5571b2",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 5450,
+          "final_position_m": [
+            0.24905306100845337,
+            0.6974310278892517,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29763573404160915,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09743102788925173,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4377,
+          "final_position_m": [
+            0.2197369784116745,
+            0.6587111353874207,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26957318405392616,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.058711135387420677,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3193,
+          "final_position_m": [
+            0.365530401468277,
+            0.7142491340637207,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28586523390897134,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11424913406372073,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 29,
+      "seed": 874909147,
+      "salt": "9880ad39d562bbe0b1dfe30482e4c7e8224cb53a7763cfae",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 22684,
+      "motor_sha256": "940d979ed3e01810e5fd8876455ef556e7876aed20049b3f2190426b540a0610",
+      "actions_sha256": "3b8502fad8b5e6266cbdc3240d93eda7218361f357b046c448b0b98ee6b04476",
+      "result_sha256": "49f4c5a390c4ca677489172b79d366f273701769cbaca0d2db33bcc38404f4be",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "2235e945970819a6660507ee2c17f0ad0560545679ee5a96affdcd0af9ca4a40",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3955,
+          "final_position_m": [
+            0.369096964597702,
+            0.729843258857727,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3053512673689721,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12984325885772707,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3436,
+          "final_position_m": [
+            0.3080708682537079,
+            0.6902430057525635,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2849760432258161,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0902430057525635,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3275,
+          "final_position_m": [
+            0.35395094752311707,
+            0.6704644560813904,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.25437324781620363,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0704644560813904,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 30,
+      "seed": 279867850,
+      "salt": "1589798edc9e2eade818a762c9a9aea5d1ad281fa855b11d",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 27502,
+      "motor_sha256": "004bbf5cfa862117841886af3aca23914753551ad80b7bc44c8d6389569cc704",
+      "actions_sha256": "00f9a320074ef9bfb5c9e11ff76b62ff0e3cd957a796567c02678ed33798727d",
+      "result_sha256": "eea8532a9df190bb2a2ac7d2db150b3013dc0441b9698ab52b4599f2f5312af4",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "63daf0063318507b0cebc84670b8c31aabf90d6016dccb75803e20224cc598bc",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3114,
+          "final_position_m": [
+            0.35996341705322266,
+            0.6803551912307739,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.25874886007001924,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08035519123077395,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3776,
+          "final_position_m": [
+            0.4017372131347656,
+            0.7083358764648438,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2760047918516004,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10833587646484377,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3975,
+          "final_position_m": [
+            0.4461011290550232,
+            0.7363200783729553,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29963872596670366,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.13632007837295534,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 31,
+      "seed": 3439968140,
+      "salt": "3293b4a62b00a423c3e1dcdbbdc3db5664093d4be2861bd7",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 16584,
+      "motor_sha256": "c8a5ed69e64ed15437e3fb5159592f22b419357c69261ee069a01c4e77418a6b",
+      "actions_sha256": "49f0eddd1680e74a406983d403fceb2a8011aecb9ec41c26e9aa97ae48496ec5",
+      "result_sha256": "ce36ceb6d38f5b0a10fb049ce78ece724b1cf6e3f94f7500c15f1c8aa908faef",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "ebeb65dfa5e1db91659db765a0f3a700cac7b412db6291bf3ac504f934df1db7",
+      "error": "ValueError: Lost green during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3910,
+          "final_position_m": [
+            0.3349911868572235,
+            0.6823315024375916,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.33983074675149294,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08233150243759157,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 2167,
+          "final_position_m": [
+            0.3198353052139282,
+            0.2604632079601288,
+            -0.01430107094347477
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.5491120622164982,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.3395367622375488,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.8029605150222778,
+            0.14273495972156525,
+            -0.014301071874797344
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.7211079352477678,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.4572650551795959,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 32,
+      "seed": 3815307245,
+      "salt": "005287faf56cb2a837e7b15093871dee5833db0d6a507ef7",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 29502,
+      "motor_sha256": "e8d3dabe5d11d9e9d51ef96b31c5f75bd122a46ad6869d0ab57e86fd137ba5ab",
+      "actions_sha256": "0e22b7fdd02a22784f22c6311728532f3c753a412e0634d274ad7ec0db21d607",
+      "result_sha256": "1a2a6230640e3b4d481cf66c22f8031cb03f0ab4dc2ada4ea8d1380e427fb093",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "264ba6463a953515086bcf8d61197b20dd72109dc72357ee8be5987ce341a051",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3871,
+          "final_position_m": [
+            0.22504284977912903,
+            0.7231090664863586,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3145754238746755,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12310906648635866,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4008,
+          "final_position_m": [
+            0.19000940024852753,
+            0.6829370260238647,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2863431950743311,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08293702602386477,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3204,
+          "final_position_m": [
+            0.32133767008781433,
+            0.7106532454490662,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2806192418927863,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11065324544906618,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 33,
+      "seed": 547162956,
+      "salt": "c884e9787b642ac2aab451d92ca28bd7d04a135a19a2fa2a",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 27002,
+      "motor_sha256": "5b6ca4471e6f88bc30ed7087df32bf5c4ed115d3864f170aa15b7944d48aca2c",
+      "actions_sha256": "f7fc53cc59e7a9782685133423a9a9309dfb25a0c78e76706223e0ddd0eb9232",
+      "result_sha256": "70dd7c03211288898cb730de9caf107a60dbb555a00ddc0d268bbba433bf7956",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "3b5d5e3d82f3c562ad1904ffe1db6d196de8db10c0983baeba430c36c3618b26",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3917,
+          "final_position_m": [
+            0.2852042615413666,
+            0.6936542987823486,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2739798921308674,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09365429878234866,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3937,
+          "final_position_m": [
+            0.20052804052829742,
+            0.701533317565918,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.30806441146568897,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10153331756591799,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3202,
+          "final_position_m": [
+            0.33031606674194336,
+            0.7138543725013733,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2841423612937131,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11385437250137331,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 34,
+      "seed": 3995143444,
+      "salt": "d92a0096a139ea2c43f57e000a87e128fbf4b7da6cc394d6",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 28762,
+      "motor_sha256": "76564443794a5e4bcf8aeaf3837f84a20484c145e6dee9e4805fa7e68e8d19f6",
+      "actions_sha256": "30ee569271f9dd856923b1ce236be1c16bac2d1edd4b2b751c51297da0212e98",
+      "result_sha256": "a1e3401d10e460365b49207daa3cd0b3ca2787082230a4be1e2f1b1de2b602eb",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "533c69ab903d847a23cf14ea1873590334d7bb156047630768c928d279f30c94",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3077,
+          "final_position_m": [
+            0.22057966887950897,
+            0.7183235287666321,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.30893641478138595,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.1183235287666321,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3746,
+          "final_position_m": [
+            0.1845095306634903,
+            0.6424979567527771,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.247457614014705,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.04249795675277712,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3742,
+          "final_position_m": [
+            0.28697869181632996,
+            0.7197195887565613,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2938298633573547,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.1197195887565613,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 35,
+      "seed": 3157541628,
+      "salt": "3adce0464e81fa2a4a0ce33991679691a6412cf15bcca62f",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 27442,
+      "motor_sha256": "7b8babb0ba654dd2dd019d9734d63b22ce572bff1d0f6adfa0cbfbf935846f61",
+      "actions_sha256": "c14c3502a736d986dcbe5bf03e6d6c83f4d766ef7458d4d373ca67caa2755994",
+      "result_sha256": "28994e049a40777d8b69bb6df4403c53f1d347f3b355b77fd8221e24544b09dc",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "1ec44808c0d67907af53d4f35d81c7f0a912fa276690a55b38223ed5b1a16272",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3988,
+          "final_position_m": [
+            0.22163785994052887,
+            0.7231504321098328,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.32796356489095096,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12315043210983279,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3204,
+          "final_position_m": [
+            0.2726293206214905,
+            0.7086840867996216,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2991251245994664,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.1086840867996216,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3738,
+          "final_position_m": [
+            0.3357526659965515,
+            0.6922165751457214,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.27070151430362516,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09221657514572146,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 36,
+      "seed": 1254345995,
+      "salt": "6e2d85a0f6f3bcc9a8083aceae9349dd8b1044a398dbc22c",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23482,
+      "motor_sha256": "aa2249b80ff8b327512d2bb3adeaa2376bfaef8aea99cf7ef77a18248d84912b",
+      "actions_sha256": "3204989e3ff4c2b256fdc367c6a6e7f44d06d484a5ae405f307bb5ecba062c44",
+      "result_sha256": "b52a9d1d43719e95623ce1315403b4edd6bb089e9b18254403701c3c35a31270",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "72f9dd3512ce7e4c593fa166ad9e521028b25ea70c14357d53b348dc4a2ee3a4",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3950,
+          "final_position_m": [
+            0.32010728120803833,
+            0.6884243488311768,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2800850529398725,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08842434883117678,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3255,
+          "final_position_m": [
+            0.39917901158332825,
+            0.7148360013961792,
+            0.5599988102912903
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2845468425560937,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11483600139617922,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 2749,
+          "final_position_m": [
+            0.45099589228630066,
+            0.732755184173584,
+            0.5667517185211182
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.30052140759299073,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.132755184173584,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 37,
+      "seed": 3319694021,
+      "salt": "fa36de557dce915d6589faa672a43fe3e5b25b31033b75f6",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 11416,
+      "motor_sha256": "675848718dde625879e8ee70ced736a47bc8bdbd289483e5154fa0ebd1cc4ce4",
+      "actions_sha256": "ed6d6a73df521039f8e0892731c0e2eac0308332aaf36b8c9fe5102555b2602a",
+      "result_sha256": "c4f5995bff7510ccfeacf6a9059d468d2d197f219200d823ad63df03b0e59bf5",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "78c36ded70e715a64d96ec5068345f054f05802ea02710cb6cecafe476f230eb",
+      "error": "ValueError: Lost red during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 4454,
+          "final_position_m": [
+            0.20215076208114624,
+            0.21356213092803955,
+            -0.014301067218184471
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.5551949037335646,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.3864378690719604,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 1.862645149230957e-09
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.731533408164978,
+            0.19891464710235596,
+            -0.014301072806119919
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.7077361433794533,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.401085352897644,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.8371924757957458,
+            -0.023447953164577484,
+            -0.01430107094347477
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.822436561775796,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.6234479904174804,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 38,
+      "seed": 2701543012,
+      "salt": "5c3be69aeba4364bb8f09176ddbfe9976f0be21b2f3561a4",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 25252,
+      "motor_sha256": "5c7c6fecaea2c91f8061b0a4d9d35f1e5783330358d743d370ce018fece37ada",
+      "actions_sha256": "4fb1c264de7f952182b052d6b27f595e7ec75570415e2cc6be05b5a6eea1858e",
+      "result_sha256": "b185af1eb487e582018f787e6934d63d6ce9ce80a1d2b84b44a3119b5c5921ad",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "1370cd6b5889caaf3511bcce4f9ccaa7ae2b307b6536fd503bbf33e8b83233ea",
+      "error": "ValueError: Lost blue during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3976,
+          "final_position_m": [
+            0.30522385239601135,
+            0.7058830857276917,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3597805734454525,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10588308572769167,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3209,
+          "final_position_m": [
+            0.4375663101673126,
+            0.7362641096115112,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3902065131811371,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.13626410961151125,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 1991,
+          "final_position_m": [
+            0.369998961687088,
+            0.29021909832954407,
+            -0.014301067218184471
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.5486084689501043,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.3097809314727783,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 39,
+      "seed": 1072688683,
+      "salt": "a04287d0dcfc2b20caf758643896ce0ca78670df06727c43",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 29442,
+      "motor_sha256": "c28d410efe1394299fec5ab512cdbf83be53e6d0f63ee5737e3bf43590738aa4",
+      "actions_sha256": "32ec7f3990215894ae402612b9c4fa9a336c8c3f51edf7d264ef052dfd9653f0",
+      "result_sha256": "8f50b0ecbb9b764399f920903aee6c1c21d8c00517247fb9f6519d8c056fcb50",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "9e74ebfb062fd889f6997ca0fa6d7f23d4aa9031c7dc01feb0c9566a18ebfe5a",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 4062,
+          "final_position_m": [
+            0.3572161793708801,
+            0.7089949250221252,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3081681391961547,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10899492502212527,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3277,
+          "final_position_m": [
+            0.3250885307788849,
+            0.6397412419319153,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.25581420409966005,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.039741241931915305,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3821,
+          "final_position_m": [
+            0.47740668058395386,
+            0.7202197909355164,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29146369185066073,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12021979093551638,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 40,
+      "seed": 774486918,
+      "salt": "d23143c2724c01fa8728ccafd11b8888396197616d209c83",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 28082,
+      "motor_sha256": "42652fa5c7158b0a46f7ae9d209ff4f3a21358ddb55ebb82ba29663dab818096",
+      "actions_sha256": "a1afc4c4aba02a82367e6f60f956744cedb5b6d6a0f0f7dc7cc5c9e2ec4c186a",
+      "result_sha256": "bca96251cd3c91a3c2e8e9a6ad6d0e3caecc7182073cb259d8d5c1568bbd9ffa",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "ba661a4cb88694d1718002536b1529e1c6142b33dc5e6b63640d47cc0502b806",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3915,
+          "final_position_m": [
+            0.2526044547557831,
+            0.7307600975036621,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3019419091059644,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.13076009750366213,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3301,
+          "final_position_m": [
+            0.2958340644836426,
+            0.6963682770729065,
+            0.5599977970123291
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.26274078622872304,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09636827707290652,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 4284,
+          "final_position_m": [
+            0.303118497133255,
+            0.706911027431488,
+            0.5999892354011536
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2847085140499382,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10691102743148806,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 41,
+      "seed": 4178485763,
+      "salt": "53e123d510b50b3859a2fe165020009bff7bb11f90245aad",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23604,
+      "motor_sha256": "ed29cf2c50e5eb8e013a8f4f002fa8f2f8a29b55ef659266956c2121fc9cb612",
+      "actions_sha256": "4cd5fe2f0f282dcd0ad2df96c0ec26229ddfe3e444f690264875edc1768b2ce7",
+      "result_sha256": "414207d50522049953408006db819812778bf70258c29e1c9a30938362595a2e",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "f52652e45939cc400df912396b7554fe87d5c659b35fa2ca899cb315da799053",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3069,
+          "final_position_m": [
+            0.2550226151943207,
+            0.6797474026679993,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3146811093227976,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.07974740266799929,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3825,
+          "final_position_m": [
+            0.4692968428134918,
+            0.7291465401649475,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3035198194469899,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12914654016494753,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3585,
+          "final_position_m": [
+            0.4837706983089447,
+            0.6679300665855408,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.24422421445066278,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0679300665855408,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 42,
+      "seed": 1930877657,
+      "salt": "569ad486fd5482410a2b43e1418c0088fd37a9c6a534d50d",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 25802,
+      "motor_sha256": "a58468dc8202b760df9e285defb6d2c92ea577f4ae03f992e05855f45d3f09cc",
+      "actions_sha256": "47fe8cfe05ed18d1c90371ae9a111027673faf54ce52e8605f3953cf36f90325",
+      "result_sha256": "39e90ebdf360174bda88b0e89cc009783db120c71660caa9c0dbd8215effc084",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "cbe88b302928bacf0d4a5ce1efa4fb76cc4c0a8d6fa97750cccf9d9948702a24",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3112,
+          "final_position_m": [
+            0.30629047751426697,
+            0.6731792092323303,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.27067553069490913,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.07317920923233034,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3240,
+          "final_position_m": [
+            0.35138389468193054,
+            0.6867042779922485,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2678358583634532,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08670427799224856,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3742,
+          "final_position_m": [
+            0.4647565484046936,
+            0.7288365960121155,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28756009509054536,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.1288365960121155,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 43,
+      "seed": 918119721,
+      "salt": "8fc71c7b6bccfead8ca1a392bd196f4a339348fade7d4f8a",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 27922,
+      "motor_sha256": "78b501ed4291a6f5c0c8bc6f3365f6f4311d301e446f4e0104e7a74fe0f5c81c",
+      "actions_sha256": "0a0ec41dbb55cc65514f90907685a5ee6caedcfdbcecc2010791932d70337878",
+      "result_sha256": "c01b67ada38e25b4cd4fabc1e32c64713512f0086ad4a32671517b38a25cb8a9",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "58993720275d892797e110369ad31db067f9abaac671c34c3ef5c6b62eba4858",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3933,
+          "final_position_m": [
+            0.3178159296512604,
+            0.6983148455619812,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2924488760016487,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.09831484556198122,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3207,
+          "final_position_m": [
+            0.39710885286331177,
+            0.7060711979866028,
+            0.5599977970123291
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2803090925907011,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.1060711979866028,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 3839,
+          "final_position_m": [
+            0.3988032042980194,
+            0.6942645311355591,
+            0.5999889969825745
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.28305085525654633,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0942645311355591,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 44,
+      "seed": 2573835764,
+      "salt": "409c09d421125be9d24ab00895c35ec9fc8ee743795ec7fc",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 28502,
+      "motor_sha256": "1c7e137bab116cd7d6d8e0d887241601979648f8a77ebd1673e9a70e6bcb59fe",
+      "actions_sha256": "e0f707bd1c87cf39396d263461ec2bc77b54d84c9b973c87dc755ac3507ad6eb",
+      "result_sha256": "701fc72e814ad17949a1de7f1258ed3b41048161c33376137a371c5464f737b7",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "aa3fe2441deaaf591239a6b32f65ea3052d5030678f987459c8861ada7037a04",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3110,
+          "final_position_m": [
+            0.19449418783187866,
+            0.6809720396995544,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2610023442843321,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.08097203969955447,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3799,
+          "final_position_m": [
+            0.33677777647972107,
+            0.7149916887283325,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.27205974486654494,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11499168872833254,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 5141,
+          "final_position_m": [
+            0.24998755753040314,
+            0.7215069532394409,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2906094508295169,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12150695323944094,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 45,
+      "seed": 962287313,
+      "salt": "fae726d582654ae5666327cb02b7855bf06ec4ad2bdf4eed",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 27602,
+      "motor_sha256": "cc8a587522bdd14c6cbd61bea9eb8fb109a629a90ea52577e170ebd879d6ebd9",
+      "actions_sha256": "f81c137a4e0a2040f68a36e953d6c29f1116863f987d3076c470d8f6234bf3be",
+      "result_sha256": "2529cbfd0fb1c4f8c09f34fb7d391ca8e20bdd1fda81e0f2d87e1e17c804db52",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "8127087f4cfe15e7276f5e9b56da4fad9a57aa18206d15ac839c4d19c055a7db",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3109,
+          "final_position_m": [
+            0.2543802559375763,
+            0.7081475853919983,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3045501480435274,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10814758539199831,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3892,
+          "final_position_m": [
+            0.274323970079422,
+            0.6509599685668945,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.24681174526390198,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.05095996856689455,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3762,
+          "final_position_m": [
+            0.32867440581321716,
+            0.7189533114433289,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.29842819551858585,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11895331144332888,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 46,
+      "seed": 320391011,
+      "salt": "eeb8d0d567cd283098de75656a3fb5a6a0b397c82b4a15a4",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 23864,
+      "motor_sha256": "928ca32c6fe017379dc582651de36f0712b5d4f1d21b8bd15befdc615de81203",
+      "actions_sha256": "63d6663e70646d7526504be83c3b85cc9a6b198edcbab830d79a0614c3453c76",
+      "result_sha256": "68278273af92607f083d2279eeef349d2263572db6f6a95d4b8acace15bd7f64",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "c361bff59237c61285c52dbeb68da78c111e9d67669b076ddd310bd8a3463842",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3525,
+          "final_position_m": [
+            0.23051978647708893,
+            0.6882894039154053,
+            0.5599989891052246
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3002818368064697,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0882894039154053,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3834,
+          "final_position_m": [
+            0.36337265372276306,
+            0.7119966745376587,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2879379995744878,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11199667453765871,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3161,
+          "final_position_m": [
+            0.35231420397758484,
+            0.6569404602050781,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.23951613286462703,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.05694046020507815,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 47,
+      "seed": 458352548,
+      "salt": "577381bc19443b2f7bac40e5e9af91bb0d163959b4473d55",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 9716,
+      "motor_sha256": "bd4d2357c30a4826e09c4de019640a6fca1fe02e0068c79e672abb1dba9c893c",
+      "actions_sha256": "401ca0681b5203e6db2dc96af218fd0c18ffea4bee3c5f4e407b5342832eb418",
+      "result_sha256": "1ac8893b068038b67d75076cf219925c661326a049d0caed9e8d7f385cfb9c03",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "6fe0d1cfe1a563a47fac5df382af3a4b32867fd1ff3e9abdd3332dbb386677fe",
+      "error": "ValueError: Lost red during two transport attempts",
+      "cubes": {
+        "red": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 2079,
+          "final_position_m": [
+            0.30600205063819885,
+            0.009619622491300106,
+            -0.014301076531410217
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.5525950164024578,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.5903804063796997,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 6.71586253275791e-09
+        },
+        "green": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.7698701620101929,
+            -0.02282273769378662,
+            -0.014301065355539322
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.6795096461658758,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.6228227376937866,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 3.725290298461914e-09
+        },
+        "blue": {
+          "passed": false,
+          "opposing_finger_airborne_ticks": 0,
+          "final_position_m": [
+            0.8312715888023376,
+            0.18601782619953156,
+            -0.014301075600087643
+          ],
+          "table_contact_tail_ticks": 0,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.7127581455056531,
+          "cube_center_over_table": false,
+          "nearest_table_edge_m": -0.4139821887016296,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 4.6566128730773926e-09
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 48,
+      "seed": 1516383459,
+      "salt": "eaedf61a136bb963510e6243e0ba7fbed4e4dc2c06ad0c8f",
+      "passed": true,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 29102,
+      "motor_sha256": "2315031093753786d3234531e2f47019e8a7921fd72011d1159214daa2e6fe67",
+      "actions_sha256": "589e8c6b9e8a86d93a28f8aee717b8c0b9c550b777d710fad1cd761a17746825",
+      "result_sha256": "8a07508c6727fab8f2ae51d344d028683b0c695e7af5f54681c34d57e19bfb67",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "0b52e1a936f615e972109591392dee928af7a6bf46b47cb4a7aac0603806d7e1",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3995,
+          "final_position_m": [
+            0.27325761318206787,
+            0.7188919186592102,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.30500295865631766,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11889191865921023,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3761,
+          "final_position_m": [
+            0.3453957438468933,
+            0.714384913444519,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2854742593918058,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.11438491344451907,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3244,
+          "final_position_m": [
+            0.344047486782074,
+            0.6591387987136841,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.23475951830669894,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.059138798713684104,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    },
+    {
+      "index": 49,
+      "seed": 2980733694,
+      "salt": "4d2303dde17a3dc757095801f3c9444cea82a3c2e1822f4c",
+      "passed": false,
+      "verified": true,
+      "guard_bypasses": 0,
+      "rejected_motor_writes": 0,
+      "physics_ticks": 22744,
+      "motor_sha256": "c379ed46073b72a1d397fee24d643f3673c6a8206f038ef4548518f0f6c9027d",
+      "actions_sha256": "1dd0a30f3d5015e21b93ef5b39466c5c917c7797c64e6a0aeb6b78b5d20f01dd",
+      "result_sha256": "9b270a5890bd81708aa07e04e402907809d9fad4db96e1018825daee37482c66",
+      "calibration_sha256": "65c5ccadf34bd9923ef62af26742714d83201dcc4ff45d3f3141c5319affbec2",
+      "source_sha256": "1bb8b3bba3a22cf09b2e0c7ace9381c917c72e683ed70bb32ac14c67e8b916c2",
+      "error": null,
+      "cubes": {
+        "red": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3957,
+          "final_position_m": [
+            0.28065913915634155,
+            0.7216556668281555,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.3173044325477577,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.12165566682815554,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "green": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3237,
+          "final_position_m": [
+            0.25512492656707764,
+            0.6476867198944092,
+            0.5599988698959351
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.25492989246849523,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.0476867198944092,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        },
+        "blue": {
+          "passed": true,
+          "opposing_finger_airborne_ticks": 3443,
+          "final_position_m": [
+            0.3360172212123871,
+            0.7018148303031921,
+            0.5599989295005798
+          ],
+          "table_contact_tail_ticks": 100,
+          "detached": true,
+          "min_finger_clearance_tail_m": 0.2872080878049445,
+          "cube_center_over_table": true,
+          "nearest_table_edge_m": 0.10181483030319216,
+          "required_table_inset_m": 0.035,
+          "settle_motion_m": 0.0
+        }
+      },
+      "robot_furniture_contacts": {}
+    }
+  ]
+}

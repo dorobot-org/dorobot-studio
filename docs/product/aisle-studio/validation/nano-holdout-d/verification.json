@@ -1,0 +1,9 @@
+{
+  "manifest_sha256": "949e2dc1e704cbad9b461ad203b8fb42b6d3e76aae4459211f3f3a4d6b53bb61",
+  "split": "hidden",
+  "cases": 50,
+  "successes": 45,
+  "verified": 50,
+  "verified_guard_bypasses": 0,
+  "qualified": true
+}

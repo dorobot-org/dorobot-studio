@@ -57,6 +57,8 @@ fn backend_supervises_local_worker_and_preserves_accepted_artifacts() {
             .as_nanos()
     ));
     fs::create_dir(&root).unwrap();
+    // The worker reports its physical working directory, including on macOS.
+    let root = root.canonicalize().unwrap();
     let python = root.join("test-interpreter");
     fs::write(&python, r#"#!/bin/sh
 set -eu

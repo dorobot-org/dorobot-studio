@@ -1,0 +1,83 @@
+{
+  "builds": {
+    "10-half-deepseek": {
+      "source_commit": "252982f8742415f2c13eed3e94b17ffd0a10e8e3",
+      "native_binary_sha256": "0f9cd5cd722d356f578d2684eea1028ebac5617c7eff780e18faddef7338ed2c",
+      "source_manifest_sha256": "3c965f713eeac250da325ebfa4d89101158cb37d27b951f1ec69ffcc3d2646d0"
+    }
+  },
+  "10-half-deepseek": {
+    "period_s": 0.5,
+    "provider": "deepseek-v4-flash",
+    "shared_seconds": 93.168506167,
+    "viewport_fps": 28.606509320726772,
+    "draws": 2665,
+    "complete_draw_seconds": 93,
+    "seconds_below_25_fps": 1,
+    "worker_publication_hz": [
+      2.0003503776725804,
+      2.0000038261262385,
+      2.000017064102347,
+      1.999898839344025,
+      1.9998522001123997,
+      2.0000663977069575,
+      1.9997685895096888,
+      2.000135022628453,
+      1.9998516335152317
+    ],
+    "client_delivery_hz": [
+      2.0057139094212304,
+      2.000819271487088,
+      2.004679517469814,
+      2.003104546771488,
+      1.9973218598431894,
+      2.0052316430823676,
+      2.0040064389355234,
+      1.9974588189298237,
+      2.00589233210607
+    ],
+    "published_received_in_window": [
+      [
+        187,
+        186
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        186,
+        187
+      ],
+      [
+        186,
+        186
+      ],
+      [
+        186,
+        187
+      ],
+      [
+        186,
+        187
+      ],
+      [
+        187,
+        187
+      ],
+      [
+        186,
+        187
+      ],
+      [
+        186,
+        187
+      ]
+    ],
+    "meets_cadence": true,
+    "transfers": 10,
+    "motor_sha256": "ec54357e1cfac70354fab7da1716d408f0694ed563b1cc49707168fa89d21ec6",
+    "supported_ticks": 6848,
+    "exported_frames": 342
+  }
+}

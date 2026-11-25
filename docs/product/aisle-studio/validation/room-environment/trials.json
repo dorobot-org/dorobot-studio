@@ -1,0 +1,128 @@
+{
+  "baseline": {
+    "seed": 0,
+    "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "task_success": true,
+    "physics_ticks": 6908,
+    "frames": 345,
+    "wheel_supported_ticks": 6908,
+    "max_joint_excursion_rad": 0,
+    "root_pose_writes": 0,
+    "room_revision_sha256": "b4e922a72fd7c095a4e01ba59100aff2ab319bb50ac5a6e1ed362b65223f4978",
+    "red": {
+      "passed": true,
+      "opposing_finger_airborne_ticks": 3256,
+      "final_position_m": [
+        0.14495334029197693,
+        0.7244840264320374,
+        0.5599989891052246
+      ],
+      "table_contact_tail_ticks": 100,
+      "detached": true,
+      "min_finger_clearance_tail_m": 0.3031620124217603,
+      "cube_center_over_table": true,
+      "nearest_table_edge_m": 0.12448402643203738,
+      "required_table_inset_m": 0.035,
+      "settle_motion_m": 0.0
+    },
+    "backend": "metal",
+    "nexus": "0.2.1",
+    "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+    "ambient_rgb": [
+      0.58,
+      0.6,
+      0.62
+    ],
+    "floor_friction": 0.65,
+    "original_calibration_sha256": "b65e4cbf7023d65337f207f5b85c6e176ef40ef1d41958050a8c1dfa3ca45149"
+  },
+  "headless": {
+    "seed": 0,
+    "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "task_success": true,
+    "physics_ticks": 7028,
+    "frames": 351,
+    "wheel_supported_ticks": 7028,
+    "max_joint_excursion_rad": 0,
+    "root_pose_writes": 0,
+    "room_revision_sha256": "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8",
+    "red": {
+      "passed": true,
+      "opposing_finger_airborne_ticks": 3298,
+      "final_position_m": [
+        0.15587514638900757,
+        0.68629390001297,
+        0.5599989295005798
+      ],
+      "table_contact_tail_ticks": 100,
+      "detached": true,
+      "min_finger_clearance_tail_m": 0.27543212075882856,
+      "cube_center_over_table": true,
+      "nearest_table_edge_m": 0.08629390001296999,
+      "required_table_inset_m": 0.035,
+      "settle_motion_m": 0.0
+    },
+    "backend": "metal",
+    "nexus": "0.2.1",
+    "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+    "ambient_rgb": [
+      0.4,
+      0.42,
+      0.44
+    ],
+    "floor_friction": 0.8,
+    "makepad": "headless",
+    "size": "1440x900",
+    "studio_commit": "c2947885f1982b6e4dd9cdbc0b36976f108477df",
+    "binary_sha256": "dc56debdd0ebc2501b0a154f624052207a1bad1daa389ce8c778e0537241682c",
+    "exported_frames_per_camera": 351,
+    "verified_after_restart": true,
+    "original_calibration_sha256": "b65e4cbf7023d65337f207f5b85c6e176ef40ef1d41958050a8c1dfa3ca45149"
+  },
+  "offscreen": {
+    "seed": 0,
+    "controller_hash": "9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f",
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "task_success": true,
+    "physics_ticks": 7028,
+    "frames": 351,
+    "wheel_supported_ticks": 7028,
+    "max_joint_excursion_rad": 0,
+    "root_pose_writes": 0,
+    "room_revision_sha256": "670953118e80a094631dcc57f52c3c78ef05b6e87c8fd53e7416b314bb6f4cc8",
+    "red": {
+      "passed": true,
+      "opposing_finger_airborne_ticks": 3298,
+      "final_position_m": [
+        0.15587514638900757,
+        0.68629390001297,
+        0.5599989295005798
+      ],
+      "table_contact_tail_ticks": 100,
+      "detached": true,
+      "min_finger_clearance_tail_m": 0.27543212075882856,
+      "cube_center_over_table": true,
+      "nearest_table_edge_m": 0.08629390001296999,
+      "required_table_inset_m": 0.035,
+      "settle_motion_m": 0.0
+    },
+    "backend": "metal",
+    "nexus": "0.2.1",
+    "aisle_revision": "dbd34a71b6f82a011541b433306ca7e6a705e823",
+    "ambient_rgb": [
+      0.4,
+      0.42,
+      0.44
+    ],
+    "floor_friction": 0.8,
+    "makepad": "offscreen",
+    "size": "1024x768",
+    "studio_commit": "c2947885f1982b6e4dd9cdbc0b36976f108477df",
+    "binary_sha256": "dc56debdd0ebc2501b0a154f624052207a1bad1daa389ce8c778e0537241682c",
+    "exported_frames_per_camera": 351,
+    "verified_after_restart": true,
+    "original_calibration_sha256": "b65e4cbf7023d65337f207f5b85c6e176ef40ef1d41958050a8c1dfa3ca45149"
+  }
+}

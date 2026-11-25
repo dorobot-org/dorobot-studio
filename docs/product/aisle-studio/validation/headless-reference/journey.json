@@ -1,0 +1,133 @@
+[
+  {
+    "check": "Nano profile",
+    "robot": "Nano",
+    "status": "Ready"
+  },
+  {
+    "check": "Nano prepare",
+    "robot": "Nano",
+    "status": "Completed \u00b7 Nano \u00b7 prepare"
+  },
+  {
+    "check": "Nano model",
+    "robot": "Nano",
+    "status": "Completed \u00b7 Nano \u00b7 scene"
+  },
+  {
+    "check": "Nano run",
+    "robot": "Nano",
+    "status": "Completed \u00b7 Nano \u00b7 run"
+  },
+  {
+    "check": "Nano episode exported",
+    "robot": "Nano",
+    "status": "Completed \u00b7 Nano \u00b7 export"
+  },
+  {
+    "check": "Nano scored and retained",
+    "robot": "Nano",
+    "recording": true,
+    "task_success": true,
+    "tolerance_rad": 0.015,
+    "frames": 25,
+    "steps": 121,
+    "joint": "left_j2_pitch",
+    "measured_delta": 0.09993226826190948,
+    "requested_delta": 0.1,
+    "within_limits": true,
+    "fixture": "standard",
+    "model_hash": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+    "controller_hash": "6b2fb3c2d1af7366f006bed3605f5707380080610ecb938a84e1dbd34a581a97"
+  },
+  {
+    "check": "G1 profile",
+    "robot": "G1",
+    "status": "Ready"
+  },
+  {
+    "check": "G1 prepare",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 prepare"
+  },
+  {
+    "check": "G1 model",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 scene"
+  },
+  {
+    "check": "G1 compliant fixture selected",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 scene"
+  },
+  {
+    "check": "G1 run",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 run"
+  },
+  {
+    "check": "G1 episode exported",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 export"
+  },
+  {
+    "check": "G1 scored and retained",
+    "robot": "G1",
+    "recording": true,
+    "task_success": true,
+    "tolerance_rad": 0.015,
+    "frames": 25,
+    "steps": 121,
+    "joint": "left_shoulder_pitch_joint",
+    "measured_delta": 0.1000392958521843,
+    "requested_delta": 0.1,
+    "within_limits": true,
+    "fixture": "compliant",
+    "model_hash": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8",
+    "controller_hash": "d1eea99860efa9509e462063084fa9f31b2b2ba0e0dd0b72023eeb7b0f7ee9b4"
+  },
+  {
+    "check": "previous evidence",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 export"
+  },
+  {
+    "check": "next evidence",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 export"
+  },
+  {
+    "check": "G1 second revision",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 prepare"
+  },
+  {
+    "check": "G1 earlier revision",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 prepare"
+  },
+  {
+    "check": "G1 later revision",
+    "robot": "G1",
+    "status": "Completed \u00b7 G1 \u00b7 prepare"
+  },
+  {
+    "check": "operator stop retained",
+    "robot": "G1",
+    "status": "Stopped by operator"
+  },
+  {
+    "check": "cancelled worker group exited",
+    "process_group": 41990
+  },
+  {
+    "check": "reopen scored evidence",
+    "robot": "G1",
+    "status": "Stopped by operator"
+  },
+  {
+    "check": "native Replay loaded episode",
+    "robot": "G1",
+    "frames": 25
+  }
+]

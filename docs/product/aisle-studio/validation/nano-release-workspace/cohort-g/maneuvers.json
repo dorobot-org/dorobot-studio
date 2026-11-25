@@ -1,0 +1,51 @@
+{
+  "development_gate": {
+    "landmark-development": {
+      "cases": 5,
+      "successes": 4,
+      "verified": 5,
+      "verified_guard_bypasses": 0
+    },
+    "landmark-controls": {
+      "cases": 4,
+      "successes": 4,
+      "verified": 4,
+      "verified_guard_bypasses": 0
+    }
+  },
+  "shared_seeds": 0,
+  "cohort_f": {
+    "maneuvers": {
+      "no base reposition requested": {
+        "layouts": 43,
+        "successes": 41
+      },
+      "turn": {
+        "layouts": 7,
+        "successes": 4
+      }
+    },
+    "max_commanded_lateral_path_per_cube_m": 0.0,
+    "layouts_with_wheel_support_gap": 0,
+    "layouts_with_robot_furniture_contact": 0
+  },
+  "cohort_g": {
+    "maneuvers": {
+      "no base reposition requested": {
+        "layouts": 45,
+        "successes": 37
+      },
+      "sidestep": {
+        "layouts": 2,
+        "successes": 1
+      },
+      "turn": {
+        "layouts": 3,
+        "successes": 0
+      }
+    },
+    "max_commanded_lateral_path_per_cube_m": 0.07816645950078965,
+    "layouts_with_wheel_support_gap": 2,
+    "layouts_with_robot_furniture_contact": 0
+  }
+}

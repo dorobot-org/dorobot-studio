@@ -1,0 +1,88 @@
+{
+  "provider": "codex",
+  "instruction": "For a table transfer, set track_grasp=true when asked to grasp a moving or sliding cube or to update the pickup from RGB while the arm descends. For other tasks set track_grasp=false. Select one Nano capability. For joint-inspection use a fixed-base shoulder displacement of 0.03\u20130.15 rad in magnitude, within limits {\"left_j2_pitch\": [-2.61799387799, 2.61799387799], \"right_j2_pitch\": [-2.61799387799, 2.61799387799]}. For visual-approach use the floating base to approach one named red, green or blue floor cube and stop 0.40\u20130.55 metres from it (default 0.45 m). Use only onboard RGB and encoders. For table-transfer use the left arm to pick floor cubes and place them on the coffee table. Select named colors in their requested order, or red,green,blue for all three. This is a development simulation. Other destinations, unspecified objects, excessive displacements and other motions are unsupported. Set supported=false for these. Fill unused fields with legal defaults. Operator instruction: Revise the red floor cube to coffee table transfer after the recorded wheel-support loss. Limit forward speed to 0.080 m/s and preserve the original physical acceptance criteria.\nIf selecting the target requires comparing its current position with others and no onboard measurements are provided, reject the request.\nFor a Nano table transfer you may revise its positive forward speed limit in metres/second, from 0.025 to 0.13. Use the recorded support verdict, active commands and operator instruction. Return null to keep the previous forward limit, or for a different capability. The limit preserves braking, reverse motion, steering and the existing wheel-support test.\nPrevious measured trial to revise: {\"robot\": \"Nano\", \"kind\": \"table-transfer\", \"requested\": [\"red\"], \"phase\": \"back away\", \"task_success\": false, \"controller_hash\": \"9c6d9afa5811749e776dab866f107eb7db2aac5bad69906aea3e3886f3f07c5f\", \"wheel_support\": {\"physics_ticks\": 6808, \"supported_ticks\": 6806, \"unsupported_ticks\": 2, \"first_intervals\": [{\"first_tick\": 305, \"last_tick\": 305, \"phase\": \"locate\", \"active_command\": {\"issued_tick\": 300, \"kind\": \"wheel\", \"forward_m_s\": 0.12, \"yaw_rad_s\": 0.016104407560658653}}, {\"first_tick\": 4067, \"last_tick\": 4067, \"phase\": \"carry\", \"active_command\": {\"issued_tick\": 4058, \"kind\": \"wheel\", \"forward_m_s\": 0.055, \"yaw_rad_s\": 0.03386785291878434}}], \"max_forward_speed_m_s\": 0.13}, \"settled\": {\"red\": true}, \"onboard_observations\": {\"red\": {\"last_wrist_jaw\": {\"tick\": 5988, \"cube_visible\": false}, \"last_rgb_table_rim\": {\"tick\": 4538, \"distance_m\": 0.30947764269761774, \"height_m\": 0.5376359822226482, \"angle_rad\": -0.002893265344327812}}}}",
+  "output_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "joint",
+      "delta_rad",
+      "supported",
+      "kind",
+      "color",
+      "standoff_m",
+      "color_order",
+      "track_grasp",
+      "max_forward_speed_m_s"
+    ],
+    "properties": {
+      "joint": {
+        "type": "string",
+        "enum": [
+          "left_j2_pitch",
+          "right_j2_pitch"
+        ]
+      },
+      "delta_rad": {
+        "type": "number"
+      },
+      "supported": {
+        "type": "boolean"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "joint-inspection",
+          "visual-approach",
+          "table-transfer"
+        ]
+      },
+      "color": {
+        "type": "string",
+        "enum": [
+          "red",
+          "green",
+          "blue"
+        ]
+      },
+      "color_order": {
+        "type": "string",
+        "enum": [
+          "red",
+          "green",
+          "blue",
+          "red,green",
+          "red,blue",
+          "green,red",
+          "green,blue",
+          "blue,red",
+          "blue,green",
+          "red,green,blue",
+          "red,blue,green",
+          "green,red,blue",
+          "green,blue,red",
+          "blue,red,green",
+          "blue,green,red"
+        ]
+      },
+      "track_grasp": {
+        "type": "boolean"
+      },
+      "standoff_m": {
+        "type": "number"
+      },
+      "max_forward_speed_m_s": {
+        "anyOf": [
+          {
+            "type": "number",
+            "minimum": 0.025,
+            "maximum": 0.13
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    }
+  }
+}

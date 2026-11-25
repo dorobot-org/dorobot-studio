@@ -10,7 +10,48 @@ import math
 import numpy as np
 
 
-def create_rig(scene, robot, resolution=(640, 480)):
+MOUNTS = {
+    "head": "head_tilt",
+    "left_wrist": "left_wrist_cam",
+    "right_wrist": "right_wrist_cam",
+}
+
+
+def validate_rig(cameras, resolution):
+    if not isinstance(cameras, dict) or set(cameras) != set(MOUNTS):
+        raise ValueError("Calibration requires the head and both wrist cameras")
+    width, height = resolution
+    for name, link in MOUNTS.items():
+        row = cameras[name]
+        pose = np.asarray(row["link_from_camera_gl"], dtype=float)
+        intr = np.asarray(row["intrinsics"], dtype=float)
+        if row["parent_link"] != link or tuple(row["resolution"]) != (width, height):
+            raise ValueError(f"Calibration mount or frame size differs for {name}")
+        if (
+            pose.shape != (4, 4)
+            or not np.isfinite(pose).all()
+            or not np.allclose(pose[3], [0, 0, 0, 1], atol=1e-7)
+            or not np.allclose(pose[:3, :3].T @ pose[:3, :3], np.eye(3), atol=1e-5)
+            or not np.isclose(np.linalg.det(pose[:3, :3]), 1, atol=1e-5)
+        ):
+            raise ValueError(f"{name} needs a rigid link-to-camera transform")
+        if intr.shape != (3, 3) or not np.isfinite(intr).all():
+            raise ValueError(f"Invalid intrinsic matrix for {name}")
+        focal = intr[1, 1]
+        if not 1 <= math.degrees(
+            2 * math.atan2(height, 2 * focal)
+        ) <= 175 or not np.allclose(
+            intr,
+            [[focal, 0, width / 2], [0, focal, height / 2], [0, 0, 1]],
+            atol=1e-5,
+            rtol=0,
+        ):
+            raise ValueError(
+                f"Nexus requires centered rectified pinhole intrinsics for {name}"
+            )
+
+
+def create_rig(scene, robot, resolution=(640, 480), calibration=None):
     from aisle.sim.nexus_backend import pos_lookat_up_to_transform
 
     definitions = [
@@ -32,6 +73,8 @@ def create_rig(scene, robot, resolution=(640, 480)):
             [0, 0, -1],
         ),
     ]
+    if calibration is not None:
+        validate_rig(calibration, resolution)
     rig, specs = {}, {}
     width, height = resolution
     fov = 70.0
@@ -40,6 +83,11 @@ def create_rig(scene, robot, resolution=(640, 480)):
         offset = pos_lookat_up_to_transform(
             position, np.asarray(position) + forward, up
         )
+        if calibration is not None:
+            measured = calibration[name]
+            offset = np.array(measured["link_from_camera_gl"])
+            focal = float(measured["intrinsics"][1][1])
+            fov = math.degrees(2 * math.atan2(height, 2 * focal))
         camera = scene.add_camera((width, height), fov)
         camera.attach(robot.get_link(link), offset)
         rig[name] = camera
@@ -53,7 +101,11 @@ def create_rig(scene, robot, resolution=(640, 480)):
             intrinsics=[[focal, 0, width / 2], [0, focal, height / 2], [0, 0, 1]],
             link_from_camera_gl=offset.tolist(),
             camera_convention="OpenGL: +X right, +Y up, -Z forward",
-            optical_calibration="nominal simulation assumption; not measured hardware calibration",
+            optical_calibration=(
+                "imported rectified camera calibration"
+                if calibration is not None
+                else "nominal simulation optics"
+            ),
             channels=[
                 "rgb",
                 "depth",

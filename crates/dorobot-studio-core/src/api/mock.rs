@@ -74,7 +74,7 @@ impl Backend for MockBackend {
     fn dispatch(&mut self, intent: Intent) {
         match intent {
             Intent::SetCapturePreferences {..} | Intent::SelectSimulation(_) | Intent::StartSimulation | Intent::StopSimulation | Intent::SimulationCapture {..} | Intent::OpenSavedRecording | Intent::CreateRig {..} => {},
-            Intent::Nexus(_)
+            Intent::Aisle(_) | Intent::Nexus(_)
             | Intent::ConfigureRig(_)
             | Intent::SelectNanoBase(_)
             | Intent::ConnectNanoBase { .. }
@@ -408,6 +408,7 @@ fn playback_fixture() -> PlaybackState {
 
     PlaybackState {
         dataset_name: "aimee-0720".into(),
+        dataset_root: None,
         episodes: vec![
             ep(0, "assemble_kit", 14.2, g),
             ep(1, "assemble_kit", 15.8, g),

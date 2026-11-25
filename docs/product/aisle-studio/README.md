@@ -1,0 +1,125 @@
+# AISLE Studio
+
+Open **AISLE Studio** in the DoRobot Studio sidebar. DeepSeek through Octos and Codex can each author simulation tasks on the repository’s Adora Nano and Unitree G1 models. The Nano can approach colored cubes using onboard RGB or transfer them from the floor to a coffee table. The G1 can track a shoulder target in a fixed fixture or while standing on both feet. AISLE drives the Nexus simulation, and Studio displays independent measurements for each trial.
+
+[Product requirements](PRD.md) · [Codex-generated UX board](workbench-design.png) · [Design review](design-review.md) · [Native UI and validation](validation/README.md)
+
+## Simulation acceptance
+
+| Reference task | Verified result |
+| --- | --- |
+| Adora Nano moves three floor cubes to the coffee table using onboard RGB and encoders | 45/50 previously hidden layouts for the continuous-tracking controller. All 50 motor records verified with zero guard bypasses. [Open the five failures or rerun a layout](validation/nano-release-workspace/cohort-f/README.md) |
+| Unitree G1 stands, reaches and recovers from bounded frontal impacts | 20/20 on the fresh 20-case set and 20/20 on a repeat of the same cases. Both feet stayed loaded on all 80,000 scored steps. [Inspect the impact envelope, wrist error and contacts](validation/g1-thirty-degree-reach/README.md) |
+| Task, Scene, Run and Evidence | The generated four-screen design scored 92/100 and the native UI scored 91/100 on the internal rubric. [Design deductions](design-review.md) · [Headless Makepad verification](validation/README.md) |
+
+## Operator guides
+
+For a prepared Nano floor-to-table transfer, open **Scene → Onboard camera rendering** and choose **Compact** to use reduced robot visual meshes and a smaller shadow atlas. **Original** is the default. The setting applies to all three simulated onboard RGB cameras, including images seen by the controller and exported to the dataset. Controllers bound to an original-camera scene observation require the original profile. [Inspect the measured camera differences and viewport cadence](validation/compact-cameras/README.md)
+
+[Pin a room baseline and replay the first different action in either recording](validation/room-environment/compare-recordings.md)
+
+[Change Nano room lighting and floor friction, then measure the effect in Nexus](validation/room-environment/README.md)
+
+[Review the settings a controller revision changed and identify its measured parent](validation/controller-review/README.md)
+
+[Find a joint and read its limits on the Nano or G1 model](validation/joint-inspector/README.md)
+
+[Fit the Nano camera mounts from surveyed RGB landmarks and verify them in Scene](validation/room-survey/camera-mounts.md)
+
+[Choose an earlier controller revision and run it after restarting Studio](validation/controller-selection/README.md)
+
+[Revise a Nano controller after a measured loss of wheel support](validation/nano-forward-speed/README.md)
+
+[Stream a Linux H100 Nano worker, reconnect and replay its measured outcome](validation/remote-nano/README.md)
+
+[Revise a failed Nano pickup with Codex or DeepSeek using its recorded RGB observations](validation/observed-revision/README.md)
+
+[Watch DeepSeek place three cubes in observed left-to-right order](validation/onboard-authoring/three-cubes.mp4)
+
+[Rerun a disclosed Nano layout and inspect the onboard images behind a placement decision](validation/nano-release-workspace/README.md)
+
+[Compare two Nano or G1 evaluations in the native Evidence page](validation/native-cohort-comparison/README.md)
+
+[Author from the actual Nano camera view](validation/onboard-authoring/README.md) · [Track a moving floor cube](validation/moving-target/README.md) · [Test camera delay and recovery](validation/camera-timing/README.md) · [Verify a 50-layout Nano evaluation](validation/nano-qualification.md) · [Import and edit a surveyed living room](validation/room-survey/README.md) · [Train and evaluate the G1 standing checkpoint](validation/g1-standing-checkpoint/README.md) · [Inspect the latest repeated G1 frontal impacts](validation/g1-frontal-impact/README.md) · [Inspect the previous torso-impact evaluations](validation/g1-torso-impact/README.md) · [Verify the original 20 G1 standing reaches under bounded impacts](validation/g1-standing-reach/README.md) · [Stand and track a shoulder target on G1](validation/g1-standing.md) · [Move cubes to the table with DeepSeek via Octos](validation/nano-table-transfer.md) · [Three-camera demo](validation/nano-table-transfer.mp4) · [Replayable three-cube dataset](validation/nano-table-transfer-lerobot.zip) · [Run a Nano cube approach with DeepSeek or Codex](validation/nano-rgb-approach.md) · [Watch the actual camera recording](validation/nano-rgb-approach.mp4)
+
+## Run from a Studio source checkout
+
+Use an Apple Silicon Mac with Metal, a working Studio Rust toolchain, Python 3.13, uv and FFmpeg (including ffprobe and the development libraries for Studio video playback). The tested AISLE source revision is `dbd34a71b6f82a011541b433306ca7e6a705e823`. Set `DOROBOT_AISLE_ROOT` to a checkout of that revision. To obtain a separate checkout from GitHub, run the following from the Studio repository root.
+
+```sh
+git clone https://github.com/moxin-org/AISLE.git ../aisle-workbench-runtime
+git -C ../aisle-workbench-runtime checkout --detach dbd34a71b6f82a011541b433306ca7e6a705e823
+export DOROBOT_AISLE_ROOT="$(cd ../aisle-workbench-runtime && pwd)"
+uv venv --python 3.13 .venv-aisle
+uv pip install --python .venv-aisle/bin/python numpy==2.5.5 pillow==13.0.0 dimforge-nexus3d==0.2.1 pyarrow==26.0.1 pyyaml==6.0.3 opencv-python-headless==5.1.0.95 scipy==1.18.1
+python3 tools/fetch_robot_meshes.py g1
+cargo run --locked -p dorobot-flex --bin dorobot-flex -- --screen aisle-task
+```
+
+An existing checkout at `../AISLE` and a Studio-local `.venv-aisle/bin/python` are discovered automatically. Override the interpreter with `DOROBOT_AISLE_PYTHON`. **DeepSeek via Octos** uses the Octos CLI and a DeepSeek credential configured in Octos. Set `DOROBOT_OCTOS_PROFILE` to your stored DeepSeek profile if required. The default model is `deepseek-v4-flash`; `DOROBOT_OCTOS_MODEL` selects another DeepSeek model. Studio requests a one-turn read-only Octos session and checks the returned model identity and controller fields. **Ask Codex** uses an authenticated Codex CLI on PATH. **Use reference task** works locally without an inference service. The source workbench uses external Python and a GPU. Desktop release bundles require separate integration.
+
+### Use DeepSeek as the only author
+
+Install Octos on the Studio machine and configure a DeepSeek profile. On this Mac the profile was named `dsflash`. With an existing profile, the following setup reads the credential interactively into Keychain. [Octos project](https://github.com/octos-org/octos)
+
+```sh
+export DOROBOT_OCTOS_PROFILE=dsflash
+octos auth set-key --profile "$DOROBOT_OCTOS_PROFILE" DEEPSEEK_API_KEY
+octos --version
+```
+
+Select **DeepSeek via Octos** for a new task and **Revise with DeepSeek** for a selected measured run. Enable **Onboard RGB** for location-dependent Nano instructions. The Octos CLI runs locally and inference uses the DeepSeek service. [Verified operation on both robots with Codex absent from PATH](validation/provider-comparison.md)
+
+### Work through the four pages
+
+1. **Task** — select a robot. Use the reference task or enter “Inspect the right shoulder with a displacement of minus 0.08 rad” and choose **DeepSeek via Octos** or **Ask Codex**. Read the joint, signed displacement, provider and revision. Select an earlier controller to repeat it. After a scored run, select it on Evidence, update the task text and choose **Revise with DeepSeek** or **Revise with Codex**. Either author can revise the selected trial, including a trial prepared by the other provider or the local reference controller. The agent receives the measured outcome and signed displacement. The new controller records the previous controller hash and measurements.
+2. **Scene** — inspect the mesh inventory. Open **Joint limits** to search all 17 Nano or 29 G1 movable joints and locate the selected child link on the model. Standard and Compliant select reproducible position gains of 28 and 18 respectively. These two inspection fixtures anchor the root and disable gravity. The Nano living-room and G1 standing tasks select their own floating-base scenes with gravity.
+3. **Run** — start the prepared controller. The operator camera and position feedback come from the active simulation. Stop cancels the job and retains a receipt. Each run has its own directory.
+4. **Evidence** — read the requested and measured displacement, guard verdict and trace. Navigate older runs or open the run folder. A prior run with the same robot, URDF hash, fixture, joint and displacement supplies a comparison. Choose **Export episode** to encode the 25 synchronized RGB frames and all measured joints and commands as a LeRobot episode. **Open in Replay** opens it in the existing Studio player. After restarting Studio, saved controllers and completed or stopped trials appear again.
+
+The inspection lasts 1.21 seconds of simulated time. It tests the selected shoulder against its URDF bounds at all 121 physics steps and saves 25 sampled angles. Success requires an absolute endpoint error below the smaller of 0.025 rad and 15% of the requested movement. The fixed-base inspection uses an external operator camera. The Nano mobile controller uses only its calibrated onboard cameras and encoders. Hardware qualification has its own gate in the PRD.
+
+Files live under the Studio user data directory in `aisle/`. On macOS the default is `~/Library/Application Support/DoRobot Studio/aisle/`. Each completed run retains the controller, model metadata, adapter and model hashes, operator RGB sequence, sampled encoder and command vectors, trajectory and verdict. The separate export job’s `dataset/` contains MP4, Parquet, feature statistics and `meta/aisle.json` with the trial ID, controller and model hashes. The inspection records its operator camera at 20 FPS. Nano table transfer records head and wrist cameras at 5 FPS. Set `DOROBOT_STUDIO_STATE_DIR` to isolate an experiment.
+
+## Reproduce the native checks
+
+Build the remote input client from the Makepad revision pinned in Cargo.lock, then build Studio. From the Studio root, with the runtime configured as above, run these commands. Use a fresh output directory for each invocation.
+
+```sh
+cargo install --locked --git https://github.com/OctoSense-org/makepad.git --rev 44d8220f12acfa46157019267e119e0866dd6b05 makepad-remote
+cargo build --locked -p dorobot-flex --bin dorobot-flex
+.venv-aisle/bin/python tools/aisle_workbench/verify.py --studio target/debug/dorobot-flex --backend headless --dark --size 1024x768 --codex --out /tmp/aisle-headless-proof
+.venv-aisle/bin/python tools/aisle_workbench/verify.py --studio target/debug/dorobot-flex --backend offscreen --size 1440x900 --codex --out /tmp/aisle-offscreen-proof
+```
+
+Use `--remote /path/to/makepad-remote` for a locally built client. Omit `--codex` to use reference controllers throughout. The driver sends pointer and keyboard events to the running application, restarts it with the same state directory and reads the saved trial files. The offscreen run also captures pixels. Both modes still use real Nexus physics and sensor rendering.
+
+Use `--octos-deepseek` in place of `--codex` in the native verification command to run the Nano approach and both G1 authoring turns through Octos. See the [measured provider comparison](validation/provider-comparison.md).
+
+The cohort D runtime met the Nano three-cube gate on 45/50 hidden layouts. On the later cohort E layouts, the frozen two-view and three-view wrist-monitor builds each scored 40/50. The final operator-selectable build has a separate layout-0 regression test. [Cohort D and replayable evidence](validation/nano-holdout-d/README.md)
+
+To reproduce a temporary wrist-camera loss or a sustained freeze during a Nano pick, choose the delivery condition on **Scene**. The experimental three-camera placement option recovered all three cubes on the demonstration layout and scored 40/50 on a separate concealed cohort. [Instructions, matched layouts and measured failures](validation/transfer-wrist-timing/README.md)
+
+For a recorded Nano transfer, Evidence can train a wrist detector from the exported dataset and evaluate the resulting revision on another layout. [Reproduce the three-cube training and comparison](validation/nano-grasp-checkpoint/README.md)
+
+To draft room geometry from a reference image and operator description, use **Draft from reference photo** on Scene. [Input format, review flow and measured native trials](validation/photo-room/README.md)
+
+[Reproduce the 30° G1 standing reach and its bounded frontal impact qualification](validation/g1-thirty-degree-reach/README.md)
+
+Run concurrent simulations from **Run → Workers**. Fetch the selected job into Evidence and Replay. [Configure local or SSH workers and reproduce the native trials](validation/worker-leases/README.md)
+
+To track a sliding floor cube during descent, request a moving pickup on Task, select a slide direction on Scene and inspect pre-contact speed and opposing-finger lift in Evidence. [Use and verify the moving-grasp controller](validation/moving-grasp/README.md)
+
+[Watch the Nano catch and place three moving cubes from its onboard cameras](validation/moving-grasp-wrist-agreement/README.md)
+
+Use **Evidence → Device preflight** to replay G1 encoders and IMU over DDS, observe an external telemetry source, or check the installed Nano adapter. [Setup, measurements and raw telemetry](validation/device-preflight/README.md)
+
+[Check the original overbroad Nano draft and both red-only runs](validation/single-cube-intent/README.md)
+
+[Watch a live Nano head camera and check concurrent simulation frame rates](validation/foreground-preview/README.md)
+
+[Read the live FPS counter and compare an H100 foreground with a Mac foreground across two hosts](validation/viewport-cadence/README.md)
+
+[Open both Nano revisions at the first changed action and inspect the exact decision cameras](validation/first-action-change/README.md)
+
+To run eight Nano sessions on a Linux H100 server from a Mac, register one worker per GPU, open a single foreground stream, and measure the seven background feeds alongside it. [Eight-H100 setup and original measurements](validation/eight-h100/README.md) · [Wall-clock receiver rates and per-second delivery](validation/eight-h100/wall-clock/README.md) · [Updated RGB delivery and native Snapshot](validation/eight-h100/lossless-rgb/README.md)

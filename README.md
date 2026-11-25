@@ -3,6 +3,8 @@
 Adora Nano simulation, SO-100/SO-101 LeRobot data collection and dataset review
 with the **Makepad** UI framework.
 
+**AISLE Studio** · [Nano and G1 simulation workbench, requirements, UX and verification](docs/product/aisle-studio/README.md)
+
 **SO-101 on Linux:** [live follower mirror](#physical-teleop-and-live-follower-mirror) ·
 [Nexus collection, training and inference](#leader-driven-nexus-collection-training-and-inference)
 
@@ -86,6 +88,8 @@ The [native runtime guide](runtime/README.md) describes the built-in Dora produc
 The [Nano room integration guide](tools/aisle-validation/README.md#mobile-nano-in-a-living-room)
 retains the original AISLE validation experiments. The recording workflow currently
 captures at 5 Hz; the Live mode does not imply 30 fps throughput.
+
+See the [scripted three-cube stream](tools/nano-three-cubes/README.md) for the historical demo using simulator state.
 
 ### AISLE 与 Nexus 验证
 

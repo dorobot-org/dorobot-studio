@@ -290,21 +290,38 @@ class WheelGuard:
 
 
 class LivingSimulation:
-    def __init__(self, model: Path, seed=0, cameras=True, resolution=(640, 480)):
+    def __init__(
+        self,
+        model: Path,
+        seed=0,
+        cameras=True,
+        resolution=(640, 480),
+        *,
+        specs=None,
+        posture=None,
+        room_settings=None,
+        visual_profile="original",
+    ):
         from aisle.sim.nexus_backend import _ensure_nexus, _new_scene, NexusRobot
 
-        self.engine = _ensure_nexus("metal")
+        room_settings = room_settings or {}
+        self.engine = _ensure_nexus()
         self.scene = _new_scene(
-            self.engine, {"sim": {"dt": 0.01, "gravity": [0, 0, -9.81]}}, 1, [0.6] * 3
+            self.engine,
+            {"sim": {"dt": 0.01, "gravity": [0, 0, -9.81]}},
+            1,
+            room_settings.get("ambient_rgb", [0.6] * 3),
         )
-        self.specs = room_specs(seed)
+        self.specs = room_specs(seed) if specs is None else specs
         self.bodies = [
             self.scene.add_box(
                 s["name"],
                 s["size"],
                 s["position"],
                 fixed=s["fixed"],
-                friction=0.7,
+                friction=room_settings.get("floor_friction", 0.7)
+                if s["name"] == "floor"
+                else 0.7,
                 density=500,
                 color=s["color"],
             )
@@ -321,7 +338,7 @@ class LivingSimulation:
         )
         from nano_visuals import register_visuals
 
-        self.visuals = register_visuals(self.scene, native, model)
+        self.visuals = register_visuals(self.scene, native, model, visual_profile)
         self.robot = NexusRobot(self.scene, [native], "adora_nano")
         self.scene.robots.append(self.robot)
         import xml.etree.ElementTree as ET
@@ -340,12 +357,16 @@ class LivingSimulation:
             from nano_cameras import create_rig
 
             self.rig, self.camera_specs = create_rig(
-                self.scene, self.robot, resolution=resolution
+                self.scene,
+                self.robot,
+                resolution=resolution,
+                calibration=room_settings.get("cameras"),
             )
             for spec in self.camera_specs.values():
                 spec["fps"] = 1 / CONTROL_DT
         self.scene.build()
-        parked = np.array([NAVIGATION_POSTURE.get(name, 0.0) for name in self.names])
+        park = NAVIGATION_POSTURE if posture is None else posture
+        parked = np.array([park.get(name, 0.0) for name in self.names])
         for step in range(250):
             self.robot.control_dofs_position(
                 (parked * min(1.0, (step + 1) / 150)).tolist(), self.dofs
@@ -356,12 +377,23 @@ class LivingSimulation:
         self.cube_start = self.object_positions()
         self.root_pose_writes = 0
 
+    def room_readback(self):
+        """Read imported fixed bodies from Nexus after physics has settled."""
+        return {
+            spec["name"]: dict(
+                physics_body=int(self.scene.gpu_index(0, body.handles[0])),
+                center_m=body.get_pos().tolist(),
+            )
+            for spec, body in zip(self.specs, self.bodies, strict=True)
+            if spec["name"].startswith("room_")
+        }
+
     def object_positions(self):
         return [np.asarray(b.get_pos()).tolist() for b in self.bodies]
 
-    def advance(self, rates, capture_contacts=False):
+    def advance(self, rates, capture_contacts=False, *, steps=round(CONTROL_DT / 0.01)):
         contacts = []
-        for _ in range(round(CONTROL_DT / 0.01)):
+        for _ in range(steps):
             self.targets[self.wheel_indices] += np.asarray(rates) * 0.01
             self.robot.control_dofs_position(self.targets.tolist(), self.dofs)
             self.scene.step()
