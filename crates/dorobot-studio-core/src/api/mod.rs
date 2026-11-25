@@ -323,6 +323,8 @@ pub struct EpisodeStats {
 #[derive(Clone, Debug, Default)]
 pub struct PlaybackState {
     pub dataset_name: String,
+    /// Directory backing file-based playback. Live previews have no dataset root.
+    pub dataset_root: Option<PathBuf>,
     pub episodes: Vec<EpisodeEntry>,
     pub selected: Option<u64>,
     pub stats: EpisodeStats,

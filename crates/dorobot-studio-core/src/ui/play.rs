@@ -4,6 +4,8 @@
 //! lacks: curation actions, and an honest timeline that shows video/parquet
 //! drift instead of assuming `frame / fps`.
 
+use std::path::PathBuf;
+
 use makepad_widgets::*;
 
 use crate::api::{Intent, PlaybackState, PlotChannel, Tag};
@@ -643,6 +645,8 @@ pub struct PlayScreen {
     #[rust]
     loaded_dataset: String,
     #[rust]
+    loaded_dataset_root: Option<PathBuf>,
+    #[rust]
     model_loader: crate::data::robot_model::RobotModelLoader,
     #[rust]
     model_pose: ModelPose,
@@ -1135,11 +1139,13 @@ impl PlayScreenRef {
 
         // Media is opened once per selection, so the decision is taken before
         // the view is borrowed.
-        let need_media =
-            inner.loaded_episode != st.selected || inner.loaded_dataset != st.dataset_name;
+        let need_media = inner.loaded_episode != st.selected
+            || inner.loaded_dataset != st.dataset_name
+            || inner.loaded_dataset_root != st.dataset_root;
         if need_media {
             inner.loaded_episode = st.selected;
             inner.loaded_dataset = st.dataset_name.clone();
+            inner.loaded_dataset_root = st.dataset_root.clone();
             inner.signal_order = signal_order(&st.state_series, &st.action_series);
             inner.signal_first = 0;
             inner.loaded_signal_first = None;
@@ -2050,6 +2056,76 @@ fn named_pose(source: &[String], values: &[f32], target: &[String]) -> Vec<f32> 
             indices.iter().map(|i| values[*i]).collect()
         }
         _ => values.to_vec(),
+    }
+}
+
+#[cfg(test)]
+mod media_tests {
+    use super::*;
+    use crate::api::{files::FileBackend, Backend};
+    use crate::data::lerobot_writer::{DatasetSpec, DatasetWriter, FrameRecord};
+    use crate::widgets::video_player::VideoPlayer;
+
+    #[test]
+    fn opening_another_dataset_with_the_same_name_clears_the_previous_camera_frame() {
+        let temp = tempfile::tempdir().unwrap();
+        let first = temp.path().join("first/dataset");
+        let second = temp.path().join("second/dataset");
+        for directory in [&first, &second] {
+            let mut writer = DatasetWriter::create(
+                directory,
+                DatasetSpec {
+                    robot_type: "fixture".into(),
+                    fps: 5.0,
+                    camera_keys: vec![],
+                    joint_names: vec!["joint".into()],
+                },
+            )
+            .unwrap();
+            let mut episode = writer.begin_episode("test").unwrap();
+            episode
+                .push(FrameRecord {
+                    state: vec![0.0],
+                    action: vec![0.0],
+                })
+                .unwrap();
+            writer.commit(episode).unwrap();
+        }
+
+        let mut backend = FileBackend::new(&first);
+        assert_eq!(backend.playback().dataset_name, "dataset");
+        assert_eq!(backend.playback().selected, Some(0));
+        let mut cx = Cx::new(Box::new(|_, _| {}));
+        cx.init_cx_os();
+        let view = cx.with_vm(|vm| {
+            crate::register_ui(vm);
+            let value = script_eval!(vm, {
+                use mod.prelude.widgets.*
+                use mod.widgets.*
+                PlayScreen{}
+            });
+            WidgetRef::script_from_value(vm, value)
+        });
+        let replay = view.as_play_screen();
+        replay.sync(&mut cx, backend.playback());
+        let camera = view.widget(&cx, ids!(stage_a));
+        camera
+            .borrow_mut::<VideoPlayer>()
+            .unwrap()
+            .set_frame(&mut cx, 8, 8, &[128; 8 * 8 * 3]);
+        let image = camera.widget(&cx, ids!(video_area.frame_image));
+        assert!(image.visible());
+        replay.sync(&mut cx, backend.playback());
+        assert!(image.visible());
+
+        backend.dispatch(Intent::OpenFolder(second));
+        assert_eq!(backend.playback().dataset_name, "dataset");
+        assert_eq!(backend.playback().selected, Some(0));
+        replay.sync(&mut cx, backend.playback());
+        assert!(
+            !image.visible(),
+            "Replay retained a frame from a different dataset"
+        );
     }
 }
 
