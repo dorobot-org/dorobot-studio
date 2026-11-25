@@ -13,6 +13,10 @@ import zlib
 from worker import observation_seconds
 
 
+class WorkerRejection(ValueError):
+    """The worker explicitly rejected an RPC request."""
+
+
 def worker_command(node, *operation):
     args = [
         node["python"],
@@ -55,10 +59,23 @@ def send(node, request):
         raise RuntimeError(
             f"Worker transport returned {reply.returncode}: {reply.stderr.strip()[-500:]}"
         )
-    result = json.loads(reply.stdout)
-    if not result["ok"]:
-        raise ValueError(result["error"])
-    return result["reply"]
+    try:
+        result = json.loads(reply.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Worker returned an unreadable RPC response") from exc
+    if isinstance(result, dict):
+        data = result.get("reply")
+        error = result.get("error")
+        if result.get("ok") is True and isinstance(data, dict) and "error" not in result:
+            return data
+        if (
+            result.get("ok") is False
+            and isinstance(error, str)
+            and error.strip()
+            and "reply" not in result
+        ):
+            raise WorkerRejection(error)
+    raise RuntimeError("Worker returned an invalid RPC response")
 
 
 def decode_rgb(reply):

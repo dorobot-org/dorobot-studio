@@ -10,6 +10,7 @@ import os
 import sys
 import sqlite3
 import subprocess
+from types import SimpleNamespace
 import unittest
 import zlib
 from unittest.mock import patch
@@ -17,6 +18,7 @@ from uuid import uuid4
 
 from fleet_bridge import (
     foreground_packets,
+    operate,
     publish_foreground_frame,
     journal,
     reconcile,
@@ -29,6 +31,8 @@ from fleet_bridge import (
 
 
 from fleet_check import retained_background, submitted_foreground
+from fleet_client import WorkerRejection, submission
+from fleet_worker import dispatch as worker_dispatch, initialize, status as worker_status
 
 
 class WorkspaceAdmissionTests(unittest.TestCase):
@@ -78,7 +82,7 @@ class WorkspaceAdmissionTests(unittest.TestCase):
         key = (node, request["id"])
         if request["op"] == "status":
             if key not in self.rows:
-                raise ValueError("Unknown simulation lease")
+                raise WorkerRejection("Unknown simulation lease")
         else:
             self.rows.setdefault(key, dict(id=key[1], state="running"))
         return self.rows[key]
@@ -200,6 +204,41 @@ class WorkspaceAdmissionTests(unittest.TestCase):
                 watch_foreground({}, ident, self.root, self.root)
         self.assertEqual(path.read_bytes(), b"last complete frame")
 
+    def test_invalid_watch_state_keeps_the_foreground_claim(self):
+        request = self.request()
+        ident = request["id"]
+        reply = json.dumps(dict(job=dict(id=ident, state="unknown"), bytes=0))
+        command = [sys.executable, "-c", f"print({reply!r})"]
+        with patch("fleet_bridge.send", self.transport):
+            submit(self.root, self.nodes, "a", request)
+        with patch("fleet_bridge.worker_command", return_value=command):
+            with self.assertRaisesRegex(RuntimeError, "invalid job status"):
+                watch_foreground({}, ident, self.root, self.root)
+        self.assertEqual(record(self.root, ident)["state"], "running")
+
+    def test_cancel_reply_for_another_job_keeps_the_foreground_claim(self):
+        request = self.request()
+        ident = request["id"]
+        args = SimpleNamespace(
+            out=self.root / "cancel", node="a", job_id=ident, fleet_action="cancel"
+        )
+
+        def transport(node, request):
+            if request["op"] == "cancel":
+                return dict(id=str(uuid4()), state="completed")
+            if request["op"] == "hello":
+                return dict(active=[])
+            return self.transport(node, request)
+
+        with (
+            patch("fleet_bridge.nodes", return_value=self.nodes),
+            patch("fleet_bridge.send", transport),
+        ):
+            submit(self.root, self.nodes, "a", request)
+            with self.assertRaisesRegex(RuntimeError, "invalid job status"):
+                operate(args)
+        self.assertEqual(record(self.root, ident)["state"], "running")
+
     def test_one_foreground_across_two_simultaneous_node_connections(self):
         def start(alias):
             try:
@@ -238,3 +277,104 @@ class WorkspaceAdmissionTests(unittest.TestCase):
             update(self.root, request["id"], "completed")
             update(self.root, request["id"], "running")
             self.assertEqual(record(self.root, request["id"])["state"], "completed")
+
+
+class SubmissionResponseTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        checkout = Path(__file__).resolve().parents[2]
+        self.nodes = {}
+        for name in ("a", "b"):
+            spool = self.root / name
+            initialize(spool, 2)
+            self.nodes[name] = dict(
+                python=sys.executable, checkout=str(checkout), spool=str(spool)
+            )
+        self.controller = (
+            checkout / "docs/product/aisle-studio/validation/nano-holdout-c/controller.json"
+        )
+        spawn = patch("fleet_worker.subprocess.Popen")
+        spawn.start()
+        self.addCleanup(spawn.stop)
+
+    def rpc(self, command, *, input, **kwargs):
+        try:
+            reply = worker_dispatch(Path(command[-2]), json.loads(input))
+        except ValueError as exc:
+            envelope = dict(ok=False, error=str(exc))
+        else:
+            envelope = dict(ok=True, reply=reply)
+        return subprocess.CompletedProcess(command, 0, json.dumps(envelope), "")
+
+    def test_unreadable_reply_keeps_the_accepted_foreground_recoverable(self):
+        request = submission(self.controller, mode="stream")
+        ident = request["id"]
+
+        def unreadable(command, **kwargs):
+            response = self.rpc(command, **kwargs)
+            response.stdout = ""
+            return response
+
+        with patch("fleet_client.subprocess.run", side_effect=unreadable):
+            with self.assertRaises((ValueError, RuntimeError)):
+                submit(self.root, self.nodes, "a", request)
+        self.assertEqual(worker_status(self.root / "a", ident)["state"], "reserved")
+        self.assertEqual(record(self.root, ident)["state"], "submitting")
+
+        with patch("fleet_client.subprocess.run", side_effect=self.rpc):
+            with self.assertRaisesRegex(ValueError, "foreground stream"):
+                submit(
+                    self.root, self.nodes, "b", submission(self.controller, mode="stream")
+                )
+            row = record(self.root, ident)
+            self.assertEqual(reconcile(self.root, row, self.nodes["a"])["id"], ident)
+            self.assertEqual(record(self.root, ident)["state"], "reserved")
+
+    def test_malformed_reply_to_resend_keeps_the_original_submission(self):
+        request = submission(self.controller, mode="stream")
+        ident = request["id"]
+        with patch("fleet_client.subprocess.run", side_effect=TimeoutError):
+            with self.assertRaises(TimeoutError):
+                submit(self.root, self.nodes, "a", request)
+
+        def malformed(command, *, input, **kwargs):
+            response = self.rpc(command, input=input, **kwargs)
+            if json.loads(input)["op"] == "submit":
+                response.stdout = '{"ok":0,"error":"Worker reply corrupted"}'
+            return response
+
+        with patch("fleet_client.subprocess.run", side_effect=malformed):
+            with self.assertRaises((ValueError, RuntimeError)):
+                reconcile(self.root, record(self.root, ident), self.nodes["a"])
+        self.assertEqual(worker_status(self.root / "a", ident)["state"], "reserved")
+        row = record(self.root, ident)
+        self.assertEqual(row["state"], "submitting")
+        self.assertEqual(json.loads(row["request"]), request)
+
+    def test_status_for_another_job_does_not_clear_the_pending_claim(self):
+        request = submission(self.controller, mode="stream")
+        ident = request["id"]
+        with patch("fleet_client.subprocess.run", side_effect=TimeoutError):
+            with self.assertRaises(TimeoutError):
+                submit(self.root, self.nodes, "a", request)
+
+        envelope = dict(ok=True, reply=dict(id=str(uuid4()), state="completed"))
+        response = subprocess.CompletedProcess([], 0, json.dumps(envelope), "")
+        with patch("fleet_client.subprocess.run", return_value=response):
+            with self.assertRaises((ValueError, RuntimeError)):
+                reconcile(self.root, record(self.root, ident), self.nodes["a"])
+        self.assertEqual(record(self.root, ident)["state"], "submitting")
+
+    def test_explicit_worker_rejection_releases_the_foreground(self):
+        request = submission(self.controller, mode="stream")
+        request["controller_sha256"] = "0" * 64
+        with patch("fleet_client.subprocess.run", side_effect=self.rpc):
+            with self.assertRaisesRegex(ValueError, "differ from their digest"):
+                submit(self.root, self.nodes, "a", request)
+            self.assertEqual(record(self.root, request["id"])["state"], "rejected")
+            accepted = submit(
+                self.root, self.nodes, "b", submission(self.controller, mode="stream")
+            )
+        self.assertEqual(accepted["state"], "reserved")

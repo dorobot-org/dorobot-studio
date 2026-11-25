@@ -21,6 +21,7 @@ from visual_profile import BUNDLE_SHA256, validate_profile
 from onboard_scene import verify_observation_files
 from fleet_artifacts import download
 from fleet_client import (
+    WorkerRejection,
     check_background_period,
     decode_rgb,
     decode_plane,
@@ -33,6 +34,7 @@ from fleet_worker import ACTIVE, initialize, job_id
 from worker import ROOT, save
 
 PENDING = (*ACTIVE, "submitting")
+LEASE_STATES = (*ACTIVE, "completed", "failed", "cancelled", "lost")
 
 
 @contextmanager
@@ -77,18 +79,30 @@ def update(root, ident, state):
         )
 
 
+def update_from_lease(root, ident, info, *, previous_state=None):
+    if (
+        not isinstance(info, dict)
+        or info.get("id") != ident
+        or info.get("state") not in LEASE_STATES
+    ):
+        raise RuntimeError("Worker returned an invalid job status")
+    state = info["state"]
+    if state != previous_state:
+        update(root, ident, state)
+
+
 def reconcile(root, row, node):
     try:
         info = send(node, dict(op="status", id=row["id"]))
-    except ValueError as exc:
+    except WorkerRejection as exc:
         if str(exc) != "Unknown simulation lease" or row["state"] != "submitting":
             raise
         try:
             info = send(node, json.loads(row["request"]))
-        except ValueError:
+        except WorkerRejection:
             update(root, row["id"], "rejected")
             raise
-    update(root, row["id"], info["state"])
+    update_from_lease(root, row["id"], info)
     return info
 
 
@@ -126,10 +140,10 @@ def submit(root, registry, alias, request):
     # Persist the exact request before sending so a lost SSH response is recoverable.
     try:
         info = send(registry[alias], request)
-    except ValueError:
+    except WorkerRejection:
         update(root, request["id"], "rejected")
         raise
-    update(root, request["id"], info["state"])
+    update_from_lease(root, request["id"], info)
     return info
 
 
@@ -354,10 +368,9 @@ def watch_foreground(node, ident, out, root, *, compress=False):
         for packet, raw in foreground_packets(proc.stdout):
             if "job" in packet:
                 new_job = packet["job"]
-                if new_job.get("id") != ident:
-                    raise ValueError("Foreground stream returned a different job")
-                if not job or new_job["state"] != job["state"]:
-                    update(root, ident, new_job["state"])
+                update_from_lease(
+                    root, ident, new_job, previous_state=job["state"] if job else None
+                )
                 job = new_job
             if not job:
                 raise ValueError("Missing foreground job identity")
@@ -503,7 +516,7 @@ def operate(args):
             if row["state"] == "submitting":
                 reconcile(root, row, node)
             info, frame = poll_observation(node, ident)
-            update(root, ident, info["state"])
+            update_from_lease(root, ident, info)
             sample = save_frame(frame, args.out)
             if sample is None:
                 raise ValueError("Waiting for the first background RGB exposure")
@@ -511,7 +524,7 @@ def operate(args):
             info = reconcile(root, row, node)
         if op == "cancel":
             info = send(node, dict(op="cancel", id=ident))
-            update(root, ident, info["state"])
+            update_from_lease(root, ident, info)
         if op == "fetch":
             trial = import_trial(root, node, row, info).name
         info.update(robot=row["robot"], mode=row["mode"])
