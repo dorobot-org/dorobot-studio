@@ -1909,12 +1909,9 @@ impl Widget for RobotView {
                 self.pan_last_abs = None;
                 self.light_last_abs = None;
             }
-            Event::Scroll(fs)
-                if self.view_rect.contains(fs.abs) && fs.scroll.x.abs() > fs.scroll.y.abs() =>
-            {
-                // trackpad horizontal two-finger drag orbits instead of zooming
-                self.camera.orbit_yaw += fs.scroll.x as f32 * 0.005;
-                self.area.redraw(cx);
+            Event::Scroll(fs) if fs.scroll.y.abs() <= f64::EPSILON => {
+                // Like MuJoCo, zoom with vertical scroll only. The shared
+                // camera falls back to horizontal scroll if Y is zero.
                 return;
             }
             _ => (),
