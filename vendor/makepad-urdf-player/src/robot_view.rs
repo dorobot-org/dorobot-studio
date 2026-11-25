@@ -1905,8 +1905,19 @@ impl Widget for RobotView {
                     let per_px =
                         2.0 * self.camera.distance * fov.tan() / (self.view_rect.size.y as f32);
                     self.pan_offset.x += delta.x as f32 * per_px;
-                    self.pan_offset.y -= delta.y as f32 * per_px;
+                    self.pan_offset.y += delta.y as f32 * per_px;
                     self.area.redraw(cx);
+                    return;
+                }
+                if let Some(last) = self.camera.orbit_last_abs {
+                    let delta = fe.abs - last;
+                    self.camera.orbit_last_abs = Some(fe.abs);
+                    // Drag the model in the direction of the pointer.
+                    self.camera.orbit_yaw += delta.x as f32 * 0.01;
+                    self.camera.orbit_pitch =
+                        (self.camera.orbit_pitch - delta.y as f32 * 0.01).clamp(-1.45, 1.45);
+                    cx.set_cursor(MouseCursor::Grabbing);
+                    cx.redraw_all();
                     return;
                 }
             }
@@ -1914,12 +1925,21 @@ impl Widget for RobotView {
                 self.pan_last_abs = None;
                 self.light_last_abs = None;
             }
-            Event::Scroll(fs)
-                if self.view_rect.contains(fs.abs) && fs.scroll.x.abs() > fs.scroll.y.abs() =>
-            {
-                // trackpad horizontal two-finger drag orbits instead of zooming
-                self.camera.orbit_yaw -= fs.scroll.x as f32 * 0.005;
-                self.area.redraw(cx);
+            Event::Scroll(fs) if fs.scroll.y.abs() <= f64::EPSILON => {
+                // Like MuJoCo, zoom with vertical scroll only. The shared
+                // camera falls back to horizontal scroll if Y is zero.
+                return;
+            }
+            Event::Scroll(fs) if !fs.is_mouse && self.view_rect.contains(fs.abs) => {
+                // A stream of small deltas should zoom by the same amount
+                // as a single delta covering the same scroll distance.
+                const SCROLL_UNITS_PER_STEP: f64 = 32.0;
+                let step = self.camera.wheel_zoom_step.clamp(0.001, 0.99);
+                let factor = (1.0 - step).powf((-fs.scroll.y / SCROLL_UNITS_PER_STEP) as f32);
+                let min = self.camera.distance_min.max(0.01);
+                let max = self.camera.distance_max.max(min + 0.01);
+                self.camera.distance = (self.camera.distance * factor).clamp(min, max);
+                cx.redraw_all();
                 return;
             }
             _ => (),
