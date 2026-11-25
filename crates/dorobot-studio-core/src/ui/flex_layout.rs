@@ -334,8 +334,8 @@ impl Widget for FlexPanels {
                     *id != 3 && r.contains(e.abs) && e.abs.y >= r.pos.y + 28.0
                 }) {
                     if id == TRACE_MAP_PANEL {
-                        // Let the map see the press for orbiting. Only a click
-                        // that completes without a drag promotes this inset.
+                        // Record the press for click promotion and let the
+                        // camera use it as the start of a possible orbit.
                         if e.button.is_primary() && !e.modifiers.shift && !e.modifiers.alt {
                             self.trace_map_press = Some(e.abs);
                         }
@@ -345,6 +345,15 @@ impl Widget for FlexPanels {
                         return;
                     }
                 }
+            }
+        } else if let Event::MouseMove(e) = event {
+            if let Some(start) = self.trace_map_press {
+                // Only forward movement once the same threshold that cancels
+                // click promotion is crossed.
+                if (e.abs - start).length() <= DRAG_THRESHOLD {
+                    return;
+                }
+                self.trace_map_press = None;
             }
         }
         let actions = cx.capture_actions(|cx| self.view.handle_event(cx, event, scope));
@@ -384,9 +393,6 @@ impl Widget for FlexPanels {
                 }
             }
             Event::MouseMove(e) => {
-                if self.trace_map_press.is_some_and(|start| (e.abs - start).length() > DRAG_THRESHOLD) {
-                    self.trace_map_press = None;
-                }
                 if let Some(horizontal) = self.resize {
                     if horizontal {
                         self.state.split_x =
