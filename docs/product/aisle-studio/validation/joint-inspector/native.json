@@ -1,0 +1,221 @@
+[
+  {
+    "provider": "octos-deepseek",
+    "backend": "offscreen",
+    "requested_size": "1440x900",
+    "studio_source_commit": "6503e2052e1279d721b18aaa480eab8b25f515c3",
+    "native_binary_sha256": "0f9cd5cd722d356f578d2684eea1028ebac5617c7eff780e18faddef7338ed2c",
+    "sources": {
+      "tools/aisle_workbench/joint_inspector_check.py": "aa2c5a1103f9bd1deaf75db8c20511a6aecf7c8a3c56d9865d254d4dc1a6cefb",
+      "plugins/aisle/src/joint_inspector.rs": "13158c97b7df79d39b928e40c39433501cd00d81572feb610fe70c2f293d8ece",
+      "vendor/makepad-urdf-player/src/robot_view.rs": "70fe71dff1048f9fdaffaa01e910bffabef27c9199a9eae110f67a409a2bb008",
+      "tools/aisle_workbench/journey.py": "5042c305a83c124b9246badaff7c1ed4f21f0fb8e2f8fc750f8c9636586fd40b",
+      "tools/aisle_workbench/worker.py": "f8eafc0100bed1182d7e8496c9bd9ad987675e204ae9a6274ce9bbe474d5bafd"
+    },
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 94970,
+        "windows": [
+          [
+            1440,
+            900
+          ]
+        ],
+        "started_unix_ns": 1795535077770299000,
+        "observed_unix_ns": 1795535137636634000
+      },
+      {
+        "stage": "recovery",
+        "pid": 99311,
+        "windows": [
+          [
+            1440,
+            900
+          ]
+        ],
+        "started_unix_ns": 1795535137756310000,
+        "observed_unix_ns": 1795535140076086000
+      }
+    ],
+    "replay": {
+      "frames": 25,
+      "selected": "1795535132629272000-G1-run",
+      "controller_sha256": "4b8cd7c989a3371f8024c1116bdc8455a3506d46c2bc2070ff3e4e74a9a8d52e",
+      "restored": "1795535132629272000-G1-run",
+      "dataset_trial": "1795535132629272000-G1-run",
+      "stopped": "1795535135363217000-G1-run",
+      "recovered_stop": "1795535135363217000-G1-run",
+      "operator_stop": true
+    },
+    "models": {
+      "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "G1": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+    },
+    "joints": {
+      "Nano": {
+        "wheel_1_joint": "continuous\n\nPosition · continuous rotation\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · base_link\nChild · wheel_1",
+        "wheel_2_joint": "continuous\n\nPosition · continuous rotation\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · base_link\nChild · wheel_2",
+        "wheel_3_joint": "continuous\n\nPosition · continuous rotation\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · base_link\nChild · wheel_3",
+        "head_pan_joint": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · head_mount\nChild · head_pan",
+        "head_tilt_joint": "revolute\n\nLower · -0.698131700798 rad\nUpper · 2.09439510239 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · head_pan\nChild · head_tilt",
+        "left_j1_yaw": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_shoulder\nChild · left_upper_arm",
+        "left_j2_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_upper_arm\nChild · left_forearm",
+        "left_j3_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_forearm\nChild · left_wrist_pitch",
+        "left_j4_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_wrist_pitch\nChild · left_wrist_roll",
+        "left_j5_roll": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_wrist_roll\nChild · left_wrist_housing",
+        "right_j1_yaw": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_shoulder\nChild · right_upper_arm",
+        "right_j2_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_upper_arm\nChild · right_forearm",
+        "right_j3_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_forearm\nChild · right_wrist_pitch",
+        "right_j4_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_wrist_pitch\nChild · right_wrist_roll",
+        "right_j5_roll": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_wrist_roll\nChild · right_wrist_housing",
+        "left_j6_gripper": "revolute\n\nLower · -0.3 rad\nUpper · 0.8771 rad\nSpeed limit · 2 rad/s\nEffort limit · 1 N·m\n\nParent · left_wrist_housing\nChild · left_finger_b",
+        "right_j6_gripper": "revolute\n\nLower · -0.3 rad\nUpper · 0.8771 rad\nSpeed limit · 2 rad/s\nEffort limit · 1 N·m\n\nParent · right_wrist_housing\nChild · right_finger_b"
+      },
+      "G1": {
+        "left_hip_pitch_joint": "revolute\n\nLower · -2.5307 rad\nUpper · 2.8798 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · pelvis\nChild · left_hip_pitch_link",
+        "left_hip_roll_joint": "revolute\n\nLower · -0.5236 rad\nUpper · 2.9671 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · left_hip_pitch_link\nChild · left_hip_roll_link",
+        "left_hip_yaw_joint": "revolute\n\nLower · -2.7576 rad\nUpper · 2.7576 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · left_hip_roll_link\nChild · left_hip_yaw_link",
+        "left_knee_joint": "revolute\n\nLower · -0.087267 rad\nUpper · 2.8798 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · left_hip_yaw_link\nChild · left_knee_link",
+        "left_ankle_pitch_joint": "revolute\n\nLower · -0.87267 rad\nUpper · 0.5236 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · left_knee_link\nChild · left_ankle_pitch_link",
+        "left_ankle_roll_joint": "revolute\n\nLower · -0.2618 rad\nUpper · 0.2618 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · left_ankle_pitch_link\nChild · left_ankle_roll_link",
+        "right_hip_pitch_joint": "revolute\n\nLower · -2.5307 rad\nUpper · 2.8798 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · pelvis\nChild · right_hip_pitch_link",
+        "right_hip_roll_joint": "revolute\n\nLower · -2.9671 rad\nUpper · 0.5236 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · right_hip_pitch_link\nChild · right_hip_roll_link",
+        "right_hip_yaw_joint": "revolute\n\nLower · -2.7576 rad\nUpper · 2.7576 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · right_hip_roll_link\nChild · right_hip_yaw_link",
+        "right_knee_joint": "revolute\n\nLower · -0.087267 rad\nUpper · 2.8798 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · right_hip_yaw_link\nChild · right_knee_link",
+        "right_ankle_pitch_joint": "revolute\n\nLower · -0.87267 rad\nUpper · 0.5236 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · right_knee_link\nChild · right_ankle_pitch_link",
+        "right_ankle_roll_joint": "revolute\n\nLower · -0.2618 rad\nUpper · 0.2618 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · right_ankle_pitch_link\nChild · right_ankle_roll_link",
+        "waist_yaw_joint": "revolute\n\nLower · -2.618 rad\nUpper · 2.618 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · pelvis\nChild · waist_yaw_link",
+        "waist_roll_joint": "revolute\n\nLower · -0.52 rad\nUpper · 0.52 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · waist_yaw_link\nChild · waist_roll_link",
+        "waist_pitch_joint": "revolute\n\nLower · -0.52 rad\nUpper · 0.52 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · waist_roll_link\nChild · torso_link",
+        "left_shoulder_pitch_joint": "revolute\n\nLower · -3.0892 rad\nUpper · 2.6704 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · torso_link\nChild · left_shoulder_pitch_link",
+        "left_shoulder_roll_joint": "revolute\n\nLower · -1.5882 rad\nUpper · 2.2515 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_shoulder_pitch_link\nChild · left_shoulder_roll_link",
+        "left_shoulder_yaw_joint": "revolute\n\nLower · -2.618 rad\nUpper · 2.618 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_shoulder_roll_link\nChild · left_shoulder_yaw_link",
+        "left_elbow_joint": "revolute\n\nLower · -1.0472 rad\nUpper · 2.0944 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_shoulder_yaw_link\nChild · left_elbow_link",
+        "left_wrist_roll_joint": "revolute\n\nLower · -1.972222054 rad\nUpper · 1.972222054 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_elbow_link\nChild · left_wrist_roll_link",
+        "left_wrist_pitch_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · left_wrist_roll_link\nChild · left_wrist_pitch_link",
+        "left_wrist_yaw_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · left_wrist_pitch_link\nChild · left_wrist_yaw_link",
+        "right_shoulder_pitch_joint": "revolute\n\nLower · -3.0892 rad\nUpper · 2.6704 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · torso_link\nChild · right_shoulder_pitch_link",
+        "right_shoulder_roll_joint": "revolute\n\nLower · -2.2515 rad\nUpper · 1.5882 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_shoulder_pitch_link\nChild · right_shoulder_roll_link",
+        "right_shoulder_yaw_joint": "revolute\n\nLower · -2.618 rad\nUpper · 2.618 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_shoulder_roll_link\nChild · right_shoulder_yaw_link",
+        "right_elbow_joint": "revolute\n\nLower · -1.0472 rad\nUpper · 2.0944 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_shoulder_yaw_link\nChild · right_elbow_link",
+        "right_wrist_roll_joint": "revolute\n\nLower · -1.972222054 rad\nUpper · 1.972222054 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_elbow_link\nChild · right_wrist_roll_link",
+        "right_wrist_pitch_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · right_wrist_roll_link\nChild · right_wrist_pitch_link",
+        "right_wrist_yaw_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · right_wrist_pitch_link\nChild · right_wrist_yaw_link"
+      }
+    },
+    "screenshots": {
+      "G1-joint-empty.png": "22207e81943334b04c763080cc8f01708da93c197227a2e44cee8e54bcaceeec",
+      "G1-joint-limits.png": "a4abfc92d61316f1a03808bc428a99e15f85ca23e1b1e2398963fe7686c0b0fe",
+      "Nano-joint-empty.png": "74ecdd0dd97840fd8031578f8b96b3d785d3d4dbd1f1c2e1054198cdf2a72c84",
+      "Nano-joint-limits.png": "65ccb267d59c632fdcda88c7b5c6459449f00d2df7d9a9de569b9fcf38b3a4bc"
+    }
+  },
+  {
+    "provider": "codex",
+    "backend": "headless",
+    "requested_size": "1024x768",
+    "studio_source_commit": "6503e2052e1279d721b18aaa480eab8b25f515c3",
+    "native_binary_sha256": "0f9cd5cd722d356f578d2684eea1028ebac5617c7eff780e18faddef7338ed2c",
+    "sources": {
+      "tools/aisle_workbench/joint_inspector_check.py": "aa2c5a1103f9bd1deaf75db8c20511a6aecf7c8a3c56d9865d254d4dc1a6cefb",
+      "plugins/aisle/src/joint_inspector.rs": "13158c97b7df79d39b928e40c39433501cd00d81572feb610fe70c2f293d8ece",
+      "vendor/makepad-urdf-player/src/robot_view.rs": "70fe71dff1048f9fdaffaa01e910bffabef27c9199a9eae110f67a409a2bb008",
+      "tools/aisle_workbench/journey.py": "5042c305a83c124b9246badaff7c1ed4f21f0fb8e2f8fc750f8c9636586fd40b",
+      "tools/aisle_workbench/worker.py": "f8eafc0100bed1182d7e8496c9bd9ad987675e204ae9a6274ce9bbe474d5bafd"
+    },
+    "sessions": [
+      {
+        "stage": "journey",
+        "pid": 99421,
+        "windows": [
+          [
+            1024,
+            768
+          ]
+        ],
+        "started_unix_ns": 1795535140303036000,
+        "observed_unix_ns": 1795535201006902000
+      },
+      {
+        "stage": "recovery",
+        "pid": 4736,
+        "windows": [
+          [
+            1024,
+            768
+          ]
+        ],
+        "started_unix_ns": 1795535201097680000,
+        "observed_unix_ns": 1795535203636539000
+      }
+    ],
+    "replay": {
+      "frames": 25,
+      "selected": "1795535196722046000-G1-run",
+      "controller_sha256": "e0814bdb2470452272d69a844bf0b53f7fd6f7dd0226b59ef902e9a5915c3da5",
+      "restored": "1795535196722046000-G1-run",
+      "dataset_trial": "1795535196722046000-G1-run",
+      "stopped": "1795535199096973000-G1-run",
+      "recovered_stop": "1795535199096973000-G1-run",
+      "operator_stop": true
+    },
+    "models": {
+      "Nano": "a03319b78dcf338cbd64bed7bdc2062066af6f8a189cdb2cb67f9ba1e9b6b627",
+      "G1": "c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8"
+    },
+    "joints": {
+      "Nano": {
+        "wheel_1_joint": "continuous\n\nPosition · continuous rotation\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · base_link\nChild · wheel_1",
+        "wheel_2_joint": "continuous\n\nPosition · continuous rotation\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · base_link\nChild · wheel_2",
+        "wheel_3_joint": "continuous\n\nPosition · continuous rotation\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · base_link\nChild · wheel_3",
+        "head_pan_joint": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · head_mount\nChild · head_pan",
+        "head_tilt_joint": "revolute\n\nLower · -0.698131700798 rad\nUpper · 2.09439510239 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · head_pan\nChild · head_tilt",
+        "left_j1_yaw": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_shoulder\nChild · left_upper_arm",
+        "left_j2_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_upper_arm\nChild · left_forearm",
+        "left_j3_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_forearm\nChild · left_wrist_pitch",
+        "left_j4_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_wrist_pitch\nChild · left_wrist_roll",
+        "left_j5_roll": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · left_wrist_roll\nChild · left_wrist_housing",
+        "right_j1_yaw": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_shoulder\nChild · right_upper_arm",
+        "right_j2_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_upper_arm\nChild · right_forearm",
+        "right_j3_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_forearm\nChild · right_wrist_pitch",
+        "right_j4_pitch": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_wrist_pitch\nChild · right_wrist_roll",
+        "right_j5_roll": "revolute\n\nLower · -2.61799387799 rad\nUpper · 2.61799387799 rad\nSpeed limit · 5.45 rad/s\nEffort limit · 1.86 N·m\n\nParent · right_wrist_roll\nChild · right_wrist_housing",
+        "left_j6_gripper": "revolute\n\nLower · -0.3 rad\nUpper · 0.8771 rad\nSpeed limit · 2 rad/s\nEffort limit · 1 N·m\n\nParent · left_wrist_housing\nChild · left_finger_b",
+        "right_j6_gripper": "revolute\n\nLower · -0.3 rad\nUpper · 0.8771 rad\nSpeed limit · 2 rad/s\nEffort limit · 1 N·m\n\nParent · right_wrist_housing\nChild · right_finger_b"
+      },
+      "G1": {
+        "left_hip_pitch_joint": "revolute\n\nLower · -2.5307 rad\nUpper · 2.8798 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · pelvis\nChild · left_hip_pitch_link",
+        "left_hip_roll_joint": "revolute\n\nLower · -0.5236 rad\nUpper · 2.9671 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · left_hip_pitch_link\nChild · left_hip_roll_link",
+        "left_hip_yaw_joint": "revolute\n\nLower · -2.7576 rad\nUpper · 2.7576 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · left_hip_roll_link\nChild · left_hip_yaw_link",
+        "left_knee_joint": "revolute\n\nLower · -0.087267 rad\nUpper · 2.8798 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · left_hip_yaw_link\nChild · left_knee_link",
+        "left_ankle_pitch_joint": "revolute\n\nLower · -0.87267 rad\nUpper · 0.5236 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · left_knee_link\nChild · left_ankle_pitch_link",
+        "left_ankle_roll_joint": "revolute\n\nLower · -0.2618 rad\nUpper · 0.2618 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · left_ankle_pitch_link\nChild · left_ankle_roll_link",
+        "right_hip_pitch_joint": "revolute\n\nLower · -2.5307 rad\nUpper · 2.8798 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · pelvis\nChild · right_hip_pitch_link",
+        "right_hip_roll_joint": "revolute\n\nLower · -2.9671 rad\nUpper · 0.5236 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · right_hip_pitch_link\nChild · right_hip_roll_link",
+        "right_hip_yaw_joint": "revolute\n\nLower · -2.7576 rad\nUpper · 2.7576 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · right_hip_roll_link\nChild · right_hip_yaw_link",
+        "right_knee_joint": "revolute\n\nLower · -0.087267 rad\nUpper · 2.8798 rad\nSpeed limit · 20 rad/s\nEffort limit · 139 N·m\n\nParent · right_hip_yaw_link\nChild · right_knee_link",
+        "right_ankle_pitch_joint": "revolute\n\nLower · -0.87267 rad\nUpper · 0.5236 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · right_knee_link\nChild · right_ankle_pitch_link",
+        "right_ankle_roll_joint": "revolute\n\nLower · -0.2618 rad\nUpper · 0.2618 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · right_ankle_pitch_link\nChild · right_ankle_roll_link",
+        "waist_yaw_joint": "revolute\n\nLower · -2.618 rad\nUpper · 2.618 rad\nSpeed limit · 32 rad/s\nEffort limit · 88 N·m\n\nParent · pelvis\nChild · waist_yaw_link",
+        "waist_roll_joint": "revolute\n\nLower · -0.52 rad\nUpper · 0.52 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · waist_yaw_link\nChild · waist_roll_link",
+        "waist_pitch_joint": "revolute\n\nLower · -0.52 rad\nUpper · 0.52 rad\nSpeed limit · 30 rad/s\nEffort limit · 35 N·m\n\nParent · waist_roll_link\nChild · torso_link",
+        "left_shoulder_pitch_joint": "revolute\n\nLower · -3.0892 rad\nUpper · 2.6704 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · torso_link\nChild · left_shoulder_pitch_link",
+        "left_shoulder_roll_joint": "revolute\n\nLower · -1.5882 rad\nUpper · 2.2515 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_shoulder_pitch_link\nChild · left_shoulder_roll_link",
+        "left_shoulder_yaw_joint": "revolute\n\nLower · -2.618 rad\nUpper · 2.618 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_shoulder_roll_link\nChild · left_shoulder_yaw_link",
+        "left_elbow_joint": "revolute\n\nLower · -1.0472 rad\nUpper · 2.0944 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_shoulder_yaw_link\nChild · left_elbow_link",
+        "left_wrist_roll_joint": "revolute\n\nLower · -1.972222054 rad\nUpper · 1.972222054 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · left_elbow_link\nChild · left_wrist_roll_link",
+        "left_wrist_pitch_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · left_wrist_roll_link\nChild · left_wrist_pitch_link",
+        "left_wrist_yaw_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · left_wrist_pitch_link\nChild · left_wrist_yaw_link",
+        "right_shoulder_pitch_joint": "revolute\n\nLower · -3.0892 rad\nUpper · 2.6704 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · torso_link\nChild · right_shoulder_pitch_link",
+        "right_shoulder_roll_joint": "revolute\n\nLower · -2.2515 rad\nUpper · 1.5882 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_shoulder_pitch_link\nChild · right_shoulder_roll_link",
+        "right_shoulder_yaw_joint": "revolute\n\nLower · -2.618 rad\nUpper · 2.618 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_shoulder_roll_link\nChild · right_shoulder_yaw_link",
+        "right_elbow_joint": "revolute\n\nLower · -1.0472 rad\nUpper · 2.0944 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_shoulder_yaw_link\nChild · right_elbow_link",
+        "right_wrist_roll_joint": "revolute\n\nLower · -1.972222054 rad\nUpper · 1.972222054 rad\nSpeed limit · 37 rad/s\nEffort limit · 25 N·m\n\nParent · right_elbow_link\nChild · right_wrist_roll_link",
+        "right_wrist_pitch_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · right_wrist_roll_link\nChild · right_wrist_pitch_link",
+        "right_wrist_yaw_joint": "revolute\n\nLower · -1.614429558 rad\nUpper · 1.614429558 rad\nSpeed limit · 22 rad/s\nEffort limit · 5 N·m\n\nParent · right_wrist_pitch_link\nChild · right_wrist_yaw_link"
+      }
+    },
+    "screenshots": {}
+  }
+]

@@ -322,6 +322,9 @@ pub struct RobotView {
     /// Embedders with their own transport can disable manual pose shortcuts.
     #[live(true)]
     keyboard_controls: bool,
+    /// Tint inspected child links even when the joint origin is inside the mesh.
+    #[live(false)]
+    tint_selected_links: bool,
     #[rust(false)]
     animating: bool,
     #[rust(0.0f32)]
@@ -1550,13 +1553,17 @@ impl RobotView {
                     continue;
                 };
                 let base = link.color.unwrap_or(DEFAULT_LINK_COLOR);
-                let controlled = self.external_items.iter().any(|item| {
-                    item.color[0] > 0.9 && item.mesh_key.checked_sub(0xD0B00000)
-                        .and_then(|index| robot.joints.get(index as usize))
-                        .is_some_and(|joint| joint.child_link == link.name)
+                let marker = self.external_items.iter().find_map(|item| {
+                    let moving = item.color[0] > 0.9;
+                    if !moving && !self.tint_selected_links { return None; }
+                    let index = item.mesh_key.checked_sub(0xD0B00000)?;
+                    let joint = robot.joints.get(index as usize)?;
+                    (joint.child_link == link.name).then_some(moving)
                 });
-                let color = if controlled {
+                let color = if marker == Some(true) {
                     [base[0] * 0.2 + 0.8, base[1] * 0.2 + 0.68, base[2] * 0.2 + 0.04, base[3]]
+                } else if marker == Some(false) {
+                    [0.04, 0.62, 1.0, base[3]]
                 } else if Some(i) == selected_link {
                     [
                         base[0] * 0.45 + SELECTED_TINT[0] * 0.55,

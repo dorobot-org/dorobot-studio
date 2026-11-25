@@ -101,16 +101,35 @@ def describe(robot):
             f"Missing {len(missing)} meshes for {robot}, including {missing[0]}. Run tools/fetch_robot_meshes.py g1 for G1."
         )
     limits = {}
+    joints = []
     for joint in tree.findall("joint"):
-        if joint.get("type") == "revolute":
-            lim = joint.find("limit").attrib
+        kind = joint.get("type")
+        if kind == "fixed":
+            continue
+        element = joint.find("limit")
+        lim = element.attrib if element is not None else {}
+        if kind == "revolute":
             limits[joint.get("name")] = [float(lim["lower"]), float(lim["upper"])]
+        joints.append(
+            dict(
+                name=joint.attrib["name"],
+                type=kind,
+                parent=joint.find("parent").attrib["link"],
+                child=joint.find("child").attrib["link"],
+                limits={
+                    key: float(lim[key])
+                    for key in ("lower", "upper", "velocity", "effort")
+                    if key in lim
+                },
+            )
+        )
     return dict(
         robot=robot,
         model=str(model),
         model_hash=digest(model),
         mesh_count=len(meshes),
-        joint_count=sum(j.get("type") != "fixed" for j in tree.findall("joint")),
+        joint_count=len(joints),
+        joints=joints,
         limits=limits,
         allowed_joints=[left, right],
     )
@@ -121,12 +140,13 @@ WRIST_CLEARANCE_OPT_IN = re.compile(
 )
 
 
-def named_cube_transfer(task):
+def named_cube_transfer(task, *, moving=False):
     """Recognize an unambiguous single-cube request, leaving spatial and compound instructions to the author."""
     normalized = " ".join(WRIST_CLEARANCE_OPT_IN.sub("", task).lower().split())
+    motion = r"(?:moving|sliding) " if moving else ""
     match = re.fullmatch(
         r"(?:please )?(?:move|place|put|carry|transfer) (?:only )?(?:the |a )?"
-        r"(red|green|blue) (?:floor )?cube (?:from the (?:ground|floor) )?"
+        rf"{motion}(red|green|blue) (?:floor )?cube (?:from the (?:ground|floor) )?"
         r"(?:on|onto|to) (?:the |a )?coffee table[.!]?",
         normalized,
     )
@@ -309,7 +329,10 @@ def measured_feedback(path, meta, output=None):
         }
         from wheel_support import feedback as wheel_feedback
 
-        pickup = wheel_feedback(path, previous, json.loads(parent.read_bytes()))
+        parent_plan = json.loads(parent.read_bytes())
+        pickup = wheel_feedback(path, previous, parent_plan)
+        if parent_plan.get("track_grasp") is True:
+            pickup["previous_track_grasp"] = True
         failure = previous.get("last_pickup_observation")
         if failure and failure.get("color") in previous["requested"]:
             if failure.get("stopped_tick") != previous["physics_ticks"]:
@@ -446,13 +469,19 @@ def octos_controller(prompt, schema, directory, output):
     return actual, usage
 
 
-def request_controller(provider, prompt, schema, output):
+def request_controller(provider, prompt, schema, output, *, camera_input=None):
     output = output.resolve()
     save(output / "schema.json", schema)
-    save(
-        output / "controller-request.json",
-        {"provider": provider, "instruction": prompt, "output_schema": schema},
-    )
+    request = {"provider": provider, "instruction": prompt, "output_schema": schema}
+    image_args = []
+    if camera_input is not None:
+        request["onboard_input"] = camera_input
+        for image in camera_input["images"]:
+            path = output / image["file"]
+            if provider != "codex" or path.parent != output or digest(path) != image["sha256"]:
+                raise ValueError("Onboard image differs from the requested attachment")
+            image_args.extend(["--image", str(path)])
+    save(output / "controller-request.json", request)
     model_name = None
     started = time.monotonic()
     usage = {}
@@ -472,6 +501,7 @@ def request_controller(provider, prompt, schema, output):
                     "--skip-git-repo-check",
                     "--sandbox",
                     "read-only",
+                    *image_args,
                     "--output-schema",
                     str(output / "schema.json"),
                     "-o",
@@ -525,6 +555,8 @@ def prepare(args, meta):
         measured_feedback(args.feedback, meta, args.out) if args.feedback else None
     )
     model_name = None
+    required_tracking = None
+    moving_color = None
     if args.provider == "reference":
         if args.task.strip() != REFERENCE:
             raise ValueError(
@@ -554,6 +586,17 @@ def prepare(args, meta):
         )
         if args.robot == "Nano":
             named = named_cube_transfer(args.task)
+            moving_color = named_cube_transfer(args.task, moving=True)
+            if moving_color:
+                named = moving_color
+                required_tracking = True
+            elif named and not (
+                feedback
+                and (
+                    feedback.get("previous_track_grasp") or "stopped_pickup" in feedback
+                )
+            ):
+                required_tracking = False
             schema["properties"].update(
                 kind=dict(
                     type="string",
@@ -565,7 +608,11 @@ def prepare(args, meta):
                 ),
                 color=dict(type="string", enum=["red", "green", "blue"]),
                 color_order=dict(type="string", enum=[named] if named else CUBE_ORDERS),
-                track_grasp=dict(type="boolean"),
+                track_grasp=(
+                    dict(type="boolean", enum=[required_tracking])
+                    if required_tracking is not None
+                    else dict(type="boolean")
+                ),
                 standoff_m=dict(type="number"),
             )
             schema["required"] += [
@@ -618,7 +665,7 @@ def prepare(args, meta):
             if args.robot != "Nano":
                 raise ValueError("Onboard scene observation requires the Nano profile")
             sys.path.insert(0, str(ROOT / "tools/aisle-validation"))
-            from onboard_scene import capture
+            from onboard_scene import CALIBRATION, author_input, capture
 
             obstacles, settings = room_for_mobile(args, meta)
             public, observation = capture(
@@ -629,8 +676,19 @@ def prepare(args, meta):
                 obstacles,
                 settings,
             )
+            observation["author_input"] = author_input(args.out, observation, args.provider)
+            calibration = json.loads((args.out / CALIBRATION).read_bytes())
             prompt += (
-                "\nUse only the following onboard measurements for spatial references. y_left_m increases to the robot's left. distance_m is horizontal range. Select only observed targets and reject unresolvable requests. Sensor observation: "
+                "\nOnboard calibration (pixels and metres, OpenGL camera frame, transform from camera to mount link): "
+                + json.dumps(calibration["cameras"])
+            )
+            if observation["author_input"]["images"]:
+                prompt += (
+                    "\nThe three attached RGB images are simultaneous head, left-wrist and "
+                    "right-wrist exposures, in that order. Use these views with their measured positions."
+                )
+            prompt += (
+                "\nUse the following onboard measurements for metric spatial references. y_left_m increases to the robot's left. distance_m is horizontal range. Select only observed targets and reject unresolvable requests. Sensor observation: "
                 + json.dumps(public)
             )
         elif args.robot == "Nano":
@@ -674,9 +732,25 @@ def prepare(args, meta):
         if feedback:
             prompt += "\nPrevious measured trial to revise: " + json.dumps(feedback)
             save(args.out / "feedback.json", feedback)
-        plan, model_name = request_controller(args.provider, prompt, schema, args.out)
+        plan, model_name = request_controller(
+            args.provider, prompt, schema, args.out,
+            **({"camera_input": observation["author_input"]} if observation else {}),
+        )
         if plan.get("supported") is not True:
             raise ValueError("Requested task exceeds this controller's capabilities")
+        if moving_color and (
+            plan.get("kind") != "table-transfer"
+            or plan.get("color_order") != moving_color
+        ):
+            raise ValueError(
+                f"The operator requested only the moving {moving_color} cube"
+            )
+        if (
+            required_tracking is not None
+            and plan.get("track_grasp", False) is not required_tracking
+        ):
+            mode = "tracked" if required_tracking else "stationary"
+            raise ValueError(f"The named floor-cube transfer requires a {mode} pickup")
         if (plan.get("wrist_clearance") is True) != bool(
             args.robot == "Nano" and WRIST_CLEARANCE_OPT_IN.search(args.task)
         ):
@@ -749,6 +823,9 @@ def simulate(args, meta):
     from importlib.metadata import version
 
     original = args.controller.read_bytes()
+    expected = getattr(args, "controller_sha256", None)
+    if expected is not None and hashlib.sha256(original).hexdigest() != expected:
+        raise ValueError("Selected controller contents changed before simulation")
     plan = json.loads(original)
     if plan["model_hash"] != meta["model_hash"] or plan["robot"] != args.robot:
         raise ValueError("Controller and robot model differ")
@@ -777,6 +854,10 @@ def simulate(args, meta):
             getattr(args, "room_hash", None),
         )
     (args.out / "controller.json").write_bytes(original)
+    from visual_profile import validate_profile
+
+    visual_profile = getattr(args, "visual_profile", "original")
+    validate_profile(visual_profile, plan)
     mobile = control.get("kind") in ("visual-approach", "table-transfer")
     fixture = (
         "floating base, wheel contact under gravity"
@@ -897,6 +978,7 @@ def simulate(args, meta):
                 record=not getattr(args, "observations_only", False),
                 live_preview=getattr(args, "live_preview", False),
                 observation_progress=getattr(args, "observations_only", False),
+                visual_profile=visual_profile,
                 rgb_timing=getattr(args, "rgb_timing", "normal"),
                 target_motion=getattr(args, "target_motion", "stationary"),
                 observation_period_s=getattr(args, "observation_period_s", 1),
@@ -912,6 +994,11 @@ def simulate(args, meta):
                 kind=control["kind"],
                 room_revision_sha256=getattr(args, "room_hash", None),
                 room_obstacles=[b["name"] for b in room_objects],
+                **(
+                    {"visual_profile": visual_profile}
+                    if visual_profile != "original"
+                    else {}
+                ),
                 task_success=result["passed"],
             )
         from run_rgb_approach import trial
@@ -1064,6 +1151,7 @@ def main():
             "evaluate",
             "device-preflight",
             "compare-observations",
+            "compare-controller",
             "train-reach",
             "train-grasp",
             "fleet",
@@ -1079,6 +1167,7 @@ def main():
     p.add_argument("--task", default=REFERENCE)
     p.add_argument("--feedback", type=Path)
     p.add_argument("--controller", type=Path)
+    p.add_argument("--controller-sha256", help="Digest of the revision selected in Studio")
     p.add_argument("--previous-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--current-packet", nargs=2, metavar=("TRIAL", "TICK"))
     p.add_argument("--trial", type=Path)
@@ -1096,6 +1185,9 @@ def main():
         default="frontal-torso-v3",
         help="Calibration of the simulated G1 impact",
     )
+    p.add_argument(
+        "--visual-profile", choices=("original", "compact-v1"), default="original"
+    )
     p.add_argument("--onboard-context", action="store_true")
     p.add_argument(
         "--rgb-timing",
@@ -1111,6 +1203,8 @@ def main():
     p.add_argument("--room-revision", type=Path)
     p.add_argument("--room-hash")
     p.add_argument("--room-edit")
+    p.add_argument("--room-ambient", help="Three space-separated Nexus ambient RGB intensities")
+    p.add_argument("--floor-friction", help="Nexus floor friction coefficient")
     p.add_argument(
         "--impact-recipe", type=Path, help="Bounded G1 simulation impact JSON"
     )
@@ -1187,6 +1281,14 @@ def main():
             from device_preflight import run as device_preflight
 
             save(args.out / "preflight.json", device_preflight(args))
+            return
+        if args.operation == "compare-controller":
+            from controller_diff import compare, display
+
+            if args.controller is None or not args.controller_sha256:
+                raise ValueError("Select a controller in Task first")
+            report = compare(args.out.parent, args.robot, args.controller, args.controller_sha256, args.baseline)
+            save(args.out / "comparison.json", report | {"display": display(report)})
             return
         if args.operation == "compare-observations":
             from decision_observations import compare
@@ -1268,6 +1370,19 @@ def main():
                 source = args.room_revision.with_name("survey.json")
             if source is None:
                 raise ValueError("Choose a room survey JSON file")
+            environment = {}
+            if args.room_ambient is not None:
+                try:
+                    tokens = args.room_ambient.split()
+                    environment["ambient_rgb"] = [float(v) for v in tokens] if tokens else None
+                except ValueError as exc:
+                    raise ValueError("Use three ambient intensities from zero to one") from exc
+            if args.floor_friction is not None:
+                try:
+                    value = args.floor_friction.strip()
+                    environment["floor_friction"] = float(value) if value else None
+                except ValueError as exc:
+                    raise ValueError("Choose a floor friction coefficient from zero to two") from exc
             import_room(
                 source.resolve(),
                 args.out,
@@ -1275,6 +1390,7 @@ def main():
                 args.room_edit,
                 parent=args.room_hash if args.room_source is None else None,
                 model_sha=describe("Nano")["model_hash"],
+                environment=environment or None,
             )
             return
         if args.operation == "train-grasp":

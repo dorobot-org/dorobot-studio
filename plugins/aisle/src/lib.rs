@@ -14,6 +14,7 @@ use dorobot_studio_plugin::*;
 use dorobot_ux::kit::SparkWidgetRefExt;
 use makepad_urdf_player::robot_view::RobotViewWidgetRefExt;
 use std::path::PathBuf;
+mod joint_inspector;
 
 pub struct AislePlugin;
 const PAGES: &[PanelDescriptor] = &[
@@ -67,6 +68,9 @@ impl StudioPlugin for AislePlugin {
             draft: None,
             room_preview: None,
             decision_preview: None,
+            detailed_trial: None,
+            joint_robot: None,
+            joint_index: 0,
         }))
     }
     fn can_disable(&self, b: &dyn Backend) -> Result<(), String> {
@@ -104,16 +108,29 @@ script_mod! {
                 Bar{older := mod.widgets.ux.ToolButton{text:"Earlier revision"} newer := mod.widgets.ux.ToolButton{text:"Later revision"}}
                 revision_actions := Bar{revise := mod.widgets.ux.ToolButton{text:"Revise with DeepSeek"} revise_codex := mod.widgets.ux.ToolButton{text:"Revise with Codex"}}
             }
-            model_card := Card{width:Fill height:Fill preview_title := Section{text:"Robot preview"} robot := RobotView{width:Fill height:Fill keyboard_controls:false} onboard_photo := VideoPlayer{width:Fill height:Fill}}
+            model_card := Card{width:Fill height:Fill Bar{preview_title := Section{text:"Robot preview"} review_controller := mod.widgets.ux.ToolButton{text:"Review changes"}}
+                author_inputs := Body{max_lines:2}
+                diff_scroll := ScrollYView{width:Fill height:Fill flow:Down controller_changes := Body{max_lines:0}}
+                robot := RobotView{width:Fill height:Fill keyboard_controls:false} onboard_photo := VideoPlayer{width:Fill height:Fill}}
         }
         status := Body{}
     }
     mod.widgets.AisleScene=Page{
         Title{text:"Simulation scene"} context_label := Section{}
-        scene_modes := Bar{robot_mode := mod.widgets.ux.ToolButton{text:"Robot model"} room_mode := mod.widgets.ux.ToolButton{text:"Room survey"}}
+        scene_modes := Bar{robot_mode := mod.widgets.ux.ToolButton{text:"Robot model"} joint_mode := mod.widgets.ux.ToolButton{text:"Joint limits"} room_mode := mod.widgets.ux.ToolButton{text:"Room survey"}}
         row := View{width:Fill height:Fill flow:Right spacing:12.0
-            model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false}}
+            model_card := Card{width:Fill height:Fill Section{text:"URDF model"} robot := RobotView{width:Fill height:Fill keyboard_controls:false tint_selected_links:true}}
             photo_card := Card{width:Fill height:Fill photo_label := Section{text:"Floor footprint"} photo := VideoPlayer{width:Fill height:Fill}}
+            joint_card := Card{width:300 height:Fill
+                Section{text:"Find a joint"}
+                joint_query := TextInput{width:Fill height:38 empty_text:"Filter by joint name"}
+                joint_count := Body{}
+                Bar{joint_previous := mod.widgets.ux.ToolButton{text:"Previous"} joint_next := mod.widgets.ux.ToolButton{text:"Next"}}
+                ScrollYView{width:Fill height:Fill flow:Down spacing:10
+                    joint_name := Section{}
+                    joint_detail := Body{max_lines:0}
+                }
+            }
             survey_card := ScrollYView{width:295 height:Fill flow:Down spacing:8 padding:10
                 Section{text:"Room input file"} survey_path := TextInput{width:Fill height:38 empty_text:"Path to a survey or photo input"}
                 import_survey := mod.widgets.ux.PrimaryButton{text:"Import survey"}
@@ -124,6 +141,11 @@ script_mod! {
                 room_edits := View{width:Fill height:Fit flow:Down spacing:6
                 Section{text:"Edit obstacle · metres"} geometry := TextInput{width:Fill height:38 empty_text:"name x y height"}
                 save_geometry := mod.widgets.ux.ToolButton{text:"Save revision"}
+                Section{text:"Ambient light · R G B (0–1)"}
+                room_ambient := TextInput{width:Fill height:34 empty_text:"Use scene default"}
+                Section{text:"Floor friction (0–2)"}
+                room_friction := TextInput{width:Fill height:34 empty_text:"Use scene default"}
+                save_environment := mod.widgets.ux.ToolButton{text:"Save environment"}
                 default_room := mod.widgets.ux.ToolButton{text:"Use default room"}}
             }
             inspector := Card{width:285 height:Fill padding:0.0
@@ -135,6 +157,10 @@ script_mod! {
                     impact := mod.widgets.ux.ToolButton{text:"Impact test"}
                 }
                 fixture := Body{}
+                camera_profile := View{width:Fill height:Fit flow:Down spacing:6.0
+                    Section{text:"Onboard camera rendering"}
+                    Bar{original_visuals := mod.widgets.ux.ToolButton{text:"Original"} compact_visuals := mod.widgets.ux.ToolButton{text:"Compact"}}
+                }
                 layouts := View{width:Fill height:Fit flow:Down spacing:6.0
                     Bar{spacing:4.0 seed_title := Section{} layout0 := mod.widgets.ux.ToolButton{text:"0"} layout1 := mod.widgets.ux.ToolButton{text:"1"} layout2 := mod.widgets.ux.ToolButton{text:"2"}}
                     Bar{seed_input := TextInput{width:Fill height:32 empty_text:"Enter a layout seed"} apply_seed := mod.widgets.ux.ToolButton{text:"Set seed"}}
@@ -178,7 +204,7 @@ script_mod! {
     }
     mod.widgets.AisleEvidence=Page{
         Title{text:"Run evidence"} context_label := Section{}
-        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"} device_mode := mod.widgets.ux.ToolButton{text:"Device preflight"}}
+        Bar{trial_mode := mod.widgets.ux.ToolButton{text:"Trial"} evaluation_mode := mod.widgets.ux.ToolButton{text:"Batch evaluation"} device_mode := mod.widgets.ux.ToolButton{text:"Device preflight"} room_baseline := mod.widgets.ux.ToolButton{text:"Use as room baseline"} room_details := mod.widgets.ux.ToolButton{text:"Trial details"}}
         device := Card{width:Fill height:Fill
             device_title := Title{}
             device_info := Body{}
@@ -195,7 +221,7 @@ script_mod! {
             failure_bar := Bar{earlier_failure := mod.widgets.ux.ToolButton{text:"Previous failure"} later_failure := mod.widgets.ux.ToolButton{text:"Next failure"}}
             ScrollYView{width:Fill height:Fill flow:Down failure_detail := Body{max_lines:64}}
         }
-        summary := Card{width:Fill height:Fit Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
+        summary := Card{width:Fill height:Fit summary_title := Section{text:"Task outcome"} verdict := Title{} detail := Body{}}
         plot := Card{width:Fill height:Fill trace_label := Section{} trace := Spark{width:Fill height:Fill} scale := Section{}}
         decision_card := Card{width:Fill height:Fill
             decision_title := Title{}
@@ -223,12 +249,15 @@ struct Panel {
     draft: Option<(Robot, Option<PathBuf>)>,
     room_preview: Option<PathBuf>,
     decision_preview: Option<PathBuf>,
+    detailed_trial: Option<PathBuf>,
+    joint_robot: Option<Robot>,
+    joint_index: usize,
 }
 impl Panel {
     fn label(&self, cx: &mut Cx, id: &[LiveId], s: &str) {
         self.root.label(cx, id).set_text(cx, s);
     }
-    fn show_camera(&mut self, cx: &mut Cx, dir: Option<&PathBuf>) {
+    fn show_camera(&mut self, cx: &mut Cx, dir: Option<&PathBuf>, buffered: bool) {
         use std::io::Read;
         let camera = self.root.video_player(cx, ids!(camera));
         if self.frame.as_ref().is_some_and(|(old, _)| Some(old) != dir) {
@@ -236,21 +265,29 @@ impl Panel {
             self.frame = None;
         }
         let Some(dir) = dir else { return };
-        let Ok(mut file) = std::fs::File::open(dir.join("preview.rgb")) else {
+        let last = self.frame.as_ref().map(|(_, tick)| *tick);
+        if buffered && last.is_some() && camera.borrow().is_some_and(|v| v.measured_frame_pending()) {
             return;
+        }
+        let open = |name: &str, recent: bool| {
+            let mut file = std::fs::File::open(dir.join(name)).ok()?;
+            let mut stamp = [0; 4];
+            file.read_exact(&mut stamp).ok()?;
+            let tick = u32::from_be_bytes(stamp) as u64;
+            if last.is_some_and(|previous| tick <= previous) {
+                return None;
+            }
+            if recent && file.metadata().ok()?.modified().ok()?.elapsed().ok()? > std::time::Duration::from_millis(80) {
+                return None;
+            }
+            Some((tick, file))
         };
-        let mut stamp = [0; 4];
-        if file.read_exact(&mut stamp).is_err() {
-            return;
-        }
-        let tick = u32::from_be_bytes(stamp) as u64;
-        if self
-            .frame
-            .as_ref()
-            .is_some_and(|(_, previous)| *previous == tick)
-        {
-            return;
-        }
+        let next = if buffered && last.is_some() {
+            open("preview-previous.rgb", true)
+        } else {
+            None
+        };
+        let Some((tick, mut file)) = next.or_else(|| open("preview.rgb", false)) else { return };
         // The producer atomically replaces this file. Its header and pixels belong to the same exposure.
         let Ok(meta) = file.metadata() else { return };
         const SMALL: u64 = 4 + 480 * 320 * 3;
@@ -266,6 +303,14 @@ impl Panel {
                 view.set_measured_frame(cx, (480, height), &rgb, tick, dir);
                 self.frame = Some((dir.clone(), tick));
             }
+        }
+    }
+    fn camera_title(&self, cx: &mut Cx, title: &str, streaming: bool) {
+        if streaming {
+            let cadence = self.root.video_player(cx, ids!(camera)).live_cadence();
+            self.label(cx, ids!(camera_label), &format!("{title} · {cadence}"));
+        } else {
+            self.label(cx, ids!(camera_label), title);
         }
     }
     fn model(&mut self, cx: &mut Cx, w: &Workbench) {
@@ -370,9 +415,14 @@ impl Panel {
         } else {
             &w.fleet["sample"]
         };
-        self.label(
+        let directory = if stream {
+            &w.worker_preview
+        } else {
+            &w.worker_sample
+        };
+        self.show_camera(cx, directory.as_ref(), true);
+        self.camera_title(
             cx,
-            ids!(camera_label),
             if stream {
                 "Foreground worker camera"
             } else if frame.is_object() {
@@ -380,16 +430,11 @@ impl Panel {
             } else {
                 "Choose Get snapshot to view the latest background RGB image"
             },
+            stream && active,
         );
-        let directory = if stream {
-            &w.worker_preview
-        } else {
-            &w.worker_sample
-        };
         self.root
             .widget(cx, ids!(sample_job))
             .set_visible(cx, selected["mode"] == "observations");
-        self.show_camera(cx, directory.as_ref());
         let compatible = w.prepared.is_some()
             && caps["robots"][w.robot.name()].is_string()
             && caps["robots"][w.robot.name()] == w.plan["model_hash"];
@@ -437,14 +482,15 @@ impl Panel {
         let standing = w.progress["kind"] == "standing-inspection";
         let transfer = w.progress["kind"] == "table-transfer";
         let mobile = transfer || w.progress["kind"] == "visual-approach";
-        self.label(
+        self.show_camera(cx, w.live.as_ref(), false);
+        self.camera_title(
             cx,
-            ids!(camera_label),
             if mobile {
                 "Onboard head camera · RGB"
             } else {
                 "External operator camera"
             },
+            w.running_local_trial(),
         );
         self.label(
             cx,
@@ -459,7 +505,6 @@ impl Panel {
                 "Measured joint response"
             },
         );
-        self.show_camera(cx, w.live.as_ref());
         let text = if transfer {
             format!(
                 "{} cube · {}\n{:.1} s simulated",
@@ -541,6 +586,7 @@ impl PluginPanel for Panel {
                     (ids!(device), Themed::Bg),
                     (ids!(decision_card), Themed::Bg),
                     (ids!(survey_card), Themed::Bg),
+                    (ids!(joint_card), Themed::Bg),
                     (ids!(summary), Themed::Bg),
                     (ids!(plot), Themed::Bg),
                 ],
@@ -566,7 +612,9 @@ impl PluginPanel for Panel {
                 } else {
                     w.robot.name()
                 },
-                if mobile {
+                if transfer && self.page == "aisle_evidence" && w.evidence["visual_profile"] == "compact-v1" {
+                    "Living room · compact onboard cameras"
+                } else if mobile {
                     "Living room · grounded Nano"
                 } else if standing {
                     "G1 · floating-base standing test"
@@ -579,19 +627,37 @@ impl PluginPanel for Panel {
         match self.page.as_str() {
             "aisle_task" => {
                 let capture = w.plan["scene_observation"]["files"]["onboard-head.rgb"].is_string();
-                self.root.widget(cx, ids!(robot)).set_visible(cx, !capture);
+                let reviewing = w.controller_diff.is_some();
+                let review = self.root.button(cx, ids!(review_controller));
+                review.set_enabled(cx, w.prepared.is_some() && !w.busy());
+                review.set_text(cx, if reviewing { "Close review" } else { "Review changes" });
+                self.root.widget(cx, ids!(diff_scroll)).set_visible(cx, reviewing);
+                if let Some(report) = &w.controller_diff {
+                    self.label(cx, ids!(controller_changes), report["display"].as_str().unwrap_or(""));
+                }
+                self.root.widget(cx, ids!(robot)).set_visible(cx, !capture && !reviewing);
                 self.root
                     .widget(cx, ids!(onboard_photo))
-                    .set_visible(cx, capture);
+                    .set_visible(cx, capture && !reviewing);
                 self.label(
                     cx,
                     ids!(preview_title),
-                    if capture {
+                    if reviewing {
+                        "Controller changes"
+                    } else if capture {
                         "Head camera at task authoring"
                     } else {
                         "Robot preview"
                     },
                 );
+                let inputs = &w.plan["scene_observation"]["author_input"];
+                let label = match (inputs["provider"].as_str(), inputs["images"].as_array()) {
+                    (Some("codex"), Some(images)) if images.len() == 3 => "Sent to Codex · Head and both wrist images plus measured positions",
+                    (Some("octos-deepseek"), Some(images)) if images.is_empty() => "Sent to DeepSeek · Positions measured from onboard RGB",
+                    _ => "",
+                };
+                self.root.widget(cx, ids!(author_inputs)).set_visible(cx, !reviewing && !label.is_empty());
+                self.label(cx, ids!(author_inputs), label);
                 let draft = (w.robot, w.prepared.clone());
                 if self.draft.as_ref() != Some(&draft) {
                     self.root
@@ -722,12 +788,15 @@ impl PluginPanel for Panel {
                     },
                 );
                 let index = w.revision_index();
-                self.root
-                    .button(cx, ids!(older))
-                    .set_enabled(cx, !w.busy() && index.is_some_and(|i| i > 0));
+                self.root.button(cx, ids!(older)).set_enabled(
+                    cx,
+                    !w.busy() && !w.revisions.is_empty() && index.is_none_or(|i| i > 0),
+                );
                 self.root.button(cx, ids!(newer)).set_enabled(
                     cx,
-                    !w.busy() && index.is_some_and(|i| i + 1 < w.revisions.len()),
+                    !w.busy()
+                        && !w.revisions.is_empty()
+                        && index.is_none_or(|i| i + 1 < w.revisions.len()),
                 );
                 self.root.widget(cx, ids!(revision_actions)).set_visible(
                     cx,
@@ -749,19 +818,22 @@ impl PluginPanel for Panel {
                 }
             }
             "aisle_scene" => {
-                let editing = mobile && w.room_editor;
-                self.root
-                    .widget(cx, ids!(scene_modes))
-                    .set_visible(cx, mobile);
+                if self.joint_robot != Some(w.robot) {
+                    self.joint_robot = None;
+                }
+                let joints = self.joint_robot.is_some();
+                let editing = !joints && mobile && w.room_editor;
+                self.root.widget(cx, ids!(room_mode)).set_visible(cx, mobile);
+                self.root.button(cx, ids!(joint_mode)).set_enabled(cx, !joints && !w.busy());
                 self.root
                     .button(cx, ids!(room_mode))
                     .set_enabled(cx, !w.busy() && !editing);
                 self.root
                     .button(cx, ids!(robot_mode))
-                    .set_enabled(cx, !w.busy() && editing);
-                for id in [ids!(model_card), ids!(inspector)] {
-                    self.root.widget(cx, id).set_visible(cx, !editing);
-                }
+                    .set_enabled(cx, !w.busy() && (editing || joints));
+                self.root.widget(cx, ids!(model_card)).set_visible(cx, !editing);
+                self.root.widget(cx, ids!(inspector)).set_visible(cx, !editing && !joints);
+                self.root.widget(cx, ids!(joint_card)).set_visible(cx, joints);
                 for id in [ids!(photo_card), ids!(survey_card)] {
                     self.root.widget(cx, id).set_visible(cx, editing);
                 }
@@ -814,16 +886,42 @@ impl PluginPanel for Panel {
                             b["size"][2].as_f64().unwrap_or_default()
                         ));
                     }
+                    if let Some(checks) = info["settings"]["camera_mount_checks"].as_object() {
+                        for (name, label) in [
+                            ("head", "Head"),
+                            ("left_wrist", "Left wrist"),
+                            ("right_wrist", "Right wrist"),
+                        ] {
+                            if let Some(check) = checks.get(name) {
+                                if let (Some(error), Some(count)) =
+                                    (check["max_check_px"].as_f64(), check["check_points"].as_u64())
+                                {
+                                    text.push(format!("{label} · {error:.2} px max on {count} check points"));
+                                }
+                            }
+                        }
+                    }
                     self.label(cx, ids!(room_detail), &text.join("\n"));
                     self.root
                         .button(cx, ids!(import_survey))
                         .set_enabled(cx, !w.busy());
-                    for id in [ids!(save_geometry), ids!(default_room)] {
+                    for id in [ids!(save_geometry), ids!(save_environment), ids!(default_room)] {
                         self.root
                             .button(cx, id)
                             .set_enabled(cx, !w.busy() && !draft && w.room_path.is_some());
                     }
                     if self.room_preview.as_ref() != preview {
+                        let settings = &info["settings"];
+                        let ambient = settings["ambient_rgb"]
+                            .as_array()
+                            .map(|rgb| rgb.iter().map(ToString::to_string).collect::<Vec<_>>().join(" "))
+                            .unwrap_or_default();
+                        let friction = settings["floor_friction"]
+                            .as_f64()
+                            .map(|value| value.to_string())
+                            .unwrap_or_default();
+                        self.root.text_input(cx, ids!(room_ambient)).set_text(cx, &ambient);
+                        self.root.text_input(cx, ids!(room_friction)).set_text(cx, &friction);
                         let player = self.root.video_player(cx, ids!(photo));
                         player.clear(cx);
                         if let Some(raw) = preview
@@ -847,6 +945,9 @@ impl PluginPanel for Panel {
                         "Fixed base · zero gravity"
                     },
                 );
+                self.root.widget(cx, ids!(camera_profile)).set_visible(cx, transfer);
+                self.root.button(cx, ids!(original_visuals)).set_enabled(cx, !w.busy() && w.compact_visuals);
+                self.root.button(cx, ids!(compact_visuals)).set_enabled(cx, !w.busy() && !w.compact_visuals && w.plan["scene_observation"].is_null());
                 self.root
                     .widget(cx, ids!(layouts))
                     .set_visible(cx, mobile || (w.robot == Robot::Nano && w.onboard_context));
@@ -933,6 +1034,7 @@ impl PluginPanel for Panel {
                 self.root
                     .button(cx, ids!(inspect))
                     .set_enabled(cx, !w.busy());
+                self.sync_joint_inspector(cx, w, joints);
                 let info = if w.scene.is_null() {
                     "Inspect the URDF to verify its meshes and joint limits.".into()
                 } else {
@@ -955,6 +1057,19 @@ impl PluginPanel for Panel {
             "aisle_run" => self.run(cx, w),
             _ => {
                 let decision = w.decision.is_some();
+                let can_pin = w.can_pin_room();
+                let pinned = w.room_baseline.is_some();
+                let show_baseline = !decision && !w.show_evaluation && !w.show_device && (can_pin || pinned);
+                self.root.widget(cx, ids!(room_baseline)).set_visible(cx, show_baseline);
+                let button = self.root.button(cx, ids!(room_baseline));
+                button.set_enabled(cx, !w.busy() && (can_pin || pinned));
+                button.set_text(cx, if pinned { "Clear room baseline" } else { "Use as room baseline" });
+                let paired_room = w.transfer_comparison.as_ref().and_then(|pair| pair.room.as_ref());
+                if paired_room.is_none() || self.detailed_trial.as_ref() != w.selected.as_ref() {
+                    self.detailed_trial = None;
+                }
+                self.root.widget(cx, ids!(room_details)).set_visible(cx, show_baseline && paired_room.is_some());
+                self.root.button(cx, ids!(room_details)).set_text(cx, if self.detailed_trial.is_some() { "Room comparison" } else { "Trial details" });
                 let has_packets = w
                     .transfer_comparison
                     .as_ref()
@@ -1319,7 +1434,10 @@ impl PluginPanel for Panel {
                         }
                     }
                 };
-                self.label(cx, ids!(verdict), verdict);
+                let room = paired_room.filter(|_| self.detailed_trial.is_none());
+                let title = room.map(|_| format!("Room comparison · layout {}", w.evidence["seed"]));
+                self.label(cx, ids!(summary_title), title.as_deref().unwrap_or("Task outcome"));
+                self.label(cx, ids!(verdict), room.map_or(verdict, |r| r.outcome.as_str()));
                 let text = if transfer {
                     let mut lines = vec![];
                     if w.evidence["wrist_clearance"] == true {
@@ -1580,7 +1698,7 @@ impl PluginPanel for Panel {
                         (
                             ids!(previous_change) as &[LiveId],
                             RevisionSide::Previous,
-                            "previous",
+                            if comparison.room.is_some() { "baseline" } else { "previous" },
                         ),
                         (ids!(current_change), RevisionSide::Current, "current"),
                     ] {
@@ -1600,6 +1718,8 @@ impl PluginPanel for Panel {
                         }
                     }
                     comparison.summary.clone()
+                } else if let Some(note) = &w.room_pair_note {
+                    note.clone()
                 } else if let Some(diff) = w.comparison {
                     format!(
                         "Compared with previous matching trial: {diff:+.6} rad. Open the run folder for controller.json, trajectory.json and frame.png."
@@ -1651,7 +1771,7 @@ impl PluginPanel for Panel {
                 self.root
                     .button(cx, ids!(train_reach))
                     .set_enabled(cx, !w.busy());
-                self.label(cx, ids!(detail), &text);
+                self.label(cx, ids!(detail), room.map_or(text.as_str(), |r| r.detail.as_str()));
                 let trace: Vec<_> = w.trace.iter().map(|&x| x as f64).collect();
                 self.root
                     .widget(cx, ids!(trace))
@@ -1713,9 +1833,20 @@ impl PluginPanel for Panel {
         }
     }
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, b: &mut dyn Backend) -> bool {
+        if self.page == "aisle_scene" && self.handle_joint_inspector(cx, actions, b) {
+            return true;
+        }
         let Some(_) = b.aisle() else {
             return false;
         };
+        if self.root.button(cx, ids!(room_details)).clicked(actions) {
+            self.detailed_trial = if self.detailed_trial.is_some() {
+                None
+            } else {
+                b.aisle().and_then(|w| w.selected.clone())
+            };
+            return true;
+        }
         if self.root.button(cx, ids!(connect)).clicked(actions) {
             let alias = self.root.text_input(cx, ids!(node)).text();
             b.dispatch(Intent::Aisle(Action::ConnectWorker(alias)));
@@ -1766,10 +1897,13 @@ impl PluginPanel for Panel {
                 ids!(slide_neg),
                 Action::TargetMotion(TargetMotion::NegativeY),
             ),
+            (ids!(original_visuals), Action::CompactVisuals(false)),
+            (ids!(compact_visuals), Action::CompactVisuals(true)),
             (ids!(on_time), Action::RgbTiming(RgbTiming::Normal)),
             (ids!(late_rgb), Action::RgbTiming(RgbTiming::Intermittent)),
             (ids!(frozen_rgb), Action::RgbTiming(RgbTiming::Disconnected)),
             (ids!(device_mode), Action::ShowDevice),
+            (ids!(room_baseline), Action::ToggleRoomBaseline),
             (ids!(device_replay), Action::DevicePreflight(None)),
             (ids!(device_stop), Action::Stop),
             (ids!(device_folder), Action::OpenPreflight),
@@ -1781,6 +1915,7 @@ impl PluginPanel for Panel {
             (ids!(room_mode), Action::EditRoom(true)),
             (ids!(robot_mode), Action::EditRoom(false)),
             (ids!(default_room), Action::DefaultRoom),
+            (ids!(review_controller), Action::ReviewController),
             (ids!(older), Action::OlderPlan),
             (ids!(newer), Action::NewerPlan),
             (ids!(clock), Action::ToggleObservationClock),
@@ -1859,6 +1994,12 @@ impl PluginPanel for Panel {
                 b.dispatch(Intent::Aisle(Action::DraftRoom { source, planner }));
                 return true;
             }
+        }
+        if self.root.button(cx, ids!(save_environment)).clicked(actions) {
+            let ambient = self.root.text_input(cx, ids!(room_ambient)).text();
+            let friction = self.root.text_input(cx, ids!(room_friction)).text();
+            b.dispatch(Intent::Aisle(Action::SetRoomEnvironment { ambient, friction }));
+            return true;
         }
         let importing = self.root.button(cx, ids!(import_survey)).clicked(actions);
         if importing || self.root.button(cx, ids!(save_geometry)).clicked(actions) {

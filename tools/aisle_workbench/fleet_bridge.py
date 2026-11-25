@@ -17,12 +17,24 @@ import time
 from uuid import uuid4
 from zipfile import ZipFile
 
+from visual_profile import BUNDLE_SHA256, validate_profile
+from onboard_scene import verify_observation_files
 from fleet_artifacts import download
-from fleet_client import check_background_period, send, submission, worker_command
+from fleet_client import (
+    WorkerRejection,
+    check_background_period,
+    decode_rgb,
+    decode_plane,
+    poll_observation,
+    send,
+    submission,
+    worker_command,
+)
 from fleet_worker import ACTIVE, initialize, job_id
 from worker import ROOT, save
 
 PENDING = (*ACTIVE, "submitting")
+LEASE_STATES = (*ACTIVE, "completed", "failed", "cancelled", "lost")
 
 
 @contextmanager
@@ -67,18 +79,30 @@ def update(root, ident, state):
         )
 
 
+def update_from_lease(root, ident, info, *, previous_state=None):
+    if (
+        not isinstance(info, dict)
+        or info.get("id") != ident
+        or info.get("state") not in LEASE_STATES
+    ):
+        raise RuntimeError("Worker returned an invalid job status")
+    state = info["state"]
+    if state != previous_state:
+        update(root, ident, state)
+
+
 def reconcile(root, row, node):
     try:
         info = send(node, dict(op="status", id=row["id"]))
-    except ValueError as exc:
+    except WorkerRejection as exc:
         if str(exc) != "Unknown simulation lease" or row["state"] != "submitting":
             raise
         try:
             info = send(node, json.loads(row["request"]))
-        except ValueError:
+        except WorkerRejection:
             update(root, row["id"], "rejected")
             raise
-    update(root, row["id"], info["state"])
+    update_from_lease(root, row["id"], info)
     return info
 
 
@@ -116,10 +140,10 @@ def submit(root, registry, alias, request):
     # Persist the exact request before sending so a lost SSH response is recoverable.
     try:
         info = send(registry[alias], request)
-    except ValueError:
+    except WorkerRejection:
         update(root, request["id"], "rejected")
         raise
-    update(root, request["id"], info["state"])
+    update_from_lease(root, request["id"], info)
     return info
 
 
@@ -152,6 +176,33 @@ def verify_wrist_fixture(folder, request, state):
             )
 
 
+def verify_visual_profile(folder, request, state):
+    if state != "completed":
+        return
+    expected = request.get("visual_profile", "original")
+    for name in ("source.json", "result.json"):
+        path = folder / name
+        record = json.loads(path.read_bytes()) if path.is_file() else {}
+        if record.get("visual_profile", "original") != expected:
+            raise ValueError("Recorded Nano camera profile differs from the submission")
+        if (
+            name == "source.json"
+            and expected != "original"
+            and record.get("visual_bundle_sha256") != BUNDLE_SHA256
+        ):
+            raise ValueError(
+                "Recorded Nano camera geometry differs from the selected bundle"
+            )
+
+
+def verify_author_inputs(folder, request, state):
+    if state == "completed":
+        plan = json.loads(base64.b64decode(request["controller"], validate=True))
+        binding = plan.get("scene_observation", {})
+        if "author_input" in binding:
+            verify_observation_files(folder, binding)
+
+
 def import_trial(root, node, row, status):
     request = json.loads(row["request"])
     dest = root / row["trial"]
@@ -159,6 +210,8 @@ def import_trial(root, node, row, status):
         receipt = json.loads((dest / "worker-origin.json").read_bytes())
         if receipt["job"] != row["id"]:
             raise ValueError("Trial directory belongs to another worker job")
+        verify_author_inputs(dest, request, receipt["state"])
+        verify_visual_profile(dest, request, receipt["state"])
         verify_wrist_fixture(dest, request, receipt["state"])
         return dest
     with tempfile.TemporaryDirectory(dir=root) as tmp:
@@ -212,6 +265,8 @@ def import_trial(root, node, row, status):
                     or "Worker failed before producing a verdict"
                 ),
             )
+        verify_author_inputs(folder, request, status["state"])
+        verify_visual_profile(folder, request, status["state"])
         verify_wrist_fixture(folder, request, status["state"])
         save(
             folder / "worker-origin.json",
@@ -229,17 +284,10 @@ def import_trial(root, node, row, status):
     return dest
 
 
-def receive_frame(node, ident, operation, out):
-    reply = send(node, dict(op=operation, id=ident))
+def save_frame(reply, out):
     if not reply["ready"]:
         return None
-    data = base64.b64decode(reply["data"], validate=True)
-    if (
-        reply["width"] != 480
-        or reply["height"] not in (320, 360)
-        or len(data) != 480 * reply["height"] * 3
-    ):
-        raise ValueError("Invalid worker camera frame")
+    data = decode_rgb(reply)
     tmp = out / "preview.tmp"
     tmp.write_bytes(reply["tick"].to_bytes(4, "big") + data)
     tmp.replace(out / "preview.rgb")
@@ -279,46 +327,65 @@ def foreground_packets(pipe, silence_s=10):
         packet = json.loads(buf[:boundary])
         del buf[: boundary + 1]
         size = packet["bytes"]
-        if type(size) is not int or size not in (
-            0,
-            4 + 480 * 320 * 3,
-            4 + 480 * 360 * 3,
+        encoding = packet.get("encoding", "raw")
+        plane_sizes = (4 + 480 * 320 * 3, 4 + 480 * 360 * 3)
+        expanded = packet.get("raw_bytes", size)
+        if type(size) is not int or type(expanded) is not int or not (
+            (encoding == "raw" and expanded == size and size in (0, *plane_sizes))
+            or (encoding == "zlib" and expanded in plane_sizes and 0 < size < expanded)
         ):
-            raise ValueError("Invalid foreground frame size")
+            raise ValueError("Invalid foreground frame size or encoding")
         while len(buf) < size:
             if not read_more():
                 raise ValueError("Incomplete foreground RGB frame")
         raw = bytes(buf[:size])
         del buf[:size]
-        yield packet, raw
+        yield packet, decode_plane(raw, encoding, expanded)
 
 
-def watch_foreground(node, ident, out, root):
+def publish_foreground_frame(out, raw):
+    """Keep the last two complete exposures so a late Studio draw can recover one."""
+    latest = out / "preview.rgb"
+    previous_tmp = out / "preview-previous.tmp"
+    tmp = out / "preview.tmp"
+    tmp.write_bytes(raw)
+    if latest.exists():
+        try:
+            os.link(latest, previous_tmp)
+        except OSError:
+            shutil.copyfile(latest, previous_tmp)
+        previous_tmp.replace(out / "preview-previous.rgb")
+    tmp.replace(latest)
+
+
+def watch_foreground(node, ident, out, root, *, compress=False):
     job, frame = None, None
-    proc = subprocess.Popen(
-        worker_command(node, "watch-rgb", ident), stdout=subprocess.PIPE
-    )
+    (out / "preview-previous.tmp").unlink(missing_ok=True)
+    options = ("--encoding", "zlib") if compress else ()
+    transport = dict(frames=0, compressed_frames=0, wire_bytes=0, raw_bytes=0)
+    proc = subprocess.Popen(worker_command(node, "watch-rgb", ident, *options), stdout=subprocess.PIPE)
     try:
         for packet, raw in foreground_packets(proc.stdout):
             if "job" in packet:
                 new_job = packet["job"]
-                if new_job.get("id") != ident:
-                    raise ValueError("Foreground stream returned a different job")
-                if not job or new_job["state"] != job["state"]:
-                    update(root, ident, new_job["state"])
+                update_from_lease(
+                    root, ident, new_job, previous_state=job["state"] if job else None
+                )
                 job = new_job
             if not job:
                 raise ValueError("Missing foreground job identity")
             if raw:
-                tmp = out / "preview.tmp"
-                tmp.write_bytes(raw)
-                tmp.replace(out / "preview.rgb")
+                transport["frames"] += 1
+                transport["compressed_frames"] += int(packet.get("encoding") == "zlib")
+                transport["wire_bytes"] += packet["bytes"]
+                transport["raw_bytes"] += len(raw)
+                publish_foreground_frame(out, raw)
                 frame = dict(
                     tick=int.from_bytes(raw[:4], "big"),
                     height=(len(raw) - 4) // 1440,
                     sha256=hashlib.sha256(memoryview(raw)[4:]).hexdigest(),
                 )
-            save(out / "watch.json", dict(job=job, frame=frame))
+            save(out / "watch.json", dict(job=job, frame=frame, transport=transport))
         if proc.wait(timeout=5) or not job or job["state"] in ACTIVE:
             raise ValueError(
                 "Foreground RGB stream disconnected. Refresh the worker to reconnect."
@@ -349,16 +416,16 @@ def operate(args):
         row = record(root, ident)
         if row["node"] != alias:
             raise ValueError("This job belongs to another node")
-        if (
-            row["mode"] == "stream"
-            and send(node, dict(op="hello")).get("foreground_rgb_protocol") == 1
-        ):
-            return watch_foreground(node, ident, args.out, root)
+        if row["mode"] == "stream":
+            capabilities = send(node, dict(op="hello"))
+            if capabilities.get("foreground_rgb_protocol") == 1:
+                compress = bool(node.get("ssh")) and "zlib" in capabilities.get("foreground_rgb_encodings", [])
+                return watch_foreground(node, ident, args.out, root, compress=compress)
         while True:
             info = reconcile(root, row, node)
             frame = None
             if row["mode"] == "stream":
-                frame = receive_frame(node, ident, "frame", args.out)
+                frame = save_frame(send(node, dict(op="frame", id=ident)), args.out)
             save(args.out / "watch.json", dict(job=info, frame=frame))
             if info["state"] not in ACTIVE:
                 return
@@ -374,6 +441,11 @@ def operate(args):
             str(uuid4()),
             args.room_revision,
         )
+        expected = getattr(args, "controller_sha256", None)
+        if expected is not None and req["controller_sha256"] != expected:
+            raise ValueError(
+                "Selected controller contents changed before fleet submission"
+            )
         if args.room_hash and req["room_sha256"] != args.room_hash:
             raise ValueError("Selected room revision has changed")
         if op == "observations":
@@ -383,11 +455,34 @@ def operate(args):
             if clock == "wall":
                 req["observation_clock"] = clock
         plan = json.loads(base64.b64decode(req["controller"], validate=True))
+        visual_profile = getattr(args, "visual_profile", "original")
+        validate_profile(visual_profile, plan)
         wants_clearance = plan.get("wrist_clearance", False)
-        if plan.get("kind") == "table-transfer" and (
-            args.rgb_timing != "normal" or wants_clearance
+        needs_images = bool(
+            plan.get("scene_observation", {}).get("author_input", {}).get("images")
+        )
+        if needs_images or (
+            plan.get("kind") == "table-transfer"
+            and (
+                args.rgb_timing != "normal"
+                or wants_clearance
+                or visual_profile != "original"
+            )
         ):
             capabilities = send(node, {"op": "hello"})
+            if needs_images and capabilities.get("onboard_author_images") is not True:
+                raise ValueError(
+                    "Update the selected worker to retain camera images sent to Codex"
+                )
+            if visual_profile != "original":
+                if (
+                    capabilities.get("nano_visual_bundles", {}).get(visual_profile)
+                    != BUNDLE_SHA256
+                ):
+                    raise ValueError(
+                        "Update the selected worker to install matching Nano compact visuals"
+                    )
+                req["visual_profile"] = visual_profile
             if (
                 wants_clearance
                 and capabilities.get("experimental_wrist_clearance") is not True
@@ -417,14 +512,19 @@ def operate(args):
     info, trial, sample = None, None, None
     if ident:
         row = record(root, ident)
-        info = reconcile(root, row, node)
-        if op == "cancel":
-            info = send(node, dict(op="cancel", id=ident))
-            update(root, ident, info["state"])
         if op == "sample":
-            sample = receive_frame(node, ident, "observation", args.out)
+            if row["state"] == "submitting":
+                reconcile(root, row, node)
+            info, frame = poll_observation(node, ident)
+            update_from_lease(root, ident, info)
+            sample = save_frame(frame, args.out)
             if sample is None:
                 raise ValueError("Waiting for the first background RGB exposure")
+        else:
+            info = reconcile(root, row, node)
+        if op == "cancel":
+            info = send(node, dict(op="cancel", id=ident))
+            update_from_lease(root, ident, info)
         if op == "fetch":
             trial = import_trial(root, node, row, info).name
         info.update(robot=row["robot"], mode=row["mode"])

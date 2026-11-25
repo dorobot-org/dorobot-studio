@@ -10,6 +10,103 @@ def read(path):
     return json.loads(path.read_bytes())
 
 
+def pin_rooms(args, runs, click, done, wait):
+    pin = "aisle_evidence.room_baseline"
+
+    def select(which, index):
+        click("aisle_evidence." + which)
+        return done(
+            lambda w: w["selected"] == str(runs[index]), "Selected recorded room"
+        )
+
+    def pinned(index):
+        return done(
+            lambda w: (w["room_baseline"] or {}).get("trial") == runs[index].name,
+            "Selected room baseline",
+        )
+
+    def clear():
+        click(pin)
+        done(
+            lambda w: w["room_baseline"] is None and not w["transfer_comparison"],
+            "Unpinned room comparison",
+        )
+
+    if not args.recover:
+        done(
+            lambda w: not w["transfer_comparison"] and not w["room_baseline"],
+            "Automatic same-room comparison excludes changed environments",
+        )
+        click(pin)
+        pinned(1)
+        reverse = select("previous", 0)["transfer_comparison"]
+        assert reverse and str(runs[1]) == reverse["frames"][0]["trial"]
+        clear()
+        # The verifier cloned both runs into its own state directory.
+        # Revisit the edited room with a corrupted archive, then restore it.
+        survey = runs[1] / "survey.json"
+        original = survey.read_bytes()
+        click(pin)
+        pinned(0)
+        try:
+            survey.write_bytes(original + b" ")
+            refused = select("next", 1)
+            assert not refused["transfer_comparison"]
+            assert (
+                "survey.json differs from its recorded hash"
+                in refused["room_pair_note"]
+            )
+            wait(
+                lambda j: "survey.json differs"
+                in j["controls"]["aisle_evidence.status"]["text"],
+                "Damaged survey rejected on Evidence",
+            )
+        finally:
+            survey.write_bytes(original)
+        select("previous", 0)
+        clear()
+        click(pin)
+        pinned(0)
+        select("next", 1)
+
+    measured = pinned(0)
+    assert measured["selected"] == str(runs[1])
+    comparison = measured["transfer_comparison"]
+    summary = comparison["room"]["detail"]
+    for name, field in [
+        ("Ambient RGB", "ambient_rgb"),
+        ("Floor friction", "floor_friction"),
+    ]:
+        values = [read(r / "room.json")["settings"].get(field) for r in runs]
+        if values[0] != values[1]:
+            encoded = [
+                "fixture default" if v is None else json.dumps(v, separators=(",", ":"))
+                for v in values
+            ]
+            assert f"{name} {encoded[0]} → {encoded[1]}" in summary
+    wait(
+        lambda j: j["controls"]["aisle_evidence.detail"]["text"] == summary
+        and j["controls"]["aisle_evidence.verdict"]["text"]
+        == comparison["room"]["outcome"],
+        "Matched room measurements are visible in Evidence",
+    )
+
+    if not args.recover:
+        click("aisle_evidence.room_details")
+        wait(
+            lambda j: j["controls"]["aisle_evidence.summary_title"]["text"]
+            == "Task outcome"
+            and "wheel support"
+            in j["controls"]["aisle_evidence.detail"]["text"].lower(),
+            "Inspected current transfer diagnostics with the baseline retained",
+        )
+        click("aisle_evidence.room_details")
+        wait(
+            lambda j: j["controls"]["aisle_evidence.detail"]["text"] == summary,
+            "Returned to the room comparison",
+        )
+
+
 def native_journey(args, page, click, done, wait, grab):
     runs = sorted((args.out.parent / "state/aisle").glob("*-Nano-run"))
     assert len(runs) == 2
@@ -29,6 +126,8 @@ def native_journey(args, page, click, done, wait, grab):
     assert differing, "Choose a pair with a measured action divergence"
     index, pair = differing
     page("evidence")
+    if args.room_baseline:
+        pin_rooms(args, runs, click, done, wait)
     evidence = done(
         lambda w: w["transfer_comparison"] and not w["busy"], "Paired comparison opened"
     )

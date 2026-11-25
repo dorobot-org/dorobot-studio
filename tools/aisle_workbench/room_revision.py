@@ -75,23 +75,30 @@ def sensor_settings(sheet, source, model_sha):
     if "floor_friction" in values and not 0 <= values["floor_friction"] <= 2:
         raise ValueError("Choose a floor friction coefficient from zero to two")
     if "camera_calibration" in sheet:
-        from nano_cameras import validate_rig
+        from camera_survey import resolve_mounts
 
         spec = sheet["camera_calibration"]
+        calibration_dir = source.parent
         if isinstance(spec, str):
-            spec = json.loads((source.parent / spec).read_text())
+            path = source.parent / spec
+            spec = json.loads(path.read_text())
+            calibration_dir = path.parent
         if not model_sha or spec["model_sha256"] != model_sha or not spec.get("source"):
             raise ValueError(
                 "Camera calibration needs the matching Nano model hash and source"
             )
-        validate_rig(spec["cameras"], (480, 360))
+        cameras, reports = resolve_mounts(spec, calibration_dir)
         sheet["camera_calibration"] = spec
-        values["cameras"] = spec["cameras"]
+        values["cameras"] = cameras
+        if reports:
+            values["camera_mount_checks"] = reports
         values["calibration_source"] = str(spec["source"])
     return values
 
 
-def import_room(source, out, scene, edit=None, parent=None, model_sha=None):
+def import_room(
+    source, out, scene, edit=None, parent=None, model_sha=None, *, environment=None
+):
     raw = source.read_bytes()
     sheet = json.loads(raw)
     if (
@@ -100,6 +107,13 @@ def import_room(source, out, scene, edit=None, parent=None, model_sha=None):
         or not sheet["description"].strip()
     ):
         raise ValueError("Room survey requires version 1 and a description")
+    if environment is not None:
+        if not parent:
+            raise ValueError("Select a saved room before editing its environment")
+        if environment.keys() - {"ambient_rgb", "floor_friction"}:
+            raise ValueError("Unknown Nexus environment setting")
+        values = {**sheet.get("environment", {}), **environment}
+        sheet["environment"] = {k: v for k, v in values.items() if v is not None}
     settings = sensor_settings(sheet, source, model_sha)
     photo = (source.parent / sheet["image"]).read_bytes()
     im = Image.open(io.BytesIO(photo))
@@ -197,6 +211,11 @@ def import_room(source, out, scene, edit=None, parent=None, model_sha=None):
             or previous["reference_sha256"] != hashlib.sha256(photo).hexdigest()
         ):
             raise ValueError("The selected parent room changed")
+        if environment is not None and previous.get("model_sha256") not in (
+            None,
+            model_sha,
+        ):
+            raise ValueError("Selected room belongs to a different Nano model")
         specs = previous["obstacles"]
     if edit and edit.strip():
         tokens = edit.split()

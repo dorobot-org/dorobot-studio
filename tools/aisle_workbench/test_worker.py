@@ -39,6 +39,21 @@ class InspectionTests(unittest.TestCase):
             [False, False, False, False, True, False, True],
         )
 
+    def test_nano_joint_catalog_includes_grippers_and_unbounded_wheels(self):
+        model = worker.describe("Nano")
+        joints = {joint["name"]: joint for joint in model["joints"]}
+        self.assertEqual(len(joints), 17)
+        gripper = joints["right_j6_gripper"]
+        self.assertEqual(
+            gripper["limits"], dict(lower=-0.3, upper=0.8771, velocity=2, effort=1)
+        )
+        wheels = [joint for joint in joints.values() if joint["type"] == "continuous"]
+        self.assertEqual(len(wheels), 3)
+        for wheel in wheels:
+            self.assertEqual(wheel["limits"], dict(velocity=5.45, effort=1.86))
+        with self.assertRaises(ValueError):
+            worker.validate(dict(joint=gripper["name"], delta_rad=0.06), model)
+
     def test_joint_and_displacement_guard(self):
         for joint, delta in [
             ("other", 0.05),
@@ -199,6 +214,48 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(
             worker.validate(reply, self.profile),
             dict(kind="table-transfer", color_order="red,green,blue"),
+        )
+
+    def test_stationary_pickup_is_bound_during_authoring_only(self):
+        task = "Move the red floor cube onto the coffee table."
+        args = SimpleNamespace(
+            robot="Nano",
+            task=task,
+            feedback=None,
+            provider="octos-deepseek",
+            out=Path("."),
+        )
+        reply = dict(
+            supported=True, kind="table-transfer", color_order="red", track_grasp=True
+        )
+        with patch.object(
+            worker, "request_controller", return_value=(reply, "test-model")
+        ) as ask:
+            with self.assertRaisesRegex(ValueError, "stationary pickup"):
+                worker.prepare(args, self.profile)
+            self.assertEqual(
+                ask.call_args.args[2]["properties"]["track_grasp"]["enum"], [False]
+            )
+            args.task = "Move the sliding red floor cube onto the coffee table."
+            self.assertTrue(worker.prepare(args, self.profile)["track_grasp"])
+            props = ask.call_args.args[2]["properties"]
+            self.assertEqual(props["track_grasp"]["enum"], [True])
+            self.assertEqual(props["color_order"]["enum"], ["red"])
+            reply["color_order"] = "red,green,blue"
+            with self.assertRaisesRegex(ValueError, "only the moving red cube"):
+                worker.prepare(args, self.profile)
+            reply["color_order"] = "red"
+            args.task = task
+            with tempfile.TemporaryDirectory() as workspace:
+                args.feedback = args.out = Path(workspace)
+                prior = {"previous_track_grasp": True}
+                with patch.object(worker, "measured_feedback", return_value=prior):
+                    self.assertTrue(worker.prepare(args, self.profile)["track_grasp"])
+                    self.assertNotIn(
+                        "enum", ask.call_args.args[2]["properties"]["track_grasp"]
+                    )
+        self.assertTrue(
+            worker.validate(reply | {"task": task}, self.profile)["track_grasp"]
         )
 
     def test_experimental_wrist_clearance_requires_an_explicit_positive_selection(self):

@@ -8,8 +8,13 @@ from pathlib import Path
 import shlex
 import subprocess
 from uuid import uuid4
+import zlib
 
 from worker import observation_seconds
+
+
+class WorkerRejection(ValueError):
+    """The worker explicitly rejected an RPC request."""
 
 
 def worker_command(node, *operation):
@@ -54,10 +59,63 @@ def send(node, request):
         raise RuntimeError(
             f"Worker transport returned {reply.returncode}: {reply.stderr.strip()[-500:]}"
         )
-    result = json.loads(reply.stdout)
-    if not result["ok"]:
-        raise ValueError(result["error"])
-    return result["reply"]
+    try:
+        result = json.loads(reply.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Worker returned an unreadable RPC response") from exc
+    if isinstance(result, dict):
+        data = result.get("reply")
+        error = result.get("error")
+        if result.get("ok") is True and isinstance(data, dict) and "error" not in result:
+            return data
+        if (
+            result.get("ok") is False
+            and isinstance(error, str)
+            and error.strip()
+            and "reply" not in result
+        ):
+            raise WorkerRejection(error)
+    raise RuntimeError("Worker returned an invalid RPC response")
+
+
+def decode_rgb(reply):
+    height = reply["height"]
+    if type(height) is not int or reply["width"] != 480 or height not in (320, 360):
+        raise ValueError("Invalid worker camera dimensions")
+    size = 480 * height * 3
+    if len(reply["data"]) > 4 * ((size + 2) // 3):
+        raise ValueError("Invalid worker camera payload length")
+    pixels = base64.b64decode(reply["data"], validate=True)
+    return decode_plane(pixels, reply.get("encoding", "raw"), size)
+
+
+def decode_plane(pixels, encoding, size):
+    if encoding == "zlib":
+        decoder = zlib.decompressobj()
+        try:
+            pixels = decoder.decompress(pixels, size + 1)
+        except zlib.error as exc:
+            raise ValueError("Invalid compressed worker RGB") from exc
+        if not decoder.eof or decoder.unused_data:
+            raise ValueError("Incomplete or oversized worker RGB")
+    elif encoding != "raw":
+        raise ValueError("Unknown worker RGB encoding")
+    if len(pixels) != size:
+        raise ValueError("Invalid worker camera frame")
+    return pixels
+
+
+def poll_observation(node, ident, last_tick=None, *, rpc=send):
+    request = dict(op="observation", id=ident, accept_encoding="zlib", include_job=True)
+    if last_tick is not None:
+        request["after_tick"] = last_tick
+    frame = rpc(node, request)
+    job = frame.get("job")
+    if job is None:  # Older workers return only the image.
+        job = rpc(node, dict(op="status", id=ident))
+    if job.get("id") != ident:
+        raise ValueError("Observation returned a different job")
+    return job, frame
 
 
 def check_background_period(node, period, clock="simulation"):
@@ -91,8 +149,9 @@ def submission(
         room_hash = hashlib.sha256(room.read_bytes()).hexdigest()
         files.update(
             {
-                "room/"
-                + name: base64.b64encode(room.with_name(name).read_bytes()).decode()
+                "room/" + name: base64.b64encode(
+                    room.with_name(name).read_bytes()
+                ).decode()
                 for name in ROOM_FILES
             }
         )
@@ -162,9 +221,12 @@ def main():
 
         print(json.dumps(download(send, node, args.id, args.output), indent=2))
         return
+    if args.op == "observation":
+        request["accept_encoding"] = "zlib"
     reply = send(node, request)
     if args.op in ("frame", "observation") and reply["ready"]:
-        args.output.write_bytes(base64.b64decode(reply.pop("data"), validate=True))
+        args.output.write_bytes(decode_rgb(reply))
+        del reply["data"]
     print(json.dumps(reply, indent=2))
 
 

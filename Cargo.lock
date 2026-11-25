@@ -2096,6 +2096,8 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "sha2",
+ "tempfile",
  "thiserror 1.0.69",
  "urdf-rs",
  "zenoh",

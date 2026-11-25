@@ -433,6 +433,9 @@ impl FileBackend {
         self.replay_model = nexus_replay_model(&ds);
         self.playback = PlaybackState {
             dataset_name: summary.name.clone(),
+            dataset_root: Some(
+                summary.path.canonicalize().unwrap_or_else(|_| summary.path.clone()),
+            ),
             selected: episodes.first().map(|e| e.index),
             episodes,
             stats: EpisodeStats::default(),

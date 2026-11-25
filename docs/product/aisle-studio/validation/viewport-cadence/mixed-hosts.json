@@ -1,0 +1,24 @@
+{
+  "shared_interval_s": 103.998,
+  "physical_hosts": 2,
+  "foreground": {
+    "worker_backend": "webgpu",
+    "studio_backend": "headless",
+    "job": "a58cba90-5e2c-4daa-ab69-bab51cb99fc4",
+    "task_success": true,
+    "draws": 1805,
+    "fps": 17.346,
+    "first_tick": 572,
+    "last_tick": 2422
+  },
+  "observer": {
+    "worker_backend": "metal",
+    "author": "Codex",
+    "job": "b761c77d-ac7e-4d85-846a-1b9e04c5244c",
+    "task_success": true,
+    "received": 208,
+    "wall_clock_hz": 2.0,
+    "first_tick": 63,
+    "last_tick": 12509
+  }
+}

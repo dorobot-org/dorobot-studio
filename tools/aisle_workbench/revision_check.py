@@ -18,7 +18,9 @@ def save(path, data):
     path.write_text(json.dumps(data, indent=2) + "\n")
 
 
-def native_journey(args, page, click, remote, done, grab):
+def native_journey(args, page, click, remote, done, grab, wait):
+    from controller_review_check import inspect
+
     trials = args.out.parent / "state/aisle"
     parent = trials / "0001-Nano-run"
     previous = read(parent / "result.json")
@@ -109,6 +111,17 @@ def native_journey(args, page, click, remote, done, grab):
         revision["packet_sha256"]
         == digest(parent / "last-pickup-observation.npz")
         == digest(prepared.with_name("revision-observation.npz"))
+    )
+    inspect(
+        args,
+        click,
+        wait,
+        grab,
+        "nano-pickup-changes",
+        "parent",
+        previous["controller_hash"],
+        digest(prepared),
+        f"Pickup association · {revision['previous_association']} → {revision['grasp_association']}",
     )
     metrics = read(prepared.with_name("provider-metrics.json"))
     assert (

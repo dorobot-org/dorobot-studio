@@ -408,6 +408,7 @@ fn playback_fixture() -> PlaybackState {
 
     PlaybackState {
         dataset_name: "aimee-0720".into(),
+        dataset_root: None,
         episodes: vec![
             ep(0, "assemble_kit", 14.2, g),
             ep(1, "assemble_kit", 15.8, g),

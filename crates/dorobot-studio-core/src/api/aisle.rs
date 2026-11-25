@@ -1,5 +1,7 @@
 //! Local simulation jobs shared by the four AISLE Studio panels.
+mod room_pair;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::{
@@ -87,12 +89,17 @@ pub enum Action {
     Fixture(bool),
     Impact(bool),
     RgbTiming(RgbTiming),
+    CompactVisuals(bool),
     TargetMotion(TargetMotion),
     ToggleOnboardContext,
     EditRoom(bool),
     ImportRoom {
         source: String,
         edit: String,
+    },
+    SetRoomEnvironment {
+        ambient: String,
+        friction: String,
     },
     DraftRoom {
         source: String,
@@ -101,6 +108,7 @@ pub enum Action {
     ApplyRoomDraft,
     DiscardRoomDraft,
     DefaultRoom,
+    ToggleRoomBaseline,
     ShowEvaluation(bool),
     ShowDevice,
     DevicePreflight(Option<String>),
@@ -127,6 +135,7 @@ pub enum Action {
     Export,
     ExportChange(RevisionSide),
     InspectDecision,
+    ReviewController,
     TrainReach,
     TrainGrasp,
 }
@@ -177,6 +186,14 @@ impl WorkerAction {
 fn read(path: &Path, name: &str) -> Option<Value> {
     serde_json::from_slice(&fs::read(path.join(name)).ok()?).ok()
 }
+fn save_selection(root: &Path, name: &str, value: &Value) -> io::Result<()> {
+    fs::create_dir_all(root)?;
+    let mut temporary = tempfile::NamedTempFile::new_in(root)?;
+    serde_json::to_writer(temporary.as_file_mut(), value)?;
+    temporary.as_file().sync_all()?;
+    temporary.persist(root.join(name))?;
+    Ok(())
+}
 #[derive(Clone, Copy, Debug)]
 pub enum RevisionSide {
     Previous,
@@ -200,8 +217,17 @@ pub struct ChangeFrame {
     pub time_s: f64,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct RoomBaseline {
+    pub trial: String,
+    result_sha256: String,
+    #[serde(default)]
+    source_calibration_sha256: [String; 2],
+}
+
 #[derive(serde::Serialize)]
 pub struct TransferComparison {
+    pub room: Option<room_pair::Measurements>,
     pub summary: String,
     pub frames: [Option<ChangeFrame>; 2],
     pub packets: [Option<(PathBuf, u64)>; 2],
@@ -323,6 +349,7 @@ fn compare_transfer(
     history: &[PathBuf],
     path: &Path,
     current: &Value,
+    pinned_room: Option<(&str, &Value)>,
 ) -> Option<TransferComparison> {
     if current["kind"] != "table-transfer" || !current["task_success"].is_boolean() {
         return None;
@@ -334,8 +361,10 @@ fn compare_transfer(
             .as_object()
             .map(|c| c.values().filter(|r| r["passed"] == true).count())
     };
-    for previous in history.iter().rev().filter(|p| p.as_path() < path) {
-        let Some(prior) = read(previous, "result.json") else {
+    for previous in history.iter().rev().filter(|p| {
+        p.as_path() != path && (pinned_room.is_some() || p.as_path() < path)
+    }) {
+        let Some(prior) = pinned_room.map(|(_, checked)| checked.clone()).or_else(|| read(previous, "result.json")) else {
             continue;
         };
         if !prior["task_success"].is_boolean()
@@ -358,11 +387,13 @@ fn compare_transfer(
         let Some(old_cal) = read(previous, "calibration.json") else {
             continue;
         };
-        if source["room_revision_sha256"] != old["room_revision_sha256"]
+        if (pinned_room.is_none() && source["room_revision_sha256"] != old["room_revision_sha256"])
             || source["wrist_rgb_timing"].as_str().unwrap_or("normal")
                 != old["wrist_rgb_timing"].as_str().unwrap_or("normal")
             || source["support_code_hashes"]["nano_wrist_timing.py"]
                 != old["support_code_hashes"]["nano_wrist_timing.py"]
+            || source["visual_profile"] != old["visual_profile"]
+            || source["visual_bundle_sha256"] != old["visual_bundle_sha256"]
             || source["grasp_motion"] != old["grasp_motion"]
             || (source["grasp_motion"].is_string()
                 && (!source["support_code_hashes"]["nano_moving_grasp.py"].is_string()
@@ -456,14 +487,17 @@ fn compare_transfer(
                 "failed"
             }
         };
-        return Some(TransferComparison {frames,packets, summary:format!(
-            "Matched layout {} · previous {label}\nPrevious {} ({} settled) · current {} ({} settled). {code} {}",
-            current["seed"],
-            outcome(&prior),
-            previous_count,
-            outcome(current),
-            settled(current)?,trace.summary
-        )});
+        let count = settled(current)?;
+        let room = pinned_room.map(|(delta, _)| room_pair::Measurements::new(delta, &prior, current));
+        let summary = if room.is_some() {
+            format!("Baseline {label} · {}", trace.summary)
+        } else {
+            format!(
+                "Matched layout {} · previous {label}\nPrevious {} ({previous_count} settled) · current {} ({count} settled). {code} {}",
+                current["seed"], outcome(&prior), outcome(current), trace.summary
+            )
+        };
+        return Some(TransferComparison { room, frames, packets, summary });
     }
     None
 }
@@ -483,6 +517,7 @@ impl Job {
             "evaluate" => "evaluation.json",
             "device-preflight" => "preflight.json",
             "compare-observations" => "observations.json",
+            "compare-controller" => "comparison.json",
             "run" => "result.json",
             "prepare" | "train-reach" | "train-grasp" => "controller.json",
             _ => "scene.json",
@@ -499,6 +534,10 @@ impl Job {
         let _ = self.child.wait();
     }
 }
+enum RoomRequest {
+    Survey { source: String, edit: String },
+    Environment { ambient: String, friction: String },
+}
 pub struct Workbench {
     pub robot: Robot,
     pub task: String,
@@ -511,12 +550,15 @@ pub struct Workbench {
     pub selected: Option<PathBuf>,
     pub history: Vec<PathBuf>,
     pub prepared: Option<PathBuf>,
+    prepared_sha256: Option<String>,
     pub trace: Vec<f32>,
     pub live: Option<PathBuf>,
     pub revisions: Vec<PathBuf>,
+    pub controller_diff: Option<Value>,
     pub compliant: bool,
     pub impact: bool,
     pub rgb_timing: RgbTiming,
+    pub compact_visuals: bool,
     pub target_motion: TargetMotion,
     pub onboard_context: bool,
     pub room_editor: bool,
@@ -536,10 +578,12 @@ pub struct Workbench {
     pub room_draft_info: Value,
     room_draft_receipt: Value,
     room_selection: Value,
-    room_request: Option<(String, String)>,
+    room_request: Option<RoomRequest>,
     pub layout_seed: u32,
     pub comparison: Option<f64>,
     pub transfer_comparison: Option<TransferComparison>,
+    pub room_baseline: Option<RoomBaseline>,
+    pub room_pair_note: Option<String>,
     pub dataset: Option<PathBuf>,
     exports: std::collections::BTreeMap<PathBuf, PathBuf>,
     pub background_period_s: f32,
@@ -582,12 +626,15 @@ impl Workbench {
             selected: None,
             history: Vec::new(),
             prepared: None,
+            prepared_sha256: None,
             trace: Vec::new(),
             live: None,
             revisions: Vec::new(),
+            controller_diff: None,
             compliant: false,
             impact: false,
             rgb_timing: RgbTiming::Normal,
+            compact_visuals: false,
             target_motion: TargetMotion::Stationary,
             onboard_context: false,
             room_editor: false,
@@ -611,6 +658,8 @@ impl Workbench {
             layout_seed: layout_seed.unwrap_or_default(),
             comparison: None,
             transfer_comparison: None,
+            room_baseline: read(&root, "room-baseline.json").and_then(|v| serde_json::from_value(v).ok()),
+            room_pair_note: None,
             dataset: None,
             exports: Default::default(),
             background_period_s: 1.0,
@@ -676,6 +725,14 @@ impl Workbench {
         if let Some(alias) = w.fleet["node"].as_str() {
             w.worker_node = alias.to_owned();
         }
+        match read(&w.root, "task-robot.json")
+            .as_ref()
+            .and_then(Value::as_str)
+        {
+            Some("G1") => w.robot = Robot::G1,
+            Some("Nano") => w.robot = Robot::Nano,
+            _ => {}
+        }
         w.restore_profile();
         w
     }
@@ -686,6 +743,9 @@ impl Workbench {
     }
     pub fn busy(&self) -> bool {
         self.job.is_some()
+    }
+    pub fn running_local_trial(&self) -> bool {
+        self.job.as_ref().is_some_and(|job| job.op == "run")
     }
     pub fn preflighting(&self) -> bool {
         self.job
@@ -727,6 +787,7 @@ impl Workbench {
         Ok(())
     }
     fn restore_profile(&mut self) {
+        self.controller_diff = None;
         let suffix = format!("-{}-prepare", self.robot.name());
         let trained_suffix = match self.robot {
             Robot::Nano => "-Nano-train-grasp",
@@ -743,11 +804,23 @@ impl Workbench {
                     name.ends_with(&suffix) || name.ends_with(trained_suffix)
                 })
             })
+            .filter(|p| {
+                read(p, "controller.json").is_some_and(|plan| plan["robot"] == self.robot.name())
+            })
             .map(|p| p.join("controller.json"))
-            .filter(|p| p.is_file())
             .collect();
         self.revisions.sort();
-        self.load_plan(self.revisions.last().cloned());
+        self.plan = Value::Null;
+        self.task = REFERENCE.to_owned();
+        self.prepared = None;
+        self.prepared_sha256 = None;
+        if let Err(error) = self.restore_revision() {
+            self.status = format!(
+                "Could not restore the {} controller. {error}. Choose a revision in Task.",
+                self.robot.name()
+            );
+            self.error = Some(self.status.clone());
+        }
         let suffix = format!("-{}-run", self.robot.name());
         self.live = self
             .history
@@ -764,14 +837,76 @@ impl Workbench {
             .and_then(|p| read(p, "progress.json"))
             .unwrap_or_default();
     }
-    fn load_plan(&mut self, path: Option<PathBuf>) {
-        self.plan = path
-            .as_ref()
-            .and_then(|p| read(p.parent()?, "controller.json"))
-            .unwrap_or_default();
-        self.task = self.plan["task"].as_str().unwrap_or(REFERENCE).to_owned();
-        self.prepared = path;
+    fn revision_preference(&self) -> String {
+        format!("selected-{}-controller.json", self.robot.name())
     }
+
+    fn restore_revision(&mut self) -> io::Result<()> {
+        let bytes = match fs::read(self.root.join(self.revision_preference())) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                // Older workspaces have no saved choice. Keep their latest-revision behavior.
+                if let Some(path) = self.revisions.last().cloned() {
+                    self.activate_revision(path, None, false)?;
+                }
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        };
+        let selection: Value = serde_json::from_slice(&bytes)?;
+        let name = selection["revision"]
+            .as_str()
+            .ok_or_else(|| io::Error::other("Invalid saved revision"))?;
+        let hash = selection["sha256"]
+            .as_str()
+            .ok_or_else(|| io::Error::other("Missing saved controller digest"))?;
+        let path = self
+            .revisions
+            .iter()
+            .find(|p| p.parent().and_then(Path::file_name) == Some(name.as_ref()))
+            .cloned()
+            .ok_or_else(|| io::Error::other("Saved revision is unavailable"))?;
+        self.activate_revision(path, Some(hash), false)
+    }
+
+    fn activate_revision(
+        &mut self,
+        path: PathBuf,
+        expected: Option<&str>,
+        remember: bool,
+    ) -> io::Result<()> {
+        let bytes = fs::read(&path)?;
+        let hash = format!("{:x}", Sha256::digest(&bytes));
+        if expected.is_some_and(|s| s != hash) {
+            return Err(io::Error::other("Saved controller contents changed"));
+        }
+        let plan: Value = serde_json::from_slice(&bytes)?;
+        if plan["robot"] != self.robot.name() {
+            return Err(io::Error::other("Controller belongs to a different robot"));
+        }
+        if remember {
+            let dir = path
+                .parent()
+                .and_then(Path::file_name)
+                .and_then(|n| n.to_str())
+                .ok_or_else(|| io::Error::other("Invalid controller revision directory"))?;
+            save_selection(
+                &self.root,
+                &self.revision_preference(),
+                &serde_json::json!({"revision":dir,"sha256":hash}),
+            )?;
+        }
+        self.task = plan["task"].as_str().unwrap_or(REFERENCE).to_owned();
+        self.controller_diff = None;
+        if plan["kind"] != "table-transfer" || !plan["scene_observation"].is_null() {
+            self.compact_visuals = false;
+        }
+        self.plan = plan;
+        self.prepared = Some(path);
+        self.prepared_sha256 = Some(hash);
+        Ok(())
+    }
+
     pub fn revision_index(&self) -> Option<usize> {
         self.revisions
             .iter()
@@ -836,11 +971,71 @@ impl Workbench {
     pub fn change_frame(&self, side: RevisionSide) -> Option<&ChangeFrame> {
         self.transfer_comparison.as_ref()?.frames[side.index()].as_ref()
     }
+    pub fn can_pin_room(&self) -> bool {
+        room_pair::eligible(&self.evidence)
+    }
+
+    fn toggle_room_baseline(&mut self) -> io::Result<()> {
+        if self.busy() {
+            return Err(io::Error::other("Wait for the active job to finish"));
+        }
+        let baseline = if self.room_baseline.is_some() {
+            None
+        } else {
+            let path = self.selected.as_deref().ok_or_else(|| io::Error::other("Select a Nano trial"))?;
+            let bytes = fs::read(path.join("result.json"))?;
+            let result: Value = serde_json::from_slice(&bytes)?;
+            if result != self.evidence {
+                return Err(io::Error::other("Selected verdict changed before pinning"));
+            }
+            let source_calibration_sha256 = room_pair::check_baseline(path, &result).map_err(io::Error::other)?;
+            let name = path.file_name().and_then(|n| n.to_str())
+                .ok_or_else(|| io::Error::other("Missing trial name"))?;
+            Some(RoomBaseline {
+                trial: name.to_owned(),
+                source_calibration_sha256,
+                result_sha256: format!("{:x}", Sha256::digest(&bytes)),
+            })
+        };
+        save_selection(&self.root, "room-baseline.json", &serde_json::to_value(&baseline)?)?;
+        self.room_baseline = baseline;
+        if let Some(path) = self.selected.clone() {
+            self.select_run(path);
+        }
+        Ok(())
+    }
+
+    fn pinned_room_pair(&self, baseline: &RoomBaseline, path: &Path) -> Result<TransferComparison, String> {
+        let prior = self.history.iter().find(|p| p.file_name().and_then(|n| n.to_str()) == Some(baseline.trial.as_str()))
+            .ok_or("The pinned baseline is missing from run history")?;
+        let raw = fs::read(prior.join("result.json")).map_err(|_| "Missing baseline verdict")?;
+        if format!("{:x}", Sha256::digest(&raw)) != baseline.result_sha256 {
+            return Err("The pinned baseline verdict changed".into());
+        }
+        if prior == path { return Err("Select another Nano transfer to compare".into()); }
+        let checked = serde_json::from_slice(&raw).map_err(|_| "Invalid baseline verdict")?;
+        let delta = room_pair::summary(prior, &checked, path, &self.evidence, &baseline.source_calibration_sha256)?;
+        compare_transfer(std::slice::from_ref(prior), path, &self.evidence, Some((&delta, &checked)))
+            .ok_or_else(|| "Run records lack matching physics, calibration or scoring evidence".into())
+    }
+
     fn select_run(&mut self, path: PathBuf) {
         self.decision = None;
         self.dataset = self.dataset_for(&path);
         self.evidence = Self::receipt(&path);
-        self.transfer_comparison = compare_transfer(&self.history, &path, &self.evidence);
+        self.room_pair_note = None;
+        self.transfer_comparison = if let Some(baseline) = self.room_baseline.as_ref()
+            .filter(|_| room_pair::eligible(&self.evidence)) {
+            match self.pinned_room_pair(baseline, &path) {
+                Ok(pair) => Some(pair),
+                Err(reason) => {
+                    self.room_pair_note = Some(format!("Room baseline {} · {reason}", baseline.trial));
+                    None
+                }
+            }
+        } else {
+            compare_transfer(&self.history, &path, &self.evidence, None)
+        };
         self.comparison = self
             .history
             .iter()
@@ -1021,15 +1216,20 @@ impl Workbench {
             cmd.arg("--provider").arg(planner.name());
         }
         if matches!(op, "room" | "room-draft") {
-            let (source, edit) = self
-                .room_request
-                .as_ref()
-                .ok_or_else(|| io::Error::other("Choose a survey or edit the selected room"))?;
-            if !source.trim().is_empty() {
-                cmd.arg("--room-source").arg(source.trim());
-            }
-            if !edit.trim().is_empty() {
-                cmd.arg("--room-edit").arg(edit.trim());
+            match self.room_request.take() {
+                Some(RoomRequest::Survey { source, edit }) => {
+                    if !source.trim().is_empty() {
+                        cmd.arg("--room-source").arg(source.trim());
+                    }
+                    if !edit.trim().is_empty() {
+                        cmd.arg("--room-edit").arg(edit.trim());
+                    }
+                }
+                Some(RoomRequest::Environment { ambient, friction }) if self.room_path.is_some() => {
+                    cmd.arg(format!("--room-ambient={}", ambient.trim()));
+                    cmd.arg(format!("--floor-friction={}", friction.trim()));
+                }
+                _ => return Err(io::Error::other("Choose a survey or edit the selected room")),
             }
             cmd.arg("--seed").arg(self.layout_seed.to_string());
         }
@@ -1099,6 +1299,9 @@ impl Workbench {
             cmd.arg("--live-preview");
         }
         if op == "run" || submitting {
+            if self.compact_visuals && self.plan["kind"] == "table-transfer" {
+                cmd.args(["--visual-profile", "compact-v1"]);
+            }
             if mobile {
                 cmd.arg("--rgb-timing").arg(self.rgb_timing.name());
                 cmd.arg("--target-motion").arg(self.target_motion.name());
@@ -1114,6 +1317,18 @@ impl Workbench {
                     "standard"
                 },
             ]);
+        }
+        if op == "compare-controller" {
+            if let Some(i) = self.revision_index().and_then(|i| i.checked_sub(1)) {
+                cmd.arg("--baseline").arg(&self.revisions[i]);
+            }
+        }
+        if op == "run" || submitting || op == "compare-controller" {
+            cmd.arg("--controller-sha256").arg(
+                self.prepared_sha256
+                    .as_ref()
+                    .ok_or_else(|| io::Error::other("Select a controller in Task first"))?,
+            );
             cmd.arg("--controller").arg(
                 self.prepared
                     .as_ref()
@@ -1198,15 +1413,15 @@ impl Workbench {
         }
         self.error = None;
         let result = match action {
-            Action::Select(r) => {
-                if self.robot != r {
+            Action::Select(r) if self.robot != r => {
+                save_selection(&self.root, "task-robot.json", &Value::from(r.name())).map(|()| {
                     self.robot = r;
                     self.scene = Value::Null;
-                    self.restore_profile();
                     self.status = "Ready".into();
-                }
-                Ok(())
+                    self.restore_profile();
+                })
             }
+            Action::Select(_) => Ok(()),
             Action::Prepare {
                 task,
                 planner,
@@ -1218,6 +1433,13 @@ impl Workbench {
                     planner,
                     if revise { self.selected.clone() } else { None },
                 )
+            }
+            Action::ReviewController => {
+                if self.controller_diff.take().is_some() {
+                    Ok(())
+                } else {
+                    self.launch("compare-controller", Planner::Reference, None)
+                }
             }
             Action::InspectDecision => {
                 self.launch("compare-observations", Planner::Reference, None)
@@ -1259,7 +1481,7 @@ impl Workbench {
             }
             Action::DefaultRoom => self.save_room(Value::Null),
             Action::DraftRoom { source, planner } => {
-                self.room_request = Some((source, String::new()));
+                self.room_request = Some(RoomRequest::Survey { source, edit: String::new() });
                 self.launch("room-draft", planner, None)
             }
             Action::ApplyRoomDraft => self.launch("room-apply", Planner::Reference, None),
@@ -1270,7 +1492,11 @@ impl Workbench {
                 Ok(())
             }
             Action::ImportRoom { source, edit } => {
-                self.room_request = Some((source, edit));
+                self.room_request = Some(RoomRequest::Survey { source, edit });
+                self.launch("room", Planner::Reference, None)
+            }
+            Action::SetRoomEnvironment { ambient, friction } => {
+                self.room_request = Some(RoomRequest::Environment { ambient, friction });
                 self.launch("room", Planner::Reference, None)
             }
             Action::ToggleOnboardContext => {
@@ -1279,6 +1505,10 @@ impl Workbench {
             }
             Action::TargetMotion(value) => {
                 self.target_motion = value;
+                Ok(())
+            }
+            Action::CompactVisuals(value) => {
+                self.compact_visuals = value;
                 Ok(())
             }
             Action::RgbTiming(value) => {
@@ -1300,15 +1530,19 @@ impl Workbench {
                 .map_err(|_| io::Error::other("Enter a layout seed from 0 to 4294967295"))
                 .and_then(|seed| self.save_layout(seed)),
             Action::OlderPlan | Action::NewerPlan => {
-                if let Some(i) = self.revision_index() {
-                    let index = if matches!(action, Action::OlderPlan) {
-                        i.saturating_sub(1)
-                    } else {
-                        (i + 1).min(self.revisions.len() - 1)
-                    };
-                    self.load_plan(Some(self.revisions[index].clone()));
+                let index = match (self.revision_index(), matches!(action, Action::OlderPlan)) {
+                    (Some(i), true) => i.saturating_sub(1),
+                    (Some(i), false) => (i + 1).min(self.revisions.len() - 1),
+                    (None, true) => 0,
+                    (None, false) => self.revisions.len().saturating_sub(1),
+                };
+                if let Some(path) = self.revisions.get(index).cloned() {
+                    self.activate_revision(path, None, true).map(|()| {
+                        self.status = format!("{} controller selected", self.robot.name());
+                    })
+                } else {
+                    Ok(())
                 }
-                Ok(())
             }
             Action::TrainGrasp => self.launch("train-grasp", Planner::Reference, None),
             Action::TrainReach => self.launch("train-reach", Planner::Reference, None),
@@ -1365,8 +1599,10 @@ impl Workbench {
                 }
                 self.launch("fleet", Planner::Reference, None)
             }
-            Action::Inspect => self.launch("scene", Planner::Reference, None),
+            Action::Inspect => self.launch("scene", Planner::Reference, None)
+                .map(|()| self.scene = Value::Null),
             Action::Run => self.launch("run", Planner::Reference, None),
+            Action::ToggleRoomBaseline => self.toggle_room_baseline(),
             Action::Previous | Action::Next => {
                 if let Some(i) = self
                     .history
@@ -1464,6 +1700,21 @@ impl Workbench {
         }
         let artifact = job.artifact();
         if success && job.dir.join(artifact).is_file() {
+            if job.op == "compare-controller" {
+                self.controller_diff = read(&job.dir, artifact).filter(|report| {
+                    report["robot"] == self.robot.name()
+                        && self.prepared_sha256.as_deref().is_some_and(|selected| {
+                            report["after"]["sha256"].as_str() == Some(selected)
+                        })
+                });
+                if self.controller_diff.is_some() {
+                    self.status = "Controller comparison ready".into();
+                } else {
+                    self.status = "The comparison no longer matches the selected controller.".into();
+                    self.error = Some(self.status.clone());
+                }
+                return;
+            }
             if job.op == "fleet" {
                 self.stop_watch();
                 self.fleet = read(&job.dir, artifact).unwrap_or_default();
@@ -1559,8 +1810,12 @@ impl Workbench {
             }
             if matches!(job.op, "prepare" | "train-reach" | "train-grasp") {
                 let p = job.dir.join(artifact);
-                self.revisions.push(p.clone());
-                self.load_plan(Some(p));
+                if let Err(error) = self.activate_revision(p.clone(), None, true) {
+                    self.status = format!("Could not select the prepared controller. {error}");
+                    self.error = Some(self.status.clone());
+                    return;
+                }
+                self.revisions.push(p);
             }
             if job.op == "run" {
                 self.select_run(job.dir);
@@ -1637,6 +1892,81 @@ mod tests {
     }
 
     #[test]
+    fn reopening_a_worker_trial_preserves_measured_coordinates_exactly() {
+        let root = tempfile::tempdir().unwrap();
+        let trial = root.path().join("1-Nano-run");
+        fs::create_dir(&trial).unwrap();
+        fs::write(
+            trial.join("result.json"),
+            br#"{"robot":"Nano","cubes":{"red":{"final_position_m":[0.17041552066802979,0.7041546106338501,0.5599989295005798]}}}"#,
+        )
+        .unwrap();
+        let bench = Workbench::with_root(root.path().to_path_buf());
+        let position = &bench.evidence["cubes"]["red"]["final_position_m"];
+        let original = [
+            0.17041552066802979_f64,
+            0.7041546106338501,
+            0.5599989295005798,
+        ];
+        for (index, expected) in original.iter().enumerate() {
+            assert_eq!(
+                position[index].as_f64().unwrap().to_bits(),
+                expected.to_bits()
+            );
+        }
+    }
+
+    #[test]
+    fn restores_per_robot_revision_and_rejects_modified_or_missing_selection() {
+        let root = fixture("selected-revision");
+        for (name, robot) in [
+            ("1-Nano-prepare", "Nano"),
+            ("2-Nano-train-grasp", "Nano"),
+            ("3-G1-prepare", "G1"),
+            ("4-G1-train-reach", "G1"),
+        ] {
+            let dir = root.join(name);
+            fs::create_dir(&dir).unwrap();
+            fs::write(
+                dir.join("controller.json"),
+                serde_json::json!({"task":name,"robot":robot}).to_string(),
+            )
+            .unwrap();
+        }
+        let mut w = Workbench::with_root(root.clone());
+        assert_eq!(w.task, "2-Nano-train-grasp");
+        w.dispatch(Action::OlderPlan);
+        assert_eq!(w.task, "1-Nano-prepare");
+        w.dispatch(Action::Select(Robot::G1));
+        assert_eq!(w.task, "4-G1-train-reach");
+        w.dispatch(Action::OlderPlan);
+        let mut reopened = Workbench::with_root(root.clone());
+        assert_eq!(reopened.robot, Robot::G1);
+        assert_eq!(reopened.task, "3-G1-prepare");
+        reopened.dispatch(Action::Select(Robot::Nano));
+        assert_eq!(reopened.task, "1-Nano-prepare");
+
+        let originally_selected = reopened.prepared.clone().unwrap();
+        let mut bytes = fs::read(&originally_selected).unwrap();
+        bytes.push(b' ');
+        fs::write(&originally_selected, bytes).unwrap();
+        let mut recovered = Workbench::with_root(root.clone());
+        assert!(recovered.prepared.is_none() && recovered.plan.is_null());
+        assert!(recovered.status.contains("contents changed"));
+        recovered.dispatch(Action::NewerPlan);
+        assert_eq!(recovered.task, "2-Nano-train-grasp");
+        assert!(recovered.error.is_none());
+        fs::remove_file(recovered.prepared.as_ref().unwrap()).unwrap();
+        let mut missing = Workbench::with_root(root.clone());
+        assert!(missing.prepared.is_none() && missing.status.contains("unavailable"));
+        missing.dispatch(Action::OlderPlan);
+        assert_eq!(missing.task, "1-Nano-prepare");
+        fs::write(root.join("selected-Nano-controller.json"), "{").unwrap();
+        assert!(Workbench::with_root(root.clone()).prepared.is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn custom_layout_persists_full_seed_and_rejects_invalid_input() {
         let root = fixture("layout-seed");
         let mut workbench = Workbench::with_root(root.clone());
@@ -1682,7 +2012,7 @@ mod tests {
             fs::write(run.join("actions.jsonl"), "{\"op\":\"sense\",\"tick\":0}\n").unwrap();
             runs.push(run);
         }
-        let comparison = || compare_transfer(&runs, &runs[1], &result);
+        let comparison = || compare_transfer(&runs, &runs[1], &result, None);
         assert!(comparison()
             .unwrap()
             .summary
@@ -1694,7 +2024,15 @@ mod tests {
             .contains("First change at action 1"));
         let mut changed = result.clone();
         changed["seed"] = serde_json::json!(2);
-        assert!(compare_transfer(&runs, &runs[1], &changed).is_none());
+        assert!(compare_transfer(&runs, &runs[1], &changed, None).is_none());
+        let mut compact = source.clone();
+        compact["visual_profile"] = serde_json::json!("compact-v1");
+        compact["visual_bundle_sha256"] = serde_json::json!("bundle");
+        fs::write(runs[1].join("source.json"), compact.to_string()).unwrap();
+        assert!(comparison().is_none());
+        fs::write(runs[0].join("source.json"), compact.to_string()).unwrap();
+        assert!(comparison().is_some());
+        fs::write(runs[0].join("source.json"), source.to_string()).unwrap();
         let mut wrist = source.clone();
         wrist["wrist_rgb_timing"] = serde_json::json!("intermittent");
         wrist["support_code_hashes"]["nano_wrist_timing.py"] = serde_json::json!("guard-v1");
@@ -1758,14 +2096,51 @@ mod tests {
     }
 
     #[test]
+    fn finished_controller_comparison_must_match_the_current_selection() {
+        let root = tempfile::tempdir().unwrap();
+        let mut workbench = Workbench::with_root(root.path().to_owned());
+        workbench.prepared_sha256 = Some("current".into());
+        for (robot, digest, accepted) in [
+            ("Nano", "current", true),
+            ("G1", "current", false),
+            ("Nano", "stale", false),
+        ] {
+            save_selection(
+                root.path(),
+                "comparison.json",
+                &serde_json::json!({"robot":robot,"after":{"sha256":digest}}),
+            )
+            .unwrap();
+            let mut child = Command::new(std::env::current_exe().unwrap())
+                .arg("--list")
+                .stdout(Stdio::null())
+                .spawn()
+                .unwrap();
+            assert!(child.wait().unwrap().success());
+            let job = Job {
+                child,
+                dir: root.path().to_owned(),
+                op: "compare-controller",
+                last: Instant::now(),
+            };
+            workbench.finish(job, true);
+            assert_eq!(workbench.controller_diff.is_some(), accepted);
+        }
+    }
+
+    #[test]
     fn failed_prepare_keeps_runnable_revision() {
         let dir = fixture("failed-prepare");
         let plan = dir.join("controller.json");
-        fs::write(&plan, r#"{"joint":"left_j2_pitch","task":"inspection"}"#).unwrap();
+        fs::write(
+            &plan,
+            r#"{"robot":"Nano","joint":"left_j2_pitch","task":"inspection"}"#,
+        )
+        .unwrap();
         let mut w = Workbench::with_root(dir.clone());
         w.root = plan.clone(); // A file at the job root makes launch fail deterministically.
         w.revisions = vec![plan.clone()];
-        w.load_plan(Some(plan.clone()));
+        w.activate_revision(plan.clone(), None, false).unwrap();
         w.dispatch(Action::Prepare {
             task: "new instruction".into(),
             planner: Planner::Codex,

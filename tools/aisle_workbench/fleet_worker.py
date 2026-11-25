@@ -17,7 +17,9 @@ import subprocess
 import sys
 import time
 from uuid import UUID
+import zlib
 
+from visual_profile import BUNDLE_SHA256, COMPACT, available, validate_profile
 from worker import describe, digest, validate
 
 HERE = Path(__file__).resolve().parent
@@ -29,17 +31,11 @@ ROOM_FILES = {"room.json", "survey.json", "reference-image", "room-preview.rgb"}
 
 
 def companion_names(plan):
-    from onboard_scene import PACKET, CALIBRATION, SUMMARY, PREVIEW
+    from onboard_scene import observation_files
 
     names = set()
     if "scene_observation" in plan:
-        files = set(plan["scene_observation"]["files"])
-        if files not in (
-            {PACKET, CALIBRATION, SUMMARY},
-            {PACKET, CALIBRATION, SUMMARY, PREVIEW},
-        ):
-            raise ValueError("Unknown onboard scene files")
-        names.update(files)
+        names.update(observation_files(plan["scene_observation"]))
     if "pickup_revision" in plan:
         names.add("revision-observation.npz")
     if "reach_checkpoint" in plan:
@@ -159,6 +155,7 @@ def payload(request):
         raise ValueError(
             f"Choose a background observation period from {allowed} seconds for the selected clock"
         )
+    validate_profile(request.get("visual_profile", "original"), plan)
     control = validate(plan, profile)
     if request.get("rgb_timing", "normal") not in (
         "normal",
@@ -211,7 +208,11 @@ def submit(root, request):
     config = {
         k: request[k] for k in ("controller_sha256", "robot", "mode", "seed", "fixture")
     }
-    for key, default in (("rgb_timing", "normal"), ("target_motion", "stationary")):
+    for key, default in (
+        ("rgb_timing", "normal"),
+        ("target_motion", "stationary"),
+        ("visual_profile", "original"),
+    ):
         if request.get(key, default) != default:
             config[key] = request[key]
     if request.get("observation_clock", "simulation") == "wall":
@@ -347,7 +348,7 @@ def supervise(root, ident, token):
             "--out",
             str(trial),
         ]
-        for key in ("rgb_timing", "target_motion"):
+        for key in ("rgb_timing", "target_motion", "visual_profile"):
             if key in config:
                 args.extend(("--" + key.replace("_", "-"), config[key]))
         if config.get("room_sha256"):
@@ -441,10 +442,13 @@ def dispatch(root, request):
         return dict(
             protocol=1,
             foreground_rgb_protocol=1,
+            foreground_rgb_encodings=["raw", "zlib"],
             background_rgb_periods_s=[1, 2, 5],
             background_rgb_clocks=["simulation", "wall"],
             transfer_wrist_timing=["normal", "intermittent", "disconnected"],
+            nano_visual_bundles={COMPACT: BUNDLE_SHA256} if available() else {},
             experimental_wrist_clearance=True,
+            onboard_author_images=True,
             background_wall_rgb_periods_s=[0.5, 1, 2, 5],
             host=platform.node(),
             system=platform.system(),
@@ -480,25 +484,40 @@ def dispatch(root, request):
         if op == "observation" and row["stream"]:
             raise ValueError("Choose a background job to sample an observation")
         path = root / ident / "trial/preview.rgb"
+        extra = (
+            {"job": row}
+            if op == "observation" and request.get("include_job") is True
+            else {}
+        )
         if not path.is_file():
-            return dict(ready=False)
+            return dict(ready=False, **extra)
         raw = path.read_bytes()
         height = (len(raw) - 4) // (480 * 3)
         if height not in (320, 360) or len(raw) != 4 + 480 * height * 3:
             raise ValueError("Invalid live frame")
+        tick = int.from_bytes(raw[:4], "big")
+        if op == "observation" and request.get("after_tick") == tick:
+            return dict(ready=False, **extra)
+        pixels = raw[4:]
+        if op == "observation" and request.get("accept_encoding") == "zlib":
+            compressed = zlib.compress(pixels, level=1)
+            if len(compressed) < len(pixels):
+                pixels = compressed
+                extra["encoding"] = "zlib"
         return dict(
             width=480,
             height=height,
             ready=True,
-            tick=int.from_bytes(raw[:4], "big"),
-            data=base64.b64encode(raw[4:]).decode(),
+            tick=tick,
+            data=base64.b64encode(pixels).decode(),
+            **extra,
         )
     elif op != "status":
         raise ValueError("Unknown worker operation")
     return status(root, ident)
 
 
-def stream_rgb(root, ident, output):
+def stream_rgb(root, ident, output, *, encoding="raw"):
     """Write a bounded JSON header and optional tick-prefixed RGB plane per update."""
     ident = job_id(ident)
     path = root / ident / "trial/preview.rgb"
@@ -528,6 +547,11 @@ def stream_rgb(root, ident, output):
             pass
         if info or frame:
             packet = dict(bytes=len(frame))
+            if frame and encoding == "zlib":
+                compressed = zlib.compress(frame, level=1)
+                if len(compressed) < len(frame):
+                    packet.update(encoding="zlib", raw_bytes=len(frame), bytes=len(compressed))
+                    frame = compressed
             if info:
                 packet["job"] = info
             output.write(json.dumps(packet, allow_nan=False).encode() + b"\n")
@@ -546,7 +570,9 @@ def main():
     init = cmd.add_parser("init")
     init.add_argument("--slots", type=int, required=True)
     cmd.add_parser("rpc")
-    cmd.add_parser("watch-rgb").add_argument("id")
+    watch = cmd.add_parser("watch-rgb")
+    watch.add_argument("id")
+    watch.add_argument("--encoding", choices=("raw", "zlib"), default="raw")
     supervise_cmd = cmd.add_parser("_supervise")
     supervise_cmd.add_argument("id")
     supervise_cmd.add_argument("token")
@@ -556,7 +582,7 @@ def main():
         initialize(root, args.slots)
     elif args.command == "watch-rgb":
         try:
-            stream_rgb(root, args.id, sys.stdout.buffer)
+            stream_rgb(root, args.id, sys.stdout.buffer, encoding=args.encoding)
         except BrokenPipeError:
             return
     elif args.command == "rpc":

@@ -39,6 +39,7 @@ def main():
         help="Verify a previously stopped run after restarting Studio",
     )
     p.add_argument("--resume-fleet", action="store_true")
+    p.add_argument("--compact-visuals", action="store_true")
     p.add_argument("--fleet-controller", action="store_true")
     p.add_argument("--fleet-node")
     p.add_argument("--fleet", action="store_true")
@@ -62,19 +63,24 @@ def main():
     p.add_argument("--train-reach", action="store_true")
     p.add_argument("--photo-input", type=Path)
     p.add_argument("--survey", type=Path)
+    p.add_argument("--edit-environment", action="store_true")
     p.add_argument("--evaluation", type=Path)
     p.add_argument("--compare-cohorts", nargs=2, type=Path)
     p.add_argument("--reject-cohort", type=Path)
     p.add_argument("--handoff", action="store_true")
+    p.add_argument("--revision-selection", action="store_true")
     p.add_argument("--wrist-faults", nargs="?", const="red", choices=["red", "three"])
     p.add_argument("--camera-faults", action="store_true")
     p.add_argument("--moving-target", action="store_true")
-    p.add_argument("--observed-author", action="store_true")
+    p.add_argument("--observed-author", nargs="?", const="approach", choices=("approach", "transfer"))
     p.add_argument("--prepared-pickup", action="store_true")
     p.add_argument("--revise-drive", action="store_true")
     p.add_argument("--revise-pickup", action="store_true")
     p.add_argument("--compare-runs", action="store_true")
+    p.add_argument("--room-baseline", action="store_true")
     a = p.parse_args()
+    if a.edit_environment and not a.survey:
+        p.error("--edit-environment requires --survey")
     a.out.mkdir(parents=True, exist_ok=True)
     checks = []
 
@@ -162,7 +168,7 @@ def main():
     if a.revise_pickup:
         from revision_check import native_journey
 
-        native_journey(a, page, click, remote, done, grab)
+        native_journey(a, page, click, remote, done, grab, wait)
         return
     if a.compare_runs:
         from divergence_check import native_journey
@@ -177,7 +183,7 @@ def main():
     if a.observed_author:
         from observed_author_check import journey
 
-        journey(a, checks, page, click, remote, done, grab)
+        journey(a, checks, page, click, remote, done, grab, wait)
         return
     if a.moving_target:
         from moving_target_check import native_journey
@@ -193,6 +199,10 @@ def main():
 
         native_journey(a, checks, page, click, remote, done, grab)
         return
+    if a.revision_selection:
+        from selection_check import native_journey
+
+        return native_journey(a, checks, page, click, remote, done, grab, wait)
     if a.handoff:
 
         def enter_task(instruction):
@@ -250,6 +260,11 @@ def main():
                 row["result"]["controller_hash"]
                 == saved["revised_result"]["controller_hash"]
             )
+            from controller_review_check import inspect
+
+            page("task")
+            inspect(a,click,wait,grab,"g1-restored-changes","parent",saved["original_result"]["controller_hash"],
+                    saved["revised_result"]["controller_hash"],"Joint displacement · -0.08 rad → -0.06 rad")
             (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
             return
         original, measured = inspect_with(
@@ -268,6 +283,11 @@ def main():
             revised["previous_trial"]["controller_hash"] == measured["controller_hash"]
         )
         assert abs(result["measured_delta"] + 0.06) < 0.003
+        from controller_review_check import inspect
+
+        page("task")
+        inspect(a,click,wait,grab,"g1-handoff-changes","parent",measured["controller_hash"],
+                result["controller_hash"],"Joint displacement · -0.08 rad → -0.06 rad")
         page("evidence")
         grab("provider-handoff")
         checks.append(
@@ -402,6 +422,9 @@ def main():
             if a.survey:
                 assert row["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
                 assert row["result"]["room_revision_sha256"]
+                if a.edit_environment:
+                    assert row["room_info"]["settings"]["ambient_rgb"] == [0.40, 0.42, 0.44]
+                    assert row["room_info"]["settings"]["floor_friction"] == 0.80
             (a.out / "recovery.json").write_text(json.dumps(checks, indent=2))
             return
         page("task")
@@ -475,6 +498,59 @@ def main():
                 "Surveyed footprint imported",
             )
             first = saved["room_path"]
+            mounts = (
+                saved["room_info"].get("settings", {}).get("camera_mount_checks", {})
+            )
+            if mounts:
+                labels = {
+                    "head": "Head",
+                    "left_wrist": "Left wrist",
+                    "right_wrist": "Right wrist",
+                }
+                lines = [
+                    f"{labels[k]} · {v['max_check_px']:.2f} px max on {v['check_points']} check points"
+                    for k, v in mounts.items()
+                ]
+                wait(
+                    lambda j: all(
+                        line in j["controls"]["aisle_scene.room_detail"]["text"]
+                        for line in lines
+                    ),
+                    "Camera validation visible on Scene",
+                )
+                checks.append(
+                    dict(
+                        check="Displayed independent camera reprojection checks",
+                        cameras=mounts,
+                    )
+                )
+                grab("survey-camera-fit")
+                archived = Path(first).with_name("survey.json")
+                bad = json.loads(archived.read_bytes())
+                bad["image"] = str(archived.with_name("reference-image"))
+                name = next(iter(mounts))
+                point = next(
+                    m
+                    for m in bad["camera_calibration"]["cameras"][name]["landmarks"]
+                    if m["use"] == "check"
+                )
+                point["pixel"][0] += 10 if point["pixel"][0] < 240 else -10
+                incorrect = a.out.parent / "incorrect-camera-survey.json"
+                incorrect.write_text(json.dumps(bad))
+                fill_survey("survey_path", str(incorrect))
+                click("aisle_scene.import_survey")
+                stopped = done(
+                    lambda w: not w["busy"]
+                    and "check landmark reprojection" in w["status"],
+                    "Rejected the incorrect camera measurement",
+                )
+                assert stopped["room_path"] == first
+                checks[-1]["reason"] = stopped["status"]
+                # The camera report can push the geometry editor below the
+                # scroll viewport. Use the same wheel gesture as an operator.
+                x, y, width, height = report()["controls"]["aisle_scene.room_detail"]["rect"]
+                remote("mouse", "k=scroll", "w=0", f"x={x + width / 2}",
+                       f"y={y + height / 2}", "dy=320", "wait=1")
             fill_survey("geometry", "ottoman 0 0 0.35")
             click("aisle_scene.save_geometry")
             failed = done(
@@ -490,6 +566,13 @@ def main():
             )
             assert saved["room_info"]["obstacles"][0]["position"][:2] == [1.38, -0.45]
             grab("survey-edited")
+            if a.edit_environment:
+                from room_environment_check import edit_environment
+
+                saved = edit_environment(saved, report, remote, fill_survey, click, done, grab)
+                from worker import digest
+
+                conditions_sha = digest(Path(saved["room_path"]))
             click("aisle_scene.robot_mode")
         if a.impact:
             click("aisle_scene.impact")
@@ -811,6 +894,10 @@ def main():
                 calibration = json.loads((run / "calibration.json").read_text())
                 scene = json.loads((run / "room.json").read_text())
                 assert calibration["cameras"] == scene["settings"]["cameras"]
+                if a.edit_environment:
+                    assert result["room_revision_sha256"] == conditions_sha
+                    assert scene["settings"]["ambient_rgb"] == [0.40, 0.42, 0.44]
+                    assert scene["settings"]["floor_friction"] == 0.80
             assert result["seed"] == a.layout
             assert all(result["cubes"][c]["passed"] for c in wanted)
             import numpy as np
@@ -901,12 +988,35 @@ def main():
             (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
         return
     if a.recover:
+        previous = {
+            entry["check"]: entry
+            for entry in json.loads((a.out / "journey.json").read_text())
+        }
+        scored = previous["native Replay loaded episode"]
+        stopped = previous["operator stop retained"]
         page("evidence")
         row = done(
-            lambda w: w["result"] and w["result"].get("outcome") == "Stopped",
+            lambda w: w["selected"] == scored["trial"]
+            and (w["result"] or {}).get("task_success")
+            and w["result"]["controller_hash"] == scored["controller_hash"]
+            and w["dataset"] == scored["dataset"],
+            "selected scored trial and exported dataset restored",
+        )
+        assert Path(row["dataset"]).is_dir()
+        checks[-1].update(
+            trial=row["selected"], controller_hash=row["result"]["controller_hash"]
+        )
+        click("aisle_evidence.next")
+        row = done(
+            lambda w: w["selected"] == stopped["trial"]
+            and (w["result"] or {}).get("outcome") == "Stopped",
             "stopped run recovered on restart",
         )
-        assert (Path(row["selected"]) / "stopped.json").exists()
+        assert (
+            json.loads((Path(row["selected"]) / "stopped.json").read_text())["stopped"]
+            is True
+        )
+        checks[-1].update(trial=row["selected"])
         page("task")
         click("aisle_task.g1")
         done(
@@ -1053,6 +1163,9 @@ def main():
             click("aisle_scene.compliant")
             done(lambda w: w["compliant"], "G1 compliant fixture selected")
         grab(robot + "-scene")
+        from joint_inspector_check import check as check_joint_limits
+
+        checks.append(check_joint_limits(robot, click, remote, wait, grab))
         page("run")
         before = report()["state"]["aisle"]["selected"]
         click("aisle_run.start_run")
@@ -1188,6 +1301,7 @@ def main():
         "operator stop retained",
     )
     assert (Path(row["selected"]) / "stopped.json").is_file()
+    checks[-1].update(trial=row["selected"])
 
     def group_is_stopped(_):
         processes = subprocess.check_output(["ps", "-axo", "pgid=,stat="], text=True)
@@ -1203,13 +1317,24 @@ def main():
     prior = done(lambda w: w["result"].get("task_success"), "reopen scored evidence")
     if not prior["dataset"]:
         click("aisle_evidence.export")
-        done(lambda w: w["dataset"] and not w["busy"], "revised episode exported", 60)
+        prior = done(
+            lambda w: w["dataset"] and not w["busy"], "revised episode exported", 60
+        )
     click("aisle_evidence.replay")
     wait(
         lambda j: j["state"]["screen"] == "Replay" and j["state"]["frames"] == 25,
         "episode opened in Studio Replay",
     )
-    checks.append(dict(check="native Replay loaded episode", robot="G1", frames=25))
+    checks.append(
+        dict(
+            check="native Replay loaded episode",
+            robot="G1",
+            frames=25,
+            trial=prior["selected"],
+            controller_hash=prior["result"]["controller_hash"],
+            dataset=prior["dataset"],
+        )
+    )
     grab("G1-replay")
     (a.out / "journey.json").write_text(json.dumps(checks, indent=2))
 

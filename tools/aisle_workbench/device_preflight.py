@@ -169,11 +169,14 @@ def run(args):
     if args.robot == "Nano":
         profile_path = ROOT / "robots/adora_nano_feetech/profile.json"
         profile = read(profile_path)
-        required = (
-            ("arms", "cameras", "measured_odometry")
-            if result["kind"] == "table-transfer"
-            else ("arms",)
-        )
+        required = ["arms", "joint_feedback"]
+        if result["kind"] in ("visual-approach", "table-transfer"):
+            # Both mobile controllers hold the head and wrists at observation
+            # poses and localize with timestamped RGB and joint positions.
+            required.extend(["mobile_base", "head", "cameras"])
+        if result["kind"] == "table-transfer":
+            # The transfer uses wheel encoder deltas to travel a metric distance.
+            required.append("measured_odometry")
         missing = [
             key for key in required if profile["capabilities"].get(key) is not True
         ]

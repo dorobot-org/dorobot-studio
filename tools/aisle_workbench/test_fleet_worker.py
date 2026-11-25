@@ -1,4 +1,7 @@
+import base64
 import io
+import os
+import zlib
 import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -7,7 +10,7 @@ import unittest
 from unittest.mock import patch
 from uuid import uuid4
 
-from fleet_client import submission
+from fleet_client import decode_rgb, poll_observation, submission
 from fleet_worker import dispatch, initialize, stream_rgb, transaction
 
 
@@ -145,6 +148,67 @@ class WorkerLeaseTests(unittest.TestCase):
                     | {"id": ident, "mode": "observations", "observation_period_s": 5},
                 )
 
+    def test_background_poll_combines_status_and_lossless_rgb_including_terminal_frame(
+        self,
+    ):
+        ident = str(uuid4())
+        trial = self.root / ident / "trial"
+        trial.mkdir(parents=True)
+        path = trial / "preview.rgb"
+        job = dict(id=ident, stream=False, state="completed")
+        with patch("fleet_worker.status", return_value=job):
+
+            def rpc(_, request):
+                return dispatch(self.root, request)
+
+            _, empty = poll_observation(None, ident, rpc=rpc)
+            self.assertFalse(empty["ready"])
+            for pixels, encoding in [
+                (bytes(480 * 360 * 3), "zlib"),
+                (os.urandom(480 * 320 * 3), "raw"),
+            ]:
+                path.write_bytes((17).to_bytes(4, "big") + pixels)
+                state, frame = poll_observation(None, ident, rpc=rpc)
+                self.assertEqual(state, job)
+                self.assertEqual(frame.get("encoding", "raw"), encoding)
+                self.assertEqual(decode_rgb(frame), pixels)
+                _, duplicate = poll_observation(None, ident, 17, rpc=rpc)
+                self.assertFalse(duplicate["ready"])
+                self.assertNotIn("data", duplicate)
+                raw = dispatch(self.root, dict(op="observation", id=ident))
+                self.assertEqual(base64.b64decode(raw["data"], validate=True), pixels)
+                self.assertNotIn("job", raw)
+
+    def test_older_worker_observation_and_invalid_compressed_frames(self):
+        from unittest.mock import Mock
+
+        ident = str(uuid4())
+        job = dict(id=ident, state="running")
+        rpc = Mock(side_effect=[dict(ready=False), job])
+        self.assertEqual(
+            poll_observation(None, ident, 5, rpc=rpc), (job, dict(ready=False))
+        )
+        self.assertEqual(rpc.call_args.args[1], dict(op="status", id=ident))
+        with self.assertRaisesRegex(ValueError, "different job"):
+            poll_observation(
+                None, ident, rpc=Mock(return_value=dict(job={"id": "other"}))
+            )
+        raw = bytes(480 * 360 * 3)
+        for bad in (
+            zlib.compress(raw)[:-1],
+            zlib.compress(raw) + b"x",
+            zlib.compress(raw + b"x"),
+        ):
+            with self.assertRaises(ValueError):
+                decode_rgb(
+                    dict(
+                        width=480,
+                        height=360,
+                        encoding="zlib",
+                        data=base64.b64encode(bad).decode(),
+                    )
+                )
+
     def test_rgb_stream_finishes_with_the_last_full_frame_and_rejects_backgrounds(self):
         ident = self.request["id"]
         trial = self.root / ident / "trial"
@@ -158,6 +222,16 @@ class WorkerLeaseTests(unittest.TestCase):
         out.seek(0)
         self.assertEqual(json.loads(out.readline()), dict(job=final, bytes=len(raw)))
         self.assertEqual(out.read(), raw)
+        encoded = io.BytesIO()
+        with patch("fleet_worker.status", return_value=final):
+            stream_rgb(self.root, ident, encoded, encoding="zlib")
+        encoded.seek(0)
+        compressed_header = json.loads(encoded.readline())
+        compressed = encoded.read()
+        self.assertEqual(compressed_header["encoding"], "zlib")
+        self.assertEqual(compressed_header["raw_bytes"], len(raw))
+        self.assertEqual(compressed_header["bytes"], len(compressed))
+        self.assertEqual(zlib.decompress(compressed), raw)
         with patch("fleet_worker.status", return_value=final | {"stream": False}):
             with self.assertRaisesRegex(ValueError, "foreground"):
                 stream_rgb(self.root, ident, io.BytesIO())

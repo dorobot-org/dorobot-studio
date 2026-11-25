@@ -1,7 +1,7 @@
 """Run one native stream and seven independent Nexus workers for a prepared cohort."""
 
+from functools import partial
 import argparse
-import base64
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
@@ -19,7 +19,13 @@ ROOT = Path(__file__).resolve().parents[5]
 TOOLS = ROOT / "tools/aisle_workbench"
 sys.path.insert(0, str(TOOLS))
 from fleet_artifacts import download  # noqa: E402
-from fleet_client import check_background_period, send, submission  # noqa: E402
+from fleet_client import (
+    check_background_period,
+    decode_rgb,
+    poll_observation,
+    send,
+    submission,
+)  # noqa: E402
 from worker import observation_seconds  # noqa: E402
 
 clock = time.monotonic_ns
@@ -141,6 +147,9 @@ def observer(alias, node, author, out, abort, rgb_clock, period):
         observation_period_s=period,
     )
     last_step = last_frame = None
+    read = partial(read_worker, errors=errors)
+    wire = dict(frames=0, zlib_frames=0, base64_bytes=0, raw_rgb_bytes=0)
+    record["observation_transport"] = wire
     try:
         if abort.is_set():
             return
@@ -151,15 +160,18 @@ def observer(alias, node, author, out, abort, rgb_clock, period):
                 raise InterruptedError("Cohort interrupted")
             if time.monotonic() > deadline:
                 raise TimeoutError(f"{alias} exceeded 900 seconds")
-            job = read_worker(node, dict(op="status", id=ident), errors)
+            job, frame = poll_observation(node, ident, last_frame, rpc=read)
             step = (job.get("progress") or {}).get("step", 0)
             if step and step != last_step and job["state"] == "running":
                 steps.append([step, clock()])
                 last_step = step
-            frame = read_worker(node, dict(op="observation", id=ident), errors)
             if frame["ready"] and frame["tick"] != last_frame:
                 when = clock()
-                pixels = base64.b64decode(frame["data"], validate=True)
+                pixels = decode_rgb(frame)
+                wire["frames"] += 1
+                wire["zlib_frames"] += frame.get("encoding") == "zlib"
+                wire["base64_bytes"] += len(frame["data"])
+                wire["raw_rgb_bytes"] += len(pixels)
                 assert (frame["width"], frame["height"]) == (480, 360) and len(
                     pixels
                 ) == 480 * 360 * 3
@@ -225,6 +237,7 @@ def main():
         choices=(0.5, 1, 2, 5),
         default=1,
     )
+    cli.add_argument("--compact-foreground", action="store_true", help="Select compact camera rendering for the foreground Nano transfer")
     a = cli.parse_args()
     if a.background_period_s == 0.5 and a.background_clock != "wall":
         cli.error("A half-second period requires --background-clock wall")
@@ -293,6 +306,8 @@ def main():
         "--out",
         str(native),
     ]
+    if a.compact_foreground:
+        command.append("--compact-visuals")
     times = dict(start_ns=clock())
     abort = threading.Event()
     pool = ThreadPoolExecutor(max_workers=7)

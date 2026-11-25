@@ -37,16 +37,30 @@ jobs:
             libxrandr-dev libegl1-mesa-dev libgl1-mesa-dev libdrm-dev python3-numpy python3-pil python3-venv ffmpeg
       - name: Verify archived Studio RGB delivery and robot measurements
         run: |
+          /usr/bin/python3 docs/product/aisle-studio/validation/joint-inspector/check.py
           guide=docs/product/aisle-studio/validation/wall-clock-rgb
           /usr/bin/python3 "$guide/audit.py" "$guide/measurements.zip" --output "$RUNNER_TEMP/wall-clock-rgb.json"
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wall-clock-rgb.json"
+          /usr/bin/python3 "$guide/check_h100_observer.py"
           guide=docs/product/aisle-studio/validation/transfer-wrist-timing
           /usr/bin/python3 -m venv --system-site-packages "$RUNNER_TEMP/wrist-python"
           "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: numpy==2.5.5 pyarrow==26.0.1
+          "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/single-cube-intent/check_stationary.py --datasets
           "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit.py" "$guide/measurements.zip" --datasets --output "$RUNNER_TEMP/wrist-timing.json"
+          h100=docs/product/aisle-studio/validation/eight-h100/wall-clock
+          "$RUNNER_TEMP/wrist-python/bin/python" "$h100/compare.py" --datasets > "$RUNNER_TEMP/eight-h100-wall.json"
+          cmp "$h100/comparison.json" "$RUNNER_TEMP/eight-h100-wall.json"
+          delivery=docs/product/aisle-studio/validation/eight-h100/lossless-rgb
+          "$RUNNER_TEMP/wrist-python/bin/python" "$delivery/audit_transport.py" --datasets > "$RUNNER_TEMP/eight-h100-delivery.json"
+          cmp "$delivery/comparison.json" "$RUNNER_TEMP/eight-h100-delivery.json"
+          /usr/bin/python3 "$guide/capacity.py" "$delivery/mac-ten.zip" --case 10-half-deepseek > "$RUNNER_TEMP/mac-delivery.json"
+          cmp "$delivery/mac-ten.json" "$RUNNER_TEMP/mac-delivery.json"
           cmp "$guide/measurements.json" "$RUNNER_TEMP/wrist-timing.json"
           /usr/bin/python3 "$guide/capacity.py" "$guide/capacity.zip" > "$RUNNER_TEMP/wrist-capacity.json"
           cmp "$guide/capacity.json" "$RUNNER_TEMP/wrist-capacity.json"
+          preview=docs/product/aisle-studio/validation/foreground-preview
+          /usr/bin/python3 "$guide/capacity.py" "$preview/exposure-reuse-ten.zip" > "$RUNNER_TEMP/preview-capacity.json"
+          cmp "$preview/exposure-reuse-ten.json" "$RUNNER_TEMP/preview-capacity.json"
           /usr/bin/python3 "$guide/selection.py" "$guide/selection.zip" > "$RUNNER_TEMP/wrist-selection.json"
           cmp "$guide/selection.json" "$RUNNER_TEMP/wrist-selection.json"
       - name: Replay Nano and G1 cohort comparisons
@@ -56,13 +70,24 @@ jobs:
           git -C "$aisle" fetch --depth=1 https://github.com/moxin-org/AISLE.git dbd34a71b6f82a011541b433306ca7e6a705e823
           git -C "$aisle" checkout -q --detach FETCH_HEAD
           "$RUNNER_TEMP/wrist-python/bin/pip" install --only-binary=:all: opencv-python-headless==5.1.0.95 scipy==1.18.1
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle_workbench -p test_room_revision.py
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle_workbench -p test_device_preflight.py
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle_workbench -p test_author_input.py
+          "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/onboard-authoring/camera-inputs/audit.py
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" docs/product/aisle-studio/validation/room-survey/check_camera_trials.py
           /usr/bin/python3 tools/fetch_robot_meshes.py g1
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_cohort_comparison.py
           DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" -m unittest discover -s tools/aisle-validation -p test_nano_rgb_transfer.py
 
+          unzip -q docs/product/aisle-studio/validation/single-cube-intent/sliding-trial.zip -d "$RUNNER_TEMP/aisle-explicit-slide"
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" tools/aisle_workbench/moving_grasp_check.py "$RUNNER_TEMP/aisle-explicit-slide"
+
           guide=docs/product/aisle-studio/validation/nano-release-workspace
-          git fetch --no-tags --depth=1 --filter=blob:none origin e1e804658e375bc7579c13895a7d9f83f2df08ce 476f293006d0ac0f07c71d80501d86b7e925a26a
-          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit_qualification.py" "$guide/cohort-f" --check
+          git fetch --no-tags --depth=1 --filter=blob:none origin e1e804658e375bc7579c13895a7d9f83f2df08ce 476f293006d0ac0f07c71d80501d86b7e925a26a d38d9b3c9fb56e7f9e63de5f622aff774e866cdf 3bec9043281f5a331491d20cf3c918aa6639b413
+          for batch in cohort-f cohort-g; do
+            DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" "$guide/audit_qualification.py" "$guide/$batch" --check
+          done
+          DOROBOT_AISLE_ROOT="$aisle" PYTHONPATH="$aisle/src" "$RUNNER_TEMP/wrist-python/bin/python" "$guide/cohort-g/audit_maneuvers.py" --check
 
       - name: Install Rust
         run: |
@@ -85,11 +110,17 @@ jobs:
       - name: Test AISLE inspection contracts
         run: |
           python3 -m unittest discover -s tools/aisle_workbench -p test_worker.py
+          python3 docs/product/aisle-studio/validation/controller-selection/check.py
           python3 -m unittest discover -s tools/aisle_workbench -p test_wrist_export.py
       - name: Verify foreground stream handling and archived native measurements
         run: |
           python3 -m unittest discover -s tools/aisle_workbench -p test_fleet_bridge.py
+          python3 -m unittest discover -s tools/aisle_workbench -p test_fleet_worker.py
           python3 docs/product/aisle-studio/validation/foreground-preview/audit.py
+          python3 docs/product/aisle-studio/validation/foreground-preview/compare_exposures.py docs/product/aisle-studio/validation/foreground-preview/exposure-reuse-metal.zip
+          preview=docs/product/aisle-studio/validation/foreground-preview
+          python3 "$preview/compare_exposures.py" --single "$preview/h100-single.zip" > "$RUNNER_TEMP/h100-single.json"
+          cmp "$preview/h100-single.json" "$RUNNER_TEMP/h100-single.json"
           python3 docs/product/aisle-studio/validation/native-cohort-comparison/audit.py
           python3 docs/product/aisle-studio/validation/nano-release-workspace/verify_native_seeds.py
       - name: Test Nexus worker when present

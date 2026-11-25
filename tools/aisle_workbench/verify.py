@@ -43,6 +43,7 @@ def main():
         metavar=("PREVIOUS", "CURRENT"),
         help="Verify replay of the first changed action using two recorded Nano trials",
     )
+    parser.add_argument("--room-baseline", action="store_true", help="Pin and compare surveyed rooms in the selected two-run journey")
     parser.add_argument(
         "--foreground-cadence",
         nargs="?",
@@ -93,7 +94,7 @@ def main():
     )
     scenario.add_argument(
         "--observed-author",
-        action="store_true",
+        nargs="?", const="approach", choices=("approach", "transfer"),
         help="Select a target from two actual onboard scene observations",
     )
     scenario.add_argument(
@@ -112,6 +113,11 @@ def main():
         "--camera-faults",
         action="store_true",
         help="Drive the same Nano controller with normal, delayed and frozen RGB delivery",
+    )
+    scenario.add_argument(
+        "--revision-selection",
+        action="store_true",
+        help="Run the selected Nano and G1 revisions after switching robots and restarting Studio",
     )
     scenario.add_argument(
         "--handoff",
@@ -180,6 +186,7 @@ def main():
         type=Path,
         help="Import and edit the Nano reference survey during a transfer",
     )
+    parser.add_argument("--edit-environment", action="store_true", help="Edit Nexus lighting and friction in a surveyed Nano room")
     parser.add_argument(
         "--prepared-pickup",
         type=Path,
@@ -193,7 +200,7 @@ def main():
         "--resume-fleet",
         type=Path,
         metavar="EARLIER_OUTPUT",
-        help="Reconnect a prior two-job fleet check and fetch its completed foreground",
+        help="Reconnect to the selected foreground of a prior fleet check and fetch its original recording",
     )
     parser.add_argument(
         "--fleet-controller",
@@ -201,7 +208,16 @@ def main():
         metavar="PREPARED_DIRECTORY",
         help="Run one previously authored Nano red-cube transfer on the selected worker",
     )
+    parser.add_argument(
+        "--compact-visuals",
+        action="store_true",
+        help="Select compact Nano cameras in Scene before the registered fleet transfer",
+    )
     args = parser.parse_args()
+    if args.compact_visuals and not args.fleet_controller:
+        parser.error("--compact-visuals requires --fleet-controller")
+    if args.room_baseline and not args.compare_runs:
+        parser.error("--room-baseline requires --compare-runs BASELINE CANDIDATE")
     if args.background_period_s is not None and (
         not args.fleet or args.fleet_controller or args.resume_fleet
     ):
@@ -240,9 +256,11 @@ def main():
             "--resume-fleet needs --fleet and the same registered --fleet-node"
         )
     if args.fleet_node and (not args.fleet or args.foreground_cadence):
-        parser.error("--fleet-node requires the two-job --fleet journey")
+        parser.error("--fleet-node requires a registered-worker --fleet journey")
     if args.photo_input and (args.survey or not args.transfer):
         parser.error("--photo-input requires a transfer without --survey")
+    if args.edit_environment and not args.survey:
+        parser.error("--edit-environment requires --survey")
     if args.survey and not args.transfer:
         parser.error("--survey requires --transfer")
     if args.train_grasp and not args.transfer:
@@ -276,8 +294,10 @@ def main():
         parser.error("Select --codex or --octos-deepseek to author the requested trial")
     if args.foreground_cadence and (not args.fleet or not args.provider):
         parser.error("--foreground-cadence requires --fleet and an author")
-    if args.fleet and not args.provider:
+    if args.fleet and not args.provider and not args.resume_fleet:
         args.provider = "octos-deepseek"
+    if args.revision_selection and not args.provider:
+        parser.error("--revision-selection requires --codex or --octos-deepseek")
     if args.reject_cohort and not args.compare_cohorts:
         parser.error("--reject-cohort requires --compare-cohorts")
     output = args.out.resolve()
@@ -291,7 +311,13 @@ def main():
         "DOROBOT_STUDIO_STATE_DIR": str(output / "state"),
     }
     if args.resume_fleet:
+        from fleet_check import submitted_foreground
+
         shutil.copytree(args.resume_fleet / "state", output / "state")
+        _, _, author = submitted_foreground(output / "state/aisle", args.fleet_node)
+        if args.provider and args.provider != author:
+            parser.error("Selected provider differs from the submitted controller")
+        args.provider = author
     if args.prepared_pickup and not args.revise_pickup:
         parser.error("--prepared-pickup requires --revise-pickup")
     prior_trial = args.revise_pickup or args.revise_drive
@@ -362,7 +388,10 @@ def main():
                         "crates/dorobot-studio-core/src/runtime.rs",
                         "crates/dorobot-studio-core/src/widgets/video_player.rs",
                         "plugins/aisle/src/lib.rs",
+                        "plugins/aisle/src/joint_inspector.rs",
+                        "vendor/makepad-urdf-player/src/robot_view.rs",
                         "crates/dorobot-studio-core/src/api/aisle.rs",
+                        "crates/dorobot-studio-core/src/api/aisle/room_pair.rs",
                         "dorobot-flex/src/bin/dorobot-flex.rs",
                     )
                 ),
@@ -397,6 +426,7 @@ def main():
                 output / "verified" / f"{stage}-draws.jsonl"
             )
         with (output / f"{stage}.log").open("w") as log:
+            started_ns = time.time_ns()
             process = subprocess.Popen(
                 command, env=env, stdout=log, stderr=subprocess.STDOUT
             )
@@ -438,6 +468,8 @@ def main():
                     check.append("--revise-pickup")
                 if args.compare_runs:
                     check.append("--compare-runs")
+                    if args.room_baseline:
+                        check.append("--room-baseline")
                 if args.fleet:
                     check.extend(
                         ["--fleet", "--background-clock", args.background_clock]
@@ -448,6 +480,8 @@ def main():
                         )
                     if args.fleet_controller:
                         check.append("--fleet-controller")
+                    if args.compact_visuals:
+                        check.append("--compact-visuals")
                     if args.resume_fleet:
                         check.append("--resume-fleet")
                     if args.fleet_node:
@@ -457,13 +491,15 @@ def main():
                             ["--foreground-cadence", str(args.foreground_cadence)]
                         )
                 if args.observed_author:
-                    check.append("--observed-author")
+                    check.extend(["--observed-author", args.observed_author])
                 if args.moving_target:
                     check.append("--moving-target")
                 if args.wrist_faults:
                     check.extend(["--wrist-faults", args.wrist_faults])
                 if args.camera_faults:
                     check.append("--camera-faults")
+                if args.revision_selection:
+                    check.append("--revision-selection")
                 if args.handoff:
                     check.append("--handoff")
                 if args.compare_cohorts:
@@ -495,6 +531,8 @@ def main():
                     check.extend(["--photo-input", str(args.photo_input.resolve())])
                 if args.survey:
                     check.extend(["--survey", str(args.survey.resolve())])
+                    if args.edit_environment:
+                        check.append("--edit-environment")
                 if args.device_preflight:
                     check.append("--device-preflight")
                 if args.pickup_motion:
@@ -519,7 +557,7 @@ def main():
                     timeout = 5400
                 elif args.train_grasp or args.transfer == "three":
                     timeout = 2400
-                elif args.transfer or args.fleet or args.wrist_faults or prior_trial:
+                elif args.transfer or args.observed_author == "transfer" or args.fleet or args.wrist_faults or prior_trial:
                     timeout = 900
                 else:
                     timeout = 330
@@ -546,6 +584,8 @@ def main():
                     dict(
                         stage=stage,
                         pid=process.pid,
+                        started_unix_ns=started_ns,
+                        observed_unix_ns=time.time_ns(),
                         observed_dark=state["dark"],
                         observed_source_root=state["aisle_source_root"],
                         windows=[w.get("sz") for w in windows],

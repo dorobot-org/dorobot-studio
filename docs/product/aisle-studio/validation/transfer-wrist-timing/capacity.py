@@ -19,14 +19,16 @@ def main():
     cli.add_argument("archive", type=Path)
     cli.add_argument("--pack-from", type=Path)
     cli.add_argument("--git-sources", action="store_true")
+    cli.add_argument("--case", choices=TAGS, help="Pack or verify just this cohort")
     a = cli.parse_args()
+    tags = (a.case,) if a.case else TAGS
     if a.pack_from:
         with ZipFile(a.archive, "x", ZIP_DEFLATED) as z:
-            for tag in TAGS:
+            for tag in tags:
                 add_case(z, a.pack_from, tag, True)
     with ZipFile(a.archive) as z:
-        result = dict(builds=builds(z, TAGS, a.git_sources))
-        for tag in TAGS:
+        result = dict(builds=builds(z, tags, a.git_sources))
+        for tag in tags:
             measured = case(z, tag, True)
             for prefix in ("foreground", *(f"observer-{i}" for i in range(9))):
                 run = json.loads(z.read(f"{tag}/{prefix}/result.json"))
