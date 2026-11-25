@@ -369,9 +369,11 @@ class Controller:
             return self.turn_for_release(
                 edge, occupied, packet, color, prior_colors, landmarks
             )
-        return self.shift_for_release(edge, occupied, packet, color, prior_colors)
+        return self.shift_for_release(
+            edge, occupied, packet, color, prior_colors, landmarks
+        )
 
-    def shift_for_release(self, edge, occupied, packet, color, prior_colors):
+    def shift_for_release(self, edge, occupied, packet, color, prior_colors, landmarks):
         # Predict whether shifting along the docked base's y axis could bring
         # a clear part of the observed rim into the left arm's reachable area.
         for offset in (-0.08, 0.08, -0.14, 0.14):
@@ -462,14 +464,36 @@ class Controller:
             include_clipped=True,
         )
         # Keep earlier sightings even if they are now occluded. The newly measured
-        # rim supplies heading and standoff, wheel encoders supply travel along it.
+        # rim supplies heading and standoff. The cube images must confirm lateral travel.
         motion = displacement(packet)
         tangent_before = np.array([-edge["normal"][1], edge["normal"][0]])
         tangent_after = np.array([-current["normal"][1], current["normal"][0]])
+        # Match by color so a cube can cross from one wrist camera to the other.
+        # Conflicting complete silhouettes make the inferred shift ambiguous.
+        fresh = self.release_landmarks(packet, current, prior_colors)
+        encoder_shift = -float(motion @ tangent_before)
+        shifts = [
+            float(end @ tangent_after - start @ tangent_before)
+            for (_, start_color), start in landmarks.items()
+            for (_, end_color), end in fresh.items()
+            if end_color == start_color
+        ]
+        if not shifts or any(abs(s - encoder_shift) > 0.025 for s in shifts):
+            raise ValueError(
+                "Fresh cube images cannot confirm the placement sidestep against wheel encoders"
+            )
+        observed_shift = float(np.median(shifts))
+        self.act(
+            "table observation",
+            color=color,
+            matched_landmarks=len(shifts),
+            lateral_encoder_shift_m=encoder_shift,
+            observed_tangent_shift_m=observed_shift,
+        )
         kept = []
         for point in occupied:
             inset = point @ edge["normal"] - edge["distance"]
-            along = (point - motion) @ tangent_before
+            along = point @ tangent_before + observed_shift
             kept.append(
                 (current["distance"] + inset) * current["normal"]
                 + along * tangent_after
@@ -502,7 +526,12 @@ class Controller:
         original = edge["normal"]
         tangent = np.array([-original[1], original[0]])
 
+        previous_landmarks = {key: point @ tangent for key, point in landmarks.items()}
+        initial_landmarks = previous_landmarks
+        tangent_shift = 0.0
+
         def observed_rim(sample):
+            nonlocal previous_landmarks, tangent_shift
             rim = self.table(sample)
             if rim is None:
                 raise ValueError("Lost the table rim during the placement turn")
@@ -518,6 +547,39 @@ class Controller:
                 raise ValueError(
                     "Placement turn exceeded its observed standoff or heading limit"
                 )
+            axis = np.array([-rim["normal"][1], rim["normal"][0]])
+            fresh = {
+                key: point @ axis
+                for key, point in self.release_landmarks(
+                    sample, rim, prior_colors
+                ).items()
+            }
+            direct = fresh.keys() & initial_landmarks.keys()
+            reference = initial_landmarks if direct else previous_landmarks
+            common = sorted(fresh.keys() & reference.keys())
+            if not common:
+                raise ValueError(
+                    "Lost the observed cubes across consecutive placement-turn images"
+                )
+            offsets = [fresh[key] - reference[key] for key in common]
+            shift = float(np.median(offsets)) + (0.0 if direct else tangent_shift)
+            if (
+                abs(shift) > 0.05
+                or abs(shift - tangent_shift) > 0.025
+                or np.ptp(offsets) > 0.045
+            ):
+                raise ValueError(
+                    "Cube motion across the placement turn is inconsistent"
+                )
+            tangent_shift = shift
+            previous_landmarks = fresh
+            self.act(
+                "table observation",
+                matched_landmarks=len(common),
+                initial_view_match=bool(direct),
+                observed_tangent_shift_m=shift,
+                color=color,
+            )
             return rim, heading
 
         self.act("table observation", placement_yaw_goal_rad=angle, color=color)
@@ -545,21 +607,6 @@ class Controller:
             )
         new_normal = current["normal"]
         new_tangent = np.array([-new_normal[1], new_normal[0]])
-        fresh = self.release_landmarks(packet, current, prior_colors)
-        matches = fresh.keys() & landmarks.keys()
-        if not matches:
-            raise ValueError(
-                "No previous cube could be matched across the placement turn"
-            )
-        shifts = [
-            fresh[key] @ new_tangent - landmarks[key] @ tangent
-            for key in sorted(matches)
-        ]
-        shift = float(np.median(shifts))
-        if abs(shift) > 0.05 or np.ptp(shifts) > 0.045:
-            raise ValueError(
-                "The observed cubes disagree with a bounded placement turn"
-            )
         self.last_rim_distance = current["distance"]
         seen = occupied_table_points(
             self.table_views(packet, CAMERAS),
@@ -571,7 +618,7 @@ class Controller:
         kept = []
         for point in occupied:
             inset = point @ original - edge["distance"]
-            along = point @ tangent + shift
+            along = point @ tangent + tangent_shift
             kept.append(
                 (current["distance"] + inset) * new_normal + along * new_tangent
             )
@@ -579,8 +626,7 @@ class Controller:
             "table observation",
             fresh_occupants=len(seen),
             retained_occupants=len(kept),
-            matched_landmarks=len(matches),
-            observed_tangent_shift_m=shift,
+            observed_tangent_shift_m=tangent_shift,
             color=color,
         )
         return current, seen + kept

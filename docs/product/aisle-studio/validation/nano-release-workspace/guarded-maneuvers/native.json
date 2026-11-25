@@ -1,0 +1,123 @@
+{
+  "journey": [
+    {
+      "check": "Layout archive verified",
+      "robot": "Nano",
+      "status": "Evaluation verified \u00b7 Nano",
+      "evaluation": {
+        "archive_integrity": "Published Studio output digest",
+        "archive_sha256": "e744563dfc0f8513c34ab944f477e69ed336352ae4c70a243ab6082c473e4472",
+        "cases": 9,
+        "failures": [
+          {
+            "index": 0,
+            "reasons": [
+              "ValueError: Cube motion across the placement turn is inconsistent",
+              "blue \u00b7 0/100 table contacts, 31.6 mm rim margin, gripper release incomplete, center 88.9 mm above tabletop, still moving"
+            ],
+            "seed": 670185358
+          },
+          {
+            "index": 2,
+            "reasons": [
+              "ValueError: Fresh cube images cannot confirm the placement sidestep against wheel encoders",
+              "green \u00b7 0/100 table contacts, -14.9 mm rim margin, gripper release incomplete, center 84.6 mm above tabletop, still moving",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -919.6 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 1865171047
+          },
+          {
+            "index": 4,
+            "reasons": [
+              "ValueError: Fresh cube images cannot confirm the placement sidestep against wheel encoders",
+              "No loaded wheel contact for 1 physics steps",
+              "green \u00b7 0/100 table contacts, -10.9 mm rim margin, gripper release incomplete, center 83.9 mm above tabletop, still moving",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -920.9 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2053486198
+          }
+        ],
+        "interval_95": [
+          0.3542021355803963,
+          0.879416181613089
+        ],
+        "manifest_sha256": "0c561a2629dba8b6c11778f056b19d2a6ea9b67cacb14bf710d9f41f2f134a49",
+        "qualified": false,
+        "release_exposures": 20,
+        "requirement": null,
+        "split": "development",
+        "successes": 6,
+        "verified": 9,
+        "verified_guard_bypasses": 0
+      }
+    },
+    {
+      "check": "Second failed layout opened",
+      "robot": "Nano",
+      "status": "Evaluation verified \u00b7 Nano"
+    },
+    {
+      "check": "First failed layout reopened",
+      "robot": "Nano",
+      "status": "Evaluation verified \u00b7 Nano"
+    },
+    {
+      "check": "Unreadable archive rejected",
+      "robot": "Nano",
+      "status": "[Errno 2] No such file or directory: '<studio-checkout>/docs/product/aisle-studio/validation/nano-release-workspace/guarded-maneuvers/missing-archive-for-ui-check.zip'"
+    }
+  ],
+  "recovery": [
+    {
+      "check": "Layout evaluation restored",
+      "robot": "Nano",
+      "status": "Ready",
+      "evaluation": {
+        "archive_integrity": "Published Studio output digest",
+        "archive_sha256": "e744563dfc0f8513c34ab944f477e69ed336352ae4c70a243ab6082c473e4472",
+        "cases": 9,
+        "failures": [
+          {
+            "index": 0,
+            "reasons": [
+              "ValueError: Cube motion across the placement turn is inconsistent",
+              "blue \u00b7 0/100 table contacts, 31.6 mm rim margin, gripper release incomplete, center 88.9 mm above tabletop, still moving"
+            ],
+            "seed": 670185358
+          },
+          {
+            "index": 2,
+            "reasons": [
+              "ValueError: Fresh cube images cannot confirm the placement sidestep against wheel encoders",
+              "green \u00b7 0/100 table contacts, -14.9 mm rim margin, gripper release incomplete, center 84.6 mm above tabletop, still moving",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -919.6 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 1865171047
+          },
+          {
+            "index": 4,
+            "reasons": [
+              "ValueError: Fresh cube images cannot confirm the placement sidestep against wheel encoders",
+              "No loaded wheel contact for 1 physics steps",
+              "green \u00b7 0/100 table contacts, -10.9 mm rim margin, gripper release incomplete, center 83.9 mm above tabletop, still moving",
+              "blue \u00b7 opposing-finger lift incomplete, 0/100 table contacts, -920.9 mm rim margin, center -554.3 mm above tabletop"
+            ],
+            "seed": 2053486198
+          }
+        ],
+        "interval_95": [
+          0.3542021355803963,
+          0.879416181613089
+        ],
+        "manifest_sha256": "0c561a2629dba8b6c11778f056b19d2a6ea9b67cacb14bf710d9f41f2f134a49",
+        "qualified": false,
+        "release_exposures": 20,
+        "requirement": null,
+        "split": "development",
+        "successes": 6,
+        "verified": 9,
+        "verified_guard_bypasses": 0
+      }
+    }
+  ]
+}
