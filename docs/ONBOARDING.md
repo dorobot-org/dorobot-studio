@@ -1,7 +1,7 @@
 # DoRobot Studio 上手指南（7 天 · 每天 90 分钟）
 
 > 写给"要在这个仓库里做出可合入改动"的人，不是写给"要把代码读完"的人。
-> 基线：`main` @ `8ff8c32`（v0.1.0-rc.2 + 38 commits），89 个 Rust 文件、约 3.4 万行（不含 vendor 与 examples）、131 个 `#[test]`。
+> 基线：`main` @ `a573670`，94 个 Rust 文件、约 3.9 万行（不含 vendor 与 examples）、152 个 `#[test]`。
 >
 > **诚实声明**：撰写时没有在本机执行完整构建（仓库无 `target/`，首次构建需拉取固定 rev 的 Makepad，预计 10–20 分钟）。下文每条命令都标注了预期结果——请用它校验本文，而不是信任本文。
 
@@ -11,7 +11,7 @@
 
 **三句话**
 
-1. 这**不是**一个靠"读代码"就能懂的项目，而是一个**边界极其清晰**的项目。3.4 万行里，决定你能否上手的只有 3 个边界。
+1. 这**不是**一个靠"读代码"就能懂的项目，而是一个**边界极其清晰**的项目。3.9 万行里，决定你能否上手的只有 3 个边界。
 2. **杠杆在插件契约上**。宿主不声明界面，界面由插件工厂产出。会加插件 = 能无限扩展产品而不碰宿主——这是这个仓库里唯一接近"零边际成本"的能力。
 3. **具体知识（specific knowledge）只有三样，且不可外包**：LeRobot 数据格式的细节、遥操作/遥测的时序、Makepad 的脾气。其余都可查。
 
@@ -21,7 +21,7 @@
 
 **三个不要**
 
-- 不要通读 3.4 万行。阅读顺序由"你要改什么"决定，不由文件树决定。
+- 不要通读 3.9 万行。阅读顺序由"你要改什么"决定，不由文件树决定。
 - 不要先学 Makepad DSL 全貌。你只需要会读**一个**面板的 DSL，以及 `ids!()` 路径怎么对应。
 - 不要碰 `runtime/`。那是第二个 workspace、Vulkan/Nexus、真机串口——另一门专业，第 6 天再说。
 
@@ -106,15 +106,15 @@ sequenceDiagram
 
 ## 2. 20/80 阅读清单
 
-按顺序读，总计约 2000 行 ≈ 全仓库 5.9%。**第一周的全部阅读量就这么多。**
+按顺序读，总计约 2000 行 ≈ 全仓库 5.1%。**第一周的全部阅读量就这么多。**
 
 | # | 文件 | 行数 | 为什么读 | 读完必须能答 |
 | --- | --- | --- | --- | --- |
-| 1 | `crates/dorobot-studio-core/src/api/mod.rs` | 570 | 整个领域语言：6 个 State 结构 + `Intent` 全部变体 + `Backend` trait | 有哪 6 个界面？为什么 `dispatch` 必须"cheap and non-blocking"？ |
+| 1 | `crates/dorobot-studio-core/src/api/mod.rs` | 575 | 整个领域语言：6 个 State 结构 + `Intent` 全部变体 + `Backend` trait | 有哪 6 个界面？为什么 `dispatch` 必须"cheap and non-blocking"？ |
 | 2 | `crates/dorobot-studio-plugin/src/lib.rs` | 482 | 生命周期与注册校验（重复 ID、API 版本、`legacy_screen` 冲突） | 为什么 `create` 调两次必须得到两个**不同** `widget_uid`？ |
-| 3 | `dorobot-flex/src/plugins.rs` | 15 | 组合根，全部接线就这 15 行 | 加一个插件要改几处？（答：crate + Cargo + 这 15 行） |
+| 3 | `dorobot-flex/src/plugins.rs` | 16 | 组合根，全部接线就这 16 行 | 加一个插件要改几处？（答：crate + Cargo + 这 16 行） |
 | 4 | `plugins/collection/src/lib.rs` | 187 | 最小完整切片：描述 / 创建 / sync / actions / can_disable | 为什么录制中 `can_disable` 必须返回 `Err`？ |
-| 5 | `dorobot-flex/tests/plugins.rs` | 633 | 可执行规格，比文档可信 | 哪个测试保证了"新增面板不用改 `Screen`"？ |
+| 5 | `dorobot-flex/tests/plugins.rs` | 634 | 可执行规格，比文档可信 | 哪个测试保证了"新增面板不用改 `Screen`"？ |
 | 6 | `dorobot-flex/src/bin/dorobot-flex.rs:1671-1776` | 105 | `AppMain` 事件循环、`LiveEdit` 重挂载 | 热重载时宿主做了什么？ |
 
 **读法**：每个文件读完立刻合上，用一句话写"它负责什么、不负责什么、谁会调用它"。写不出来就是没读懂，回去只读结构（`pub fn` / `pub trait` / `enum`），不要读函数体。
@@ -200,9 +200,9 @@ cargo run --locked -p dorobot-flex --no-default-features -- --demo
 
 （无视频特性，不需要 FFmpeg。默认构建才需要 `libav*`。）
 
-**做**：把 3 个插件入口、7 个面板、Data workspace 的 3 个 tab 全点一遍；然后**合上电脑，凭记忆画一张图**：插件 → 面板 → 落到哪个 `Screen`。
+**做**：把 4 个插件入口、11 个面板、Data workspace 的 3 个 tab 全点一遍；然后**合上电脑，凭记忆画一张图**：插件 → 面板 → 落到哪个 `Screen`。
 
-**验收**：图能覆盖 `control`(4 面板) / `collection`(1) / `policy`(2) = 7 个面板 + Data workspace 的 3 个 tab(Library/Play/Eval)，并标出哪些面板的 `legacy_screen = None`（答：`nexus_setup`、`hardware_live_mirror`、`nexus_train`、`nexus_rollout`，共 4 个；其余 3 个仍映射到 `Screen`）。
+**验收**：图能覆盖 `control`(4 面板) / `collection`(1) / `policy`(2) / `aisle`(4 面板) = 11 个面板 + Data workspace 的 3 个 tab(Library/Play/Eval)，并标出哪些面板的 `legacy_screen = None`（答：`nexus_setup`、`hardware_live_mirror`、`nexus_train`、`nexus_rollout`、`aisle_task`、`aisle_scene`、`aisle_run`、`aisle_evidence`，共 8 个；其余 3 个仍映射到 `Screen`）。
 
 **这一步的意义**：把文字变成空间结构。图错了不要紧，错的地方就是你的知识缺口。
 

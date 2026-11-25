@@ -64,6 +64,7 @@ def oc01() -> tuple[bool, str]:
         "plugins/collection",
         "plugins/control",
         "plugins/policy",
+        "plugins/aisle",
     }
     return members == want, f"{len(members)} 个成员，集合一致={members == want}"
 
@@ -71,21 +72,24 @@ def oc01() -> tuple[bool, str]:
 def oc02() -> tuple[bool, str]:
     text = read("dorobot-flex/src/plugins.rs")
     ids = re.findall(r"register\(Box::new\((dorobot_plugin_\w+)::\w+Plugin\)\)", text)
-    return len(ids) == 3, f"注册 {len(ids)} 个内置插件: {', '.join(ids)}"
+    return len(ids) == 4, f"注册 {len(ids)} 个内置插件: {', '.join(ids)}"
 
 
 def oc03() -> tuple[bool, str]:
     counts = {
         name: len(re.findall(r"PanelDescriptor\s*\{", read(f"plugins/{name}/src/lib.rs")))
-        for name in ("control", "collection", "policy")
+        for name in ("control", "collection", "policy", "aisle")
     }
     total = sum(counts.values())
-    return total == 7, f"control={counts['control']} collection={counts['collection']} policy={counts['policy']} 共 {total}"
+    return total == 11, (
+        f"control={counts['control']} collection={counts['collection']} "
+        f"policy={counts['policy']} aisle={counts['aisle']} 共 {total}"
+    )
 
 
 def oc04() -> tuple[bool, str]:
     found = {}
-    for name in ("control", "collection", "policy"):
+    for name in ("control", "collection", "policy", "aisle"):
         chunks = read(f"plugins/{name}/src/lib.rs").split("PanelDescriptor {")[1:]
         for chunk in chunks:
             head = chunk[:400]
@@ -93,7 +97,16 @@ def oc04() -> tuple[bool, str]:
                 pid = re.search(r'id:\s*"([^"]+)"', head)
                 if pid:
                     found[pid.group(1)] = name
-    want = {"nexus_setup", "hardware_live_mirror", "nexus_train", "nexus_rollout"}
+    want = {
+        "nexus_setup",
+        "hardware_live_mirror",
+        "nexus_train",
+        "nexus_rollout",
+        "aisle_task",
+        "aisle_scene",
+        "aisle_run",
+        "aisle_evidence",
+    }
     return set(found) == want, f"{len(found)} 个无 legacy 面板: {sorted(found)}"
 
 
@@ -280,10 +293,10 @@ def oc22() -> tuple[bool, str]:
 
 
 checks = [
-    ("OC-01", "根 workspace 有 9 个成员且集合固定", oc01),
-    ("OC-02", "组合根注册 3 个内置插件", oc02),
-    ("OC-03", "面板总数为 7（4+1+2）", oc03),
-    ("OC-04", "legacy_screen=None 的面板恰为 4 个", oc04),
+    ("OC-01", "根 workspace 有 10 个成员且集合固定", oc01),
+    ("OC-02", "组合根注册 4 个内置插件", oc02),
+    ("OC-03", "面板总数为 11（4+1+2+4）", oc03),
+    ("OC-04", "legacy_screen=None 的面板恰为 8 个", oc04),
     ("OC-05", "Screen 有 6 个变体", oc05),
     ("OC-06", "Backend 只有 dispatch/poll 两个 &mut 方法", oc06),
     ("OC-07", "PluginPanel 有 5 个方法", oc07),
