@@ -1914,6 +1914,18 @@ impl Widget for RobotView {
                 // camera falls back to horizontal scroll if Y is zero.
                 return;
             }
+            Event::Scroll(fs) if !fs.is_mouse && self.view_rect.contains(fs.abs) => {
+                // A stream of small deltas should zoom by the same amount
+                // as a single delta covering the same scroll distance.
+                const SCROLL_UNITS_PER_STEP: f64 = 32.0;
+                let step = self.camera.wheel_zoom_step.clamp(0.001, 0.99);
+                let factor = (1.0 - step).powf((-fs.scroll.y / SCROLL_UNITS_PER_STEP) as f32);
+                let min = self.camera.distance_min.max(0.01);
+                let max = self.camera.distance_max.max(min + 0.01);
+                self.camera.distance = (self.camera.distance * factor).clamp(min, max);
+                cx.redraw_all();
+                return;
+            }
             _ => (),
         }
         self.camera.handle_desktop_interaction(cx, event);
