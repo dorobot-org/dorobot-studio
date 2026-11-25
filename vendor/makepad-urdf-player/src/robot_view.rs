@@ -366,6 +366,9 @@ pub struct RobotView {
     /// outcome of the last load, emitted as a widget action on the next event
     #[rust]
     last_action: RobotViewAction,
+    /// 颜色覆盖门控开关（specs/001-fix-ghost-outline）：默认开启，`URDF_GHOST_GUARD=0` 关闭。
+    #[rust(true)]
+    ghost_guard: bool,
 }
 
 impl RobotView {
@@ -378,6 +381,8 @@ impl RobotView {
             return;
         }
         self.initialized = true;
+        let guard = std::env::var("URDF_GHOST_GUARD").ok();
+        self.ghost_guard = crate::render::audit::ghost_guard_enabled(guard.as_deref());
         self.camera.orbit_yaw = DEFAULT_YAW;
         self.camera.orbit_pitch = DEFAULT_PITCH;
         self.color_texture = Texture::new_with_format(
@@ -2014,6 +2019,11 @@ impl Widget for RobotView {
             .and_then(|v| v.parse::<f32>().ok())
             .unwrap_or(0.30);
         self.draw_bg.edge_ao = vec4(1.0 / dw, 1.0 / dh, ao, edge);
+        self.draw_bg.coverage_gate = if self.ghost_guard {
+            crate::render::audit::gate_threshold(SSAA_SCALE as f32)
+        } else {
+            0.0
+        };
         // camera basis for the directional sky dome in the composite shader
         if let Some(scene_state) = self.camera.desktop_scene_state(rect, cx.time()) {
             let inv = scene_state.view.invert();

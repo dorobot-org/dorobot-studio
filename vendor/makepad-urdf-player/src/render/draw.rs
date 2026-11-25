@@ -624,7 +624,8 @@ pub mod composite_shader {
                 // depth buffer can actually hold short of the clear value is
                 // geometry, however far away; the previous 0.99999 wrote off
                 // a real band of far-plane fragments as background.
-                let onbody = step(dc, 0.9999999)
+                // 只给"本帧真的画过颜色"的像素描边：没有覆盖的地方不存在表面交界。
+                let onbody = step(dc, 0.9999999) * step(scene.w, self.coverage_gate)
                 let cavity = clamp(0.0 - curv * self.edge_ao.z, 0.0, 1.0) * onbody
                 let ridge = clamp(curv * self.edge_ao.w, 0.0, 1.0) * onbody
                 let shade = clamp(1.0 - cavity - ridge, 0.0, 1.0)
@@ -707,7 +708,8 @@ pub mod composite_shader {
                 let lap = (dl + dr + du + dd) * 0.25 - dc
                 let dscale = max(1.0 - dc, 0.00002)
                 let curv = lap / dscale
-                let onbody = step(dc, 0.9999999)
+                // 只给"本帧真的画过颜色"的像素描边：没有覆盖的地方不存在表面交界。
+                let onbody = step(dc, 0.9999999) * step(scene.w, self.coverage_gate)
                 let cavity = clamp(0.0 - curv * self.edge_ao.z, 0.0, 1.0) * onbody
                 let ridge = clamp(curv * self.edge_ao.w, 0.0, 1.0) * onbody
                 let shade = clamp(1.0 - cavity - ridge, 0.0, 1.0)
@@ -853,6 +855,10 @@ pub struct DrawSceneComposite {
     /// w = edge strength. Zero z and w to switch the effect off entirely.
     #[live(vec4(0.001, 0.001, 0.0, 0.0))]
     pub edge_ao: Vec4f,
+    /// 覆盖门控：场景颜色 alpha 不超过该值的像素不参与描边/凹陷。
+    /// 0 关闭门控（修复前行为）；1/ssaa² 为默认（specs/001-fix-ghost-outline）。
+    #[live(0.25)]
+    pub coverage_gate: f32,
     /// sky colour at the horizon (also what the ground hazes into)
     #[live(vec4(1.0, 0.985, 0.985, 1.0))]
     pub sky_horizon: Vec4f,
