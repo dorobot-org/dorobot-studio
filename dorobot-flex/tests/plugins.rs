@@ -220,12 +220,13 @@ fn toolbox_has_one_entry_per_plugin_instead_of_one_per_panel() {
     });
     registry.mount_toolbox(&mut cx, &container).unwrap();
     let children = container.borrow::<View>().unwrap().children.clone();
-    assert_eq!(children.len(), 5, "侧栏应按插件分组，不逐个展开面板");
+    assert_eq!(children.len(), 6, "侧栏应按插件分组，不逐个展开面板");
     assert_eq!(children[0].1.text(), "Robot control");
     assert_eq!(children[1].1.text(), "Data collection");
     assert_eq!(children[2].1.text(), "Training & inference");
     assert_eq!(children[3].1.text(), "AISLE Studio");
     assert_eq!(children[4].1.text(), "Run diagnostics");
+    assert_eq!(children[5].1.text(), "Component debug");
 }
 
 #[test]
@@ -632,6 +633,58 @@ fn one_policy_plugin_contains_training_and_rollout_with_native_actions() {
         let panel = cx.with_vm(|vm| registry.create_instance(id, vm)).unwrap();
         assert!(!panel.root().button(&mut cx, action).is_empty());
     }
+}
+
+#[test]
+#[cfg(unix)]
+fn dora_cli_panel_syncs_empty_state_without_script_errors() {
+    use std::os::unix::fs::PermissionsExt;
+
+    struct EnvGuard(Option<std::ffi::OsString>);
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.0 {
+                Some(value) => std::env::set_var("DOROBOT_DORA_BIN", value),
+                None => std::env::remove_var("DOROBOT_DORA_BIN"),
+            }
+        }
+    }
+
+    // A fake CLI keeps this test offline: --version succeeds, `dora list`
+    // behaves like a coordinator that is not running.
+    let dir = std::env::temp_dir().join(format!("dorobot-dora-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let binary = dir.join("fake-dora");
+    std::fs::write(
+        &binary,
+        "#!/bin/sh\ncase \"$1\" in\n  --version) echo 'dora-cli 9.9.9-test'; exit 0;;\n  list) echo 'cannot connect to coordinator' >&2; exit 1;;\n  *) exit 0;;\nesac\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let _guard = EnvGuard(std::env::var_os("DOROBOT_DORA_BIN"));
+    std::env::set_var("DOROBOT_DORA_BIN", &binary);
+
+    let (mut cx, registry) = setup();
+    let mut panel = cx
+        .with_vm(|vm| registry.create_instance("page_dora_cli", vm))
+        .unwrap();
+    assert!(!panel.root().is_empty());
+    let backend = MockBackend::new();
+    let context = PanelContext {
+        backend: &backend,
+        rig_editing: false,
+        show_help: false,
+        show_details: false,
+        live_controls: false,
+    };
+    // No coordinator: the first sync must render the guidance text and the
+    // "not reachable" banner without panicking or leaking script errors.
+    panel.sync(&mut cx, &context);
+    cx.with_vm(|vm| {
+        let errors = vm.take_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    });
+    std::fs::remove_dir_all(&dir).ok();
 }
 
 #[test]

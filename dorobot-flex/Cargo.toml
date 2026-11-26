@@ -13,6 +13,7 @@ dorobot-plugin-aisle = { path = "../plugins/aisle" }
 dorobot-plugin-policy = { path = "../plugins/policy" }
 dorobot-plugin-control = { path = "../plugins/control" }
 dorobot-plugin-diagnostics = { path = "../plugins/diagnostics" }
+dorobot-plugin-dora-cli = { path = "../plugins/dora-cli" }
 dorobot-ux = { workspace = true }
 makepad-widgets = { workspace = true }
 makepad-urdf-player = { git = "https://github.com/dorobot-org/makepad-urdf-viewer", rev = "283d303df6d3e158bac2c281a190ac1f749b5bd5" }

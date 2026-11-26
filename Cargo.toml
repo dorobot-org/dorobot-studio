@@ -12,6 +12,7 @@ members = [
     "plugins/policy",
     "plugins/aisle",
     "plugins/diagnostics",
+    "plugins/dora-cli",
 ]
 
 [workspace.package]
