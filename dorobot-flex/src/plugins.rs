@@ -13,4 +13,7 @@ pub fn builtin_plugins() -> PluginRegistry {
         .expect("训练与推理插件注册失败");
     registry.register(Box::new(dorobot_plugin_aisle::AislePlugin)).expect("AISLE plugin registration");
     registry
+        .register(Box::new(dorobot_plugin_diagnostics::DiagnosticsPlugin))
+        .expect("run diagnostics plugin registration");
+    registry
 }
