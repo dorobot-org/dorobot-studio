@@ -1,8 +1,10 @@
 //! Minimal run-diagnostics panel.
 //!
 //! Skeleton scope (D-03.3): list `runs/studio-*`, show the tail of the selected
-//! `dora.log`, filter by level/keyword/source, export the filtered view, and
-//! hand a recorded dataset to the existing Replay screen.
+//! `dora.log`, filter by level/keyword/source, raise the in-memory read limit
+//! with "Load more", export the filtered view, copy the whole log with
+//! "Export full log", and hand a recorded dataset to the existing Replay
+//! screen.
 //!
 //! The run list uses ten fixed row slots instead of a virtualised list. That is
 //! deliberate for the skeleton: it keeps the Makepad script small and avoids
@@ -50,6 +52,10 @@ pub(crate) struct DiagnosticsPanel {
     /// Lines loaded for the selected run, before filtering.
     lines: Vec<LogLine>,
     filter: LogFilter,
+    /// Current in-memory read limit for `dora.log`. Raised by "Load more".
+    load_limit: usize,
+    /// Whether older lines existed before the loaded window.
+    log_truncated: bool,
     loaded: bool,
     light: Option<f64>,
     rows_key: Option<(usize, Option<usize>)>,
@@ -121,7 +127,9 @@ impl DiagnosticsPanel {
                     run_meta := Label{width: Fill max_lines: 2 text: ""
                         draw_text +: {text_style: mod.widgets.ux.TEXT_META{}}}
                     replay := mod.widgets.ux.ToolButton{text: "Open replay"}
+                    load_more := mod.widgets.ux.ToolButton{text: "Load more"}
                     export := mod.widgets.ux.PrimaryButton{text: "Export filtered"}
+                    export_full := mod.widgets.ux.ToolButton{text: "Export full log"}
                 }
                 notice := Label{width: Fill max_lines: 2 text: ""
                     draw_text +: {text_style: mod.widgets.ux.TEXT_META{}}}
@@ -136,6 +144,8 @@ impl DiagnosticsPanel {
             selected: None,
             lines: Vec::new(),
             filter: LogFilter::default(),
+            load_limit: runs::DEFAULT_TAIL_LINES,
+            log_truncated: false,
             loaded: false,
             light: None,
             rows_key: None,
@@ -161,6 +171,9 @@ impl DiagnosticsPanel {
         self.selected = previous
             .and_then(|run_id| self.runs.iter().position(|run| run.run_id == run_id))
             .or_else(|| (!self.runs.is_empty()).then_some(0));
+        // A rescan starts each run back at the default window; "Load more" only
+        // changes the current in-memory view.
+        self.load_limit = runs::DEFAULT_TAIL_LINES;
         self.head_text = format!(
             "{} run{} · {}",
             self.runs.len(),
@@ -178,10 +191,12 @@ impl DiagnosticsPanel {
     fn load_selected(&mut self, cx: &mut Cx) {
         self.lines.clear();
         self.load_error = None;
+        self.log_truncated = false;
         if let Some(run) = self.selected.and_then(|index| self.runs.get(index)) {
-            match runs::load_run_log(run, runs::DEFAULT_TAIL_LINES) {
+            match runs::load_run_log(run, self.load_limit) {
                 Ok(loaded) => {
                     self.lines = loaded.lines;
+                    self.log_truncated = loaded.truncated;
                     self.log_status = if loaded.truncated {
                         format!(
                             "Showing the tail of {} ({} bytes on disk)",
@@ -323,11 +338,20 @@ impl DiagnosticsPanel {
             self.log_status = error.clone();
         } else if self.selected.is_some() {
             let shown = filtered.len().min(DISPLAY_LINES);
+            let more = if self.log_truncated {
+                if self.load_limit >= runs::MAX_TAIL_LINES {
+                    " · maximum load limit reached"
+                } else {
+                    " · more available"
+                }
+            } else {
+                ""
+            };
             self.log_status = format!(
-                "{} of {} loaded lines match · showing last {shown} · tail limit {}",
+                "{} of {} loaded lines match · showing last {shown} · loaded up to {} lines{more}",
                 filtered.len(),
                 self.lines.len(),
-                runs::DEFAULT_TAIL_LINES
+                self.load_limit
             );
         } else {
             self.log_status.clear();
@@ -338,6 +362,78 @@ impl DiagnosticsPanel {
         self.root
             .button(cx, ids!(export))
             .set_enabled(cx, !filtered.is_empty());
+        self.root.button(cx, ids!(load_more)).set_enabled(
+            cx,
+            self.log_truncated && self.load_limit < runs::MAX_TAIL_LINES && self.selected.is_some(),
+        );
+        self.root.button(cx, ids!(export_full)).set_enabled(
+            cx,
+            self.selected
+                .and_then(|index| self.runs.get(index))
+                .is_some_and(|run| run.log_path.is_file()),
+        );
+    }
+
+    /// Raise the in-memory window by one step (cap: `MAX_TAIL_LINES`) and
+    /// re-read the tail. This never rewrites `dora.log`.
+    fn load_more(&mut self, cx: &mut Cx) {
+        let Some(run) = self.selected.and_then(|index| self.runs.get(index)) else {
+            self.notice = "Select a run before loading more lines.".to_owned();
+            self.root.label(cx, ids!(notice)).set_text(cx, &self.notice);
+            return;
+        };
+        if self.load_limit >= runs::MAX_TAIL_LINES {
+            self.notice = format!(
+                "Already at the maximum in-memory limit ({} lines).",
+                runs::MAX_TAIL_LINES
+            );
+            self.root.label(cx, ids!(notice)).set_text(cx, &self.notice);
+            return;
+        }
+        let run_id = run.run_id.clone();
+        self.load_limit = (self.load_limit + runs::TAIL_STEP_LINES).min(runs::MAX_TAIL_LINES);
+        self.load_selected(cx);
+        self.notice = match &self.load_error {
+            Some(error) => error.clone(),
+            None => format!(
+                "Loaded up to {} lines from {} ({} in memory).",
+                self.load_limit,
+                run_id,
+                self.lines.len()
+            ),
+        };
+        self.root.label(cx, ids!(notice)).set_text(cx, &self.notice);
+    }
+
+    /// Stream-copy the whole `dora.log` to `<runs>/exports`, independent of the
+    /// loaded/filtered window. Complements "Export filtered".
+    fn export_full(&mut self, cx: &mut Cx) {
+        let Some(run) = self.selected.and_then(|index| self.runs.get(index)) else {
+            self.notice = "Select a run before exporting.".to_owned();
+            self.root.label(cx, ids!(notice)).set_text(cx, &self.notice);
+            return;
+        };
+        if !run.log_path.is_file() {
+            self.notice = format!(
+                "Cannot copy the full log: {} is missing.",
+                run.log_path.display()
+            );
+            self.root.label(cx, ids!(notice)).set_text(cx, &self.notice);
+            return;
+        }
+        let run_id = run.run_id.clone();
+        let bytes = run.log_bytes;
+        match runs::export_full_log(run, &self.export_dir, runs::now_ms()) {
+            Ok(path) => {
+                self.notice = format!(
+                    "Copied the full dora.log of {run_id} ({}) to {}",
+                    human_bytes(bytes),
+                    path.display()
+                );
+            }
+            Err(error) => self.notice = format!("Full log export failed: {error}"),
+        }
+        self.root.label(cx, ids!(notice)).set_text(cx, &self.notice);
     }
 
     fn export(&mut self, cx: &mut Cx) {
@@ -411,6 +507,8 @@ impl PluginPanel for DiagnosticsPanel {
                     (ids!(lv_warn), Themed::Both),
                     (ids!(lv_error), Themed::Both),
                     (ids!(export), Themed::Both),
+                    (ids!(export_full), Themed::Both),
+                    (ids!(load_more), Themed::Both),
                     (ids!(replay), Themed::Both),
                 ],
                 light,
@@ -489,6 +587,16 @@ impl PluginPanel for DiagnosticsPanel {
             return true;
         }
 
+        if self.root.button(cx, ids!(load_more)).clicked(actions) {
+            self.load_more(cx);
+            return true;
+        }
+
+        if self.root.button(cx, ids!(export_full)).clicked(actions) {
+            self.export_full(cx);
+            return true;
+        }
+
         if self.root.button(cx, ids!(replay)).clicked(actions) {
             return self.open_replay(cx, backend);
         }
@@ -496,6 +604,9 @@ impl PluginPanel for DiagnosticsPanel {
         for (index, path) in run_slot_ids().iter().enumerate() {
             if self.root.button(cx, *path).clicked(actions) {
                 self.selected = Some(index);
+                // Switching runs starts from the default window again; the
+                // previous run's "Load more" level does not carry over.
+                self.load_limit = runs::DEFAULT_TAIL_LINES;
                 self.rows_key = None;
                 self.load_selected(cx);
                 self.render_rows(cx);

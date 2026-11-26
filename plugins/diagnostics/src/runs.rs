@@ -26,7 +26,7 @@
 
 use std::{
     fs::{self, File},
-    io::{self, Read, Seek, SeekFrom},
+    io::{self, Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -36,7 +36,17 @@ pub const RUN_PREFIX: &str = "studio-";
 /// How many log lines the UI keeps by default. The tail reader never loads the
 /// whole file when it is larger than this (plus one line of scan slack).
 pub const DEFAULT_TAIL_LINES: usize = 5_000;
+/// Each "Load more" click raises the in-memory read limit by this many lines.
+pub const TAIL_STEP_LINES: usize = 5_000;
+/// Hard ceiling for "Load more". 50 000 lines is still a few tens of MiB at
+/// worst and keeps a single accidental click from loading a multi-GB log.
+pub const MAX_TAIL_LINES: usize = 50_000;
 const TAIL_CHUNK: usize = 64 * 1024;
+/// Buffer used by the streaming full-log copy. The copy never holds more than
+/// this many bytes of the log in memory at once.
+pub const COPY_CHUNK: usize = 64 * 1024;
+/// Number of collision suffixes tried before a full-log export gives up.
+const MAX_EXPORT_SUFFIX: u32 = 999;
 /// Hard byte ceiling for the tail scan, so a file without newlines cannot make
 /// the UI read a multi-gigabyte log into memory.
 const MAX_TAIL_BYTES: u64 = 8 * 1024 * 1024;
@@ -623,6 +633,92 @@ pub fn export_filtered(
     Ok(path)
 }
 
+/// Copy the **whole** `dora.log` for `run` to `dir`.
+///
+/// Unlike [`export_filtered`], this does not touch the in-memory view: it reads
+/// the source in [`COPY_CHUNK`] pieces and writes them straight to the target,
+/// so a 2 GiB log costs one 64 KiB buffer rather than 2 GiB of RAM.
+///
+/// Name: `run-<run_id>-full-<YYYYMMDD-HHMMSS>.log` (UTC export time).
+///
+/// Overwrite policy: an export is never overwritten. If the timestamped name
+/// already exists (two clicks inside the same second), `-2`, `-3`, … is
+/// appended to the stem. This keeps earlier snapshots of a still-growing log.
+pub fn export_full_log(run: &RunInfo, dir: &Path, now_ms: u64) -> io::Result<PathBuf> {
+    let stem = format!(
+        "run-{}-full-{}",
+        sanitize_run_id(&run.run_id),
+        compact_utc_ms(now_ms)
+    );
+    export_full_log_as(&run.log_path, dir, &stem)
+}
+
+/// Same as [`export_full_log`] but with an explicit stem, for tests and for
+/// callers that already sanitised the name. The `.log` suffix and any
+/// collision suffix are added here.
+pub fn export_full_log_as(log_path: &Path, dir: &Path, stem: &str) -> io::Result<PathBuf> {
+    fs::create_dir_all(dir)?;
+    let path = unique_export_path(dir, stem)?;
+    // Do not leave a half-written file behind when the source disappears
+    // mid-copy (or the disk fills). The target did not exist before this call.
+    match copy_file_chunked(log_path, &path) {
+        Ok(_) => Ok(path),
+        Err(error) => {
+            let _ = fs::remove_file(&path);
+            Err(error)
+        }
+    }
+}
+
+fn unique_export_path(dir: &Path, stem: &str) -> io::Result<PathBuf> {
+    for attempt in 1..=MAX_EXPORT_SUFFIX {
+        let name = if attempt == 1 {
+            format!("{stem}.log")
+        } else {
+            format!("{stem}-{attempt}.log")
+        };
+        let candidate = dir.join(name);
+        if !candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::AlreadyExists,
+        format!(
+            "refusing to overwrite an export: {} exports in {} already use this timestamp",
+            MAX_EXPORT_SUFFIX,
+            dir.display()
+        ),
+    ))
+}
+
+/// Stream a file to another path with a bounded buffer. Returns the byte count.
+pub fn copy_file_chunked(source: &Path, target: &Path) -> io::Result<u64> {
+    let mut input = File::open(source)?;
+    let mut output = File::create(target)?;
+    let mut buffer = vec![0u8; COPY_CHUNK];
+    copy_stream(&mut input, &mut output, &mut buffer)
+}
+
+/// The streaming loop, separable from files so a test can prove that the reader
+/// is never asked for more than the buffer size.
+fn copy_stream<R: Read, W: Write>(
+    input: &mut R,
+    output: &mut W,
+    buffer: &mut [u8],
+) -> io::Result<u64> {
+    let mut copied = 0u64;
+    loop {
+        let read = input.read(buffer)?;
+        if read == 0 {
+            break;
+        }
+        output.write_all(&buffer[..read])?;
+        copied += read as u64;
+    }
+    Ok(copied)
+}
+
 fn sanitize_run_id(run_id: &str) -> String {
     let cleaned: String = run_id
         .chars()
@@ -931,5 +1027,105 @@ mod tests {
     fn run_id_is_sanitized_for_export() {
         assert_eq!(sanitize_run_id("studio-1/../x"), "studio-1____x");
         assert_eq!(sanitize_run_id(""), "run");
+    }
+
+    #[test]
+    fn full_export_copies_the_whole_log_to_the_dated_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let dir = write_run(temp.path(), "studio-500");
+        let lines: String = (0..12_000).map(|i| format!("logged line {i}\n")).collect();
+        fs::write(dir.join("dora.log"), &lines).unwrap();
+        let run = &discover_runs(temp.path())[0];
+        let exports = temp.path().join("exports");
+
+        let path = export_full_log(run, &exports, 0).unwrap();
+        assert_eq!(exports, path.parent().unwrap());
+        assert_eq!(
+            path.file_name().unwrap(),
+            "run-studio-500-full-19700101-000000.log"
+        );
+        // The whole file, not just the 5 000-line tail the panel loads.
+        assert_eq!(fs::read_to_string(&path).unwrap(), lines);
+    }
+
+    #[test]
+    fn full_export_streams_large_files_in_bounded_chunks() {
+        let temp = tempfile::tempdir().unwrap();
+        let dir = write_run(temp.path(), "studio-777");
+        // 2 MiB + 12 KiB: several COPY_CHUNK reads.
+        let body: Vec<u8> = (0..(2 * 1024 * 1024 + 12_345))
+            .map(|index| (index % 251) as u8)
+            .collect();
+        fs::write(dir.join("dora.log"), &body).unwrap();
+        let run = &discover_runs(temp.path())[0];
+
+        let path = export_full_log(run, &temp.path().join("exports"), 0).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), body);
+
+        // The reader is never asked for more than the caller's buffer, which is
+        // what keeps the copy's peak memory bounded.
+        struct BoundedReader {
+            data: Vec<u8>,
+            offset: usize,
+            max_buffer: usize,
+        }
+        impl Read for BoundedReader {
+            fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+                assert!(
+                    buffer.len() <= self.max_buffer,
+                    "copy_stream requested {} bytes (buffer is {})",
+                    buffer.len(),
+                    self.max_buffer
+                );
+                let remaining = &self.data[self.offset..];
+                let count = remaining.len().min(buffer.len());
+                buffer[..count].copy_from_slice(&remaining[..count]);
+                self.offset += count;
+                Ok(count)
+            }
+        }
+        let data: Vec<u8> = (0..1_000).map(|index| (index % 97) as u8).collect();
+        let mut reader = BoundedReader {
+            data: data.clone(),
+            offset: 0,
+            max_buffer: 7,
+        };
+        let mut output = Vec::new();
+        let copied = copy_stream(&mut reader, &mut output, &mut [0u8; 7]).unwrap();
+        assert_eq!(copied, data.len() as u64);
+        assert_eq!(output, data);
+    }
+
+    #[test]
+    fn full_export_never_overwrites_an_existing_export() {
+        let temp = tempfile::tempdir().unwrap();
+        let dir = write_run(temp.path(), "studio-9");
+        let run = &discover_runs(temp.path())[0];
+        let exports = temp.path().join("exports");
+
+        fs::write(dir.join("dora.log"), "first\n").unwrap();
+        let first = export_full_log(run, &exports, 0).unwrap();
+        fs::write(dir.join("dora.log"), "second\n").unwrap();
+        let second = export_full_log(run, &exports, 0).unwrap();
+
+        assert_ne!(first, second);
+        assert_eq!(
+            second.file_name().unwrap(),
+            "run-studio-9-full-19700101-000000-2.log"
+        );
+        assert_eq!(fs::read_to_string(&first).unwrap(), "first\n");
+        assert_eq!(fs::read_to_string(&second).unwrap(), "second\n");
+    }
+
+    #[test]
+    fn full_export_reports_missing_source_and_leaves_no_partial_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let exports = temp.path().join("exports");
+        let missing = temp.path().join("no-such-run").join("dora.log");
+        let error = export_full_log_as(&missing, &exports, "run-studio-1-full-19700101-000000")
+            .unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::NotFound);
+        let leftovers: Vec<_> = fs::read_dir(&exports).unwrap().flatten().collect();
+        assert!(leftovers.is_empty(), "no partial export should remain");
     }
 }
