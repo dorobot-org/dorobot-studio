@@ -16,4 +16,7 @@ pub fn builtin_plugins() -> PluginRegistry {
         .register(Box::new(dorobot_plugin_diagnostics::DiagnosticsPlugin))
         .expect("run diagnostics plugin registration");
     registry
+        .register(Box::new(dorobot_plugin_dora_cli::DoraCliPlugin))
+        .expect("dora-cli debug plugin registration");
+    registry
 }

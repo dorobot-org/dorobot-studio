@@ -2022,6 +2022,7 @@ dependencies = [
  "dorobot-plugin-collection",
  "dorobot-plugin-control",
  "dorobot-plugin-diagnostics",
+ "dorobot-plugin-dora-cli",
  "dorobot-plugin-policy",
  "dorobot-studio-core",
  "dorobot-studio-plugin",
@@ -2070,6 +2071,18 @@ dependencies = [
 
 [[package]]
 name = "dorobot-plugin-diagnostics"
+version = "0.1.0-rc.2"
+dependencies = [
+ "dorobot-studio-core",
+ "dorobot-studio-plugin",
+ "dorobot-ux",
+ "makepad-widgets",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "dorobot-plugin-dora-cli"
 version = "0.1.0-rc.2"
 dependencies = [
  "dorobot-studio-core",
