@@ -11,6 +11,7 @@ members = [
     "plugins/control",
     "plugins/policy",
     "plugins/aisle",
+    "plugins/diagnostics",
 ]
 
 [workspace.package]

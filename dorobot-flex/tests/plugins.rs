@@ -220,11 +220,12 @@ fn toolbox_has_one_entry_per_plugin_instead_of_one_per_panel() {
     });
     registry.mount_toolbox(&mut cx, &container).unwrap();
     let children = container.borrow::<View>().unwrap().children.clone();
-    assert_eq!(children.len(), 4, "侧栏应按插件分组，不逐个展开面板");
+    assert_eq!(children.len(), 5, "侧栏应按插件分组，不逐个展开面板");
     assert_eq!(children[0].1.text(), "Robot control");
     assert_eq!(children[1].1.text(), "Data collection");
     assert_eq!(children[2].1.text(), "Training & inference");
     assert_eq!(children[3].1.text(), "AISLE Studio");
+    assert_eq!(children[4].1.text(), "Run diagnostics");
 }
 
 #[test]
@@ -631,4 +632,28 @@ fn one_policy_plugin_contains_training_and_rollout_with_native_actions() {
         let panel = cx.with_vm(|vm| registry.create_instance(id, vm)).unwrap();
         assert!(!panel.root().button(&mut cx, action).is_empty());
     }
+}
+
+#[test]
+fn diagnostics_panel_syncs_read_only_without_script_errors() {
+    let (mut cx, registry) = setup();
+    let mut panel = cx
+        .with_vm(|vm| registry.create_instance("page_diagnostics", vm))
+        .unwrap();
+    assert!(!panel.root().is_empty());
+    let backend = MockBackend::new();
+    let context = PanelContext {
+        backend: &backend,
+        rig_editing: false,
+        show_help: false,
+        show_details: false,
+        live_controls: false,
+    };
+    // An empty or missing runs directory is the first-launch path: it must
+    // render guidance instead of reading files or failing the frame.
+    panel.sync(&mut cx, &context);
+    cx.with_vm(|vm| {
+        let errors = vm.take_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    });
 }
